@@ -28,7 +28,8 @@ $router->get('/{slug}/{lang}', function($slug, $lang) {
 });
 
 // Admin routes
-// 
+//  
+//  
 
 $router->get('/admin', function() {
     session_start();
