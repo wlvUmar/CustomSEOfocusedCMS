@@ -15,5 +15,4 @@ $outputHtml = preg_replace('/No local changes to save/', '<span style="color:ora
 $outputHtml = preg_replace('/Auto-merging/', '<span style="color:blue;">Auto-merging</span>', $outputHtml);
 $outputHtml = preg_replace('/CONFLICT/', '<span style="color:red;font-weight:bold;">CONFLICT</span>', $outputHtml);
 
-// Display
 echo "<pre style='background:#111;color:#eee;padding:15px;border-radius:5px;'>$outputHtml</pre>";
