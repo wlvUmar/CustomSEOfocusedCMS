@@ -5,6 +5,7 @@ require_once '../core/Database.php';
 require_once '../core/Router.php';
 require_once '../core/Controller.php';
 require_once '../core/helpers.php';
+session_start();
 
 $router = new Router();
 
@@ -32,8 +33,6 @@ $router->get('/{slug}/{lang}', function($slug, $lang) {
 //  
 
 $router->get('/admin', function() {
-    session_start();
-
     if (!empty($_SESSION['user_id'])) {
         header("Location: /admin/dashboard");
         exit;
