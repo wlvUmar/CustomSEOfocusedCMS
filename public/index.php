@@ -22,6 +22,7 @@ $router->get('/', function() {
 
 $router->get('/{slug}', function($slug) {
     require_once BASE_PATH . '/controllers/PageController.php';
+    setLanguage(DEFAULT_LANGUAGE); 
     $controller = new PageController();
     $controller->show($slug);
 });
