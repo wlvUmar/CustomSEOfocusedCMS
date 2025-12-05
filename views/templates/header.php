@@ -73,7 +73,7 @@ if ($jsonld) {
         /* Header Styles */
         header { 
             background: var(--primary-dark);
-            padding: 12px 0;
+            padding: 10px 0;
             box-shadow: 0 2px 12px rgba(0,0,0,0.15);
             position: sticky;
             top: 0;
@@ -81,73 +81,81 @@ if ($jsonld) {
         }
         
         nav { 
-            display: flex; 
-            gap: 20px; 
+            display: flex;
             align-items: center;
-            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 12px;
         }
         
         .logo-link {
             display: flex;
             align-items: center;
             text-decoration: none;
-            margin-right: auto;
+            flex-shrink: 0;
         }
         
         .logo {
-            width: 42px;
-            height: 42px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             background: var(--primary-light);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
             color: var(--primary-dark);
             flex-shrink: 0;
         }
         
         .site-name {
-            margin-left: 12px;
+            margin-left: 10px;
             color: var(--primary-light);
-            font-size: 1.1em;
+            font-size: 1em;
             font-weight: 600;
             display: none;
         }
         
-        nav a:not(.logo-link) { 
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-left: auto;
+        }
+        
+        .nav-links a { 
             color: var(--primary-light);
             text-decoration: none;
             font-weight: 500;
             transition: all 0.2s;
-            font-size: 0.95em;
+            font-size: 0.9em;
             padding: 6px 10px;
             border-radius: 6px;
             white-space: nowrap;
         }
         
-        nav a:not(.logo-link):hover { 
+        .nav-links a:hover { 
             background: var(--accent-dark);
             color: #fff;
         }
         
         .lang-switch { 
             display: flex;
-            gap: 6px;
+            gap: 4px;
             align-items: center;
             background: var(--accent-dark);
-            padding: 4px;
-            border-radius: 8px;
+            padding: 3px;
+            border-radius: 6px;
+            flex-shrink: 0;
         }
         
         .lang-switch a {
-            padding: 6px 14px !important;
-            border-radius: 6px;
+            padding: 5px 12px !important;
+            border-radius: 4px;
             background: transparent;
             color: var(--primary-light);
             text-decoration: none;
-            font-size: 0.85em;
+            font-size: 0.8em;
             font-weight: 600;
             transition: all 0.2s;
         }
@@ -333,8 +341,23 @@ if ($jsonld) {
                 display: inline;
             }
             
-            nav {
-                gap: 24px;
+            .logo {
+                width: 42px;
+                height: 42px;
+                font-size: 24px;
+            }
+            
+            .nav-links {
+                gap: 20px;
+            }
+            
+            .nav-links a {
+                font-size: 0.95em;
+            }
+            
+            .lang-switch a {
+                padding: 6px 14px !important;
+                font-size: 0.85em;
             }
             
             main {
@@ -369,25 +392,25 @@ if ($jsonld) {
         /* Desktop Responsive (769px+) */
         @media (min-width: 769px) {
             header {
-                padding: 16px 0;
+                padding: 12px 0;
             }
             
             .logo {
-                width: 48px;
-                height: 48px;
-                font-size: 28px;
+                width: 46px;
+                height: 46px;
+                font-size: 26px;
             }
             
             .site-name {
-                font-size: 1.25em;
-                margin-left: 14px;
+                font-size: 1.15em;
+                margin-left: 12px;
             }
             
-            nav {
-                gap: 30px;
+            .nav-links {
+                gap: 24px;
             }
             
-            nav a:not(.logo-link) {
+            .nav-links a {
                 font-size: 1em;
             }
             
@@ -438,14 +461,20 @@ if ($jsonld) {
         
         /* Extra small phones (max 360px) */
         @media (max-width: 360px) {
-            nav a:not(.logo-link):not(.lang-switch a) {
+            .logo {
+                width: 34px;
+                height: 34px;
+                font-size: 20px;
+            }
+            
+            .nav-links a {
                 font-size: 0.85em;
                 padding: 5px 8px;
             }
             
             .lang-switch a {
-                padding: 5px 10px !important;
-                font-size: 0.8em;
+                padding: 4px 10px !important;
+                font-size: 0.75em;
             }
             
             main h1 {
@@ -490,20 +519,26 @@ if ($jsonld) {
                     <div class="logo">₸</div>
                     <span class="site-name"><?= e($seo["site_name_$lang"]) ?></span>
                 </a>
-                <?php
-                $pageModel = new Page();
-                $allPages = $pageModel->getAll();
-                foreach ($allPages as $navPage):
-                    if ($navPage['slug'] !== 'home'):
-                ?>
-                <a href="<?= BASE_URL ?>/<?= e($navPage['slug']) ?><?= $lang !== DEFAULT_LANGUAGE ? '/' . $lang : '' ?>">
-                    <?= e($navPage["title_$lang"]) ?>
-                </a>
-                <?php endif; endforeach; ?>
                 
-                <div class="lang-switch">
-                    <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>" <?= $lang === 'ru' ? 'class="active"' : '' ?>>RU</a>
-                    <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>/uz" <?= $lang === 'uz' ? 'class="active"' : '' ?>>UZ</a>
+                <div class="nav-links">
+                    <?php
+                    $pageModel = new Page();
+                    $allPages = $pageModel->getAll();
+                    foreach ($allPages as $navPage):
+                        if ($navPage['slug'] === 'about' || $navPage['slug'] === 'o-nas'):
+                    ?>
+                    <a href="<?= BASE_URL ?>/<?= e($navPage['slug']) ?><?= $lang !== DEFAULT_LANGUAGE ? '/' . $lang : '' ?>">
+                        <?= e($navPage["title_$lang"]) ?>
+                    </a>
+                    <?php 
+                        endif;
+                    endforeach; 
+                    ?>
+                    
+                    <div class="lang-switch">
+                        <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>" <?= $lang === 'ru' ? 'class="active"' : '' ?>>RU</a>
+                        <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>/uz" <?= $lang === 'uz' ? 'class="active"' : '' ?>>UZ</a>
+                    </div>
                 </div>
             </nav>
         </div>
