@@ -2,7 +2,7 @@
 session_start();
 
 define('BASE_PATH', dirname(__DIR__));
-define('BASE_URL', 'https://kuplyu-tashkent.uz/appliances/public');
+define('BASE_URL', 'https://kuplyu-tashkent.uz/appliances');
 define('UPLOAD_PATH', BASE_PATH . '/public/uploads/');
 define('UPLOAD_URL', BASE_URL . '/uploads/');
 define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024); // 5MB
