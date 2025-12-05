@@ -1,4 +1,9 @@
 <?php
+
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/../logs/php_errors.log');
+error_reporting(E_ALL);
+
 require_once '../config/database.php';
 require_once '../config/config.php';
 require_once '../core/Database.php';
