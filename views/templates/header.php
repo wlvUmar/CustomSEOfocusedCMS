@@ -30,6 +30,7 @@ if ($jsonld) {
     
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="<?= BASE_URL ?>/<?= e($page['slug']) ?><?= $lang !== DEFAULT_LANGUAGE ? '/' . $lang : '' ?>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23303034'/%3E%3Ctext x='50' y='50' font-size='60' text-anchor='middle' dominant-baseline='central' fill='%23EDEBD7' font-family='Arial, sans-serif' font-weight='bold'%3E₸%3C/text%3E%3C/svg%3E">
     
     <?php if ($jsonld): ?>
     <script type="application/ld+json">
@@ -38,26 +39,42 @@ if ($jsonld) {
     <?php endif; ?>
     
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        :root {
+            --primary-dark: #303034;
+            --primary-light: #EDEBD7;
+            --accent-dark: #3f3f44;
+            --accent-light: #f5f3e5;
+            --text-dark: #1a1a1c;
+            --text-muted: #6b6b70;
+            --success: #059669;
+            --success-hover: #047857;
+        }
         
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             line-height: 1.6; 
-            color: #2c3e50;
-            background: #f8f9fa;
+            color: var(--text-dark);
+            background: var(--primary-light);
+            font-size: 16px;
         }
         
         .container { 
             max-width: 1200px; 
             margin: 0 auto; 
-            padding: 0 20px; 
+            padding: 0 16px;
         }
         
         /* Header Styles */
         header { 
-            background: #fff;
-            padding: 15px 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            background: var(--primary-dark);
+            padding: 12px 0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
             position: sticky;
             top: 0;
             z-index: 100;
@@ -65,109 +82,85 @@ if ($jsonld) {
         
         nav { 
             display: flex; 
-            gap: 30px; 
+            gap: 20px; 
             align-items: center;
             flex-wrap: wrap;
         }
         
-        nav a.logo { 
-            color: #2563eb;
+        .logo-link {
+            display: flex;
+            align-items: center;
             text-decoration: none;
-            font-size: 1.4em;
-            font-weight: 700;
-            letter-spacing: -0.5px;
+            margin-right: auto;
         }
         
-        nav a:not(.logo) { 
-            color: #4b5563;
+        .logo {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-dark);
+            flex-shrink: 0;
+        }
+        
+        .site-name {
+            margin-left: 12px;
+            color: var(--primary-light);
+            font-size: 1.1em;
+            font-weight: 600;
+            display: none;
+        }
+        
+        nav a:not(.logo-link) { 
+            color: var(--primary-light);
             text-decoration: none;
             font-weight: 500;
-            transition: color 0.2s;
+            transition: all 0.2s;
             font-size: 0.95em;
+            padding: 6px 10px;
+            border-radius: 6px;
+            white-space: nowrap;
         }
         
-        nav a:not(.logo):hover { 
-            color: #2563eb;
+        nav a:not(.logo-link):hover { 
+            background: var(--accent-dark);
+            color: #fff;
         }
         
         .lang-switch { 
-            margin-left: auto;
             display: flex;
-            gap: 8px;
+            gap: 6px;
             align-items: center;
+            background: var(--accent-dark);
+            padding: 4px;
+            border-radius: 8px;
         }
         
         .lang-switch a {
-            padding: 6px 12px;
+            padding: 6px 14px !important;
             border-radius: 6px;
-            background: #f1f5f9;
-            color: #64748b;
+            background: transparent;
+            color: var(--primary-light);
             text-decoration: none;
             font-size: 0.85em;
             font-weight: 600;
             transition: all 0.2s;
         }
         
-        .lang-switch a:hover {
-            background: #2563eb;
-            color: #fff;
-        }
-        
-        /* Call to Action Banner */
-        .cta-banner {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: #fff;
-            padding: 25px 0;
-            text-align: center;
-        }
-        
-        .cta-content h2 {
-            font-size: 1.5em;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-        
-        .cta-content p {
-            font-size: 1.05em;
-            opacity: 0.95;
-            margin-bottom: 20px;
-        }
-        
-        .cta-buttons {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        
-        .btn-call {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: #fff;
-            color: #2563eb;
-            padding: 14px 32px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 1.15em;
-            transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        
-        .btn-call:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-        }
-        
-        .btn-call svg {
-            width: 20px;
-            height: 20px;
+        .lang-switch a:hover,
+        .lang-switch a.active {
+            background: var(--primary-light);
+            color: var(--primary-dark);
         }
         
         /* Main Content */
         main { 
-            padding: 50px 0;
+            padding: 32px 0;
             min-height: 60vh;
             background: #fff;
         }
@@ -178,33 +171,34 @@ if ($jsonld) {
         
         /* Content Typography */
         main h1 {
-            color: #1e293b;
-            font-size: 2.2em;
-            margin-bottom: 20px;
+            color: var(--text-dark);
+            font-size: 1.75em;
+            margin-bottom: 16px;
             line-height: 1.3;
         }
         
         main h2 {
-            color: #334155;
-            font-size: 1.7em;
-            margin: 35px 0 15px;
+            color: var(--text-dark);
+            font-size: 1.4em;
+            margin: 28px 0 12px;
         }
         
         main h3 {
-            color: #475569;
-            font-size: 1.3em;
-            margin: 25px 0 12px;
+            color: var(--text-dark);
+            font-size: 1.15em;
+            margin: 20px 0 10px;
         }
         
         main p {
-            margin-bottom: 18px;
-            color: #475569;
-            font-size: 1.05em;
+            margin-bottom: 16px;
+            color: var(--text-muted);
+            font-size: 1em;
+            line-height: 1.7;
         }
         
         main ul, main ol {
-            margin: 20px 0 20px 25px;
-            color: #475569;
+            margin: 16px 0 16px 20px;
+            color: var(--text-muted);
         }
         
         main li {
@@ -213,89 +207,92 @@ if ($jsonld) {
         }
         
         main a {
-            color: #2563eb;
+            color: var(--primary-dark);
             text-decoration: none;
-            border-bottom: 1px solid transparent;
-            transition: border-color 0.2s;
+            border-bottom: 1px solid var(--primary-dark);
+            transition: opacity 0.2s;
         }
         
         main a:hover {
-            border-bottom-color: #2563eb;
+            opacity: 0.7;
         }
         
         /* Footer Styles */
         footer { 
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 40px 0 25px;
-            margin-top: 60px;
+            background: var(--primary-dark);
+            color: var(--primary-light);
+            padding: 32px 0 20px;
+            margin-top: 40px;
         }
         
         footer .footer-content {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            margin-bottom: 30px;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
         }
         
         footer h3 {
             color: #fff;
-            font-size: 1.2em;
-            margin-bottom: 15px;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+            font-weight: 600;
         }
         
         footer p {
-            margin-bottom: 12px;
-            line-height: 1.7;
-            color: #cbd5e1;
+            margin-bottom: 10px;
+            line-height: 1.6;
+            color: var(--primary-light);
+            font-size: 0.95em;
         }
         
         footer a {
-            color: #60a5fa;
+            color: var(--accent-light);
             text-decoration: none;
-            transition: color 0.2s;
+            transition: opacity 0.2s;
         }
         
         footer a:hover {
-            color: #93c5fd;
+            opacity: 0.8;
         }
         
         .contact-item {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 10px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
         
         .contact-item svg {
             width: 18px;
             height: 18px;
             flex-shrink: 0;
-            color: #60a5fa;
+            color: var(--accent-light);
+            margin-top: 2px;
         }
         
         .copyright {
             text-align: center;
-            padding-top: 25px;
-            border-top: 1px solid #334155;
-            color: #94a3b8;
-            font-size: 0.9em;
+            padding-top: 20px;
+            border-top: 1px solid var(--accent-dark);
+            color: rgba(237, 235, 215, 0.7);
+            font-size: 0.85em;
         }
         
         /* Floating Call Button */
         .floating-call {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: #10b981;
+            bottom: 20px;
+            right: 20px;
+            background: var(--success);
             color: #fff;
-            width: 60px;
-            height: 60px;
+            width: 56px;
+            height: 56px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+            box-shadow: 0 4px 16px rgba(5, 150, 105, 0.4);
             text-decoration: none;
             transition: all 0.3s;
             z-index: 999;
@@ -304,55 +301,183 @@ if ($jsonld) {
         
         .floating-call:hover {
             transform: scale(1.1);
-            box-shadow: 0 6px 25px rgba(16, 185, 129, 0.5);
+            background: var(--success-hover);
+            box-shadow: 0 6px 20px rgba(5, 150, 105, 0.5);
+        }
+        
+        .floating-call:active {
+            transform: scale(0.95);
         }
         
         .floating-call svg {
-            width: 28px;
-            height: 28px;
+            width: 26px;
+            height: 26px;
         }
         
         @keyframes pulse {
-            0%, 100% { box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4); }
-            50% { box-shadow: 0 4px 30px rgba(16, 185, 129, 0.6); }
+            0%, 100% { 
+                box-shadow: 0 4px 16px rgba(5, 150, 105, 0.4);
+            }
+            50% { 
+                box-shadow: 0 4px 24px rgba(5, 150, 105, 0.6), 0 0 0 8px rgba(5, 150, 105, 0.1);
+            }
         }
         
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
+        /* Tablet Responsive (481px - 768px) */
+        @media (min-width: 481px) {
+            .container {
+                padding: 0 24px;
+            }
+            
+            .site-name {
+                display: inline;
+            }
+            
+            nav {
+                gap: 24px;
+            }
+            
+            main {
+                padding: 40px 0;
+            }
+            
+            main h1 {
+                font-size: 2em;
+            }
+            
+            main h2 {
+                font-size: 1.6em;
+            }
+            
+            footer .footer-content {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .floating-call {
+                width: 60px;
+                height: 60px;
+                bottom: 24px;
+                right: 24px;
+            }
+            
+            .floating-call svg {
+                width: 28px;
+                height: 28px;
+            }
+        }
+        
+        /* Desktop Responsive (769px+) */
+        @media (min-width: 769px) {
+            header {
+                padding: 16px 0;
+            }
+            
+            .logo {
+                width: 48px;
+                height: 48px;
+                font-size: 28px;
+            }
+            
+            .site-name {
+                font-size: 1.25em;
+                margin-left: 14px;
+            }
+            
+            nav {
+                gap: 30px;
+            }
+            
+            nav a:not(.logo-link) {
+                font-size: 1em;
+            }
+            
+            main {
+                padding: 50px 0;
+            }
+            
+            main h1 {
+                font-size: 2.2em;
+                margin-bottom: 20px;
+            }
+            
+            main h2 {
+                font-size: 1.7em;
+                margin: 35px 0 15px;
+            }
+            
+            main h3 {
+                font-size: 1.3em;
+            }
+            
+            main p {
+                font-size: 1.05em;
+                margin-bottom: 18px;
+            }
+            
+            footer {
+                padding: 40px 0 25px;
+            }
+            
+            footer .footer-content {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 30px;
+            }
+            
+            .floating-call {
+                width: 64px;
+                height: 64px;
+                bottom: 30px;
+                right: 30px;
+            }
+            
+            .floating-call svg {
+                width: 30px;
+                height: 30px;
+            }
+        }
+        
+        /* Extra small phones (max 360px) */
+        @media (max-width: 360px) {
+            nav a:not(.logo-link):not(.lang-switch a) {
+                font-size: 0.85em;
+                padding: 5px 8px;
+            }
+            
+            .lang-switch a {
+                padding: 5px 10px !important;
+                font-size: 0.8em;
+            }
+            
+            main h1 {
+                font-size: 1.5em;
+            }
+            
+            .floating-call {
+                width: 52px;
+                height: 52px;
+                bottom: 16px;
+                right: 16px;
+            }
+        }
+        
+        /* Landscape mobile optimization */
+        @media (max-height: 500px) and (orientation: landscape) {
+            header {
+                padding: 8px 0;
+            }
+            
+            .logo {
+                width: 36px;
+                height: 36px;
+                font-size: 20px;
+            }
+            
             nav {
                 gap: 15px;
             }
             
-            nav a.logo {
-                font-size: 1.2em;
-            }
-            
-            nav a:not(.logo) {
-                font-size: 0.9em;
-            }
-            
-            .cta-content h2 {
-                font-size: 1.3em;
-            }
-            
-            .btn-call {
-                padding: 12px 24px;
-                font-size: 1em;
-            }
-            
-            main h1 {
-                font-size: 1.8em;
-            }
-            
-            .floating-call {
-                width: 55px;
-                height: 55px;
-                bottom: 20px;
-                right: 20px;
-            }
-            
-            footer .footer-content {
-                grid-template-columns: 1fr;
+            main {
+                padding: 24px 0;
             }
         }
     </style>
@@ -361,7 +486,10 @@ if ($jsonld) {
     <header>
         <div class="container">
             <nav>
-                <a href="<?= BASE_URL ?>" class="logo"><?= e($seo["site_name_$lang"]) ?></a>
+                <a href="<?= BASE_URL ?>" class="logo-link">
+                    <div class="logo">₸</div>
+                    <span class="site-name"><?= e($seo["site_name_$lang"]) ?></span>
+                </a>
                 <?php
                 $pageModel = new Page();
                 $allPages = $pageModel->getAll();
@@ -374,33 +502,16 @@ if ($jsonld) {
                 <?php endif; endforeach; ?>
                 
                 <div class="lang-switch">
-                    <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>">RU</a>
-                    <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>/uz">UZ</a>
+                    <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>" <?= $lang === 'ru' ? 'class="active"' : '' ?>>RU</a>
+                    <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>/uz" <?= $lang === 'uz' ? 'class="active"' : '' ?>>UZ</a>
                 </div>
             </nav>
         </div>
     </header>
     
     <?php if ($seo['phone']): ?>
-    <div class="cta-banner">
-        <div class="container">
-            <div class="cta-content">
-                <h2><?= $lang === 'ru' ? 'Выкупим вашу технику по выгодной цене!' : 'Texnikangizni qulay narxda sotib olamiz!' ?></h2>
-                <p><?= $lang === 'ru' ? 'Быстрая оценка и моментальная оплата' : 'Tez baholash va oniy to\'lov' ?></p>
-                <div class="cta-buttons">
-                    <a href="tel:<?= preg_replace('/[^0-9+]/', '', $seo['phone']) ?>" class="btn-call">
-                        <svg fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-                        </svg>
-                        <?= e($seo['phone']) ?>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <!-- Floating Call Button -->
-    <a href="tel:<?= preg_replace('/[^0-9+]/', '', $seo['phone']) ?>" class="floating-call" title="<?= $lang === 'ru' ? 'Позвонить' : 'Qo\'ng\'iroq qilish' ?>">
+    <a href="tel:<?= preg_replace('/[^0-9+]/', '', $seo['phone']) ?>" class="floating-call" title="<?= $lang === 'ru' ? 'Позвонить' : 'Qo\'ng\'iroq qilish' ?>" aria-label="<?= $lang === 'ru' ? 'Позвонить' : 'Qo\'ng\'iroq qilish' ?>">
         <svg fill="currentColor" viewBox="0 0 20 20">
             <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
         </svg>
