@@ -43,7 +43,7 @@ if ($jsonld) {
         <div class="container">
             <nav>
                 <a href="<?= BASE_URL ?>" class="logo-link">
-                    <img src="<?= BASE_URL ?>/css/logo.png" class="logo">₸</img>
+                    <img src="<?= BASE_URL ?>/css/logo.png" class="logo"></img>
                     <span class="site-name"><?= e($seo["site_name_$lang"]) ?></span>
                 </a>
                 
