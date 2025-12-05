@@ -30,7 +30,7 @@ if ($jsonld) {
     
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="<?= BASE_URL ?>/<?= e($page['slug']) ?><?= $lang !== DEFAULT_LANGUAGE ? '/' . $lang : '' ?>">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23303034'/%3E%3Ctext x='50' y='50' font-size='60' text-anchor='middle' dominant-baseline='central' fill='%23EDEBD7' font-family='Arial, sans-serif' font-weight='bold'%3E₸%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="<?= BASE_URL ?>/css/favicon.ico">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.css">
     <?php if ($jsonld): ?>
     <script type="application/ld+json">
@@ -43,7 +43,7 @@ if ($jsonld) {
         <div class="container">
             <nav>
                 <a href="<?= BASE_URL ?>" class="logo-link">
-                    <div class="logo">₸</div>
+                    <img src="<?= BASE_URL ?>/css/logo.png" class="logo">₸</img>
                     <span class="site-name"><?= e($seo["site_name_$lang"]) ?></span>
                 </a>
                 
