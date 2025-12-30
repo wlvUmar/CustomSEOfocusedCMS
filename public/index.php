@@ -3,27 +3,35 @@ error_reporting(E_ALL);
 
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
+ini_set('log_errors', 1);
 
 $logDir = __DIR__ . '/../logs';
-if (!is_dir($logDir)) mkdir($logDir, 0775, true); // create folder if missing
-$logFile = $logDir . '/php_errors.log';
+if (!is_dir($logDir)) mkdir($logDir, 0775, true);
+$customLogFile = $logDir . '/php_errors.log';
 
-set_error_handler(function ($severity, $message, $file, $line) use ($logFile) {
+set_error_handler(function ($severity, $message, $file, $line) use ($customLogFile) {
     $log = "[".date('Y-m-d H:i:s')."] [Error][$severity] $message in $file on line $line\n";
-    file_put_contents($logFile, $log, FILE_APPEND);
+    file_put_contents($customLogFile, $log, FILE_APPEND);
+    error_log($message . " in $file on line $line");
 });
 
-set_exception_handler(function ($e) use ($logFile) {
+set_exception_handler(function ($e) use ($customLogFile) {
     $log = "[".date('Y-m-d H:i:s')."] [Exception] ".$e->getMessage().
            " in ".$e->getFile()." on line ".$e->getLine()."\n";
-    file_put_contents($logFile, $log, FILE_APPEND);
+    file_put_contents($customLogFile, $log, FILE_APPEND);
+    error_log($e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+    http_response_code(500);
+    echo "Internal Server Error";
 });
 
-register_shutdown_function(function () use ($logFile) {
+register_shutdown_function(function () use ($customLogFile) {
     $error = error_get_last();
     if ($error && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE])) {
         $log = "[".date('Y-m-d H:i:s')."] [Fatal] {$error['message']} in {$error['file']} on line {$error['line']}\n";
-        file_put_contents($logFile, $log, FILE_APPEND);
+        file_put_contents($customLogFile, $log, FILE_APPEND);
+        error_log($error['message'] . " in " . $error['file'] . " on line " . $error['line']);
+        http_response_code(500);
+        echo "Internal Server Error";
     }
 });
 require_once '../config/database.php';
