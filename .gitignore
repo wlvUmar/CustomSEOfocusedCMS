@@ -1,2 +1,3 @@
 database/schema.sql
 public/uploads/
+parse.py
