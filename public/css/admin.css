@@ -25,14 +25,71 @@ body {
 }
 
 .feather-icon {
-    vertical-align: middle !important;
-    display: inline-block !important;
-    width: 18px !important;
-    height: 18px !important;
+    display: inline-block;
+    vertical-align: middle;
+    width: 18px;
+    height: 18px;
     margin-right: 6px;
+    stroke-width: 2;
     color: inherit;
 }
 
+.page-header .feather-icon,
+.info-banner .feather-icon,
+.analytics-tabs .feather-icon {
+    width: 22px;
+    height: 22px;
+    margin-right: 8px;
+}
+
+.summary-card .card-icon .feather-icon,
+.recommendation .rec-icon .feather-icon {
+    display: block;        /* block to allow centering */
+    margin: 0 auto 10px;   /* center horizontally and add bottom spacing */
+    width: 36px;
+    height: 36px;
+    stroke-width: 2.5;
+}
+
+.action-buttons .feather-icon,
+.data-table .feather-icon,
+.bulk-actions-bar .feather-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+    vertical-align: text-bottom;
+}
+
+.alert .feather-icon,
+.recommendation .feather-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.modal .feather-icon,
+.rotation-actions .feather-icon {
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+/* -----------------------------
+   Extra spacing tweak for badges next to icons
+-------------------------------*/
+.badge + .feather-icon,
+.feather-icon + .badge {
+    margin-left: 4px;
+}
+
+/* -----------------------------
+   Optional: hover color inherit
+-------------------------------*/
+.feather-icon:hover {
+    color: inherit;
+}
 
 /* Login */
 .login-wrapper {
