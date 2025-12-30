@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin.css">
     <?php
     if (!empty($pageName)) {
-        $cssPath = BASE_PATH . "/public/css/{$pageName}.css"; // full server path
+        $cssPath = BASE_PATH . "/public/css/admin/{$pageName}.css"; // full server path
         echo "<!-- Debug: Trying CSS path: {$cssPath} -->";
 
         if (file_exists($cssPath)) {
