@@ -9,19 +9,21 @@
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin.css">
     <?php
     if (!empty($pageName)) {
-        $cssPath = BASE_PATH . "/public/css/admin/{$pageName}.css"; // full server path
+        $cssFile = "admin/{$pageName}.css"; // include 'admin' folder in URL and path
+        $cssPath = BASE_PATH . "/public/css/{$cssFile}";
+
+        // debug
         echo "<!-- Debug: Trying CSS path: {$cssPath} -->";
 
         if (file_exists($cssPath)) {
             echo "<!-- Debug: CSS file exists, linking it -->";
-            echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$pageName}.css" . '">';
+            echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$cssFile}" . '">';
         } else {
             echo "<!-- Debug: CSS file NOT found -->";
         }
-    } else {
-        echo "<!-- Debug: \$pageName is not set -->";
     }
     ?>
+
 
 
 </head>
