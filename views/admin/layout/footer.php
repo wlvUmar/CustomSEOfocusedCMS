@@ -5,7 +5,7 @@
     <script src="<?= BASE_URL ?>/js/admin.js"></script>
     <script src="https://unpkg.com/feather-icons"></script>
     <script>
-      feather.replace()
+      feather.replace({ class: 'feather-icon' });
     </script>
 </body>
 </html>

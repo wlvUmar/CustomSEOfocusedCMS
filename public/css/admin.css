@@ -24,22 +24,15 @@ body {
     background: var(--accent-light);
 }
 
-svg {
-    vertical-align: middle;  /* align with text */
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    margin-right: 6px;       /* spacing between icon and text */
-    stroke-width: 2;         /* line thickness */
-    color: inherit;          /* inherit text color */
+.feather-icon {
+    vertical-align: middle !important;
+    display: inline-block !important;
+    width: 18px !important;
+    height: 18px !important;
+    margin-right: 6px;
+    color: inherit;
 }
 
-/* Slightly larger for headings/cards */
-svg.large {
-    width: 22px;
-    height: 22px;
-    margin-right: 8px;
-}
 
 /* Login */
 .login-wrapper {
