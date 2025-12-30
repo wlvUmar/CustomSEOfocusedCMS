@@ -132,13 +132,10 @@ class Analytics {
                     (page_slug, year, rotation_month, language, times_shown, unique_days, last_shown) 
                     VALUES (?, ?, ?, ?, 1, 1, ?)
                     ON DUPLICATE KEY UPDATE 
-                        times_shown = times_shown + 1,
-                        unique_days = (
-                            SELECT COUNT(DISTINCT DATE(last_shown))
-                            FROM (SELECT last_shown FROM analytics_rotations WHERE page_slug = ? AND year = ? AND rotation_month = ?) as t
-                        ) + 1,
-                        last_shown = ?";
-            
+                    times_shown = times_shown + 1,
+                    unique_days = IF(DATE(last_shown) != DATE(?), unique_days + 1, unique_days),
+                    last_shown = ?";
+                            
             $this->db->query($sql, [$slug, $year, $rotationMonth, $language, $date, $slug, $year, $rotationMonth, $date]);
         } catch (Exception $e) {
             error_log("Rotation tracking error: " . $e->getMessage());
@@ -174,68 +171,72 @@ class Analytics {
     /**
      * Get performance trends - compare periods
      */
-public function getPerformanceTrends($pageSlug = null) {
-    $currentMonth = date('n');
-    $currentYear = date('Y');
-    $lastMonth = date('n', strtotime('-1 month'));
-    $lastMonthYear = date('Y', strtotime('-1 month'));
+    public function getPerformanceTrends($pageSlug = null) {
+        $currentMonth = date('n');
+        $currentYear = date('Y');
+        $lastMonth = date('n', strtotime('-1 month'));
+        $lastMonthYear = date('Y', strtotime('-1 month'));
 
-    $conditions = [];
-    $params = [];
+        $paramsCurrent = [];
+        $paramsPrevious = [];
 
-    if ($pageSlug !== null) {
-        $conditions[] = "page_slug = ?";
-        $params[] = $pageSlug;
-    }
+        $whereCurrent = [];
+        $wherePrevious = [];
 
-    $conditions[] = "year = ?";
-    $conditions[] = "month = ?";
-    $params[] = $currentYear;
-    $params[] = $currentMonth;
-
-    $whereCurrent = 'WHERE ' . implode(' AND ', $conditions);
-
-    // duplicate params for UNION
-    $params[] = $pageSlug;
-    $params[] = $lastMonthYear;
-    $params[] = $lastMonth;
-
-    $wherePrevious = $pageSlug !== null
-        ? "WHERE page_slug = ? AND year = ? AND month = ?"
-        : "WHERE year = ? AND month = ?";
-
-    $sql = "
-        SELECT 'current' as period, SUM(total_visits) as visits, SUM(total_clicks) as clicks
-        FROM analytics_monthly
-        $whereCurrent
-        UNION ALL
-        SELECT 'previous' as period, SUM(total_visits) as visits, SUM(total_clicks) as clicks
-        FROM analytics_monthly
-        $wherePrevious
-    ";
-
-    $results = $this->db->fetchAll($sql, $params);
-
-    $current = ['visits' => 0, 'clicks' => 0];
-    $previous = ['visits' => 0, 'clicks' => 0];
-
-    foreach ($results as $row) {
-        if ($row['period'] === 'current') {
-            $current = $row;
-        } else {
-            $previous = $row;
+        if ($pageSlug !== null) {
+            $whereCurrent[] = "page_slug = ?";
+            $wherePrevious[] = "page_slug = ?";
+            $paramsCurrent[] = $pageSlug;
+            $paramsPrevious[] = $pageSlug;
         }
-    }
 
-    return [
-        'current' => $current,
-        'previous' => $previous,
-        'changes' => [
-            'visits' => $previous['visits'] > 0 ? round((($current['visits'] - $previous['visits']) / $previous['visits']) * 100, 1) : 0,
-            'clicks' => $previous['clicks'] > 0 ? round((($current['clicks'] - $previous['clicks']) / $previous['clicks']) * 100, 1) : 0
-        ]
-    ];
-}
+        $whereCurrent[] = "year = ?";
+        $whereCurrent[] = "month = ?";
+        $paramsCurrent[] = $currentYear;
+        $paramsCurrent[] = $currentMonth;
+
+        $wherePrevious[] = "year = ?";
+        $wherePrevious[] = "month = ?";
+        $paramsPrevious[] = $lastMonthYear;
+        $paramsPrevious[] = $lastMonth;
+
+        $sql = "
+            SELECT 'current' as period, SUM(total_visits) as visits, SUM(total_clicks) as clicks
+            FROM analytics_monthly
+            WHERE " . implode(' AND ', $whereCurrent) . "
+            UNION ALL
+            SELECT 'previous' as period, SUM(total_visits) as visits, SUM(total_clicks) as clicks
+            FROM analytics_monthly
+            WHERE " . implode(' AND ', $wherePrevious);
+
+        $params = array_merge($paramsCurrent, $paramsPrevious);
+
+        $results = $this->db->fetchAll($sql, $params);
+
+        $current = ['visits' => 0, 'clicks' => 0];
+        $previous = ['visits' => 0, 'clicks' => 0];
+
+        foreach ($results as $row) {
+            if ($row['period'] === 'current') {
+                $current = $row;
+            } else {
+                $previous = $row;
+            }
+        }
+
+        return [
+            'current' => $current,
+            'previous' => $previous,
+            'changes' => [
+                'visits' => $previous['visits'] > 0
+                    ? round((($current['visits'] - $previous['visits']) / $previous['visits']) * 100, 1)
+                    : 0,
+                'clicks' => $previous['clicks'] > 0
+                    ? round((($current['clicks'] - $previous['clicks']) / $previous['clicks']) * 100, 1)
+                    : 0
+            ]
+        ];
+    }
 
     /**
      * Get daily activity for heat map visualization
