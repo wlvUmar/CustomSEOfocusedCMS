@@ -1,32 +1,29 @@
 <?php
-// path: ./public/index.php
-
-// Log all errors to a file
-ini_set('display_errors', 0); // don't show in browser
-ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/../logs/php_errors.log');
 error_reporting(E_ALL);
 
-// Catch standard PHP errors
-set_error_handler(function ($severity, $message, $file, $line) {
-    $log = "[Error][$severity] $message in $file on line $line\n";
-    file_put_contents(__DIR__ . '/../logs/php_errors.log', $log, FILE_APPEND);
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+
+$logDir = __DIR__ . '/../logs';
+if (!is_dir($logDir)) mkdir($logDir, 0775, true); // create folder if missing
+$logFile = $logDir . '/php_errors.log';
+
+set_error_handler(function ($severity, $message, $file, $line) use ($logFile) {
+    $log = "[".date('Y-m-d H:i:s')."] [Error][$severity] $message in $file on line $line\n";
+    file_put_contents($logFile, $log, FILE_APPEND);
 });
 
-// Catch uncaught exceptions
-set_exception_handler(function ($exception) {
-    $log = "[Exception] " . $exception->getMessage() . 
-           " in " . $exception->getFile() . 
-           " on line " . $exception->getLine() . "\n";
-    file_put_contents(__DIR__ . '/../logs/php_errors.log', $log, FILE_APPEND);
+set_exception_handler(function ($e) use ($logFile) {
+    $log = "[".date('Y-m-d H:i:s')."] [Exception] ".$e->getMessage().
+           " in ".$e->getFile()." on line ".$e->getLine()."\n";
+    file_put_contents($logFile, $log, FILE_APPEND);
 });
 
-// Catch fatal errors
-register_shutdown_function(function () {
+register_shutdown_function(function () use ($logFile) {
     $error = error_get_last();
     if ($error && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_PARSE])) {
-        $log = "[Fatal] {$error['message']} in {$error['file']} on line {$error['line']}\n";
-        file_put_contents(__DIR__ . '/../logs/php_errors.log', $log, FILE_APPEND);
+        $log = "[".date('Y-m-d H:i:s')."] [Fatal] {$error['message']} in {$error['file']} on line {$error['line']}\n";
+        file_put_contents($logFile, $log, FILE_APPEND);
     }
 });
 require_once '../config/database.php';
