@@ -1,4 +1,6 @@
 <?php
+// path: ./controllers/admin/PageAdminController.php
+
 require_once BASE_PATH . '/models/Page.php';
 
 class PageAdminController extends Controller {
@@ -46,9 +48,16 @@ class PageAdminController extends Controller {
             'meta_keywords_uz' => trim($_POST['meta_keywords_uz']) ?: null,
             'meta_description_ru' => trim($_POST['meta_description_ru']) ?: null,
             'meta_description_uz' => trim($_POST['meta_description_uz']) ?: null,
+            'og_title_ru' => trim($_POST['og_title_ru']) ?: null,
+            'og_title_uz' => trim($_POST['og_title_uz']) ?: null,
+            'og_description_ru' => trim($_POST['og_description_ru']) ?: null,
+            'og_description_uz' => trim($_POST['og_description_uz']) ?: null,
+            'og_image' => trim($_POST['og_image']) ?: null,
+            'canonical_url' => trim($_POST['canonical_url']) ?: null,
             'jsonld_ru' => trim($_POST['jsonld_ru']) ?: null,
             'jsonld_uz' => trim($_POST['jsonld_uz']) ?: null,
             'is_published' => isset($_POST['is_published']) ? 1 : 0,
+            'enable_rotation' => isset($_POST['enable_rotation']) ? 1 : 0,
             'sort_order' => intval($_POST['sort_order'] ?? 0)
         ];
         

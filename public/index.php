@@ -1,4 +1,5 @@
 <?php
+// path: ./public/index.php
 
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/../logs/php_errors.log');
@@ -33,20 +34,22 @@ $router->get('/{slug}/{lang}', function($slug, $lang) {
     $controller->show($slug, $lang);
 });
 
-// Admin routes
-//  
-//  
+// Click tracking
+$router->post('/track-click', function() {
+    require_once BASE_PATH . '/controllers/PageController.php';
+    $controller = new PageController();
+    $controller->trackClick();
+});
 
+// Admin routes
 $router->get('/admin', function() {
     if (!empty($_SESSION['user_id'])) {
         header("Location: /admin/dashboard");
         exit;
     }
-
     header("Location: /admin/login");
     exit;
 });
-
 
 $router->get('/admin/login', function() {
     require_once BASE_PATH . '/controllers/admin/AuthController.php';
@@ -72,6 +75,7 @@ $router->get('/admin/dashboard', function() {
     $controller->index();
 });
 
+// Pages
 $router->get('/admin/pages', function() {
     require_once BASE_PATH . '/controllers/admin/PageAdminController.php';
     $controller = new PageAdminController();
@@ -102,6 +106,76 @@ $router->post('/admin/pages/delete', function() {
     $controller->delete();
 });
 
+// Content Rotations
+$router->get('/admin/rotations/manage/{pageId}', function($pageId) {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->manage($pageId);
+});
+
+$router->get('/admin/rotations/new/{pageId}', function($pageId) {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->edit(null, $pageId);
+});
+
+$router->get('/admin/rotations/edit/{id}', function($id) {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->edit($id);
+});
+
+$router->post('/admin/rotations/save', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->save();
+});
+
+$router->post('/admin/rotations/delete', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->delete();
+});
+
+// FAQs
+$router->get('/admin/faqs', function() {
+    require_once BASE_PATH . '/controllers/admin/FAQAdminController.php';
+    $controller = new FAQAdminController();
+    $controller->index();
+});
+
+$router->get('/admin/faqs/new', function() {
+    require_once BASE_PATH . '/controllers/admin/FAQAdminController.php';
+    $controller = new FAQAdminController();
+    $controller->edit();
+});
+
+$router->get('/admin/faqs/edit/{id}', function($id) {
+    require_once BASE_PATH . '/controllers/admin/FAQAdminController.php';
+    $controller = new FAQAdminController();
+    $controller->edit($id);
+});
+
+$router->post('/admin/faqs/save', function() {
+    require_once BASE_PATH . '/controllers/admin/FAQAdminController.php';
+    $controller = new FAQAdminController();
+    $controller->save();
+});
+
+$router->post('/admin/faqs/delete', function() {
+    require_once BASE_PATH . '/controllers/admin/FAQAdminController.php';
+    $controller = new FAQAdminController();
+    $controller->delete();
+});
+
+// Analytics
+$router->get('/admin/analytics', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
+    $controller = new AnalyticsController();
+    $controller->index();
+});
+
+// SEO
 $router->get('/admin/seo', function() {
     require_once BASE_PATH . '/controllers/admin/SEOController.php';
     $controller = new SEOController();
@@ -114,6 +188,7 @@ $router->post('/admin/seo/save', function() {
     $controller->save();
 });
 
+// Media
 $router->get('/admin/media', function() {
     require_once BASE_PATH . '/controllers/admin/MediaController.php';
     $controller = new MediaController();
@@ -136,5 +211,5 @@ $router->notFound(function() {
     http_response_code(404);
     echo '<h1>404 - Page Not Found</h1>';
 });
-$router->dispatch();
 
+$router->dispatch();

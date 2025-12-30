@@ -1,4 +1,6 @@
 <?php
+// path: ./models/Page.php
+
 class Page {
     private $db;
 
@@ -26,11 +28,14 @@ class Page {
     }
 
     public function create($data) {
-        $sql = "INSERT INTO pages (slug, title_ru, title_uz, content_ru, content_uz, 
-                meta_title_ru, meta_title_uz, meta_keywords_ru, meta_keywords_uz, 
-                meta_description_ru, meta_description_uz, jsonld_ru, jsonld_uz, 
-                is_published, sort_order) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO pages (
+                    slug, title_ru, title_uz, content_ru, content_uz, 
+                    meta_title_ru, meta_title_uz, meta_keywords_ru, meta_keywords_uz, 
+                    meta_description_ru, meta_description_uz, 
+                    og_title_ru, og_title_uz, og_description_ru, og_description_uz, og_image,
+                    canonical_url, jsonld_ru, jsonld_uz, 
+                    is_published, enable_rotation, sort_order
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $this->db->query($sql, [
             $data['slug'],
@@ -44,9 +49,16 @@ class Page {
             $data['meta_keywords_uz'] ?? null,
             $data['meta_description_ru'] ?? null,
             $data['meta_description_uz'] ?? null,
+            $data['og_title_ru'] ?? null,
+            $data['og_title_uz'] ?? null,
+            $data['og_description_ru'] ?? null,
+            $data['og_description_uz'] ?? null,
+            $data['og_image'] ?? null,
+            $data['canonical_url'] ?? null,
             $data['jsonld_ru'] ?? null,
             $data['jsonld_uz'] ?? null,
             $data['is_published'] ?? 1,
+            $data['enable_rotation'] ?? 0,
             $data['sort_order'] ?? 0
         ]);
         
@@ -54,11 +66,18 @@ class Page {
     }
 
     public function update($id, $data) {
-        $sql = "UPDATE pages SET slug = ?, title_ru = ?, title_uz = ?, 
-                content_ru = ?, content_uz = ?, meta_title_ru = ?, meta_title_uz = ?, 
-                meta_keywords_ru = ?, meta_keywords_uz = ?, meta_description_ru = ?, 
-                meta_description_uz = ?, jsonld_ru = ?, jsonld_uz = ?, 
-                is_published = ?, sort_order = ? WHERE id = ?";
+        $sql = "UPDATE pages SET 
+                    slug = ?, title_ru = ?, title_uz = ?, 
+                    content_ru = ?, content_uz = ?, 
+                    meta_title_ru = ?, meta_title_uz = ?, 
+                    meta_keywords_ru = ?, meta_keywords_uz = ?, 
+                    meta_description_ru = ?, meta_description_uz = ?, 
+                    og_title_ru = ?, og_title_uz = ?, 
+                    og_description_ru = ?, og_description_uz = ?, 
+                    og_image = ?, canonical_url = ?,
+                    jsonld_ru = ?, jsonld_uz = ?, 
+                    is_published = ?, enable_rotation = ?, sort_order = ? 
+                WHERE id = ?";
         
         return $this->db->query($sql, [
             $data['slug'],
@@ -72,9 +91,16 @@ class Page {
             $data['meta_keywords_uz'] ?? null,
             $data['meta_description_ru'] ?? null,
             $data['meta_description_uz'] ?? null,
+            $data['og_title_ru'] ?? null,
+            $data['og_title_uz'] ?? null,
+            $data['og_description_ru'] ?? null,
+            $data['og_description_uz'] ?? null,
+            $data['og_image'] ?? null,
+            $data['canonical_url'] ?? null,
             $data['jsonld_ru'] ?? null,
             $data['jsonld_uz'] ?? null,
             $data['is_published'] ?? 1,
+            $data['enable_rotation'] ?? 0,
             $data['sort_order'] ?? 0,
             $id
         ]);

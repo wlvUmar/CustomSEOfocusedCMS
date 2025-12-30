@@ -1,4 +1,7 @@
-<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
+<?php 
+// path: ./views/admin/pages/edit.php
+require BASE_PATH . '/views/admin/layout/header.php'; 
+?>
 
 <h1><?= $page ? 'Edit Page' : 'Create Page' ?></h1>
 
@@ -9,10 +12,17 @@
     
     <div class="tabs">
         <button type="button" class="tab-btn active" onclick="switchTab('general')">General</button>
-        <button type="button" class="tab-btn" onclick="switchTab('seo')">SEO</button>
+        <button type="button" class="tab-btn" onclick="switchTab('seo')">SEO & Meta</button>
+        <button type="button" class="tab-btn" onclick="switchTab('advanced')">Advanced SEO</button>
     </div>
     
     <div id="tab-general" class="tab-content active">
+        <div class="help-text">
+            <strong>Template Variables:</strong> Use {{variable}} syntax. Available: {{page.title}}, {{global.phone}}, {{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}, {{date.year}}, {{date.month}}
+            <br><strong>Loops:</strong> {% for item in items %}...{% endfor %}
+            <br><strong>Conditionals:</strong> {% if variable %}...{% else %}...{% endif %}
+        </div>
+        
         <div class="form-group">
             <label>Slug (URL)*</label>
             <input type="text" name="slug" value="<?= $page['slug'] ?? '' ?>" required>
@@ -52,11 +62,24 @@
                     Published
                 </label>
             </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="enable_rotation" <?= ($page['enable_rotation'] ?? 0) ? 'checked' : '' ?>>
+                    Enable Monthly Rotation
+                </label>
+            </div>
         </div>
+        
+        <?php if ($page): ?>
+        <div class="form-actions" style="margin-top: 20px;">
+            <a href="<?= BASE_URL ?>/admin/rotations/manage/<?= $page['id'] ?>" class="btn btn-secondary">Manage Content Rotations</a>
+        </div>
+        <?php endif; ?>
     </div>
     
     <div id="tab-seo" class="tab-content">
-        <p class="help-text">Leave fields empty to use global defaults. Available variables: {{page.title}}, {{global.phone}}, {{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}</p>
+        <p class="help-text">Leave fields empty to use global defaults. All template variables work here too.</p>
         
         <div class="form-row">
             <div class="form-group">
@@ -93,6 +116,44 @@
                 <textarea name="meta_description_uz" rows="3"><?= $page['meta_description_uz'] ?? '' ?></textarea>
             </div>
         </div>
+    </div>
+    
+    <div id="tab-advanced" class="tab-content">
+        <p class="help-text">Advanced SEO options for social media and search engines.</p>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>OG Title (RU) - For Facebook/Social</label>
+                <input type="text" name="og_title_ru" value="<?= $page['og_title_ru'] ?? '' ?>">
+            </div>
+            
+            <div class="form-group">
+                <label>OG Title (UZ)</label>
+                <input type="text" name="og_title_uz" value="<?= $page['og_title_uz'] ?? '' ?>">
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>OG Description (RU)</label>
+                <textarea name="og_description_ru" rows="2"><?= $page['og_description_ru'] ?? '' ?></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>OG Description (UZ)</label>
+                <textarea name="og_description_uz" rows="2"><?= $page['og_description_uz'] ?? '' ?></textarea>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>OG Image URL (Full URL)</label>
+            <input type="text" name="og_image" value="<?= $page['og_image'] ?? '' ?>">
+        </div>
+        
+        <div class="form-group">
+            <label>Canonical URL (Leave empty for auto)</label>
+            <input type="text" name="canonical_url" value="<?= $page['canonical_url'] ?? '' ?>">
+        </div>
         
         <div class="form-row">
             <div class="form-group">
@@ -123,13 +184,6 @@ tinymce.init({
     toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link image | code',
     content_style: 'body { font-family: sans-serif; font-size: 14px; }'
 });
-
-function switchTab(tab) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    event.target.classList.add('active');
-    document.getElementById('tab-' + tab).classList.add('active');
-}
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

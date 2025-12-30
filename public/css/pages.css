@@ -628,3 +628,70 @@ footer a:hover {
         padding-left: 20px;
     }
 }
+
+/* Add to existing pages.css */
+
+/* FAQ Section */
+.faq-section {
+    margin-top: 60px;
+    padding-top: 40px;
+    border-top: 2px solid #EDEBD7;
+}
+
+.faq-section > h2 {
+    font-size: 1.8em;
+    margin-bottom: 30px;
+    color: var(--text-dark);
+    text-align: center;
+}
+
+.faq-list {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.faq-item {
+    background: #f9f9f7;
+    border: 1px solid #EDEBD7;
+    border-radius: 6px;
+    padding: 24px;
+    margin-bottom: 20px;
+    transition: all 0.2s;
+}
+
+.faq-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-color: var(--primary-dark);
+}
+
+.faq-item h3 {
+    font-size: 1.1em;
+    margin-bottom: 12px;
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.faq-item p {
+    margin: 0;
+    line-height: 1.7;
+}
+
+@media (max-width: 768px) {
+    .faq-section {
+        margin-top: 40px;
+        padding-top: 30px;
+    }
+    
+    .faq-section > h2 {
+        font-size: 1.5em;
+        margin-bottom: 20px;
+    }
+    
+    .faq-item {
+        padding: 18px;
+    }
+    
+    .faq-item h3 {
+        font-size: 1.05em;
+    }
+}

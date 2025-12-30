@@ -1,3 +1,6 @@
+<?php
+// path: ./views/admin/layout/header.php
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,11 +16,13 @@
                 <h2>Admin Panel</h2>
             </div>
             <nav class="admin-nav">
-                <a href="<?= BASE_URL ?>/admin/dashboard">Dashboard</a>
-                <a href="<?= BASE_URL ?>/admin/pages">Pages</a>
-                <a href="<?= BASE_URL ?>/admin/seo">SEO Settings</a>
-                <a href="<?= BASE_URL ?>/admin/media">Media</a>
-                <a href="<?= BASE_URL ?>/admin/logout">Logout</a>
+                <a href="<?= BASE_URL ?>/admin/dashboard">📊 Dashboard</a>
+                <a href="<?= BASE_URL ?>/admin/analytics">📈 Analytics</a>
+                <a href="<?= BASE_URL ?>/admin/pages">📄 Pages</a>
+                <a href="<?= BASE_URL ?>/admin/faqs">❓ FAQs</a>
+                <a href="<?= BASE_URL ?>/admin/seo">🔍 SEO Settings</a>
+                <a href="<?= BASE_URL ?>/admin/media">🖼️ Media</a>
+                <a href="<?= BASE_URL ?>/admin/logout">🚪 Logout</a>
             </nav>
         </aside>
         
