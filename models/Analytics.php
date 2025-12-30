@@ -68,4 +68,211 @@ class Analytics {
             'values' => $values
         ];
     }
+
+    /**
+     * Get rotation effectiveness metrics
+     * Shows which content variations are actually being shown
+     */
+    public function getRotationEffectiveness($months = 6) {
+        $sql = "SELECT 
+                    ar.page_slug,
+                    ar.rotation_month,
+                    ar.times_shown,
+                    ar.unique_days,
+                    am.total_visits,
+                    am.total_clicks,
+                    p.title_ru
+                FROM analytics_rotations ar
+                LEFT JOIN analytics_monthly am ON 
+                    ar.page_slug = am.page_slug AND 
+                    ar.year = am.year AND 
+                    ar.rotation_month = am.month
+                LEFT JOIN pages p ON ar.page_slug = p.slug
+                WHERE DATE(CONCAT(ar.year, '-', ar.rotation_month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                ORDER BY ar.year DESC, ar.rotation_month DESC, ar.times_shown DESC";
+        
+        return $this->db->fetchAll($sql, [$months]);
+    }
+
+    /**
+     * Get crawl frequency per slug
+     */
+    public function getCrawlFrequency($days = 30) {
+        $sql = "SELECT 
+                    page_slug,
+                    COUNT(DISTINCT date) as days_with_visits,
+                    SUM(visits) as total_visits,
+                    AVG(visits) as avg_visits_per_day,
+                    MAX(date) as last_visit
+                FROM analytics
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                GROUP BY page_slug
+                ORDER BY days_with_visits DESC, total_visits DESC";
+        
+        return $this->db->fetchAll($sql, [$days]);
+    }
+
+    /**
+     * Track which rotation was shown
+     */
+    public function trackRotationShown($slug, $rotationMonth, $language) {
+        try {
+            $year = date('Y');
+            $date = date('Y-m-d');
+            
+            $sql = "INSERT INTO analytics_rotations 
+                    (page_slug, year, rotation_month, language, times_shown, unique_days, last_shown) 
+                    VALUES (?, ?, ?, ?, 1, 1, ?)
+                    ON DUPLICATE KEY UPDATE 
+                        times_shown = times_shown + 1,
+                        unique_days = (
+                            SELECT COUNT(DISTINCT DATE(last_shown))
+                            FROM (SELECT last_shown FROM analytics_rotations WHERE page_slug = ? AND year = ? AND rotation_month = ?) as t
+                        ) + 1,
+                        last_shown = ?";
+            
+            $this->db->query($sql, [$slug, $year, $rotationMonth, $language, $date, $slug, $year, $rotationMonth, $date]);
+        } catch (Exception $e) {
+            error_log("Rotation tracking error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get comparison between rotation and base content performance
+     */
+    public function getRotationComparison($pageSlug, $months = 3) {
+        $sql = "SELECT 
+                    am.month,
+                    am.year,
+                    am.total_visits,
+                    am.total_clicks,
+                    ar.rotation_month,
+                    ar.times_shown,
+                    CASE WHEN cr.id IS NOT NULL THEN 1 ELSE 0 END as had_rotation
+                FROM analytics_monthly am
+                LEFT JOIN analytics_rotations ar ON 
+                    am.page_slug = ar.page_slug AND 
+                    am.year = ar.year AND 
+                    am.month = ar.rotation_month
+                LEFT JOIN content_rotations cr ON 
+                    cr.page_id = (SELECT id FROM pages WHERE slug = am.page_slug) AND
+                    cr.active_month = am.month AND
+                    cr.is_active = 1
+                WHERE am.page_slug = ?
+                    AND DATE(CONCAT(am.year, '-', am.month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                ORDER BY am.year DESC, am.month DESC";
+        
+        return $this->db->fetchAll($sql, [$pageSlug, $months]);
+    }
+
+    /**
+     * Get performance trends - compare periods
+     */
+    public function getPerformanceTrends($pageSlug = null) {
+        $currentMonth = date('n');
+        $currentYear = date('Y');
+        $lastMonth = date('n', strtotime('-1 month'));
+        $lastMonthYear = date('Y', strtotime('-1 month'));
+        
+        $whereClause = $pageSlug ? "WHERE page_slug = ?" : "";
+        $params = $pageSlug ? [$pageSlug, $currentYear, $currentMonth, $lastMonthYear, $lastMonth] : [$currentYear, $currentMonth, $lastMonthYear, $lastMonth];
+        
+        $sql = "SELECT 
+                    'current' as period,
+                    SUM(total_visits) as visits,
+                    SUM(total_clicks) as clicks
+                FROM analytics_monthly
+                $whereClause " . ($pageSlug ? "AND" : "WHERE") . " year = ? AND month = ?
+                UNION ALL
+                SELECT 
+                    'previous' as period,
+                    SUM(total_visits) as visits,
+                    SUM(total_clicks) as clicks
+                FROM analytics_monthly
+                $whereClause " . ($pageSlug ? "AND" : "WHERE") . " year = ? AND month = ?";
+        
+        $results = $this->db->fetchAll($sql, $params);
+        
+        $current = ['visits' => 0, 'clicks' => 0];
+        $previous = ['visits' => 0, 'clicks' => 0];
+        
+        foreach ($results as $row) {
+            if ($row['period'] === 'current') {
+                $current = ['visits' => $row['visits'], 'clicks' => $row['clicks']];
+            } else {
+                $previous = ['visits' => $row['visits'], 'clicks' => $row['clicks']];
+            }
+        }
+        
+        $visitChange = $previous['visits'] > 0 ? 
+            round((($current['visits'] - $previous['visits']) / $previous['visits']) * 100, 1) : 0;
+        $clickChange = $previous['clicks'] > 0 ? 
+            round((($current['clicks'] - $previous['clicks']) / $previous['clicks']) * 100, 1) : 0;
+        
+        return [
+            'current' => $current,
+            'previous' => $previous,
+            'changes' => [
+                'visits' => $visitChange,
+                'clicks' => $clickChange
+            ]
+        ];
+    }
+
+    /**
+     * Get daily activity for heat map visualization
+     */
+    public function getDailyActivity($pageSlug = null, $days = 30) {
+        $whereClause = $pageSlug ? "WHERE page_slug = ? AND" : "WHERE";
+        $params = $pageSlug ? [$pageSlug, $days] : [$days];
+        
+        $sql = "SELECT 
+                    date,
+                    DAYOFWEEK(date) as day_of_week,
+                    HOUR(CURRENT_TIMESTAMP) as hour,
+                    SUM(visits) as visits,
+                    SUM(clicks) as clicks
+                FROM analytics
+                $whereClause date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                GROUP BY date, day_of_week
+                ORDER BY date DESC";
+        
+        return $this->db->fetchAll($sql, $params);
+    }
+
+    /**
+     * Get top performing pages by conversion rate
+     */
+    public function getTopPerformers($months = 3, $limit = 10) {
+        $sql = "SELECT 
+                    page_slug,
+                    SUM(total_visits) as visits,
+                    SUM(total_clicks) as clicks,
+                    ROUND((SUM(total_clicks) / NULLIF(SUM(total_visits), 0)) * 100, 2) as ctr,
+                    COUNT(DISTINCT CONCAT(year, '-', month)) as active_months
+                FROM analytics_monthly
+                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY page_slug
+                HAVING visits > 0
+                ORDER BY ctr DESC, visits DESC
+                LIMIT ?";
+        
+        return $this->db->fetchAll($sql, [$months, $limit]);
+    }
+
+    /**
+     * Get language preference statistics
+     */
+    public function getLanguageStats($months = 3) {
+        $sql = "SELECT 
+                    language,
+                    SUM(total_visits) as visits,
+                    SUM(total_clicks) as clicks,
+                    COUNT(DISTINCT page_slug) as unique_pages
+                FROM analytics_monthly
+                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY language";
+        
+        return $this->db->fetchAll($sql, [$months]);
+    }
 }

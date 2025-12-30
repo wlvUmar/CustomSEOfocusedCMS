@@ -16,13 +16,49 @@
                 <h2>Admin Panel</h2>
             </div>
             <nav class="admin-nav">
-                <a href="<?= BASE_URL ?>/admin/dashboard">Dashboard</a>
-                <a href="<?= BASE_URL ?>/admin/analytics">Analytics</a>
-                <a href="<?= BASE_URL ?>/admin/pages">Pages</a>
-                <a href="<?= BASE_URL ?>/admin/faqs">FAQs</a>
-                <a href="<?= BASE_URL ?>/admin/seo">SEO Settings</a>
-                <a href="<?= BASE_URL ?>/admin/media">Media</a>
-                <a href="<?= BASE_URL ?>/admin/logout">Logout</a>
+                <a href="<?= BASE_URL ?>/admin/dashboard" class="<?= strpos($_SERVER['REQUEST_URI'], '/dashboard') !== false ? 'active' : '' ?>">
+                    📊 Dashboard
+                </a>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Content</div>
+                    <a href="<?= BASE_URL ?>/admin/pages" class="<?= strpos($_SERVER['REQUEST_URI'], '/pages') !== false ? 'active' : '' ?>">
+                        📄 Pages
+                    </a>
+                    <a href="<?= BASE_URL ?>/admin/rotations/overview" class="<?= strpos($_SERVER['REQUEST_URI'], '/rotations') !== false ? 'active' : '' ?>">
+                        🔄 Content Rotation
+                    </a>
+                    <a href="<?= BASE_URL ?>/admin/faqs" class="<?= strpos($_SERVER['REQUEST_URI'], '/faqs') !== false ? 'active' : '' ?>">
+                        ❓ FAQs
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Analytics</div>
+                    <a href="<?= BASE_URL ?>/admin/analytics" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics') !== false && strpos($_SERVER['REQUEST_URI'], '/rotation') === false && strpos($_SERVER['REQUEST_URI'], '/crawl') === false ? 'active' : '' ?>">
+                        📈 Overview
+                    </a>
+                    <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics/rotation') !== false ? 'active' : '' ?>">
+                        🔄 Rotation Stats
+                    </a>
+                    <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics/crawl') !== false ? 'active' : '' ?>">
+                        🕷️ Crawl Analysis
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Settings</div>
+                    <a href="<?= BASE_URL ?>/admin/seo" class="<?= strpos($_SERVER['REQUEST_URI'], '/seo') !== false ? 'active' : '' ?>">
+                        🔍 SEO Settings
+                    </a>
+                    <a href="<?= BASE_URL ?>/admin/media" class="<?= strpos($_SERVER['REQUEST_URI'], '/media') !== false ? 'active' : '' ?>">
+                        🖼️ Media
+                    </a>
+                </div>
+                
+                <a href="<?= BASE_URL ?>/admin/logout" style="margin-top: 20px; color: #dc3545;">
+                    🚪 Logout
+                </a>
             </nav>
         </aside>
         
@@ -37,3 +73,23 @@
                     <div class="alert alert-error"><?= e($_SESSION['error']) ?></div>
                     <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>
+
+<style>
+.nav-section {
+    margin: 15px 0;
+}
+
+.nav-section-title {
+    padding: 8px 20px;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: rgba(237, 235, 215, 0.5);
+    letter-spacing: 0.5px;
+}
+
+.admin-nav a.active {
+    background: var(--accent-dark);
+    border-left: 3px solid var(--primary-light);
+}
+</style>

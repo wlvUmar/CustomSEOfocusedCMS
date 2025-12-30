@@ -236,9 +236,68 @@ $router->post('/admin/media/delete', function() {
     $controller->delete();
 });
 
+
+$router->get('/admin/rotations/overview', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->overview();
+});
+
+// Clone rotation
+$router->post('/admin/rotations/clone', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->clone();
+});
+
+// Bulk actions
+$router->post('/admin/rotations/bulk-action', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->bulkAction();
+});
+
+// Preview rotation
+$router->post('/admin/rotations/preview', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->preview();
+});
+
+// Enhanced Analytics Routes
+
+// Rotation analytics
+$router->get('/admin/analytics/rotation', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
+    $controller = new AnalyticsController();
+    $controller->rotationAnalytics();
+});
+
+// Crawl analysis
+$router->get('/admin/analytics/crawl', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
+    $controller = new AnalyticsController();
+    $controller->crawlAnalysis();
+});
+
+// Page detail analytics
+$router->get('/admin/analytics/page/{slug}', function($slug) {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
+    $controller = new AnalyticsController();
+    $controller->pageDetail($slug);
+});
+
+// Export analytics
+$router->get('/admin/analytics/export', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
+    $controller = new AnalyticsController();
+    $controller->export();
+});
+
 $router->notFound(function() {
     http_response_code(404);
     echo '<h1>404 - Page Not Found</h1>';
 });
+
 
 $router->dispatch();

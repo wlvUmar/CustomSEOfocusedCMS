@@ -5,12 +5,14 @@ require_once BASE_PATH . '/models/Page.php';
 require_once BASE_PATH . '/models/SEO.php';
 require_once BASE_PATH . '/models/FAQ.php';
 require_once BASE_PATH . '/models/ContentRotation.php';
+require_once BASE_PATH . '/models/Analytics.php';
 
 class PageController extends Controller {
     private $pageModel;
     private $seoModel;
     private $faqModel;
     private $rotationModel;
+    private $analyticsModel;
 
     public function __construct() {
         parent::__construct();
@@ -18,6 +20,7 @@ class PageController extends Controller {
         $this->seoModel = new SEO();
         $this->faqModel = new FAQ();
         $this->rotationModel = new ContentRotation();
+        $this->analyticsModel = new Analytics();
     }
 
     public function show($slug = 'home', $lang = null) {
@@ -36,11 +39,20 @@ class PageController extends Controller {
             die('Page not found');
         }
         
+        // Track which content is being shown
+        $rotationUsed = false;
+        $activeMonth = null;
+        
         // Get content rotation if enabled
         if ($page['enable_rotation']) {
             $rotationContent = $this->rotationModel->getCurrentMonth($page['id']);
             if ($rotationContent) {
                 $page["content_$currentLang"] = $rotationContent["content_$currentLang"];
+                $rotationUsed = true;
+                $activeMonth = $rotationContent['active_month'];
+                
+                // Track that this rotation was shown
+                $this->analyticsModel->trackRotationShown($slug, $activeMonth, $currentLang);
             }
         }
         
@@ -77,6 +89,10 @@ class PageController extends Controller {
                 'month' => date('n'),
                 'month_name' => date('F'),
                 'day' => date('j'),
+            ],
+            'rotation' => [
+                'active' => $rotationUsed,
+                'month' => $activeMonth
             ]
         ];
         
