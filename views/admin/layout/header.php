@@ -1,5 +1,4 @@
 <?php
-// path: ./views/admin/layout/header.php
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -8,6 +7,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin.css">
+    <?php
+    // Check if $pageName is set (you can define it in each page before including header)
+    if (!empty($pageName)) {
+        $cssPath = BASE_PATH . "/public/css/{$pageName}.css"; // actual file path
+        if (file_exists($cssPath)) {
+            echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$pageName}.css" . '">';
+        }
+    }
+    ?>
+
 </head>
 <body>
     <div class="admin-wrapper">

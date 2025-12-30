@@ -1,0 +1,187 @@
+.info-banner {
+    background: #eff6ff;
+    border-left: 4px solid #3b82f6;
+    padding: 16px;
+    margin-bottom: 30px;
+    border-radius: 4px;
+    color: #1e3a8a;
+}
+
+.empty-state {
+    background: white;
+    padding: 60px 40px;
+    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.empty-state h2 {
+    margin-bottom: 20px;
+    color: var(--text-dark);
+}
+
+.empty-state ol {
+    text-align: left;
+    max-width: 400px;
+    margin: 20px auto;
+}
+
+.empty-state li {
+    margin-bottom: 10px;
+    color: var(--text-muted);
+}
+
+.rotation-effectiveness-grid {
+    display: grid;
+    gap: 30px;
+}
+
+.effectiveness-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: var(--accent-light);
+    border-bottom: 2px solid var(--primary-light);
+}
+
+.card-header h2 {
+    margin: 0;
+    font-size: 1.3em;
+    color: var(--text-dark);
+}
+
+.slug-badge {
+    background: var(--primary-dark);
+    color: var(--primary-light);
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-family: monospace;
+}
+
+.rotation-timeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1px;
+    background: var(--accent-light);
+    padding: 1px;
+}
+
+.rotation-item {
+    background: white;
+    padding: 16px;
+    transition: all 0.2s;
+}
+
+.rotation-item:hover {
+    background: var(--accent-light);
+}
+
+.rotation-item.current {
+    background: #eff6ff;
+    border-left: 3px solid #3b82f6;
+}
+
+.rotation-month {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.current-badge {
+    background: #3b82f6;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.7em;
+    font-weight: 700;
+}
+
+.rotation-metrics {
+    margin-bottom: 12px;
+}
+
+.metric-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--accent-light);
+}
+
+.metric-row:last-child {
+    border-bottom: none;
+}
+
+.metric-label {
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+.metric-value {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.metric-value.highlight {
+    color: var(--success);
+}
+
+.rotation-actions {
+    padding-top: 12px;
+    border-top: 1px solid var(--accent-light);
+}
+
+.card-summary {
+    display: flex;
+    justify-content: space-around;
+    padding: 20px;
+    background: var(--accent-light);
+    border-top: 2px solid var(--primary-light);
+}
+
+.summary-stat {
+    text-align: center;
+}
+
+.summary-stat .stat-label {
+    display: block;
+    font-size: 0.85em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.summary-stat .stat-value {
+    display: block;
+    font-size: 1.4em;
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+
+@media (max-width: 768px) {
+    .rotation-timeline {
+        grid-template-columns: 1fr;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .card-summary {
+        flex-direction: column;
+        gap: 16px;
+    }
+}

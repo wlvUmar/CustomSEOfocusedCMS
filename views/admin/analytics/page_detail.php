@@ -1,5 +1,6 @@
 <?php
 // path: ./views/admin/analytics/page_detail.php
+$pageName = 'analytics/page_detail';
 require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
