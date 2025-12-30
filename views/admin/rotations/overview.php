@@ -11,7 +11,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <?php if (!empty($incompletePages)): ?>
 <div class="alert alert-error">
-    <strong>⚠️ Attention:</strong> <?= count($incompletePages) ?> page(s) with rotation enabled have incomplete month coverage.
+    <strong><i data-feather="alert-triangle"></i> Attention:</strong> <?= count($incompletePages) ?> page(s) with rotation enabled have incomplete month coverage.
 </div>
 <?php endif; ?>
 

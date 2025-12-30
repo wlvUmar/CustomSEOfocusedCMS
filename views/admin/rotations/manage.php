@@ -7,22 +7,26 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <div class="page-header">
     <h1>Content Rotations: <?= e($page['title_ru']) ?></h1>
     <div class="btn-group">
-        <a href="<?= BASE_URL ?>/admin/rotations/overview" class="btn btn-secondary">Overview</a>
-        <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>" class="btn btn-secondary">Edit Page</a>
+        <a href="<?= BASE_URL ?>/admin/rotations/overview" class="btn btn-secondary">
+            <i data-feather="list"></i> Overview
+        </a>
+        <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>" class="btn btn-secondary">
+            <i data-feather="edit"></i> Edit Page
+        </a>
     </div>
 </div>
 
 <div class="rotation-stats-bar">
     <div class="stat-item">
-        <span class="stat-label">Coverage:</span>
+        <span class="stat-label"><i data-feather="pie-chart"></i> Coverage:</span>
         <span class="stat-value"><?= $stats['covered_months'] ?>/12 months</span>
     </div>
     <div class="stat-item">
-        <span class="stat-label">Current Month:</span>
+        <span class="stat-label"><i data-feather="clock"></i> Current Month:</span>
         <span class="stat-value current-month"><?= $months[date('n')] ?></span>
     </div>
     <div class="stat-item">
-        <span class="stat-label">Active:</span>
+        <span class="stat-label"><i data-feather="check-circle"></i> Active:</span>
         <span class="stat-value"><?= count($stats['active_months']) ?></span>
     </div>
 </div>
@@ -37,7 +41,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     echo implode(', ', $missingNames);
     ?>
     <a href="<?= BASE_URL ?>/admin/rotations/new/<?= $page['id'] ?>" class="btn btn-sm" style="margin-left: 15px;">
-        Add Content
+        <i data-feather="plus-square"></i> Add Content
     </a>
 </div>
 <?php endif; ?>
@@ -53,13 +57,13 @@ require BASE_PATH . '/views/admin/layout/header.php';
         
         <div class="bulk-buttons">
             <button type="submit" name="action" value="activate" class="btn btn-sm" onclick="return confirmBulk('activate')">
-                ✓ Activate Selected
+                <i data-feather="check"></i> Activate Selected
             </button>
             <button type="submit" name="action" value="deactivate" class="btn btn-sm" onclick="return confirmBulk('deactivate')">
-                ✗ Deactivate Selected
+                <i data-feather="x"></i> Deactivate Selected
             </button>
             <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger" onclick="return confirmBulk('delete')">
-                🗑 Delete Selected
+                <i data-feather="trash-2"></i> Delete Selected
             </button>
         </div>
     </div>
@@ -100,7 +104,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <td>
                     <strong><?= $name ?></strong>
                     <?php if ($isCurrent): ?>
-                    <span class="badge" style="background: #3b82f6; margin-left: 8px;">ACTIVE NOW</span>
+                    <span class="badge" style="background: #3b82f6; margin-left: 8px;">
+                        <i data-feather="clock"></i> ACTIVE NOW
+                    </span>
                     <?php endif; ?>
                 </td>
                 
@@ -129,10 +135,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <td>
                     <?php if ($rotation): ?>
                         <span class="badge <?= $rotation['is_active'] ? 'badge-success' : 'badge-danger' ?>">
-                            <?= $rotation['is_active'] ? 'Active' : 'Inactive' ?>
+                            <?= $rotation['is_active'] ? '<i data-feather="check-circle"></i> Active' : '<i data-feather="x-circle"></i> Inactive' ?>
                         </span>
                     <?php else: ?>
-                        <span class="badge" style="background: #e5e7eb; color: #6b7280;">Empty</span>
+                        <span class="badge" style="background: #e5e7eb; color: #6b7280;">
+                            <i data-feather="minus-circle"></i> Empty
+                        </span>
                     <?php endif; ?>
                 </td>
                 
@@ -141,24 +149,26 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         <?php if ($rotation): ?>
                             <a href="<?= BASE_URL ?>/admin/rotations/edit/<?= $rotation['id'] ?>" 
                                class="btn btn-sm" title="Edit">
-                                ✏️ Edit
+                                <i data-feather="edit"></i> Edit
                             </a>
                             
                             <button type="button" onclick="showCloneModal(<?= $rotation['id'] ?>, '<?= e($name) ?>')" 
                                     class="btn btn-sm" title="Clone to other months">
-                                📋 Clone
+                                <i data-feather="copy"></i> Clone
                             </button>
                             
                             <form method="POST" action="<?= BASE_URL ?>/admin/rotations/delete" 
                                   style="display:inline;" onsubmit="return confirm('Delete this rotation?')">
                                 <input type="hidden" name="id" value="<?= $rotation['id'] ?>">
                                 <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
-                                <button type="submit" class="btn btn-sm btn-danger" title="Delete">🗑</button>
+                                <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                    <i data-feather="trash-2"></i>
+                                </button>
                             </form>
                         <?php else: ?>
                             <a href="<?= BASE_URL ?>/admin/rotations/new/<?= $page['id'] ?>?month=<?= $num ?>" 
                                class="btn btn-sm btn-primary">
-                                + Add Content
+                                <i data-feather="plus-square"></i> Add Content
                             </a>
                         <?php endif; ?>
                     </div>
@@ -174,7 +184,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <div class="modal-content">
         <div class="modal-header">
             <h2>Clone Content to Other Months</h2>
-            <button onclick="closeCloneModal()" class="close-btn">×</button>
+            <button onclick="closeCloneModal()" class="close-btn"><i data-feather="x"></i></button>
         </div>
         
         <form method="POST" action="<?= BASE_URL ?>/admin/rotations/clone">
@@ -193,8 +203,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
             </div>
             
             <div class="modal-actions">
-                <button type="submit" class="btn btn-primary">Clone Content</button>
-                <button type="button" onclick="closeCloneModal()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i data-feather="copy"></i> Clone Content</button>
+                <button type="button" onclick="closeCloneModal()" class="btn btn-secondary"><i data-feather="x-circle"></i> Cancel</button>
             </div>
         </form>
     </div>

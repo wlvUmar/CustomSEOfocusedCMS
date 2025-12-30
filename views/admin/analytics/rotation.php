@@ -13,12 +13,14 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <option value="6" <?= $months == 6 ? 'selected' : '' ?>>Last 6 Months</option>
             <option value="12" <?= $months == 12 ? 'selected' : '' ?>>Last 12 Months</option>
         </select>
-        <a href="<?= BASE_URL ?>/admin/analytics" class="btn btn-secondary">Back to Analytics</a>
+        <a href="<?= BASE_URL ?>/admin/analytics" class="btn btn-secondary">
+            <i data-feather="arrow-left"></i> Back to Analytics
+        </a>
     </div>
 </div>
 
 <div class="info-banner">
-    <strong>📊 What This Shows:</strong> This page tracks which rotation content variations are actually displayed to visitors. 
+    <strong><i data-feather="bar-chart-2"></i> What This Shows:</strong> This page tracks which rotation content variations are actually displayed to visitors. 
     Use this data to identify your best-performing seasonal content and optimize your rotation strategy.
 </div>
 
@@ -31,7 +33,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <li>Creating content for different months</li>
             <li>Waiting for visitors to view the rotated content</li>
         </ol>
-        <a href="<?= BASE_URL ?>/admin/rotations/overview" class="btn btn-primary">Set Up Rotations</a>
+        <a href="<?= BASE_URL ?>/admin/rotations/overview" class="btn btn-primary">
+            <i data-feather="settings"></i> Set Up Rotations
+        </a>
     </div>
 <?php else: ?>
 
@@ -71,34 +75,34 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <div class="rotation-month">
                     <?= $monthName ?>
                     <?php if ($isCurrentMonth): ?>
-                    <span class="current-badge">NOW</span>
+                    <span class="current-badge"><i data-feather="clock"></i> NOW</span>
                     <?php endif; ?>
                 </div>
                 
                 <div class="rotation-metrics">
                     <div class="metric-row">
-                        <span class="metric-label">Times Shown:</span>
+                        <span class="metric-label"><i data-feather="eye"></i> Times Shown:</span>
                         <span class="metric-value"><?= number_format($rotation['times_shown']) ?></span>
                     </div>
                     
                     <div class="metric-row">
-                        <span class="metric-label">Unique Days:</span>
+                        <span class="metric-label"><i data-feather="calendar"></i> Unique Days:</span>
                         <span class="metric-value"><?= $rotation['unique_days'] ?></span>
                     </div>
                     
                     <?php if ($total_visits > 0): ?>
                     <div class="metric-row">
-                        <span class="metric-label">Visits:</span>
+                        <span class="metric-label"><i data-feather="bar-chart"></i> Visits:</span>
                         <span class="metric-value"><?= number_format($total_visits) ?></span>
                     </div>
                     
                     <div class="metric-row">
-                        <span class="metric-label">Clicks:</span>
+                        <span class="metric-label"><i data-feather="mouse-pointer"></i> Clicks:</span>
                         <span class="metric-value"><?= number_format($total_clicks) ?></span>
                     </div>
                     
                     <div class="metric-row">
-                        <span class="metric-label">CTR:</span>
+                        <span class="metric-label"><i data-feather="percent"></i> CTR:</span>
                         <span class="metric-value highlight"><?= $ctr ?>%</span>
                     </div>
                     <?php endif; ?>
@@ -107,7 +111,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <div class="rotation-actions">
                     <a href="<?= BASE_URL ?>/admin/rotations/manage/<?= $rotation['page_id'] ?? '' ?>" 
                        class="btn btn-sm">
-                        Edit Rotations
+                        <i data-feather="edit"></i> Edit Rotations
                     </a>
                 </div>
             </div>
@@ -122,15 +126,15 @@ require BASE_PATH . '/views/admin/layout/header.php';
             $monthsCovered = count($data['rotations']);
             ?>
             <div class="summary-stat">
-                <span class="stat-label">Total Times Shown:</span>
+                <span class="stat-label"><i data-feather="eye"></i> Total Times Shown:</span>
                 <span class="stat-value"><?= number_format($totalShown) ?></span>
             </div>
             <div class="summary-stat">
-                <span class="stat-label">Avg per Month:</span>
+                <span class="stat-label"><i data-feather="bar-chart-2"></i> Avg per Month:</span>
                 <span class="stat-value"><?= number_format($avgPerMonth) ?></span>
             </div>
             <div class="summary-stat">
-                <span class="stat-label">Months Covered:</span>
+                <span class="stat-label"><i data-feather="calendar"></i> Months Covered:</span>
                 <span class="stat-value"><?= $monthsCovered ?>/12</span>
             </div>
         </div>

@@ -18,7 +18,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 </div>
 
 <div class="info-banner">
-    <strong>🕷️ Understanding Crawl Frequency:</strong> This shows how often search engines visit your pages. 
+    <strong><i data-feather="zap"></i> Understanding Crawl Frequency:</strong> This shows how often search engines visit your pages. 
     Higher frequency means Google considers your content important. Pages with low frequency may need more internal links or fresher content.
 </div>
 
@@ -47,7 +47,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     ?>
     
     <div class="summary-card daily">
-        <div class="card-icon">📅</div>
+        <div class="card-icon"><i data-feather="calendar"></i></div>
         <div class="card-content">
             <div class="card-number"><?= $dailyPages ?></div>
             <div class="card-label">Daily Crawl</div>
@@ -56,7 +56,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
     
     <div class="summary-card weekly">
-        <div class="card-icon">📊</div>
+        <div class="card-icon"><i data-feather="bar-chart-2"></i></div>
         <div class="card-content">
             <div class="card-number"><?= $weeklyPages ?></div>
             <div class="card-label">Weekly Crawl</div>
@@ -65,7 +65,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
     
     <div class="summary-card monthly">
-        <div class="card-icon">📆</div>
+        <div class="card-icon"><i data-feather="calendar"></i></div>
         <div class="card-content">
             <div class="card-number"><?= $monthlyPages ?></div>
             <div class="card-label">Monthly Crawl</div>
@@ -74,7 +74,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
     
     <div class="summary-card rare">
-        <div class="card-icon">⚠️</div>
+        <div class="card-icon"><i data-feather="alert-circle"></i></div>
         <div class="card-content">
             <div class="card-number"><?= $rarePages ?></div>
             <div class="card-label">Rare/Stale</div>
@@ -144,12 +144,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
                            target="_blank" 
                            class="btn btn-sm" 
                            title="View page">
-                            👁️ View
+                            <i data-feather="eye"></i> View
                         </a>
                         <a href="<?= BASE_URL ?>/admin/analytics/page/<?= e($page['page_slug']) ?>" 
                            class="btn btn-sm" 
                            title="View analytics">
-                            📊 Stats
+                            <i data-feather="bar-chart-2"></i> Stats
                         </a>
                     </div>
                 </td>
@@ -165,7 +165,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     
     <?php if ($rarePages > 0): ?>
     <div class="recommendation warning">
-        <div class="rec-icon">⚠️</div>
+        <div class="rec-icon"><i data-feather="alert-circle"></i></div>
         <div class="rec-content">
             <h3><?= $rarePages ?> page(s) with rare crawl frequency</h3>
             <p><strong>Action:</strong> These pages need attention. Consider:</p>
@@ -181,7 +181,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     
     <?php if ($dailyPages > 0): ?>
     <div class="recommendation success">
-        <div class="rec-icon">✅</div>
+        <div class="rec-icon"><i data-feather="check-circle"></i></div>
         <div class="rec-content">
             <h3><?= $dailyPages ?> page(s) with daily crawl frequency</h3>
             <p><strong>Great!</strong> These pages are performing well. Google considers them important and up-to-date.</p>
@@ -190,7 +190,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <?php endif; ?>
     
     <div class="recommendation info">
-        <div class="rec-icon">💡</div>
+        <div class="rec-icon"><i data-feather="lightbulb"></i></div>
         <div class="rec-content">
             <h3>Improve Overall Crawl Frequency</h3>
             <ul>

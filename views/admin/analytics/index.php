@@ -15,7 +15,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         
         <a href="<?= BASE_URL ?>/admin/analytics/export?months=<?= $stats['months'] ?>" 
            class="btn btn-secondary">
-            📊 Export CSV
+            <i data-feather="bar-chart-2"></i> Export CSV
         </a>
     </div>
 </div>
@@ -72,13 +72,13 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <div class="analytics-tabs">
     <a href="?view=overview&months=<?= $stats['months'] ?>" 
        class="tab-link <?= $stats['view'] === 'overview' ? 'active' : '' ?>">
-        Overview
+        <i data-feather="trending-up"></i> Overview
     </a>
     <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="tab-link">
-        Rotation Analysis
+        <i data-feather="repeat"></i> Rotation Analysis
     </a>
     <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="tab-link">
-        Crawl Frequency
+        <i data-feather="zap"></i> Crawl Frequency
     </a>
 </div>
 
@@ -191,7 +191,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <td>
                     <a href="<?= BASE_URL ?>/admin/analytics/page/<?= e($page['page_slug']) ?>" 
                        class="btn btn-sm">
-                        View Details
+                        <i data-feather="eye"></i> View Details
                     </a>
                 </td>
             </tr>

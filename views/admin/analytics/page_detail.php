@@ -8,16 +8,16 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <h1>Page Analytics: <?= e($page['slug']) ?></h1>
     <div class="header-actions">
         <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>" target="_blank" class="btn">
-            👁️ View Page
+            <i data-feather="eye"></i> View Page
         </a>
         <a href="<?= BASE_URL ?>/admin/analytics" class="btn btn-secondary">
-            ← Back to Analytics
+            <i data-feather="arrow-left"></i> Back to Analytics
         </a>
     </div>
 </div>
 
 <div class="info-banner">
-    <strong>📄 Page Overview:</strong>
+    <strong><i data-feather="file-text"></i> Page Overview:</strong>
     This page shows how a single slug performs in terms of visits, clicks,
     crawl freshness, and content rotation effectiveness.
 </div>
@@ -25,7 +25,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <!-- PAGE META SUMMARY -->
 <div class="crawl-summary-cards">
     <div class="summary-card daily">
-        <div class="card-icon">🌐</div>
+        <div class="card-icon"><i data-feather="globe"></i></div>
         <div class="card-content">
             <div class="card-number"><?= e($page['slug']) ?></div>
             <div class="card-label">Slug</div>
@@ -34,7 +34,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
 
     <div class="summary-card weekly">
-        <div class="card-icon">🈯</div>
+        <div class="card-icon"><i data-feather="refresh-cw"></i></div>
         <div class="card-content">
             <div class="card-number"><?= $page['enable_rotation'] ? 'ON' : 'OFF' ?></div>
             <div class="card-label">Content Rotation</div>
@@ -45,7 +45,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
 
     <div class="summary-card monthly">
-        <div class="card-icon">📢</div>
+        <div class="card-icon"><i data-feather="volume-2"></i></div>
         <div class="card-content">
             <div class="card-number"><?= $page['is_published'] ? 'Published' : 'Hidden' ?></div>
             <div class="card-label">Visibility</div>
@@ -159,7 +159,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
     <?php if (!$page['enable_rotation']): ?>
     <div class="recommendation warning">
-        <div class="rec-icon">⚠️</div>
+        <div class="rec-icon"><i data-feather="alert-circle"></i></div>
         <div class="rec-content">
             <h3>Content rotation disabled</h3>
             <p>
@@ -171,7 +171,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <?php endif; ?>
 
     <div class="recommendation info">
-        <div class="rec-icon">💡</div>
+        <div class="rec-icon"><i data-feather="lightbulb"></i></div>
         <div class="rec-content">
             <h3>Improve performance</h3>
             <ul>
