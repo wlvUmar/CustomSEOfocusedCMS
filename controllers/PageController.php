@@ -43,13 +43,35 @@ class PageController extends Controller {
         $rotationUsed = false;
         $activeMonth = null;
         
-        // Get content rotation if enabled
+        // Get content rotation if enabled AND apply SEO from rotation
         if ($page['enable_rotation']) {
             $rotationContent = $this->rotationModel->getCurrentMonth($page['id']);
             if ($rotationContent) {
+                // Override content
                 $page["content_$currentLang"] = $rotationContent["content_$currentLang"];
                 $rotationUsed = true;
                 $activeMonth = $rotationContent['active_month'];
+                
+                // Override SEO settings if rotation has them
+                $seoFields = [
+                    'meta_title', 'meta_description', 'meta_keywords',
+                    'og_title', 'og_description', 'og_image',
+                    'jsonld'
+                ];
+                
+                foreach ($seoFields as $field) {
+                    // Check both language-specific and non-language fields
+                    if ($field === 'og_image') {
+                        if (!empty($rotationContent[$field])) {
+                            $page[$field] = $rotationContent[$field];
+                        }
+                    } else {
+                        $fieldWithLang = "{$field}_{$currentLang}";
+                        if (!empty($rotationContent[$fieldWithLang])) {
+                            $page[$fieldWithLang] = $rotationContent[$fieldWithLang];
+                        }
+                    }
+                }
                 
                 // Track that this rotation was shown
                 $this->analyticsModel->trackRotationShown($slug, $activeMonth, $currentLang);
@@ -117,6 +139,22 @@ class PageController extends Controller {
         
         if ($slug) {
             trackClick($slug, $lang);
+            $this->json(['success' => true]);
+        }
+        
+        $this->json(['success' => false], 400);
+    }
+
+    /**
+     * Track internal link navigation
+     */
+    public function trackInternalLink() {
+        $fromSlug = $_POST['from'] ?? '';
+        $toSlug = $_POST['to'] ?? '';
+        $lang = $_POST['lang'] ?? getCurrentLanguage();
+        
+        if ($fromSlug && $toSlug) {
+            trackInternalLink($fromSlug, $toSlug, $lang);
             $this->json(['success' => true]);
         }
         

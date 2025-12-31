@@ -294,6 +294,17 @@ $router->get('/admin/analytics/export', function() {
     $controller->export();
 });
 
+$router->post('/track-internal-link', function() {
+    require_once BASE_PATH . '/controllers/PageController.php';
+    $controller = new PageController();
+    $controller->trackInternalLink();
+});
+$router->get('/admin/analytics/navigation', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
+    $controller = new AnalyticsController();
+    $controller->navigationAnalytics();
+});
+
 $router->notFound(function() {
     http_response_code(404);
     echo '<h1>404 - Page Not Found</h1>';

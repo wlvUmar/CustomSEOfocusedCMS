@@ -1,4 +1,6 @@
 <?php
+// path: ./core/helpers.php
+
 function e($string) {
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
 }
@@ -160,6 +162,28 @@ function trackClick($slug, $language) {
     }
 }
 
+/**
+ * Track internal link navigation
+ * Records when users click from one page to another
+ */
+function trackInternalLink($fromSlug, $toSlug, $language) {
+    try {
+        $db = Database::getInstance();
+        $date = date('Y-m-d');
+        
+        $sql = "INSERT INTO analytics_internal_links (from_slug, to_slug, language, clicks, date) 
+                VALUES (?, ?, ?, 1, ?) 
+                ON DUPLICATE KEY UPDATE clicks = clicks + 1";
+        
+        $db->query($sql, [$fromSlug, $toSlug, $language, $date]);
+        
+        // Update monthly summary
+        updateInternalLinkMonthlySummary($fromSlug, $toSlug, $language);
+    } catch (Exception $e) {
+        error_log("Internal link tracking error: " . $e->getMessage());
+    }
+}
+
 function updateMonthlySummary($slug, $language) {
     try {
         $db = Database::getInstance();
@@ -180,6 +204,33 @@ function updateMonthlySummary($slug, $language) {
         $db->query($sql, [$slug, $language, $year, $month]);
     } catch (Exception $e) {
         error_log("Monthly summary error: " . $e->getMessage());
+    }
+}
+
+/**
+ * Update monthly summary for internal link tracking
+ */
+function updateInternalLinkMonthlySummary($fromSlug, $toSlug, $language) {
+    try {
+        $db = Database::getInstance();
+        $year = date('Y');
+        $month = date('n');
+        
+        $sql = "INSERT INTO analytics_internal_links_monthly 
+                (from_slug, to_slug, language, year, month, total_clicks, unique_days)
+                SELECT from_slug, to_slug, language, YEAR(date), MONTH(date), 
+                       SUM(clicks), COUNT(DISTINCT date)
+                FROM analytics_internal_links
+                WHERE from_slug = ? AND to_slug = ? AND language = ? 
+                  AND YEAR(date) = ? AND MONTH(date) = ?
+                GROUP BY from_slug, to_slug, language, YEAR(date), MONTH(date)
+                ON DUPLICATE KEY UPDATE 
+                    total_clicks = VALUES(total_clicks),
+                    unique_days = VALUES(unique_days)";
+        
+        $db->query($sql, [$fromSlug, $toSlug, $language, $year, $month]);
+    } catch (Exception $e) {
+        error_log("Internal link monthly summary error: " . $e->getMessage());
     }
 }
 

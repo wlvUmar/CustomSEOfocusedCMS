@@ -300,4 +300,124 @@ class Analytics {
         
         return $this->db->fetchAll($sql, [$months]);
     }
+
+    public function getNavigationFlow($days = 30) {
+        $sql = "SELECT 
+                    from_slug,
+                    to_slug,
+                    language,
+                    SUM(clicks) as total_clicks,
+                    COUNT(DISTINCT date) as active_days,
+                    MAX(date) as last_click_date
+                FROM analytics_internal_links
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                GROUP BY from_slug, to_slug, language
+                HAVING total_clicks > 2
+                ORDER BY total_clicks DESC
+                LIMIT 100";
+        
+        return $this->db->fetchAll($sql, [$days]);
+    }
+
+    /**
+     * Get most popular navigation paths
+     */
+    public function getPopularPaths($months = 3, $limit = 20) {
+        $sql = "SELECT 
+                    from_slug,
+                    to_slug,
+                    SUM(total_clicks) as clicks,
+                    COUNT(DISTINCT CONCAT(year, '-', month)) as active_months
+                FROM analytics_internal_links_monthly
+                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY from_slug, to_slug
+                ORDER BY clicks DESC
+                LIMIT ?";
+        
+        return $this->db->fetchAll($sql, [$months, $limit]);
+    }
+
+    /**
+     * Get outbound links from a specific page
+     */
+    public function getOutboundLinks($slug, $months = 3) {
+        $sql = "SELECT 
+                    to_slug,
+                    language,
+                    SUM(total_clicks) as clicks
+                FROM analytics_internal_links_monthly
+                WHERE from_slug = ?
+                  AND DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY to_slug, language
+                ORDER BY clicks DESC";
+        
+        return $this->db->fetchAll($sql, [$slug, $months]);
+    }
+
+
+    public function getInboundLinks($slug, $months = 3) {
+        $sql = "SELECT 
+                    from_slug,
+                    language,
+                    SUM(total_clicks) as clicks
+                FROM analytics_internal_links_monthly
+                WHERE to_slug = ?
+                  AND DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY from_slug, language
+                ORDER BY clicks DESC";
+        
+        return $this->db->fetchAll($sql, [$slug, $months]);
+    }
+
+
+    public function getLinkEffectiveness($months = 3) {
+        $sql = "SELECT 
+                    il.from_slug,
+                    il.to_slug,
+                    SUM(il.total_clicks) as link_clicks,
+                    COALESCE(SUM(am.total_visits), 0) as from_page_visits,
+                    CASE 
+                        WHEN SUM(am.total_visits) > 0 
+                        THEN ROUND((SUM(il.total_clicks) / SUM(am.total_visits)) * 100, 2)
+                        ELSE 0 
+                    END as click_through_rate
+                FROM analytics_internal_links_monthly il
+                LEFT JOIN analytics_monthly am ON 
+                    il.from_slug = am.page_slug AND 
+                    il.year = am.year AND 
+                    il.month = am.month AND
+                    il.language = am.language
+                WHERE DATE(CONCAT(il.year, '-', il.month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY il.from_slug, il.to_slug
+                HAVING link_clicks > 5
+                ORDER BY click_through_rate DESC
+                LIMIT 50";
+        
+        return $this->db->fetchAll($sql, [$months]);
+    }
+
+
+    public function getNavigationFunnels($months = 3) {
+        // This gets sequential navigation patterns
+        $sql = "SELECT 
+                    l1.from_slug as step1,
+                    l1.to_slug as step2,
+                    l2.to_slug as step3,
+                    COUNT(*) as occurrences
+                FROM analytics_internal_links_monthly l1
+                LEFT JOIN analytics_internal_links_monthly l2 ON 
+                    l1.to_slug = l2.from_slug AND
+                    l1.year = l2.year AND
+                    l1.month = l2.month AND
+                    l1.language = l2.language
+                WHERE DATE(CONCAT(l1.year, '-', l1.month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                  AND l2.to_slug IS NOT NULL
+                GROUP BY step1, step2, step3
+                HAVING occurrences > 3
+                ORDER BY occurrences DESC
+                LIMIT 30";
+        
+        return $this->db->fetchAll($sql, [$months]);
+    }
 }
+    

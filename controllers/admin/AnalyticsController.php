@@ -137,4 +137,19 @@ class AnalyticsController extends Controller {
         fclose($output);
         exit;
     }
+    public function navigationAnalytics() {
+        $this->requireAuth();
+        
+        $months = $_GET['months'] ?? 3;
+        
+        $data = [
+            'navigation_flow' => $this->analyticsModel->getNavigationFlow(30),
+            'popular_paths' => $this->analyticsModel->getPopularPaths($months, 20),
+            'link_effectiveness' => $this->analyticsModel->getLinkEffectiveness($months),
+            'navigation_funnels' => $this->analyticsModel->getNavigationFunnels($months),
+            'months' => $months
+        ];
+        
+        $this->view('admin/analytics/navigation', $data);
+    }
 }

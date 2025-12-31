@@ -25,6 +25,44 @@ class ContentRotation {
     }
 
     /**
+     * Create default rotation from base page
+     * Copies content and ALL SEO settings
+     */
+    public function createDefaultFromPage($pageId, $month) {
+        require_once BASE_PATH . '/models/Page.php';
+        $pageModel = new Page();
+        $page = $pageModel->getById($pageId);
+        
+        if (!$page) {
+            return false;
+        }
+
+        $data = [
+            'page_id' => $pageId,
+            'content_ru' => $page['content_ru'],
+            'content_uz' => $page['content_uz'],
+            'active_month' => $month,
+            'is_active' => 1,
+            // Copy ALL SEO settings
+            'meta_title_ru' => $page['meta_title_ru'],
+            'meta_title_uz' => $page['meta_title_uz'],
+            'meta_description_ru' => $page['meta_description_ru'],
+            'meta_description_uz' => $page['meta_description_uz'],
+            'meta_keywords_ru' => $page['meta_keywords_ru'],
+            'meta_keywords_uz' => $page['meta_keywords_uz'],
+            'og_title_ru' => $page['og_title_ru'],
+            'og_title_uz' => $page['og_title_uz'],
+            'og_description_ru' => $page['og_description_ru'],
+            'og_description_uz' => $page['og_description_uz'],
+            'og_image' => $page['og_image'],
+            'jsonld_ru' => $page['jsonld_ru'],
+            'jsonld_uz' => $page['jsonld_uz']
+        ];
+
+        return $this->create($data);
+    }
+
+    /**
      * Get rotation coverage stats for a page
      * Returns which months have content and which are missing
      */
@@ -84,7 +122,7 @@ class ContentRotation {
     }
 
     /**
-     * Clone content from one month to another for the same page
+     * Clone content AND SEO from one month to another for the same page
      */
     public function cloneToMonth($sourceId, $targetMonth) {
         $source = $this->getById($sourceId);
@@ -102,7 +140,21 @@ class ContentRotation {
             'content_ru' => $source['content_ru'],
             'content_uz' => $source['content_uz'],
             'active_month' => $targetMonth,
-            'is_active' => 1
+            'is_active' => 1,
+            // Clone SEO settings too
+            'meta_title_ru' => $source['meta_title_ru'],
+            'meta_title_uz' => $source['meta_title_uz'],
+            'meta_description_ru' => $source['meta_description_ru'],
+            'meta_description_uz' => $source['meta_description_uz'],
+            'meta_keywords_ru' => $source['meta_keywords_ru'],
+            'meta_keywords_uz' => $source['meta_keywords_uz'],
+            'og_title_ru' => $source['og_title_ru'],
+            'og_title_uz' => $source['og_title_uz'],
+            'og_description_ru' => $source['og_description_ru'],
+            'og_description_uz' => $source['og_description_uz'],
+            'og_image' => $source['og_image'],
+            'jsonld_ru' => $source['jsonld_ru'],
+            'jsonld_uz' => $source['jsonld_uz']
         ];
 
         return $this->create($data);
@@ -122,29 +174,67 @@ class ContentRotation {
     }
 
     public function create($data) {
-        $sql = "INSERT INTO content_rotations (page_id, content_ru, content_uz, active_month, is_active) 
-                VALUES (?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO content_rotations (
+                    page_id, content_ru, content_uz, active_month, is_active,
+                    meta_title_ru, meta_title_uz, meta_description_ru, meta_description_uz,
+                    meta_keywords_ru, meta_keywords_uz, og_title_ru, og_title_uz,
+                    og_description_ru, og_description_uz, og_image, jsonld_ru, jsonld_uz
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $this->db->query($sql, [
             $data['page_id'],
             $data['content_ru'],
             $data['content_uz'],
             $data['active_month'],
-            $data['is_active'] ?? 1
+            $data['is_active'] ?? 1,
+            $data['meta_title_ru'] ?? null,
+            $data['meta_title_uz'] ?? null,
+            $data['meta_description_ru'] ?? null,
+            $data['meta_description_uz'] ?? null,
+            $data['meta_keywords_ru'] ?? null,
+            $data['meta_keywords_uz'] ?? null,
+            $data['og_title_ru'] ?? null,
+            $data['og_title_uz'] ?? null,
+            $data['og_description_ru'] ?? null,
+            $data['og_description_uz'] ?? null,
+            $data['og_image'] ?? null,
+            $data['jsonld_ru'] ?? null,
+            $data['jsonld_uz'] ?? null
         ]);
         
         return $this->db->lastInsertId();
     }
 
     public function update($id, $data) {
-        $sql = "UPDATE content_rotations SET content_ru = ?, content_uz = ?, 
-                active_month = ?, is_active = ? WHERE id = ?";
+        $sql = "UPDATE content_rotations SET 
+                content_ru = ?, content_uz = ?, 
+                active_month = ?, is_active = ?,
+                meta_title_ru = ?, meta_title_uz = ?,
+                meta_description_ru = ?, meta_description_uz = ?,
+                meta_keywords_ru = ?, meta_keywords_uz = ?,
+                og_title_ru = ?, og_title_uz = ?,
+                og_description_ru = ?, og_description_uz = ?,
+                og_image = ?, jsonld_ru = ?, jsonld_uz = ?
+                WHERE id = ?";
         
         return $this->db->query($sql, [
             $data['content_ru'],
             $data['content_uz'],
             $data['active_month'],
             $data['is_active'] ?? 1,
+            $data['meta_title_ru'] ?? null,
+            $data['meta_title_uz'] ?? null,
+            $data['meta_description_ru'] ?? null,
+            $data['meta_description_uz'] ?? null,
+            $data['meta_keywords_ru'] ?? null,
+            $data['meta_keywords_uz'] ?? null,
+            $data['og_title_ru'] ?? null,
+            $data['og_title_uz'] ?? null,
+            $data['og_description_ru'] ?? null,
+            $data['og_description_uz'] ?? null,
+            $data['og_image'] ?? null,
+            $data['jsonld_ru'] ?? null,
+            $data['jsonld_uz'] ?? null,
             $id
         ]);
     }

@@ -1,0 +1,242 @@
+/* path: ./public/css/admin/analytics/navigation.css */
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.page-header h1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.8em;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.info-banner {
+    background: #eff6ff;
+    border-left: 4px solid #3b82f6;
+    padding: 16px;
+    margin-bottom: 30px;
+    border-radius: 4px;
+    color: #1e3a8a;
+}
+
+.empty-state {
+    background: white;
+    padding: 60px 40px;
+    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.empty-state h2 {
+    margin-bottom: 15px;
+    color: var(--text-dark);
+}
+
+.empty-state p {
+    color: var(--text-muted);
+}
+
+.crawl-table-container {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+}
+
+.crawl-table-container h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+}
+
+.crawl-table-container h2 i {
+    color: #3b82f6;
+}
+
+.crawl-table-container p {
+    margin-bottom: 15px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+}
+
+.data-table th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.data-table th i {
+    vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+    background: var(--accent-light);
+}
+
+.data-table td a {
+    color: var(--primary-dark);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.data-table td a:hover {
+    text-decoration: underline;
+}
+
+.data-table td a i {
+    width: 14px;
+    height: 14px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 600;
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.badge-success {
+    background: #d1f4e0;
+    color: #065f46;
+}
+
+.badge-danger {
+    background: #f8d7da;
+    color: #991b1b;
+}
+
+.recommendations-panel {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.recommendations-panel h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+}
+
+.recommendation {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    border-left: 4px solid;
+}
+
+.recommendation.warning {
+    background: #fef3c7;
+    border-left-color: #f59e0b;
+}
+
+.recommendation.success {
+    background: #d1f4e0;
+    border-left-color: #059669;
+}
+
+.recommendation.info {
+    background: #dbeafe;
+    border-left-color: #3b82f6;
+}
+
+.rec-icon {
+    font-size: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rec-icon i {
+    width: 36px;
+    height: 36px;
+}
+
+.rec-content {
+    flex: 1;
+}
+
+.rec-content h3 {
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: var(--text-dark);
+}
+
+.rec-content p {
+    margin-bottom: 10px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.rec-content ul {
+    margin: 10px 0;
+    padding-left: 20px;
+    color: var(--text-muted);
+}
+
+.rec-content li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .header-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .header-actions .btn,
+    .header-actions select {
+        width: 100%;
+    }
+    
+    .recommendation {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .rec-icon {
+        font-size: 1.5em;
+    }
+}

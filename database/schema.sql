@@ -1,108 +1,396 @@
--- Create database
-CREATE DATABASE IF NOT EXISTS appliances_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE appliances_db;
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: localhost:3306
+-- Generation Time: Dec 31, 2025 at 01:35 PM
+-- Server version: 10.3.39-MariaDB-log-cll-lve
+-- PHP Version: 8.1.30
 
--- Users table
-CREATE TABLE users (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
--- Insert default admin (password: admin123)
-INSERT INTO users (username, password, email) VALUES 
-('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin@example.com');
 
--- Global SEO settings
-CREATE TABLE seo_settings (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    site_name_ru VARCHAR(200) NOT NULL,
-    site_name_uz VARCHAR(200) NOT NULL,
-    meta_keywords_ru TEXT,
-    meta_keywords_uz TEXT,
-    meta_description_ru TEXT,
-    meta_description_uz TEXT,
-    phone VARCHAR(20),
-    email VARCHAR(100),
-    address_ru TEXT,
-    address_uz TEXT,
-    working_hours_ru VARCHAR(200),
-    working_hours_uz VARCHAR(200),
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
 
--- Insert default SEO settings
-INSERT INTO seo_settings (
-    site_name_ru, site_name_uz,
-    meta_keywords_ru, meta_keywords_uz,
-    meta_description_ru, meta_description_uz,
-    phone, email,
-    address_ru, address_uz,
-    working_hours_ru, working_hours_uz
-) VALUES (
-    'Скупка Бытовой Техники',
-    'Texnikani sotib olish',
-    'скупка техники, бытовая техника, выкуп техники',
-    'texnika sotib olish, maishiy texnika',
-    'Скупка бытовой техники в Ташкенте. Выгодные цены.',
-    'Toshkentda maishiy texnikani sotib olish. Qulay narxlar.',
-    '+998901234567',
-    'info@appliances.uz',
-    'г. Ташкент, ул. Примерная, 1',
-    'Toshkent sh., Misol ko\'chasi, 1',
-    'Пн-Вс: 9:00-20:00',
-    'Du-Ya: 9:00-20:00'
+--
+-- Database: `kuplyuta_db`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics`
+--
+
+CREATE TABLE `analytics` (
+  `id` int(11) NOT NULL,
+  `page_slug` varchar(100) DEFAULT NULL,
+  `language` varchar(5) DEFAULT NULL,
+  `visits` int(11) DEFAULT 0,
+  `clicks` int(11) DEFAULT 0,
+  `bounce_rate` decimal(5,2) DEFAULT 0.00,
+  `avg_time_seconds` int(11) DEFAULT 0,
+  `date` date NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics_monthly`
+--
+
+CREATE TABLE `analytics_monthly` (
+  `id` int(11) NOT NULL,
+  `page_slug` varchar(100) DEFAULT NULL,
+  `language` varchar(5) DEFAULT NULL,
+  `year` int(11) NOT NULL,
+  `month` int(11) NOT NULL,
+  `total_visits` int(11) DEFAULT 0,
+  `total_clicks` int(11) DEFAULT 0,
+  `avg_time_seconds` int(11) DEFAULT 0,
+  `unique_days` int(11) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics_rotations`
+--
+
+CREATE TABLE `analytics_rotations` (
+  `id` int(11) NOT NULL,
+  `page_slug` varchar(100) NOT NULL,
+  `year` int(11) NOT NULL,
+  `rotation_month` int(11) NOT NULL,
+  `language` varchar(5) DEFAULT 'ru',
+  `times_shown` int(11) DEFAULT 1,
+  `unique_days` int(11) DEFAULT 1,
+  `last_shown` date NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `content_rotations`
+--
+
+CREATE TABLE `content_rotations` (
+  `id` int(11) NOT NULL,
+  `page_id` int(11) NOT NULL,
+  `content_ru` longtext DEFAULT NULL,
+  `content_uz` longtext DEFAULT NULL,
+  `active_month` int(11) NOT NULL COMMENT '1-12 for Jan-Dec',
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `faqs`
+--
+
+CREATE TABLE `faqs` (
+  `id` int(11) NOT NULL,
+  `page_slug` varchar(100) NOT NULL,
+  `question_ru` text NOT NULL,
+  `question_uz` text NOT NULL,
+  `answer_ru` text NOT NULL,
+  `answer_uz` text NOT NULL,
+  `sort_order` int(11) DEFAULT 0,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `media`
+--
+
+CREATE TABLE `media` (
+  `id` int(11) NOT NULL,
+  `filename` varchar(255) NOT NULL,
+  `original_name` varchar(255) NOT NULL,
+  `file_size` int(11) NOT NULL,
+  `mime_type` varchar(100) NOT NULL,
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `pages`
+--
+
+CREATE TABLE `pages` (
+  `id` int(11) NOT NULL,
+  `slug` varchar(100) NOT NULL,
+  `title_ru` varchar(200) NOT NULL,
+  `title_uz` varchar(200) NOT NULL,
+  `content_ru` longtext DEFAULT NULL,
+  `content_uz` longtext DEFAULT NULL,
+  `meta_title_ru` varchar(200) DEFAULT NULL,
+  `meta_title_uz` varchar(200) DEFAULT NULL,
+  `meta_keywords_ru` text DEFAULT NULL,
+  `meta_keywords_uz` text DEFAULT NULL,
+  `meta_description_ru` text DEFAULT NULL,
+  `meta_description_uz` text DEFAULT NULL,
+  `og_title_ru` varchar(200) DEFAULT NULL,
+  `og_title_uz` varchar(200) DEFAULT NULL,
+  `og_description_ru` text DEFAULT NULL,
+  `og_description_uz` text DEFAULT NULL,
+  `og_image` varchar(500) DEFAULT NULL,
+  `canonical_url` varchar(500) DEFAULT NULL,
+  `enable_rotation` tinyint(1) DEFAULT 0,
+  `jsonld_ru` longtext DEFAULT NULL,
+  `jsonld_uz` longtext DEFAULT NULL,
+  `is_published` tinyint(1) DEFAULT 1,
+  `sort_order` int(11) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `seo_settings`
+--
+
+CREATE TABLE `seo_settings` (
+  `id` int(11) NOT NULL,
+  `site_name_ru` varchar(200) NOT NULL,
+  `site_name_uz` varchar(200) NOT NULL,
+  `meta_keywords_ru` text DEFAULT NULL,
+  `meta_keywords_uz` text DEFAULT NULL,
+  `meta_description_ru` text DEFAULT NULL,
+  `meta_description_uz` text DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `address_ru` text DEFAULT NULL,
+  `address_uz` text DEFAULT NULL,
+  `working_hours_ru` varchar(200) DEFAULT NULL,
+  `working_hours_uz` varchar(200) DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_crawl_frequency`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_crawl_frequency` (
+`page_slug` varchar(100)
+,`total_days_tracked` bigint(21)
+,`total_visits` decimal(32,0)
+,`avg_daily_visits` decimal(14,4)
+,`last_crawl_date` date
+,`days_since_last_crawl` int(7)
+,`crawl_frequency_category` varchar(7)
 );
 
--- Pages table
-CREATE TABLE pages (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    slug VARCHAR(100) UNIQUE NOT NULL,
-    title_ru VARCHAR(200) NOT NULL,
-    title_uz VARCHAR(200) NOT NULL,
-    content_ru LONGTEXT,
-    content_uz LONGTEXT,
-    meta_title_ru VARCHAR(200),
-    meta_title_uz VARCHAR(200),
-    meta_keywords_ru TEXT,
-    meta_keywords_uz TEXT,
-    meta_description_ru TEXT,
-    meta_description_uz TEXT,
-    jsonld_ru TEXT,
-    jsonld_uz TEXT,
-    is_published BOOLEAN DEFAULT TRUE,
-    sort_order INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_slug (slug),
-    INDEX idx_published (is_published)
-) ENGINE=InnoDB;
+-- --------------------------------------------------------
 
--- Insert sample pages
-INSERT INTO pages (slug, title_ru, title_uz, content_ru, content_uz, meta_title_ru, meta_title_uz, meta_description_ru, meta_description_uz) VALUES
-('home', 'Главная', 'Bosh sahifa', '<h1>Скупка бытовой техники</h1><p>Мы покупаем бытовую технику по выгодным ценам.</p>', '<h1>Maishiy texnikani sotib olish</h1><p>Biz maishiy texnikani qulay narxlarda sotib olamiz.</p>', 'Скупка Техники - Выгодные Цены', 'Texnika Sotib Olish - Qulay Narxlar', 'Скупка бытовой техники в Ташкенте', 'Toshkentda maishiy texnikani sotib olish'),
-('about', 'О нас', 'Biz haqimizda', '<h1>О компании</h1><p>Мы работаем с 2020 года.</p>', '<h1>Kompaniya haqida</h1><p>Biz 2020 yildan beri ishlaymiz.</p>', NULL, NULL, NULL, NULL),
-('contact', 'Контакты', 'Kontaktlar', '<h1>Свяжитесь с нами</h1><p>Телефон: {{global.phone}}</p>', '<h1>Biz bilan bog\'laning</h1><p>Telefon: {{global.phone}}</p>', NULL, NULL, NULL, NULL);
+--
+-- Stand-in structure for view `v_rotation_effectiveness`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_rotation_effectiveness` (
+`slug` varchar(100)
+,`title_ru` varchar(200)
+,`enable_rotation` tinyint(1)
+,`months_with_content` bigint(21)
+,`active_rotations` decimal(22,0)
+,`total_times_shown` decimal(32,0)
+,`last_rotation_shown` date
+);
 
--- Media table
-CREATE TABLE media (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    filename VARCHAR(255) NOT NULL,
-    original_name VARCHAR(255) NOT NULL,
-    file_size INT NOT NULL,
-    mime_type VARCHAR(100) NOT NULL,
-    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_filename (filename)
-) ENGINE=InnoDB;
+-- --------------------------------------------------------
 
--- Analytics placeholder
-CREATE TABLE analytics (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    page_slug VARCHAR(100),
-    language VARCHAR(5),
-    visits INT DEFAULT 0,
-    date DATE NOT NULL,
-    UNIQUE KEY unique_daily (page_slug, language, date)
-) ENGINE=InnoDB;
+--
+-- Structure for view `v_crawl_frequency`
+--
+DROP TABLE IF EXISTS `v_crawl_frequency`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_crawl_frequency`  AS SELECT `analytics`.`page_slug` AS `page_slug`, count(distinct `analytics`.`date`) AS `total_days_tracked`, sum(`analytics`.`visits`) AS `total_visits`, avg(`analytics`.`visits`) AS `avg_daily_visits`, max(`analytics`.`date`) AS `last_crawl_date`, to_days(curdate()) - to_days(max(`analytics`.`date`)) AS `days_since_last_crawl`, CASE WHEN to_days(curdate()) - to_days(max(`analytics`.`date`)) <= 1 THEN 'Daily' WHEN to_days(curdate()) - to_days(max(`analytics`.`date`)) <= 7 THEN 'Weekly' WHEN to_days(curdate()) - to_days(max(`analytics`.`date`)) <= 30 THEN 'Monthly' ELSE 'Rare' END AS `crawl_frequency_category` FROM `analytics` WHERE `analytics`.`date` >= curdate() - interval 90 day GROUP BY `analytics`.`page_slug` ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_rotation_effectiveness`
+--
+DROP TABLE IF EXISTS `v_rotation_effectiveness`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_rotation_effectiveness`  AS SELECT `p`.`slug` AS `slug`, `p`.`title_ru` AS `title_ru`, `p`.`enable_rotation` AS `enable_rotation`, count(distinct `cr`.`active_month`) AS `months_with_content`, sum(case when `cr`.`is_active` = 1 then 1 else 0 end) AS `active_rotations`, coalesce(sum(`ar`.`times_shown`),0) AS `total_times_shown`, max(`ar`.`last_shown`) AS `last_rotation_shown` FROM ((`pages` `p` left join `content_rotations` `cr` on(`p`.`id` = `cr`.`page_id`)) left join `analytics_rotations` `ar` on(`p`.`slug` = `ar`.`page_slug`)) WHERE `p`.`enable_rotation` = 1 GROUP BY `p`.`id`, `p`.`slug`, `p`.`title_ru`, `p`.`enable_rotation` ;
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `analytics`
+--
+ALTER TABLE `analytics`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_daily` (`page_slug`,`language`,`date`),
+  ADD KEY `idx_analytics_date_slug` (`date`,`page_slug`);
+
+--
+-- Indexes for table `analytics_monthly`
+--
+ALTER TABLE `analytics_monthly`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_monthly` (`page_slug`,`language`,`year`,`month`),
+  ADD KEY `idx_year_month` (`year`,`month`),
+  ADD KEY `idx_analytics_monthly_date` (`year`,`month`);
+
+--
+-- Indexes for table `analytics_rotations`
+--
+ALTER TABLE `analytics_rotations`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_rotation_tracking` (`page_slug`,`year`,`rotation_month`,`language`),
+  ADD KEY `idx_page_date` (`page_slug`,`year`,`rotation_month`),
+  ADD KEY `idx_last_shown` (`last_shown`);
+
+--
+-- Indexes for table `content_rotations`
+--
+ALTER TABLE `content_rotations`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_page_month` (`page_id`,`active_month`),
+  ADD KEY `idx_active` (`is_active`);
+
+--
+-- Indexes for table `faqs`
+--
+ALTER TABLE `faqs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_slug` (`page_slug`),
+  ADD KEY `idx_active` (`is_active`);
+
+--
+-- Indexes for table `media`
+--
+ALTER TABLE `media`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_filename` (`filename`);
+
+--
+-- Indexes for table `pages`
+--
+ALTER TABLE `pages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_slug` (`slug`),
+  ADD KEY `idx_published` (`is_published`);
+
+--
+-- Indexes for table `seo_settings`
+--
+ALTER TABLE `seo_settings`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `analytics`
+--
+ALTER TABLE `analytics`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `analytics_monthly`
+--
+ALTER TABLE `analytics_monthly`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `analytics_rotations`
+--
+ALTER TABLE `analytics_rotations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `content_rotations`
+--
+ALTER TABLE `content_rotations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `faqs`
+--
+ALTER TABLE `faqs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `media`
+--
+ALTER TABLE `media`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `pages`
+--
+ALTER TABLE `pages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `seo_settings`
+--
+ALTER TABLE `seo_settings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `users`
+--
+ALTER TABLE `users`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `content_rotations`
+--
+ALTER TABLE `content_rotations`
+  ADD CONSTRAINT `content_rotations_ibfk_1` FOREIGN KEY (`page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

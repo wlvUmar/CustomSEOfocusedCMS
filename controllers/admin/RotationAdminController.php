@@ -104,6 +104,19 @@ class RotationAdminController extends Controller {
         $id = $_POST['id'] ?? null;
         $pageId = intval($_POST['page_id']);
         $activeMonth = intval($_POST['active_month']);
+        $defaultFromPage = isset($_POST['default_from_page']);
+        
+        // If "default from page" button was clicked, use the helper method
+        if (!$id && $defaultFromPage) {
+            $result = $this->rotationModel->createDefaultFromPage($pageId, $activeMonth);
+            if ($result) {
+                $_SESSION['success'] = 'Content rotation created with page defaults';
+            } else {
+                $_SESSION['error'] = 'Failed to create rotation with defaults';
+            }
+            $this->redirect('/admin/rotations/manage/' . $pageId);
+            return;
+        }
         
         // Check for duplicate month (only if creating or changing month)
         if (!$id || ($id && $this->rotationModel->getById($id)['active_month'] != $activeMonth)) {
@@ -119,7 +132,21 @@ class RotationAdminController extends Controller {
             'content_ru' => $_POST['content_ru'] ?? '',
             'content_uz' => $_POST['content_uz'] ?? '',
             'active_month' => $activeMonth,
-            'is_active' => isset($_POST['is_active']) ? 1 : 0
+            'is_active' => isset($_POST['is_active']) ? 1 : 0,
+            // SEO fields
+            'meta_title_ru' => trim($_POST['meta_title_ru'] ?? '') ?: null,
+            'meta_title_uz' => trim($_POST['meta_title_uz'] ?? '') ?: null,
+            'meta_description_ru' => trim($_POST['meta_description_ru'] ?? '') ?: null,
+            'meta_description_uz' => trim($_POST['meta_description_uz'] ?? '') ?: null,
+            'meta_keywords_ru' => trim($_POST['meta_keywords_ru'] ?? '') ?: null,
+            'meta_keywords_uz' => trim($_POST['meta_keywords_uz'] ?? '') ?: null,
+            'og_title_ru' => trim($_POST['og_title_ru'] ?? '') ?: null,
+            'og_title_uz' => trim($_POST['og_title_uz'] ?? '') ?: null,
+            'og_description_ru' => trim($_POST['og_description_ru'] ?? '') ?: null,
+            'og_description_uz' => trim($_POST['og_description_uz'] ?? '') ?: null,
+            'og_image' => trim($_POST['og_image'] ?? '') ?: null,
+            'jsonld_ru' => trim($_POST['jsonld_ru'] ?? '') ?: null,
+            'jsonld_uz' => trim($_POST['jsonld_uz'] ?? '') ?: null
         ];
         
         if ($id) {
