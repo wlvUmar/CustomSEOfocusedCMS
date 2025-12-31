@@ -1,5 +1,6 @@
 <?php
 // path: ./views/admin/layout/header.php
+// Replace the existing navigation section with this
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -10,17 +11,10 @@
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin.css">
     <?php
     if (!empty($pageName)) {
-        $cssFile = "admin/{$pageName}.css"; // include 'admin' folder in URL and path
+        $cssFile = "admin/{$pageName}.css";
         $cssPath = BASE_PATH . "/public/css/{$cssFile}";
-
-        // debug
-        echo "<!-- Debug: Trying CSS path: {$cssPath} -->";
-
         if (file_exists($cssPath)) {
-            echo "<!-- Debug: CSS file exists, linking it -->";
             echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$cssFile}" . '">';
-        } else {
-            echo "<!-- Debug: CSS file NOT found -->";
         }
     }
     ?>
@@ -38,10 +32,10 @@
                 
                 <div class="nav-section">
                     <div class="nav-section-title">Content</div>
-                    <a href="<?= BASE_URL ?>/admin/pages" class="<?= strpos($_SERVER['REQUEST_URI'], '/pages') !== false ? 'active' : '' ?>">
+                    <a href="<?= BASE_URL ?>/admin/pages" class="<?= strpos($_SERVER['REQUEST_URI'], '/pages') !== false && strpos($_SERVER['REQUEST_URI'], '/rotations') === false ? 'active' : '' ?>">
                         <i data-feather="file-text"></i> Pages
                     </a>
-                    <a href="<?= BASE_URL ?>/admin/rotations/overview" class="<?= strpos($_SERVER['REQUEST_URI'], '/rotations') !== false ? 'active' : '' ?>">
+                    <a href="<?= BASE_URL ?>/admin/rotations-section" class="<?= strpos($_SERVER['REQUEST_URI'], '/rotations') !== false ? 'active' : '' ?>">
                         <i data-feather="repeat"></i> Content Rotation
                     </a>
                     <a href="<?= BASE_URL ?>/admin/faqs" class="<?= strpos($_SERVER['REQUEST_URI'], '/faqs') !== false ? 'active' : '' ?>">
@@ -51,17 +45,8 @@
                 
                 <div class="nav-section">
                     <div class="nav-section-title">Analytics</div>
-                    <a href="<?= BASE_URL ?>/admin/analytics" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics') !== false && strpos($_SERVER['REQUEST_URI'], '/rotation') === false && strpos($_SERVER['REQUEST_URI'], '/crawl') === false && strpos($_SERVER['REQUEST_URI'], '/navigation') === false ? 'active' : '' ?>">
-                        <i data-feather="trending-up"></i> Overview
-                    </a>
-                    <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics/rotation') !== false ? 'active' : '' ?>">
-                        <i data-feather="bar-chart"></i> Rotation Stats
-                    </a>
-                    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics/navigation') !== false ? 'active' : '' ?>">
-                        <i data-feather="git-branch"></i> Navigation Flow
-                    </a>
-                    <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics/crawl') !== false ? 'active' : '' ?>">
-                        <i data-feather="zap"></i> Crawl Analysis
+                    <a href="<?= BASE_URL ?>/admin/analytics-section" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics') !== false ? 'active' : '' ?>">
+                        <i data-feather="trending-up"></i> Analytics
                     </a>
                 </div>
                 
@@ -92,4 +77,3 @@
                     <div class="alert alert-error"><?= e($_SESSION['error']) ?></div>
                     <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>
-

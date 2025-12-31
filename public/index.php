@@ -135,12 +135,7 @@ $router->post('/admin/pages/delete', function() {
     $controller->delete();
 });
 
-// Content Rotations
-$router->get('/admin/rotations/manage/{pageId}', function($pageId) {
-    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
-    $controller = new RotationAdminController();
-    $controller->manage($pageId);
-});
+
 
 $router->get('/admin/rotations/new/{pageId}', function($pageId) {
     require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
@@ -197,12 +192,7 @@ $router->post('/admin/faqs/delete', function() {
     $controller->delete();
 });
 
-// Analytics
-$router->get('/admin/analytics', function() {
-    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
-    $controller = new AnalyticsController();
-    $controller->index();
-});
+
 
 // SEO
 $router->get('/admin/seo', function() {
@@ -237,11 +227,6 @@ $router->post('/admin/media/delete', function() {
 });
 
 
-$router->get('/admin/rotations/overview', function() {
-    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
-    $controller = new RotationAdminController();
-    $controller->overview();
-});
 
 // Clone rotation
 $router->post('/admin/rotations/clone', function() {
@@ -264,21 +249,6 @@ $router->post('/admin/rotations/preview', function() {
     $controller->preview();
 });
 
-// Enhanced Analytics Routes
-
-// Rotation analytics
-$router->get('/admin/analytics/rotation', function() {
-    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
-    $controller = new AnalyticsController();
-    $controller->rotationAnalytics();
-});
-
-// Crawl analysis
-$router->get('/admin/analytics/crawl', function() {
-    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
-    $controller = new AnalyticsController();
-    $controller->crawlAnalysis();
-});
 
 // Page detail analytics
 $router->get('/admin/analytics/page/{slug}', function($slug) {
@@ -299,16 +269,167 @@ $router->post('/track-internal-link', function() {
     $controller = new PageController();
     $controller->trackInternalLink();
 });
-$router->get('/admin/analytics/navigation', function() {
-    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
-    $controller = new AnalyticsController();
-    $controller->navigationAnalytics();
-});
+
 
 $router->notFound(function() {
     http_response_code(404);
     echo '<h1>404 - Page Not Found</h1>';
 });
+// Analytics Section Page (Main)
+$router->get('/admin/analytics-section', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsSectionController.php';
+    $controller = new AnalyticsSectionController();
+    $controller->index();
+});
 
+// Analytics AJAX endpoints
+$router->get('/admin/analytics-section/overview-content', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsSectionController.php';
+    $controller = new AnalyticsSectionController();
+    $controller->overviewContent();
+});
+
+$router->get('/admin/analytics-section/rotation-content', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsSectionController.php';
+    $controller = new AnalyticsSectionController();
+    $controller->rotationContent();
+});
+
+$router->get('/admin/analytics-section/navigation-content', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsSectionController.php';
+    $controller = new AnalyticsSectionController();
+    $controller->navigationContent();
+});
+
+$router->get('/admin/analytics-section/crawl-content', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsSectionController.php';
+    $controller = new AnalyticsSectionController();
+    $controller->crawlContent();
+});
+
+// Rotations Section Page (Main)
+$router->get('/admin/rotations-section', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationSectionController.php';
+    $controller = new RotationSectionController();
+    $controller->index();
+});
+
+// Rotations AJAX endpoints
+$router->get('/admin/rotations-section/overview-content', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationSectionController.php';
+    $controller = new RotationSectionController();
+    $controller->overviewContent();
+});
+
+$router->get('/admin/rotations-section/manage-content/{pageId}', function($pageId) {
+    require_once BASE_PATH . '/controllers/admin/RotationSectionController.php';
+    $controller = new RotationSectionController();
+    $controller->manageContent($pageId);
+});
+
+// ANALYTICS SECTION ROUTES (New AJAX-based)
+// Main section page with tabs
+$router->get('/admin/analytics-section', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsSectionController.php';
+    $controller = new AnalyticsSectionController();
+    $controller->index();
+});
+
+// AJAX content endpoints
+$router->get('/admin/analytics-section/overview-content', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsSectionController.php';
+    $controller = new AnalyticsSectionController();
+    $controller->overviewContent();
+});
+
+$router->get('/admin/analytics-section/rotation-content', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsSectionController.php';
+    $controller = new AnalyticsSectionController();
+    $controller->rotationContent();
+});
+
+$router->get('/admin/analytics-section/navigation-content', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsSectionController.php';
+    $controller = new AnalyticsSectionController();
+    $controller->navigationContent();
+});
+
+$router->get('/admin/analytics-section/crawl-content', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsSectionController.php';
+    $controller = new AnalyticsSectionController();
+    $controller->crawlContent();
+});
+
+// Export endpoint (still needed)
+$router->get('/admin/analytics/export', function() {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
+    $controller = new AnalyticsController();
+    $controller->export();
+});
+
+// Page detail view (full page, not AJAX)
+$router->get('/admin/analytics/page/{slug}', function($slug) {
+    require_once BASE_PATH . '/controllers/admin/AnalyticsController.php';
+    $controller = new AnalyticsController();
+    $controller->pageDetail($slug);
+});
+
+// ROTATION SECTION ROUTES (New AJAX-based)
+// Main section page with tabs
+$router->get('/admin/rotations-section', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationSectionController.php';
+    $controller = new RotationSectionController();
+    $controller->index();
+});
+
+// AJAX content endpoints
+$router->get('/admin/rotations-section/overview-content', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationSectionController.php';
+    $controller = new RotationSectionController();
+    $controller->overviewContent();
+});
+
+$router->get('/admin/rotations-section/manage-content/{pageId}', function($pageId) {
+    require_once BASE_PATH . '/controllers/admin/RotationSectionController.php';
+    $controller = new RotationSectionController();
+    $controller->manageContent($pageId);
+});
+
+// Full page routes for rotation management
+$router->get('/admin/rotations/new/{pageId}', function($pageId) {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->edit(null, $pageId);
+});
+
+$router->get('/admin/rotations/edit/{id}', function($id) {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->edit($id);
+});
+
+$router->post('/admin/rotations/save', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->save();
+});
+
+$router->post('/admin/rotations/delete', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->delete();
+});
+
+$router->post('/admin/rotations/clone', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->clone();
+});
+
+$router->post('/admin/rotations/bulk-action', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->bulkAction();
+});
 
 $router->dispatch();
