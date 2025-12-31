@@ -481,3 +481,20 @@ body {
     gap: 5px;
     margin-top: 10px;
 }
+.nav-section {
+    margin: 15px 0;
+}
+
+.nav-section-title {
+    padding: 8px 20px;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: rgba(237, 235, 215, 0.5);
+    letter-spacing: 0.5px;
+}
+
+.admin-nav a.active {
+    background: var(--accent-dark);
+    border-left: 3px solid var(--primary-light);
+}

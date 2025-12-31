@@ -1,4 +1,5 @@
 <?php
+// path: ./views/admin/layout/header.php
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -23,9 +24,6 @@
         }
     }
     ?>
-
-
-
 </head>
 <body>
     <div class="admin-wrapper">
@@ -53,11 +51,14 @@
                 
                 <div class="nav-section">
                     <div class="nav-section-title">Analytics</div>
-                    <a href="<?= BASE_URL ?>/admin/analytics" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics') !== false && strpos($_SERVER['REQUEST_URI'], '/rotation') === false && strpos($_SERVER['REQUEST_URI'], '/crawl') === false ? 'active' : '' ?>">
+                    <a href="<?= BASE_URL ?>/admin/analytics" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics') !== false && strpos($_SERVER['REQUEST_URI'], '/rotation') === false && strpos($_SERVER['REQUEST_URI'], '/crawl') === false && strpos($_SERVER['REQUEST_URI'], '/navigation') === false ? 'active' : '' ?>">
                         <i data-feather="trending-up"></i> Overview
                     </a>
                     <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics/rotation') !== false ? 'active' : '' ?>">
                         <i data-feather="bar-chart"></i> Rotation Stats
+                    </a>
+                    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics/navigation') !== false ? 'active' : '' ?>">
+                        <i data-feather="git-branch"></i> Navigation Flow
                     </a>
                     <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics/crawl') !== false ? 'active' : '' ?>">
                         <i data-feather="zap"></i> Crawl Analysis
@@ -92,22 +93,3 @@
                     <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>
 
-<style>
-.nav-section {
-    margin: 15px 0;
-}
-
-.nav-section-title {
-    padding: 8px 20px;
-    font-size: 0.75em;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: rgba(237, 235, 215, 0.5);
-    letter-spacing: 0.5px;
-}
-
-.admin-nav a.active {
-    background: var(--accent-dark);
-    border-left: 3px solid var(--primary-light);
-}
-</style>

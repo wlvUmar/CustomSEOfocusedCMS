@@ -15,7 +15,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         
         <a href="<?= BASE_URL ?>/admin/analytics/export?months=<?= $stats['months'] ?>" 
            class="btn btn-secondary">
-            <i data-feather="bar-chart-2"></i> Export CSV
+            <i data-feather="download"></i> Export CSV
         </a>
     </div>
 </div>
@@ -77,6 +77,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="tab-link">
         <i data-feather="repeat"></i> Rotation Analysis
     </a>
+    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="tab-link">
+        <i data-feather="git-branch"></i> Navigation Flow
+    </a>
     <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="tab-link">
         <i data-feather="zap"></i> Crawl Frequency
     </a>
@@ -84,6 +87,63 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <!-- Overview Content -->
 <?php if ($stats['view'] === 'overview'): ?>
+
+<!-- Quick Access Cards -->
+<div class="quick-access-cards">
+    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="quick-card quick-card--blue">
+        <div class="quick-card__header">
+            <div class="quick-card__icon">
+                <i data-feather="git-branch"></i>
+            </div>
+            <h3 class="quick-card__title">Navigation Flow</h3>
+        </div>
+
+        <p class="quick-card__description">
+            See how users navigate between pages. Track internal link clicks, popular paths, and user journeys.
+        </p>
+
+        <div class="quick-card__cta">
+            View Navigation Analytics
+            <i data-feather="arrow-right" class="icon-sm"></i>
+        </div>
+    </a>
+
+    <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="quick-card quick-card--green">
+        <div class="quick-card__header">
+            <div class="quick-card__icon">
+                <i data-feather="repeat"></i>
+            </div>
+            <h3 class="quick-card__title">Rotation Stats</h3>
+        </div>
+
+        <p class="quick-card__description">
+            Track which content variations are shown and how they perform each month.
+        </p>
+
+        <div class="quick-card__cta">
+            View Rotation Analytics
+            <i data-feather="arrow-right" class="icon-sm"></i>
+        </div>
+    </a>
+
+    <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="quick-card quick-card--orange">
+        <div class="quick-card__header">
+            <div class="quick-card__icon">
+                <i data-feather="zap"></i>
+            </div>
+            <h3 class="quick-card__title">Crawl Analysis</h3>
+        </div>
+
+        <p class="quick-card__description">
+            Monitor how often search engines crawl your pages and identify stale content.
+        </p>
+
+        <div class="quick-card__cta">
+            View Crawl Analytics
+            <i data-feather="arrow-right" class="icon-sm"></i>
+        </div>
+    </a>
+</div>
 
 <!-- Top Performers -->
 <div class="top-performers">
