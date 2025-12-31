@@ -7,6 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
+    <link rel="icon" type="image/x-icon" href="https://test.kuplyu-tashkent.uz/css/favicon.ico">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin.css">
     <?php
     if (!empty($pageName)) {
