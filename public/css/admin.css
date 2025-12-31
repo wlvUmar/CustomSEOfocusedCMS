@@ -76,22 +76,17 @@ body {
     margin-right: 6px;
 }
 
-/* -----------------------------
-   Extra spacing tweak for badges next to icons
--------------------------------*/
+
 .badge + .feather-icon,
 .feather-icon + .badge {
     margin-left: 4px;
 }
 
-/* -----------------------------
-   Optional: hover color inherit
--------------------------------*/
+
 .feather-icon:hover {
     color: inherit;
 }
 
-/* Login */
 .login-wrapper {
     display: flex;
     align-items: center;
@@ -115,7 +110,6 @@ body {
     color: var(--text-dark);
 }
 
-/* Admin Layout */
 .admin-wrapper {
     display: flex;
     min-height: 100vh;
@@ -187,7 +181,6 @@ body {
     color: #721c24;
 }
 
-/* Forms */
 .form-group {
     margin-bottom: 20px;
 }

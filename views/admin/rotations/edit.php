@@ -32,11 +32,11 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <div class="form-row">
         <div class="form-group">
             <label>Content (RU)*</label>
-            <textarea name="content_ru" class="tinymce" rows="6" required><?= $rotation['content_ru'] ?? '' ?></textarea>
+            <textarea name="content_ru" class="tinymce" rows="6"><?= $rotation['content_ru'] ?? '' ?></textarea>
         </div>
         <div class="form-group">
             <label>Content (UZ)*</label>
-            <textarea name="content_uz" class="tinymce" rows="6" required><?= $rotation['content_uz'] ?? '' ?></textarea>
+            <textarea name="content_uz" class="tinymce" rows="6"><?= $rotation['content_uz'] ?? '' ?></textarea>
         </div>
     </div>
 
