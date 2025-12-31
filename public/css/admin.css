@@ -525,3 +525,48 @@ body {
     background: var(--accent-dark);
     border-left: 3px solid var(--primary-light);
 }
+/* Sidebar toggle animation */
+.sidebar {
+    transition: transform 0.3s ease, width 0.3s ease;
+}
+
+.admin-main {
+    transition: margin-left 0.3s ease;
+}
+
+/* Collapsed sidebar */
+.sidebar.collapsed {
+    transform: translateX(-250px); /* hide completely */
+}
+
+/* Adjust main content when sidebar is collapsed */
+.admin-main.sidebar-collapsed {
+    margin-left: 0;
+}
+
+/* Responsive behavior */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-250px); /* hide sidebar by default on mobile */
+        position: fixed;
+        z-index: 998;
+    }
+
+    .sidebar.active {
+        transform: translateX(0); /* show sidebar */
+    }
+
+    .admin-main {
+        margin-left: 0; /* always full width on mobile */
+    }
+
+    #sidebar-toggle {
+        display: block;
+    }
+}
+
+@media (min-width: 769px) {
+    #sidebar-toggle {
+        display: none; /* hide toggle on desktop if not needed */
+    }
+}

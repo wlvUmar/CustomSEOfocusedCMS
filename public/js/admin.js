@@ -17,3 +17,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+    const toggleBtn = document.getElementById('sidebar-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    const main = document.querySelector('.admin-main');
+
+    toggleBtn.addEventListener('click', () => {
+        if (window.innerWidth < 769) {
+            // Mobile: toggle active class
+            sidebar.classList.toggle('active');
+        } else {
+            // Desktop: collapse sidebar
+            sidebar.classList.toggle('collapsed');
+            main.classList.toggle('sidebar-collapsed');
+        }
+    });
+});
