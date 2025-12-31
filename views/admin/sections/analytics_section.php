@@ -1,7 +1,6 @@
 <?php 
 // path: ./views/admin/sections/analytics_section.php
 $pageName = 'analytics/index';
-require BASE_PATH . '/views/admin/layout/header.php'; 
 ?>
 
 <div class="section-page" id="analytics-section">
@@ -177,4 +176,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-<?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

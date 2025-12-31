@@ -2,7 +2,6 @@
 <?php 
 // path: ./views/admin/rotations/overview.php
 $pageName = 'rotations/overview';
-require BASE_PATH . '/views/admin/layout/header.php'; 
 ?>
 
 <div class="page-header">
@@ -97,4 +96,3 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <?php endif; ?>
 </div>
 
-<?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

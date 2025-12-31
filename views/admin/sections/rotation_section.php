@@ -1,7 +1,6 @@
 <?php 
 // path: ./views/admin/sections/rotation_section.php
-$pageName = 'analytics/rotation';
-require BASE_PATH . '/views/admin/layout/header.php'; 
+$pageName = 'analytics/rotation ';
 ?>
 
 <div class="section-page" id="rotation-section">
@@ -170,4 +169,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-<?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

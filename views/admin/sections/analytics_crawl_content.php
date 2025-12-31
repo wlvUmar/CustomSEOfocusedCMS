@@ -1,7 +1,6 @@
 <?php 
 // path: ./views/admin/analytics/crawl.php
 $pageName = 'analytics/crawl';
-require BASE_PATH . '/views/admin/layout/header.php'; 
 ?>
 
 <div class="page-header">
@@ -205,4 +204,3 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <?php endif; ?>
 
-<?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
