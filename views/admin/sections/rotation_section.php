@@ -1,6 +1,6 @@
 <?php 
 // path: ./views/admin/sections/rotation_section.php
-$pageName = 'sections/rotation_section';
+$pageName = 'analytics/rotation';
 require BASE_PATH . '/views/admin/layout/header.php'; 
 ?>
 

@@ -1,6 +1,6 @@
 <?php 
 // path: ./views/admin/sections/analytics_section.php
-$pageName = 'sections/analytics_section';
+$pageName = 'analytics/index';
 require BASE_PATH . '/views/admin/layout/header.php'; 
 ?>
 
