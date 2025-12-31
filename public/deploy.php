@@ -1,38 +1,30 @@
 <?php
-$payload = json_decode(file_get_contents('php://input'), true);
 
-if (!$payload || empty($payload['ref'])) {
-    http_response_code(400);
-    die('Invalid webhook payload');
+$raw = file_get_contents('php://input');
+$payload = json_decode($raw, true);
+
+// Default branch
+$branch = 'master';
+
+// Try to extract branch from webhook payload
+if (is_array($payload) && !empty($payload['ref'])) {
+    $branch = basename($payload['ref']);
 }
 
-$branch = basename($payload['ref']);
-
-$allowedBranches = [
-    'master',
-    'admin-ajax-test',
-];
-
-if (!in_array($branch, $allowedBranches, true)) {
-    http_response_code(200);
-    die("Branch '$branch' ignored");
-}
-
-$repoPath = '/home/kuplyuta/appliances';
-
-$cmd = "
-cd $repoPath && \
-git fetch origin 2>&1 && \
-git checkout $branch 2>&1 && \
-git pull origin $branch 2>&1
-";
+$cmd = "cd /home/kuplyuta/appliances && \
+git stash save 'auto-stash before deploy' 2>&1 && \
+git pull origin $branch 2>&1 && \
+git stash pop 2>&1";
 
 $output = shell_exec($cmd);
 
-file_put_contents(
-    __DIR__ . '/deploy.log',
-    "[" . date('Y-m-d H:i:s') . "] Branch: $branch\n$output\n\n",
-    FILE_APPEND
-);
+// Make output HTML-friendly
+$outputHtml = htmlspecialchars($output);
 
-echo "Deployed branch: $branch";
+// Color-code common messages
+$outputHtml = preg_replace('/Already up-to-date/', '<span style="color:green;">Already up-to-date</span>', $outputHtml);
+$outputHtml = preg_replace('/No local changes to save/', '<span style="color:orange;">No local changes to save</span>', $outputHtml);
+$outputHtml = preg_replace('/Auto-merging/', '<span style="color:blue;">Auto-merging</span>', $outputHtml);
+$outputHtml = preg_replace('/CONFLICT/', '<span style="color:red;font-weight:bold;">CONFLICT</span>', $outputHtml);
+
+echo "<pre style='background:#111;color:#eee;padding:15px;border-radius:5px;'>$outputHtml</pre>";
