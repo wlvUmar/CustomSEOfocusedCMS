@@ -9,15 +9,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin.css">
-    <?php
-    if (!empty($pageName)) {
-        $cssFile = "admin/{$pageName}.css";
-        $cssPath = BASE_PATH . "/public/css/{$cssFile}";
-        if (file_exists($cssPath)) {
-            echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$cssFile}" . '">';
-        }
-    }
-    ?>
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/analytics/crawl.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/analytics/index.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/analytics/navigation.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/analytics/page_detail.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/analytics/rotation.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/rotations/overview.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/rotations/manage.css">
+    
 </head>
 <body>
     <div class="admin-wrapper">
