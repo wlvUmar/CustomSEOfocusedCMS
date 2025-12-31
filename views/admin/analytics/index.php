@@ -68,22 +68,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
 </div>
 
-<!-- Navigation Tabs -->
-<div class="analytics-tabs">
-    <a href="?view=overview&months=<?= $stats['months'] ?>" 
-       class="tab-link <?= $stats['view'] === 'overview' ? 'active' : '' ?>">
-        <i data-feather="trending-up"></i> Overview
-    </a>
-    <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="tab-link">
-        <i data-feather="repeat"></i> Rotation Analysis
-    </a>
-    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="tab-link">
-        <i data-feather="git-branch"></i> Navigation Flow
-    </a>
-    <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="tab-link">
-        <i data-feather="zap"></i> Crawl Frequency
-    </a>
-</div>
 
 <!-- Overview Content -->
 <?php if ($stats['view'] === 'overview'): ?>
