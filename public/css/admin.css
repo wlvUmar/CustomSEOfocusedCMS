@@ -124,6 +124,33 @@ body {
     overflow-y: auto;
 }
 
+/* Sidebar scroll styling */
+
+/* Chrome, Edge, Safari */
+.sidebar::-webkit-scrollbar {
+    width: 6px;               /* thin scrollbar */
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: var(--primary-dark);  /* track matches sidebar background */
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--accent-dark);  /* thumb slightly lighter/darker */
+    border-radius: 3px;              /* rounded edges */
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-light); /* subtle hover effect */
+}
+
+/* Firefox */
+.sidebar {
+    scrollbar-width: thin;                 /* thin scrollbar */
+    scrollbar-color: var(--accent-dark) var(--primary-dark); /* thumb color | track color */
+}
+
+
 .logo {
     padding: 20px;
     background: var(--accent-dark);
