@@ -89,61 +89,59 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <?php if ($stats['view'] === 'overview'): ?>
 
 <!-- Quick Access Cards -->
-<div class="quick-access-cards">
-    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="quick-card quick-card--blue">
-        <div class="quick-card__header">
-            <div class="quick-card__icon">
-                <i data-feather="git-branch"></i>
+<div class="quick-access-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 40px;">
+    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="quick-card" style="text-decoration: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid #3b82f6; transition: all 0.2s;">
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 12px;">
+            <div style="width: 48px; height: 48px; background: #eff6ff; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                <i data-feather="git-branch" style="color: #3b82f6; width: 24px; height: 24px;"></i>
             </div>
-            <h3 class="quick-card__title">Navigation Flow</h3>
+            <h3 style="margin: 0; font-size: 1.1em; color: var(--text-dark);">Navigation Flow</h3>
         </div>
-
-        <p class="quick-card__description">
+        <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.5;">
             See how users navigate between pages. Track internal link clicks, popular paths, and user journeys.
         </p>
-
-        <div class="quick-card__cta">
-            View Navigation Analytics
-            <i data-feather="arrow-right" class="icon-sm"></i>
+        <div style="margin-top: 15px; color: #3b82f6; font-weight: 600; font-size: 0.9em; display: flex; align-items: center; gap: 5px;">
+            View Navigation Analytics <i data-feather="arrow-right" style="width: 16px; height: 16px;"></i>
         </div>
     </a>
-
-    <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="quick-card quick-card--green">
-        <div class="quick-card__header">
-            <div class="quick-card__icon">
-                <i data-feather="repeat"></i>
+    
+    <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="quick-card" style="text-decoration: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid #059669; transition: all 0.2s;">
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 12px;">
+            <div style="width: 48px; height: 48px; background: #d1f4e0; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                <i data-feather="repeat" style="color: #059669; width: 24px; height: 24px;"></i>
             </div>
-            <h3 class="quick-card__title">Rotation Stats</h3>
+            <h3 style="margin: 0; font-size: 1.1em; color: var(--text-dark);">Rotation Stats</h3>
         </div>
-
-        <p class="quick-card__description">
+        <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.5;">
             Track which content variations are shown and how they perform each month.
         </p>
-
-        <div class="quick-card__cta">
-            View Rotation Analytics
-            <i data-feather="arrow-right" class="icon-sm"></i>
+        <div style="margin-top: 15px; color: #059669; font-weight: 600; font-size: 0.9em; display: flex; align-items: center; gap: 5px;">
+            View Rotation Analytics <i data-feather="arrow-right" style="width: 16px; height: 16px;"></i>
         </div>
     </a>
-
-    <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="quick-card quick-card--orange">
-        <div class="quick-card__header">
-            <div class="quick-card__icon">
-                <i data-feather="zap"></i>
+    
+    <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="quick-card" style="text-decoration: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid #f59e0b; transition: all 0.2s;">
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 12px;">
+            <div style="width: 48px; height: 48px; background: #fef3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                <i data-feather="zap" style="color: #f59e0b; width: 24px; height: 24px;"></i>
             </div>
-            <h3 class="quick-card__title">Crawl Analysis</h3>
+            <h3 style="margin: 0; font-size: 1.1em; color: var(--text-dark);">Crawl Analysis</h3>
         </div>
-
-        <p class="quick-card__description">
+        <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.5;">
             Monitor how often search engines crawl your pages and identify stale content.
         </p>
-
-        <div class="quick-card__cta">
-            View Crawl Analytics
-            <i data-feather="arrow-right" class="icon-sm"></i>
+        <div style="margin-top: 15px; color: #f59e0b; font-weight: 600; font-size: 0.9em; display: flex; align-items: center; gap: 5px;">
+            View Crawl Analytics <i data-feather="arrow-right" style="width: 16px; height: 16px;"></i>
         </div>
     </a>
 </div>
+
+<style>
+.quick-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+}
+</style>
 
 <!-- Top Performers -->
 <div class="top-performers">
