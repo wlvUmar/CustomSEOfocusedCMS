@@ -16,3 +16,5 @@ $outputHtml = preg_replace('/Auto-merging/', '<span style="color:blue;">Auto-mer
 $outputHtml = preg_replace('/CONFLICT/', '<span style="color:red;font-weight:bold;">CONFLICT</span>', $outputHtml);
 
 echo "<pre style='background:#111;color:#eee;padding:15px;border-radius:5px;'>$outputHtml</pre>";
+
+
