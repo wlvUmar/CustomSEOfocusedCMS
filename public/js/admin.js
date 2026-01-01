@@ -15,7 +15,15 @@ function switchTab(tab, event) {
 // ----------------------------
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Confirm before delete
+    const wrapper = document.querySelector('.admin-wrapper');
+    const sidebar = document.querySelector('.sidebar');
+    const toggle = document.querySelector('.sidebar-toggle');
+
+    if (!wrapper || !sidebar || !toggle) return;
+
+    // ----------------------------
+    // Delete Confirmation
+    // ----------------------------
     document.querySelectorAll('form[action*="delete"]').forEach(form => {
         form.addEventListener('submit', e => {
             if (!confirm('Are you sure you want to delete this item?')) {
@@ -24,22 +32,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const wrapper = document.querySelector('.admin-wrapper');
-    const sidebar = document.querySelector('.sidebar');
-    const toggle = document.querySelector('.sidebar-toggle');
-
-    if (!wrapper || !sidebar || !toggle) return;
-
-    // Update toggle icon
+    // ----------------------------
+    // Sidebar Toggle
+    // ----------------------------
     function updateIcon() {
         toggle.innerHTML = wrapper.classList.contains('sidebar-collapsed')
             ? '<i data-feather="chevron-right"></i>'
             : '<i data-feather="chevron-left"></i>';
-        feather.replace();  // render feather icons
+        feather.replace(); // render feather icons
     }
 
-    // Toggle sidebar
-    toggle.addEventListener('click', () => {
+    // Toggle click
+    toggle.addEventListener('click', e => {
+        e.stopPropagation(); // prevent document click
         wrapper.classList.toggle('sidebar-collapsed');
         updateIcon();
     });
@@ -54,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Initial state
-    wrapper.classList.add('sidebar-collapsed');
+
+    wrapper.classList.add('sidebar-collapsed'); // start collapsed
     updateIcon();
 });
