@@ -55,5 +55,10 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        window.baseUrl = "<?= rtrim(BASE_URL, '/') ?>";
+    </script>
+    <script src="<?= BASE_URL ?>/public/js/link-tracking.js" defer></script>
 </body>
 </html>

@@ -75,27 +75,22 @@ if (!empty($faqs)) {
     <meta name="twitter:description" content="<?= e($ogDescription) ?>">
     <meta name="twitter:image" content="<?= e($ogImage) ?>">
     
-    <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     
-    <!-- Stylesheet -->
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.css">
     
-    <!-- Custom JSON-LD Schema -->
     <?php if ($jsonld): ?>
-    <script type="application/ld+json">
-    <?= $jsonld ?>
-    </script>
+        <script type="application/ld+json">
+            <?= $jsonld ?>
+        </script>
     <?php endif; ?>
     
-    <!-- FAQ Schema -->
     <?php if ($faqSchema): ?>
-    <script type="application/ld+json">
-    <?= $faqSchema ?>
-    </script>
+        <script type="application/ld+json">
+            <?= $faqSchema ?>
+        </script>
     <?php endif; ?>
     
-    <!-- Organization Schema -->
     <?php if ($seo['phone'] || $seo['email']): ?>
     <script type="application/ld+json">
     {

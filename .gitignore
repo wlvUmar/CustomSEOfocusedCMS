@@ -2,3 +2,4 @@ database/schema.sql
 public/uploads/
 parse.py
 all_source_files.txt
+./database/schema.sql

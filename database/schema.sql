@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Dec 31, 2025 at 01:35 PM
+-- Generation Time: Jan 01, 2026 at 09:32 PM
 -- Server version: 10.3.39-MariaDB-log-cll-lve
 -- PHP Version: 8.1.30
 
@@ -37,6 +37,40 @@ CREATE TABLE `analytics` (
   `avg_time_seconds` int(11) DEFAULT 0,
   `date` date NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics_internal_links`
+--
+
+CREATE TABLE `analytics_internal_links` (
+  `id` int(11) NOT NULL,
+  `from_slug` varchar(100) NOT NULL,
+  `to_slug` varchar(100) NOT NULL,
+  `language` varchar(5) DEFAULT 'ru',
+  `clicks` int(11) DEFAULT 1,
+  `date` date NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics_internal_links_monthly`
+--
+
+CREATE TABLE `analytics_internal_links_monthly` (
+  `id` int(11) NOT NULL,
+  `from_slug` varchar(100) NOT NULL,
+  `to_slug` varchar(100) NOT NULL,
+  `language` varchar(5) DEFAULT 'ru',
+  `year` int(11) NOT NULL,
+  `month` int(11) NOT NULL,
+  `total_clicks` int(11) DEFAULT 0,
+  `unique_days` int(11) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -86,6 +120,19 @@ CREATE TABLE `content_rotations` (
   `page_id` int(11) NOT NULL,
   `content_ru` longtext DEFAULT NULL,
   `content_uz` longtext DEFAULT NULL,
+  `meta_title_ru` varchar(200) DEFAULT NULL,
+  `meta_title_uz` varchar(200) DEFAULT NULL,
+  `meta_description_ru` text DEFAULT NULL,
+  `meta_description_uz` text DEFAULT NULL,
+  `meta_keywords_ru` text DEFAULT NULL,
+  `meta_keywords_uz` text DEFAULT NULL,
+  `og_title_ru` varchar(200) DEFAULT NULL,
+  `og_title_uz` varchar(200) DEFAULT NULL,
+  `og_description_ru` text DEFAULT NULL,
+  `og_description_uz` text DEFAULT NULL,
+  `og_image` varchar(500) DEFAULT NULL,
+  `jsonld_ru` longtext DEFAULT NULL,
+  `jsonld_uz` longtext DEFAULT NULL,
   `active_month` int(11) NOT NULL COMMENT '1-12 for Jan-Dec',
   `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -216,6 +263,35 @@ CREATE TABLE `v_crawl_frequency` (
 -- --------------------------------------------------------
 
 --
+-- Stand-in structure for view `v_navigation_flow`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_navigation_flow` (
+`from_slug` varchar(100)
+,`to_slug` varchar(100)
+,`language` varchar(5)
+,`total_clicks` decimal(32,0)
+,`active_days` bigint(21)
+,`last_click_date` date
+,`days_since_last_click` int(7)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_popular_paths`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_popular_paths` (
+`from_slug` varchar(100)
+,`to_slug` varchar(100)
+,`clicks` decimal(32,0)
+,`active_months` bigint(21)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Stand-in structure for view `v_rotation_effectiveness`
 -- (See below for the actual view)
 --
@@ -241,6 +317,24 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER V
 -- --------------------------------------------------------
 
 --
+-- Structure for view `v_navigation_flow`
+--
+DROP TABLE IF EXISTS `v_navigation_flow`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_navigation_flow`  AS SELECT `analytics_internal_links`.`from_slug` AS `from_slug`, `analytics_internal_links`.`to_slug` AS `to_slug`, `analytics_internal_links`.`language` AS `language`, sum(`analytics_internal_links`.`clicks`) AS `total_clicks`, count(distinct `analytics_internal_links`.`date`) AS `active_days`, max(`analytics_internal_links`.`date`) AS `last_click_date`, to_days(curdate()) - to_days(max(`analytics_internal_links`.`date`)) AS `days_since_last_click` FROM `analytics_internal_links` WHERE `analytics_internal_links`.`date` >= curdate() - interval 90 day GROUP BY `analytics_internal_links`.`from_slug`, `analytics_internal_links`.`to_slug`, `analytics_internal_links`.`language` ORDER BY sum(`analytics_internal_links`.`clicks`) DESC ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_popular_paths`
+--
+DROP TABLE IF EXISTS `v_popular_paths`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_popular_paths`  AS SELECT `analytics_internal_links_monthly`.`from_slug` AS `from_slug`, `analytics_internal_links_monthly`.`to_slug` AS `to_slug`, sum(`analytics_internal_links_monthly`.`total_clicks`) AS `clicks`, count(distinct concat(`analytics_internal_links_monthly`.`year`,'-',`analytics_internal_links_monthly`.`month`)) AS `active_months` FROM `analytics_internal_links_monthly` WHERE cast(concat(`analytics_internal_links_monthly`.`year`,'-',`analytics_internal_links_monthly`.`month`,'-01') as date) >= curdate() - interval 6 month GROUP BY `analytics_internal_links_monthly`.`from_slug`, `analytics_internal_links_monthly`.`to_slug` HAVING `clicks` > 5 ORDER BY sum(`analytics_internal_links_monthly`.`total_clicks`) DESC LIMIT 0, 50 ;
+
+-- --------------------------------------------------------
+
+--
 -- Structure for view `v_rotation_effectiveness`
 --
 DROP TABLE IF EXISTS `v_rotation_effectiveness`;
@@ -258,6 +352,24 @@ ALTER TABLE `analytics`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_daily` (`page_slug`,`language`,`date`),
   ADD KEY `idx_analytics_date_slug` (`date`,`page_slug`);
+
+--
+-- Indexes for table `analytics_internal_links`
+--
+ALTER TABLE `analytics_internal_links`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_daily_link` (`from_slug`,`to_slug`,`language`,`date`),
+  ADD KEY `idx_from_slug` (`from_slug`),
+  ADD KEY `idx_to_slug` (`to_slug`),
+  ADD KEY `idx_date` (`date`);
+
+--
+-- Indexes for table `analytics_internal_links_monthly`
+--
+ALTER TABLE `analytics_internal_links_monthly`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_monthly_link` (`from_slug`,`to_slug`,`language`,`year`,`month`),
+  ADD KEY `idx_year_month` (`year`,`month`);
 
 --
 -- Indexes for table `analytics_monthly`
@@ -330,6 +442,18 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `analytics`
 --
 ALTER TABLE `analytics`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `analytics_internal_links`
+--
+ALTER TABLE `analytics_internal_links`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `analytics_internal_links_monthly`
+--
+ALTER TABLE `analytics_internal_links_monthly`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --

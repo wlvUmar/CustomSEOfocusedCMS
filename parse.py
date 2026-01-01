@@ -6,7 +6,6 @@ OUTPUT_FILE = "al_l_source_files.txt"
 
 with open(OUTPUT_FILE, "w", encoding="utf-8") as out:
     for root, dirs, files in os.walk("."):
-        # optional: skip common junk dirs
         dirs[:] = [d for d in dirs if d not in {"node_modules", "vendor", ".git"}]
 
         for file in sorted(files):

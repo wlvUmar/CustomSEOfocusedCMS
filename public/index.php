@@ -305,6 +305,18 @@ $router->get('/admin/analytics/navigation', function() {
     $controller->navigationAnalytics();
 });
 
+$router->post('/admin/rotations/bulk-upload', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->bulkUpload();
+});
+
+$router->get('/admin/rotations/download-template', function() {
+    require_once BASE_PATH . '/controllers/admin/RotationAdminController.php';
+    $controller = new RotationAdminController();
+    $controller->downloadTemplate();
+});
+
 $router->notFound(function() {
     http_response_code(404);
     echo '<h1>404 - Page Not Found</h1>';
