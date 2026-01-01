@@ -134,7 +134,7 @@ body {
 .sidebar-toggle {
     position: fixed;
     bottom: 80px;
-    width: 36px;                 /* wider than before, matches design */
+    width: 36px;
     height: 56px;
     background: var(--primary-dark);
     color: var(--primary-light);
@@ -144,7 +144,7 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 1500;
+    z-index: 2000; /* above sidebar */
     transition: left 0.3s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
