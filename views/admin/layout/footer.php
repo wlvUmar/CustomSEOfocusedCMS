@@ -1,4 +1,6 @@
-
+                  <button class="sidebar-toggle" aria-label="Toggle sidebar">
+                      <i data-feather="chevron-right"></i>
+                  </button>
             </div>
         </main>
     </div>

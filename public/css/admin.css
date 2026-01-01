@@ -15,6 +15,8 @@
     --success-hover: #047857;
     --danger: #dc3545;
     --danger-hover: #c82333;
+    --sidebar-width: 260px;
+    --toggle-size: 28px;
 }
 
 body {
@@ -111,17 +113,23 @@ body {
 }
 
 .admin-wrapper {
+    position: relative;
     display: flex;
     min-height: 100vh;
 }
 
 .sidebar {
-    width: 250px;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-width);
     background: var(--primary-dark);
     color: var(--primary-light);
     position: fixed;
     height: 100vh;
     overflow-y: auto;
+    transform: translateX(0);
+    transition: transform 0.3s ease;
+    z-index: 1000;
 }
 
 /* Sidebar scroll styling */
@@ -180,8 +188,50 @@ body {
 
 .admin-main {
     flex: 1;
-    margin-left: 250px;
+    margin-left: var(--sidebar-width);
     padding: 30px;
+    width: calc(100% - var(--sidebar-width));
+    min-height: 100vh;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+.admin-wrapper.sidebar-collapsed .sidebar {
+    transform: translateX(calc(-1 * var(--sidebar-width)));
+}
+
+.admin-wrapper.sidebar-collapsed .admin-main {
+    margin-left: 0;
+    width: 100%;
+}
+
+/* Toggle button */
+.sidebar-toggle {
+    position: fixed;
+    top: 120px;
+    left: calc(var(--sidebar-width) - var(--toggle-size) / 2);
+    width: var(--toggle-size);
+    height: var(--toggle-size);
+    border-radius: 999px;
+    border: none;
+    background: #111827;
+    color: #fff;
+    cursor: pointer;
+    z-index: 1500;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transition: left 0.3s ease, background 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+    background: #1f2937;
+}
+
+/* Toggle position when collapsed */
+.admin-wrapper.sidebar-collapsed .sidebar-toggle {
+    left: 6px;
 }
 
 .admin-content {
