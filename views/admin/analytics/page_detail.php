@@ -171,7 +171,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <?php endif; ?>
 
     <div class="recommendation info">
-        <div class="rec-icon"><i data-feather="lightbulb"></i></div>
+        <div class="rec-icon"><i data-feather="zap"></i></div>
         <div class="rec-content">
             <h3>Improve performance</h3>
             <ul>

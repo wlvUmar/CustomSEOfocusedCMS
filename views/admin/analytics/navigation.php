@@ -155,7 +155,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <!-- Recommendations Panel -->
 <div class="recommendations-panel">
-    <h2><i data-feather="lightbulb"></i> Optimization Recommendations</h2>
+    <h2><i data-feather="zap"></i> Optimization Recommendations</h2>
     
     <?php
     // Find pages with low CTR
