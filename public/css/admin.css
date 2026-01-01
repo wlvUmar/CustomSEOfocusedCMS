@@ -16,7 +16,7 @@
     --danger: #dc3545;
     --danger-hover: #c82333;
     --sidebar-width: 260px;
-    --toggle-size: 28px;
+    --toggle-size: 20px;
 }
 
 body {
@@ -139,7 +139,7 @@ body {
     background: var(--primary-dark);
     color: var(--primary-light);
     border: none;
-    border-radius: 0 14px 14px 0;
+    border-radius: 0 50px 50px 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -150,9 +150,6 @@ body {
 
 .sidebar-toggle:hover {
     transform: scale(1.04);
-    box-shadow:
-        0 6px 14px rgba(0,0,0,0.3),
-        inset 0 0 0 1px rgba(255,255,255,0.06);
 }
 
 .sidebar-toggle:active {
@@ -163,11 +160,13 @@ body {
     left: calc(var(--sidebar-width) - var(--toggle-size) / 2); /* sticks out half width */
 }
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    left: 0; /* always visible on left edge */
+    left: 0; 
+    will-change: left
 }
 
 .admin-wrapper.sidebar-collapsed .sidebar {
     transform: translateX(calc(-1 * var(--sidebar-width)));
+    will-change: transform;
 }
 .admin-wrapper.sidebar-collapsed .admin-main {
     margin-left: 0;
