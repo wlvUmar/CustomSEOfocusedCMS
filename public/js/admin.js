@@ -5,14 +5,17 @@ function switchTab(tab, event) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-    event.target.classList.add('active');
-    document.getElementById('tab-' + tab).classList.add('active');
+    event.currentTarget.classList.add('active'); // safer than event.target
+    const content = document.getElementById('tab-' + tab);
+    if (content) content.classList.add('active');
 }
 
 // ----------------------------
 // DOM Ready
 // ----------------------------
 document.addEventListener('DOMContentLoaded', () => {
+
+    // Confirm before delete
     document.querySelectorAll('form[action*="delete"]').forEach(form => {
         form.addEventListener('submit', e => {
             if (!confirm('Are you sure you want to delete this item?')) {
@@ -27,20 +30,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!wrapper || !sidebar || !toggle) return;
 
+    // Update toggle icon
     function updateIcon() {
         toggle.innerHTML = wrapper.classList.contains('sidebar-collapsed')
             ? '<i data-feather="chevron-right"></i>'
             : '<i data-feather="chevron-left"></i>';
-        feather.replace();  // ensure feather icons render
+        feather.replace();  // render feather icons
     }
 
-    // Remove e.stopPropagation(); to allow document click collapse to work reliably
+    // Toggle sidebar
     toggle.addEventListener('click', () => {
         wrapper.classList.toggle('sidebar-collapsed');
         updateIcon();
     });
 
-    document.addEventListener('click', (e) => {
+    // Click outside sidebar to collapse
+    document.addEventListener('click', e => {
         if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) {
             if (!wrapper.classList.contains('sidebar-collapsed')) {
                 wrapper.classList.add('sidebar-collapsed');

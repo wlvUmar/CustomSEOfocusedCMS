@@ -134,7 +134,7 @@ body {
 .sidebar-toggle {
     position: fixed;
     bottom: 80px;
-    width: var(--toggle-size);
+    width: 36px;                 /* wider than before, matches design */
     height: 56px;
     background: var(--primary-dark);
     color: var(--primary-light);
@@ -160,16 +160,20 @@ body {
 }
 
 .admin-wrapper:not(.sidebar-collapsed) .sidebar-toggle {
-    left: calc(var(--sidebar-width) - var(--toggle-size) / 2);
+    left: calc(var(--sidebar-width) - 18px);  /* toggle sticks out half its width */
 }
 
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    left: 0;
+    left: 0;   /* toggle sits at left edge */
 }
+
 .admin-wrapper.sidebar-collapsed .sidebar {
     transform: translateX(calc(-1 * var(--sidebar-width)));
 }
 
+.admin-wrapper.sidebar-collapsed .admin-main {
+    margin-left: 0;
+}
 
 /* Chrome, Edge, Safari */
 .sidebar::-webkit-scrollbar {
