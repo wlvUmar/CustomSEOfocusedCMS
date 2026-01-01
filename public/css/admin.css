@@ -156,30 +156,34 @@ body {
 
 .sidebar-toggle {
     position: fixed;
-    top: 120px;
-    left: 236px; /* 250px - half button */
-    width: 28px;
-    height: 28px;
-    border-radius: 999px;
-    border: none;
+    bottom: 80px;              /* lower part of viewport */
+    left: 0;
+    width: 36px;
+    height: 56px;
+
     background: var(--primary-dark);
     color: var(--primary-light);
-    cursor: pointer;
-    z-index: 1500;
+    border: none;
+    border-radius: 0 12px 12px 0;
 
     display: flex;
     align-items: center;
     justify-content: center;
 
-    transition: left 0.3s ease, background 0.2s ease;
-}
+    cursor: pointer;
+    z-index: 1500;
 
-.admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    left: 6px;
+    /* This makes it feel "attached" */
+    transform: translateX(calc(var(--sidebar-width, 250px) - 12px));
+    transition: transform 0.3s ease, background 0.2s ease;
 }
-
 .sidebar-toggle:hover {
     background: var(--accent-dark);
+}
+
+
+.admin-wrapper.sidebar-collapsed .sidebar-toggle {
+    transform: translateX(-12px);
 }
 
 .logo {
