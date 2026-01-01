@@ -130,34 +130,22 @@ body {
     transition: transform 0.3s ease;
     z-index: 1000;
 }
-
 /* Base toggle style */
 .sidebar-toggle {
-    position: fixed;           /* relative to viewport, not sidebar */
+    position: fixed;
     bottom: 80px;
-    left: 0;                   /* default collapsed position */
-
-    width: 36px;
+    width: var(--toggle-size);
     height: 56px;
-
     background: var(--primary-dark);
     color: var(--primary-light);
     border: none;
     border-radius: 0 14px 14px 0;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     cursor: pointer;
     z-index: 1500;
-
-    box-shadow:
-        0 4px 10px rgba(0,0,0,0.25),
-        inset 0 0 0 1px rgba(255,255,255,0.04);
-
-    transform: scale(1);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, left 0.3s ease;
+    transition: left 0.3s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .sidebar-toggle:hover {
@@ -171,28 +159,12 @@ body {
     transform: scale(0.96);
 }
 
-/* Sidebar open → move toggle to stick out from sidebar */
 .admin-wrapper:not(.sidebar-collapsed) .sidebar-toggle {
-    left: var(--sidebar-width);  /* sticks out from sidebar */
+    left: calc(var(--sidebar-width) - var(--toggle-size) / 2);
 }
 
-/* Sidebar collapsed → toggle sits at edge */
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    left: 0;                     /* sticks to left edge */
-}
-
-/* Sidebar collapse animation */
-.sidebar {
-    top: 0;
     left: 0;
-    width: var(--sidebar-width);
-    background: var(--primary-dark);
-    color: var(--primary-light);
-    position: fixed;
-    height: 100vh;
-    overflow-y: auto;
-    transform: translateX(0);
-    transition: transform 0.3s ease;
 }
 .admin-wrapper.sidebar-collapsed .sidebar {
     transform: translateX(calc(-1 * var(--sidebar-width)));
@@ -254,14 +226,11 @@ body {
 
 .admin-main {
     flex: 1;
-    margin-left: 250px;
+    margin-left:  var(--sidebar-width);
     padding: 30px;
     transition: margin-left 0.3s ease;
 }
 
-.admin-wrapper.sidebar-collapsed .admin-main {
-    margin-left: 0;
-}
 
 .admin-content {
     max-width: 1400px;

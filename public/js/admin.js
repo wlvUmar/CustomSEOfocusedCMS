@@ -31,24 +31,21 @@ document.addEventListener('DOMContentLoaded', () => {
         toggle.innerHTML = wrapper.classList.contains('sidebar-collapsed')
             ? '<i data-feather="chevron-right"></i>'
             : '<i data-feather="chevron-left"></i>';
-        feather.replace();
+        feather.replace();  // ensure feather icons render
     }
 
-    toggle.addEventListener('click', e => {
-        e.stopPropagation();
+    // Remove e.stopPropagation(); to allow document click collapse to work reliably
+    toggle.addEventListener('click', () => {
         wrapper.classList.toggle('sidebar-collapsed');
         updateIcon();
     });
 
-    document.addEventListener('click', e => {
-        if (
-            e.target.closest('.sidebar') ||
-            e.target.closest('.sidebar-toggle')
-        ) return;
-
-        if (!wrapper.classList.contains('sidebar-collapsed')) {
-            wrapper.classList.add('sidebar-collapsed');
-            updateIcon();
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) {
+            if (!wrapper.classList.contains('sidebar-collapsed')) {
+                wrapper.classList.add('sidebar-collapsed');
+                updateIcon();
+            }
         }
     });
 
