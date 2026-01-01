@@ -182,7 +182,7 @@ tinymce.init({
     menubar: false,
     plugins: 'lists link image code',
     toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link image | code',
-    content_style: 'body { font-family: sans-serif; font-size: 14px; }'
+    content_css: '<?= BASE_URL ?>/public/css/pages.css'
 });
 </script>
 

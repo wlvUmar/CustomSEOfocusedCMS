@@ -81,10 +81,6 @@
                 </a>
             </nav>
         </aside>
-        <button id="sidebar-toggle" class="btn btn-secondary" style="position: fixed; top: 20px; left: 20px; z-index: 999;">
-            <i data-feather="menu"></i>
-        </button>
-
         <main class="admin-main">
             <div class="admin-content">
                 <?php if (isset($_SESSION['success'])): ?>

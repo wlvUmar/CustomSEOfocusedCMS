@@ -10,7 +10,6 @@ function switchTab(tab) {
 
 // Confirm delete
 document.addEventListener('DOMContentLoaded', function() {
-    // Delete confirmation
     const deleteForms = document.querySelectorAll('form[action*="delete"]');
     deleteForms.forEach(form => {
         form.addEventListener('submit', function(e) {
@@ -19,22 +18,5 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-
-    // Sidebar toggle
-    const toggleBtn = document.getElementById('sidebar-toggle');
-    const sidebar = document.querySelector('.sidebar');
-    const main = document.querySelector('.admin-main');
-
-    if (toggleBtn) { // check if button exists
-        toggleBtn.addEventListener('click', () => {
-            if (window.innerWidth < 769) {
-                // Mobile: toggle active class
-                sidebar.classList.toggle('active');
-            } else {
-                // Desktop: collapse sidebar
-                sidebar.classList.toggle('collapsed');
-                main.classList.toggle('sidebar-collapsed');
-            }
-        });
-    }
 });
+
