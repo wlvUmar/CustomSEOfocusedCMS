@@ -128,6 +128,7 @@ body {
     overflow-y: auto;
     transform: translateX(0);
     transition: transform 0.3s ease;
+    z-index: 1000;
 }
 
 
@@ -157,10 +158,6 @@ body {
 }
 
 .sidebar-toggle {
-    position: absolute;
-    bottom: 80px;
-    right: -12px; /* partially outside sidebar when open */
-
     width: 36px;
     height: 56px;
     background: var(--primary-dark);
@@ -173,46 +170,53 @@ body {
     justify-content: center;
 
     cursor: pointer;
-    z-index: 10;
-
-    transform: scale(1);
-    transform-origin: left center;
+    z-index: 1500;
 
     box-shadow:
-        0 4px 10px rgba(0, 0, 0, 0.25),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+        0 4px 10px rgba(0,0,0,0.25),
+        inset 0 0 0 1px rgba(255,255,255,0.04);
 
+    transform: scale(1);
     transition: transform 0.18s ease, box-shadow 0.18s ease, right 0.3s ease;
 }
 
 .sidebar-toggle:hover {
     transform: scale(1.04);
     box-shadow:
-        0 6px 14px rgba(0, 0, 0, 0.3),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+        0 6px 14px rgba(0,0,0,0.3),
+        inset 0 0 0 1px rgba(255,255,255,0.06);
 }
 
 .sidebar-toggle:active {
     transform: scale(0.96);
 }
 
-/* Collapsed sidebar */
+.sidebar-toggle {
+    position: absolute;
+    bottom: 80px;
+    right: -12px; /* partially sticks out */
+}
+
+.admin-wrapper.sidebar-collapsed .sidebar-toggle {
+    position: fixed;
+    bottom: 80px;
+    right: 0; /* visible on edge */
+}
+
+/* Collapsed sidebar slide */
 .admin-wrapper.sidebar-collapsed .sidebar {
     transform: translateX(calc(-1 * var(--sidebar-width)));
 }
 
-.admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    position: fixed;     
-    right: 0;            
-}
 
+/*
 .admin-wrapper.sidebar-collapsed .sidebar-toggle:hover {
     transform: translateX(-10px) scale(1.04);
 }
 
 .admin-wrapper.sidebar-collapsed .sidebar-toggle:active {
     transform: translateX(-12px) scale(0.96);
-}
+}*/
 
 .logo {
     padding: 20px;
