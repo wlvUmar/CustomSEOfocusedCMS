@@ -13,16 +13,16 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
 
     <div class="tabs">
-        <button type="button" class="tab-btn active" onclick="switchTab('content')">Content</button>
+        <button type="button" class="tab-btn active" onclick="switchTab('general')">General</button>
         <button type="button" class="tab-btn" onclick="switchTab('seo')">SEO & Meta</button>
         <button type="button" class="tab-btn" onclick="switchTab('advanced')">Advanced SEO</button>
     </div>
 
-    <!-- CONTENT TAB -->
-    <div id="tab-content" class="tab-content active">
+    <!-- GENERAL TAB -->
+    <div id="tab-general" class="tab-content active">
         <div class="help-text">
-            <strong>Template Variables:</strong> All page template variables work here: {{page.title}}, {{global.phone}}, {{date.year}}, etc.
-            <br><strong>Note:</strong> SEO fields also support template variables!
+            <strong>Template Variables:</strong> Use {{variable}} syntax. Available: {{page.title}}, {{global.phone}}, {{global.email}}, {{date.year}}, {{date.month}}
+            <br><strong>Note:</strong> All fields support template variables!
         </div>
 
         <div class="form-group">
@@ -41,6 +41,36 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     </option>
                 <?php endforeach; ?>
             </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Title (RU)*</label>
+                <input type="text" name="title_ru" 
+                       value="<?= e($rotation['title_ru'] ?? '') ?>" 
+                       placeholder="Page title override">
+            </div>
+            
+            <div class="form-group">
+                <label>Title (UZ)*</label>
+                <input type="text" name="title_uz" 
+                       value="<?= e($rotation['title_uz'] ?? '') ?>"
+                       placeholder="Page title override">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Description/Intro (RU)</label>
+                <textarea name="description_ru" rows="3" 
+                          placeholder="Brief intro text"><?= e($rotation['description_ru'] ?? '') ?></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Description/Intro (UZ)</label>
+                <textarea name="description_uz" rows="3"
+                          placeholder="Brief intro text"><?= e($rotation['description_uz'] ?? '') ?></textarea>
+            </div>
         </div>
 
         <div class="form-row">
@@ -73,14 +103,14 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <div class="form-group">
                 <label>Meta Title (RU)</label>
                 <input type="text" name="meta_title_ru" 
-                       value="<?= $rotation['meta_title_ru'] ?? '' ?>"
+                       value="<?= e($rotation['meta_title_ru'] ?? '') ?>"
                        placeholder="Leave empty to use page default">
             </div>
             
             <div class="form-group">
                 <label>Meta Title (UZ)</label>
                 <input type="text" name="meta_title_uz" 
-                       value="<?= $rotation['meta_title_uz'] ?? '' ?>"
+                       value="<?= e($rotation['meta_title_uz'] ?? '') ?>"
                        placeholder="Leave empty to use page default">
             </div>
         </div>
@@ -89,13 +119,13 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <div class="form-group">
                 <label>Meta Keywords (RU)</label>
                 <textarea name="meta_keywords_ru" rows="2"
-                          placeholder="Leave empty to use page default"><?= $rotation['meta_keywords_ru'] ?? '' ?></textarea>
+                          placeholder="Leave empty to use page default"><?= e($rotation['meta_keywords_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>Meta Keywords (UZ)</label>
                 <textarea name="meta_keywords_uz" rows="2"
-                          placeholder="Leave empty to use page default"><?= $rotation['meta_keywords_uz'] ?? '' ?></textarea>
+                          placeholder="Leave empty to use page default"><?= e($rotation['meta_keywords_uz'] ?? '') ?></textarea>
             </div>
         </div>
 
@@ -103,13 +133,13 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <div class="form-group">
                 <label>Meta Description (RU)</label>
                 <textarea name="meta_description_ru" rows="3"
-                          placeholder="Leave empty to use page default"><?= $rotation['meta_description_ru'] ?? '' ?></textarea>
+                          placeholder="Leave empty to use page default"><?= e($rotation['meta_description_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>Meta Description (UZ)</label>
                 <textarea name="meta_description_uz" rows="3"
-                          placeholder="Leave empty to use page default"><?= $rotation['meta_description_uz'] ?? '' ?></textarea>
+                          placeholder="Leave empty to use page default"><?= e($rotation['meta_description_uz'] ?? '') ?></textarea>
             </div>
         </div>
     </div>
@@ -122,14 +152,14 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <div class="form-group">
                 <label>OG Title (RU) - For Facebook/Social</label>
                 <input type="text" name="og_title_ru" 
-                       value="<?= $rotation['og_title_ru'] ?? '' ?>"
+                       value="<?= e($rotation['og_title_ru'] ?? '') ?>"
                        placeholder="Leave empty to use page default">
             </div>
             
             <div class="form-group">
                 <label>OG Title (UZ)</label>
                 <input type="text" name="og_title_uz" 
-                       value="<?= $rotation['og_title_uz'] ?? '' ?>"
+                       value="<?= e($rotation['og_title_uz'] ?? '') ?>"
                        placeholder="Leave empty to use page default">
             </div>
         </div>
@@ -138,20 +168,20 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <div class="form-group">
                 <label>OG Description (RU)</label>
                 <textarea name="og_description_ru" rows="2"
-                          placeholder="Leave empty to use page default"><?= $rotation['og_description_ru'] ?? '' ?></textarea>
+                          placeholder="Leave empty to use page default"><?= e($rotation['og_description_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>OG Description (UZ)</label>
                 <textarea name="og_description_uz" rows="2"
-                          placeholder="Leave empty to use page default"><?= $rotation['og_description_uz'] ?? '' ?></textarea>
+                          placeholder="Leave empty to use page default"><?= e($rotation['og_description_uz'] ?? '') ?></textarea>
             </div>
         </div>
 
         <div class="form-group">
             <label>OG Image URL (Full URL)</label>
             <input type="text" name="og_image" 
-                   value="<?= $rotation['og_image'] ?? '' ?>"
+                   value="<?= e($rotation['og_image'] ?? '') ?>"
                    placeholder="Leave empty to use page default">
         </div>
 
@@ -159,13 +189,13 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <div class="form-group">
                 <label>JSON-LD Schema (RU)</label>
                 <textarea name="jsonld_ru" rows="8" class="code"
-                          placeholder="Leave empty to use page default"><?= $rotation['jsonld_ru'] ?? '' ?></textarea>
+                          placeholder="Leave empty to use page default"><?= e($rotation['jsonld_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>JSON-LD Schema (UZ)</label>
                 <textarea name="jsonld_uz" rows="8" class="code"
-                          placeholder="Leave empty to use page default"><?= $rotation['jsonld_uz'] ?? '' ?></textarea>
+                          placeholder="Leave empty to use page default"><?= e($rotation['jsonld_uz'] ?? '') ?></textarea>
             </div>
         </div>
     </div>

@@ -1,5 +1,6 @@
 <?php
 // path: ./models/ContentRotation.php
+// Replace the entire file with this
 
 class ContentRotation {
     private $db;
@@ -24,10 +25,6 @@ class ContentRotation {
         return $this->db->fetchOne($sql, [$pageId, $month]);
     }
 
-    /**
-     * Create default rotation from base page
-     * Copies content and ALL SEO settings
-     */
     public function createDefaultFromPage($pageId, $month) {
         require_once BASE_PATH . '/models/Page.php';
         $pageModel = new Page();
@@ -39,11 +36,14 @@ class ContentRotation {
 
         $data = [
             'page_id' => $pageId,
+            'title_ru' => $page['title_ru'],
+            'title_uz' => $page['title_uz'],
             'content_ru' => $page['content_ru'],
             'content_uz' => $page['content_uz'],
+            'description_ru' => $page['meta_description_ru'],
+            'description_uz' => $page['meta_description_uz'],
             'active_month' => $month,
             'is_active' => 1,
-            // Copy ALL SEO settings
             'meta_title_ru' => $page['meta_title_ru'],
             'meta_title_uz' => $page['meta_title_uz'],
             'meta_description_ru' => $page['meta_description_ru'],
@@ -62,10 +62,6 @@ class ContentRotation {
         return $this->create($data);
     }
 
-    /**
-     * Get rotation coverage stats for a page
-     * Returns which months have content and which are missing
-     */
     public function getCoverageStats($pageId) {
         $rotations = $this->getByPageId($pageId);
         $coverage = array_fill(1, 12, false);
@@ -97,18 +93,12 @@ class ContentRotation {
         return $stats;
     }
 
-    /**
-     * Check if a month already has content for this page
-     */
     public function monthHasContent($pageId, $month) {
         $sql = "SELECT COUNT(*) as count FROM content_rotations WHERE page_id = ? AND active_month = ?";
         $result = $this->db->fetchOne($sql, [$pageId, $month]);
         return $result['count'] > 0;
     }
 
-    /**
-     * Get all pages with rotation enabled that are missing content for specific months
-     */
     public function getPagesWithIncompleteRotation() {
         $sql = "SELECT p.id, p.slug, p.title_ru, p.title_uz, 
                 COUNT(DISTINCT cr.active_month) as covered_months
@@ -121,27 +111,26 @@ class ContentRotation {
         return $this->db->fetchAll($sql);
     }
 
-    /**
-     * Clone content AND SEO from one month to another for the same page
-     */
     public function cloneToMonth($sourceId, $targetMonth) {
         $source = $this->getById($sourceId);
         if (!$source) {
             return false;
         }
 
-        // Check if target month already exists
         if ($this->monthHasContent($source['page_id'], $targetMonth)) {
             return false;
         }
 
         $data = [
             'page_id' => $source['page_id'],
+            'title_ru' => $source['title_ru'],
+            'title_uz' => $source['title_uz'],
             'content_ru' => $source['content_ru'],
             'content_uz' => $source['content_uz'],
+            'description_ru' => $source['description_ru'],
+            'description_uz' => $source['description_uz'],
             'active_month' => $targetMonth,
             'is_active' => 1,
-            // Clone SEO settings too
             'meta_title_ru' => $source['meta_title_ru'],
             'meta_title_uz' => $source['meta_title_uz'],
             'meta_description_ru' => $source['meta_description_ru'],
@@ -160,9 +149,6 @@ class ContentRotation {
         return $this->create($data);
     }
 
-    /**
-     * Bulk activate/deactivate rotations
-     */
     public function bulkUpdateStatus($ids, $isActive) {
         if (empty($ids)) return false;
         
@@ -175,16 +161,21 @@ class ContentRotation {
 
     public function create($data) {
         $sql = "INSERT INTO content_rotations (
-                    page_id, content_ru, content_uz, active_month, is_active,
+                    page_id, title_ru, title_uz, content_ru, content_uz, 
+                    description_ru, description_uz, active_month, is_active,
                     meta_title_ru, meta_title_uz, meta_description_ru, meta_description_uz,
                     meta_keywords_ru, meta_keywords_uz, og_title_ru, og_title_uz,
                     og_description_ru, og_description_uz, og_image, jsonld_ru, jsonld_uz
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $this->db->query($sql, [
             $data['page_id'],
-            $data['content_ru'],
-            $data['content_uz'],
+            $data['title_ru'] ?? null,
+            $data['title_uz'] ?? null,
+            $data['content_ru'] ?? '',
+            $data['content_uz'] ?? '',
+            $data['description_ru'] ?? null,
+            $data['description_uz'] ?? null,
             $data['active_month'],
             $data['is_active'] ?? 1,
             $data['meta_title_ru'] ?? null,
@@ -207,7 +198,9 @@ class ContentRotation {
 
     public function update($id, $data) {
         $sql = "UPDATE content_rotations SET 
+                title_ru = ?, title_uz = ?,
                 content_ru = ?, content_uz = ?, 
+                description_ru = ?, description_uz = ?,
                 active_month = ?, is_active = ?,
                 meta_title_ru = ?, meta_title_uz = ?,
                 meta_description_ru = ?, meta_description_uz = ?,
@@ -218,8 +211,12 @@ class ContentRotation {
                 WHERE id = ?";
         
         return $this->db->query($sql, [
-            $data['content_ru'],
-            $data['content_uz'],
+            $data['title_ru'] ?? null,
+            $data['title_uz'] ?? null,
+            $data['content_ru'] ?? '',
+            $data['content_uz'] ?? '',
+            $data['description_ru'] ?? null,
+            $data['description_uz'] ?? null,
             $data['active_month'],
             $data['is_active'] ?? 1,
             $data['meta_title_ru'] ?? null,
@@ -244,9 +241,6 @@ class ContentRotation {
         return $this->db->query($sql, [$id]);
     }
 
-    /**
-     * Delete multiple rotations at once
-     */
     public function bulkDelete($ids) {
         if (empty($ids)) return false;
         
@@ -272,9 +266,6 @@ class ContentRotation {
         ];
     }
 
-    /**
-     * Get month name in Russian
-     */
     public function getMonthNameRu($monthNum) {
         $months = [
             1 => 'Январь', 2 => 'Февраль', 3 => 'Март', 4 => 'Апрель',

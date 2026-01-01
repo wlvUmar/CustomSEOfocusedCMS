@@ -47,8 +47,14 @@ class PageController extends Controller {
         if ($page['enable_rotation']) {
             $rotationContent = $this->rotationModel->getCurrentMonth($page['id']);
             if ($rotationContent) {
+                // Override title and description if provided
+                if (!empty($rotationContent["title_$currentLang"])) {
+                    $page["title_$currentLang"] = $rotationContent["title_$currentLang"];
+                }
+                
                 // Override content
                 $page["content_$currentLang"] = $rotationContent["content_$currentLang"];
+                
                 $rotationUsed = true;
                 $activeMonth = $rotationContent['active_month'];
                 
@@ -60,7 +66,6 @@ class PageController extends Controller {
                 ];
                 
                 foreach ($seoFields as $field) {
-                    // Check both language-specific and non-language fields
                     if ($field === 'og_image') {
                         if (!empty($rotationContent[$field])) {
                             $page[$field] = $rotationContent[$field];

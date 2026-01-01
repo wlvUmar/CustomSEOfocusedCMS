@@ -77,6 +77,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </div>
     </div>
 
+
     <table class="data-table rotation-table">
         <thead>
             <tr>
@@ -84,8 +85,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <input type="checkbox" disabled>
                 </th>
                 <th>Month</th>
-                <th>Preview (RU)</th>
-                <th>Preview (UZ)</th>
+                <th>Title (RU)</th>
+                <th>Content Preview (RU)</th>
                 <th>Status</th>
                 <th>Actions</th>
             </tr>
@@ -120,21 +121,21 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </td>
                 
                 <td>
-                    <?php if ($rotation): ?>
-                        <div class="content-preview">
-                            <?= e(substr(strip_tags($rotation['content_ru']), 0, 100)) ?>
-                            <?php if (strlen(strip_tags($rotation['content_ru'])) > 100): ?>...<?php endif; ?>
-                        </div>
+                    <?php if ($rotation && $rotation['title_ru']): ?>
+                        <strong><?= e(substr($rotation['title_ru'], 0, 50)) ?><?php if (strlen($rotation['title_ru']) > 50): ?>...<?php endif; ?></strong>
+                        <?php if ($rotation['description_ru']): ?>
+                            <br><small style="color: #6b7280;"><?= e(substr($rotation['description_ru'], 0, 60)) ?></small>
+                        <?php endif; ?>
                     <?php else: ?>
-                        <em class="no-content">No content</em>
+                        <em class="no-content">No title</em>
                     <?php endif; ?>
                 </td>
                 
                 <td>
                     <?php if ($rotation): ?>
                         <div class="content-preview">
-                            <?= e(substr(strip_tags($rotation['content_uz']), 0, 100)) ?>
-                            <?php if (strlen(strip_tags($rotation['content_uz'])) > 100): ?>...<?php endif; ?>
+                            <?= e(substr(strip_tags($rotation['content_ru']), 0, 100)) ?>
+                            <?php if (strlen(strip_tags($rotation['content_ru'])) > 100): ?>...<?php endif; ?>
                         </div>
                     <?php else: ?>
                         <em class="no-content">No content</em>
@@ -186,8 +187,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <?php endforeach; ?>
         </tbody>
     </table>
-
-
 </form>
 
 <!-- Clone Modal -->

@@ -106,7 +106,7 @@ class RotationAdminController extends Controller {
         $activeMonth = intval($_POST['active_month']);
         $defaultFromPage = isset($_POST['default_from_page']);
         
-        // If "default from page" button was clicked, use the helper method
+        // If "default from page" button was clicked
         if (!$id && $defaultFromPage) {
             $result = $this->rotationModel->createDefaultFromPage($pageId, $activeMonth);
             if ($result) {
@@ -118,7 +118,7 @@ class RotationAdminController extends Controller {
             return;
         }
         
-        // Check for duplicate month (only if creating or changing month)
+        // Check for duplicate month
         if (!$id || ($id && $this->rotationModel->getById($id)['active_month'] != $activeMonth)) {
             if ($this->rotationModel->monthHasContent($pageId, $activeMonth)) {
                 $_SESSION['error'] = 'This month already has content. Please edit the existing entry or choose a different month.';
@@ -129,11 +129,14 @@ class RotationAdminController extends Controller {
         
         $data = [
             'page_id' => $pageId,
+            'title_ru' => trim($_POST['title_ru'] ?? ''),
+            'title_uz' => trim($_POST['title_uz'] ?? ''),
             'content_ru' => $_POST['content_ru'] ?? '',
             'content_uz' => $_POST['content_uz'] ?? '',
+            'description_ru' => trim($_POST['description_ru'] ?? ''),
+            'description_uz' => trim($_POST['description_uz'] ?? ''),
             'active_month' => $activeMonth,
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
-            // SEO fields
             'meta_title_ru' => trim($_POST['meta_title_ru'] ?? '') ?: null,
             'meta_title_uz' => trim($_POST['meta_title_uz'] ?? '') ?: null,
             'meta_description_ru' => trim($_POST['meta_description_ru'] ?? '') ?: null,
@@ -320,10 +323,14 @@ class RotationAdminController extends Controller {
                     continue;
                 }
                 
-                // Prepare data with defaults
+                // Prepare data with new fields
                 $insertData = [
                     'page_id' => (int)$row['page_id'],
                     'active_month' => (int)$row['active_month'],
+                    'title_ru' => $row['title_ru'] ?? null,
+                    'title_uz' => $row['title_uz'] ?? null,
+                    'description_ru' => $row['description_ru'] ?? null,
+                    'description_uz' => $row['description_uz'] ?? null,
                     'content_ru' => $row['content_ru'] ?? '',
                     'content_uz' => $row['content_uz'] ?? '',
                     'is_active' => isset($row['is_active']) ? (int)$row['is_active'] : 1,
@@ -387,16 +394,21 @@ class RotationAdminController extends Controller {
         
         $output = fopen('php://output', 'w');
         
-        // Headers
+        // Headers with new fields
         fputcsv($output, [
-            'page_id', 'active_month', 'content_ru', 'content_uz', 'is_active',
-            'meta_title_ru', 'meta_title_uz', 'meta_description_ru', 'meta_description_uz'
+            'page_id', 'active_month', 'title_ru', 'title_uz', 
+            'description_ru', 'description_uz', 'content_ru', 'content_uz', 
+            'is_active', 'meta_title_ru', 'meta_title_uz', 
+            'meta_description_ru', 'meta_description_uz'
         ]);
         
         // Example row
         fputcsv($output, [
-            '1', '1', 'Sample Russian content', 'Sample Uzbek content', '1',
-            '', '', '', ''
+            '1', '1', 'January Title RU', 'January Title UZ',
+            'Brief description RU', 'Brief description UZ',
+            'Full content RU', 'Full content UZ',
+            '1', 'Meta title RU', 'Meta title UZ',
+            'Meta description RU', 'Meta description UZ'
         ]);
         
         fclose($output);
