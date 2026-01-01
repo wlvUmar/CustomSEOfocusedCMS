@@ -130,19 +130,6 @@ body {
     transform: translateX(-250px);
 }
 
-.admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    transform: translateX(-12px) scale(1);
-}
-
-.admin-wrapper.sidebar-collapsed .sidebar-toggle:hover {
-    transform: translateX(-12px) scale(1.08);
-}
-
-
-.admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    transform: translateX(-12px);
-}
-
 /* Chrome, Edge, Safari */
 .sidebar::-webkit-scrollbar {
     width: 6px;               /* thin scrollbar */
@@ -169,39 +156,28 @@ body {
 
 .sidebar-toggle {
     position: fixed;
-    bottom: 80px;
+    bottom: 58px;
     left: 0;
-
-    width: 36px;
-    height: 56px;
-
+    width: 29px;
+    height: 40px;
     background: var(--primary-dark);
     color: var(--primary-light);
     border: none;
     border-radius: 0 12px 12px 0;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     cursor: pointer;
     z-index: 1500;
-
-    /* Base transform */
-    transform: translateX(calc(var(--sidebar-width) - 12px)) scale(1);
-    transform-origin: left center;
-
-    transition:
-        transform 0.2s ease,
-        background 0.2s ease;
-}
-
-/* Hover = scale ONLY (no background change) */
-.sidebar-toggle:hover {
-    transform: translateX(calc(var(--sidebar-width) - 12px)) scale(1.08);
+    transform: translateX(calc(var(--sidebar-width, 250px) - 12px));
+    transition: transform 0.3s ease, background 0.2s ease;
 }
 
 
+
+.admin-wrapper.sidebar-collapsed .sidebar-toggle {
+    transform: translateX(-12px);
+}
 
 .logo {
     padding: 20px;
