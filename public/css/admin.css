@@ -157,13 +157,12 @@ body {
 }
 
 .sidebar-toggle {
-    position: absolute;       /* changed from fixed */
+    position: absolute;
     bottom: 80px;
-    right: -12px;             /* protrudes outside the sidebar */
-    
+    right: -12px; /* partially outside sidebar when open */
+
     width: 36px;
     height: 56px;
-
     background: var(--primary-dark);
     color: var(--primary-light);
     border: none;
@@ -183,9 +182,7 @@ body {
         0 4px 10px rgba(0, 0, 0, 0.25),
         inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 
-    transition:
-        transform 0.18s ease,
-        box-shadow 0.18s ease;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, right 0.3s ease;
 }
 
 .sidebar-toggle:hover {
@@ -199,18 +196,14 @@ body {
     transform: scale(0.96);
 }
 
-
-
-
-
 /* Collapsed sidebar */
 .admin-wrapper.sidebar-collapsed .sidebar {
     transform: translateX(calc(-1 * var(--sidebar-width)));
 }
 
-/* Keep toggle partially visible when collapsed */
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-     right: -24px;
+    position: fixed;     
+    right: 0;            
 }
 
 .admin-wrapper.sidebar-collapsed .sidebar-toggle:hover {
