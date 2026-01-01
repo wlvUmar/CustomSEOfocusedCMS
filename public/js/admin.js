@@ -2,10 +2,22 @@
 // Tabs
 // ----------------------------
 function switchTab(tab, event) {
+    // Handle both direct calls and event-based calls
+    if (event && event.currentTarget) {
+        event.preventDefault();
+    }
+    
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-    event.currentTarget.classList.add('active'); // safer than event.target
+    // Find and activate the button that was clicked
+    const clickedBtn = event && event.currentTarget ? event.currentTarget : 
+                       document.querySelector(`[onclick*="switchTab('${tab}')"]`);
+    
+    if (clickedBtn) {
+        clickedBtn.classList.add('active');
+    }
+    
     const content = document.getElementById('tab-' + tab);
     if (content) content.classList.add('active');
 }
@@ -58,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-
 
     wrapper.classList.add('sidebar-collapsed'); // start collapsed
     updateIcon();

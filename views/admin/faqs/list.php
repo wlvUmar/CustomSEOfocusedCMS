@@ -5,7 +5,17 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <div class="page-header">
     <h1>FAQs</h1>
-    <a href="<?= BASE_URL ?>/admin/faqs/new" class="btn btn-primary">Add New FAQ</a>
+    <div class="btn-group">
+        <a href="<?= BASE_URL ?>/admin/faqs/new" class="btn btn-primary">
+            <i data-feather="plus"></i> Add New FAQ
+        </a>
+        <button onclick="showUploadModal()" class="btn">
+            <i data-feather="upload"></i> Bulk Upload
+        </button>
+        <a href="<?= BASE_URL ?>/admin/faqs/download-template" class="btn btn-secondary">
+            <i data-feather="download"></i> Download Template
+        </a>
+    </div>
 </div>
 
 <table class="data-table">
@@ -32,11 +42,15 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </span>
             </td>
             <td>
-                <a href="<?= BASE_URL ?>/admin/faqs/edit/<?= $faq['id'] ?>" class="btn btn-sm">Edit</a>
+                <a href="<?= BASE_URL ?>/admin/faqs/edit/<?= $faq['id'] ?>" class="btn btn-sm">
+                    <i data-feather="edit"></i> Edit
+                </a>
                 <form method="POST" action="<?= BASE_URL ?>/admin/faqs/delete" style="display:inline;" 
                       onsubmit="return confirm('Delete this FAQ?')">
                     <input type="hidden" name="id" value="<?= $faq['id'] ?>">
-                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    <button type="submit" class="btn btn-sm btn-danger">
+                        <i data-feather="trash-2"></i> Delete
+                    </button>
                 </form>
             </td>
         </tr>
@@ -44,72 +58,64 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </tbody>
 </table>
 
-<?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
-
-<!-- path: ./views/admin/faqs/edit.php -->
-<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
-
-<h1><?= $faq ? 'Edit FAQ' : 'Create FAQ' ?></h1>
-
-<form method="POST" action="<?= BASE_URL ?>/admin/faqs/save" class="admin-form">
-    <?php if ($faq): ?>
-    <input type="hidden" name="id" value="<?= $faq['id'] ?>">
-    <?php endif; ?>
-    
-    <div class="form-group">
-        <label>Page Slug*</label>
-        <select name="page_slug" required>
-            <option value="">Select Page</option>
-            <?php foreach ($pages as $page): ?>
-            <option value="<?= e($page['slug']) ?>" <?= ($faq['page_slug'] ?? '') === $page['slug'] ? 'selected' : '' ?>>
-                <?= e($page['slug']) ?> - <?= e($page['title_ru']) ?>
-            </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    
-    <div class="form-row">
-        <div class="form-group">
-            <label>Question (RU)*</label>
-            <textarea name="question_ru" rows="2" required><?= $faq['question_ru'] ?? '' ?></textarea>
+<!-- Upload Modal -->
+<div id="upload-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i data-feather="upload"></i> Bulk Upload FAQs</h2>
+            <button onclick="closeUploadModal()" class="close-btn"><i data-feather="x"></i></button>
         </div>
         
-        <div class="form-group">
-            <label>Question (UZ)*</label>
-            <textarea name="question_uz" rows="2" required><?= $faq['question_uz'] ?? '' ?></textarea>
-        </div>
+        <form method="POST" action="<?= BASE_URL ?>/admin/faqs/bulk-upload" enctype="multipart/form-data">
+            <div class="help-text" style="margin-bottom: 20px;">
+                <strong>Supported formats:</strong> CSV, JSON<br>
+                <strong>Required fields:</strong> page_slug, question_ru, answer_ru<br>
+                <strong>Optional fields:</strong> question_uz, answer_uz, sort_order, is_active
+            </div>
+            
+            <div class="form-group">
+                <label>Select File (CSV or JSON):</label>
+                <input type="file" name="file" accept=".csv,.json" required>
+            </div>
+            
+            <details style="margin: 20px 0;">
+                <summary style="cursor: pointer; font-weight: 600; margin-bottom: 10px;">
+                    JSON Format Example
+                </summary>
+                <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 12px;">[
+  {
+    "page_slug": "home",
+    "question_ru": "Какой вопрос?",
+    "question_uz": "Qanday savol?",
+    "answer_ru": "Это ответ",
+    "answer_uz": "Bu javob",
+    "sort_order": 0,
+    "is_active": 1
+  }
+]</pre>
+            </details>
+            
+            <div class="modal-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i data-feather="upload"></i> Upload
+                </button>
+                <button type="button" onclick="closeUploadModal()" class="btn btn-secondary">
+                    <i data-feather="x-circle"></i> Cancel
+                </button>
+            </div>
+        </form>
     </div>
-    
-    <div class="form-row">
-        <div class="form-group">
-            <label>Answer (RU)*</label>
-            <textarea name="answer_ru" rows="4" required><?= $faq['answer_ru'] ?? '' ?></textarea>
-        </div>
-        
-        <div class="form-group">
-            <label>Answer (UZ)*</label>
-            <textarea name="answer_uz" rows="4" required><?= $faq['answer_uz'] ?? '' ?></textarea>
-        </div>
-    </div>
-    
-    <div class="form-row">
-        <div class="form-group">
-            <label>Sort Order</label>
-            <input type="number" name="sort_order" value="<?= $faq['sort_order'] ?? 0 ?>">
-        </div>
-        
-        <div class="form-group">
-            <label>
-                <input type="checkbox" name="is_active" <?= ($faq['is_active'] ?? 1) ? 'checked' : '' ?>>
-                Active
-            </label>
-        </div>
-    </div>
-    
-    <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Save FAQ</button>
-        <a href="<?= BASE_URL ?>/admin/faqs" class="btn btn-secondary">Cancel</a>
-    </div>
-</form>
+</div>
+
+<script>
+function showUploadModal() {
+    document.getElementById('upload-modal').style.display = 'flex';
+    feather.replace();
+}
+
+function closeUploadModal() {
+    document.getElementById('upload-modal').style.display = 'none';
+}
+</script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

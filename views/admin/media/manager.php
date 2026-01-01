@@ -1,12 +1,30 @@
-<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
+<?php 
+// path: ./views/admin/media/manager.php
+require BASE_PATH . '/views/admin/layout/header.php'; 
+?>
 
 <div class="page-header">
     <h1>Media Manager</h1>
-    <button onclick="document.getElementById('file-input').click()" class="btn btn-primary">Upload Image</button>
+    <div class="btn-group">
+        <button onclick="document.getElementById('file-input').click()" class="btn btn-primary">
+            <i data-feather="upload"></i> Upload Single Image
+        </button>
+        <button onclick="document.getElementById('bulk-file-input').click()" class="btn">
+            <i data-feather="upload-cloud"></i> Bulk Upload Images
+        </button>
+    </div>
 </div>
 
+<!-- Single upload form -->
 <form id="upload-form" style="display:none;">
     <input type="file" id="file-input" accept="image/*" onchange="uploadFile()">
+</form>
+
+<!-- Bulk upload form -->
+<form id="bulk-upload-form" method="POST" action="<?= BASE_URL ?>/admin/media/bulk-upload" 
+      enctype="multipart/form-data" style="display:none;">
+    <input type="file" id="bulk-file-input" name="files[]" accept="image/*" 
+           multiple onchange="this.form.submit()">
 </form>
 
 <div class="media-grid">
@@ -17,8 +35,14 @@
             <p><?= e($item['original_name']) ?></p>
             <p class="media-meta"><?= number_format($item['file_size'] / 1024, 1) ?> KB</p>
             <div class="media-actions">
-                <button onclick="copyUrl('<?= UPLOAD_URL . e($item['filename']) ?>')" class="btn btn-sm">Copy URL</button>
-                <button onclick="deleteMedia(<?= $item['id'] ?>)" class="btn btn-sm btn-danger">Delete</button>
+                <button onclick="copyUrl('<?= UPLOAD_URL . e($item['filename']) ?>')" 
+                        class="btn btn-sm" title="Copy URL">
+                    <i data-feather="copy"></i> Copy URL
+                </button>
+                <button onclick="deleteMedia(<?= $item['id'] ?>)" 
+                        class="btn btn-sm btn-danger" title="Delete">
+                    <i data-feather="trash-2"></i> Delete
+                </button>
             </div>
         </div>
     </div>

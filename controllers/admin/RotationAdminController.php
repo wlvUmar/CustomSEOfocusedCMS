@@ -276,99 +276,99 @@ class RotationAdminController extends Controller {
         echo '</body></html>';
         exit;
     }
-    public function bulkUpload() {
-        $this->requireAuth();
-        
-        if (!isset($_FILES['file'])) {
-            $_SESSION['error'] = 'No file uploaded';
-            $this->redirect('/admin/rotations/overview');
-            return;
-        }
-        
-        $file = $_FILES['file'];
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        
-        if (!in_array($ext, ['csv', 'json'])) {
-            $_SESSION['error'] = 'Only CSV and JSON files are supported';
-            $this->redirect('/admin/rotations/overview');
-            return;
-        }
-        
-        try {
-            $data = [];
+        public function bulkUpload() {
+            $this->requireAuth();
             
-            if ($ext === 'csv') {
-                $data = $this->parseCSV($file['tmp_name']);
-            } else {
-                $content = file_get_contents($file['tmp_name']);
-                $data = json_decode($content, true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    throw new Exception('Invalid JSON format');
-                }
+            if (!isset($_FILES['file'])) {
+                $_SESSION['error'] = 'No file uploaded';
+                $this->redirect('/admin/rotations/overview');
+                return;
             }
             
-            $created = 0;
-            $errors = [];
+            $file = $_FILES['file'];
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
             
-            foreach ($data as $index => $row) {
-                // Validate required fields
-                if (empty($row['page_id']) || empty($row['active_month'])) {
-                    $errors[] = "Row " . ($index + 1) . ": Missing page_id or active_month";
-                    continue;
-                }
+            if (!in_array($ext, ['csv', 'json'])) {
+                $_SESSION['error'] = 'Only CSV and JSON files are supported';
+                $this->redirect('/admin/rotations/overview');
+                return;
+            }
+            
+            try {
+                $data = [];
                 
-                // Check if month already has content
-                if ($this->rotationModel->monthHasContent($row['page_id'], $row['active_month'])) {
-                    $errors[] = "Row " . ($index + 1) . ": Month {$row['active_month']} already has content";
-                    continue;
-                }
-                
-                // Prepare data with new fields
-                $insertData = [
-                    'page_id' => (int)$row['page_id'],
-                    'active_month' => (int)$row['active_month'],
-                    'title_ru' => $row['title_ru'] ?? null,
-                    'title_uz' => $row['title_uz'] ?? null,
-                    'description_ru' => $row['description_ru'] ?? null,
-                    'description_uz' => $row['description_uz'] ?? null,
-                    'content_ru' => $row['content_ru'] ?? '',
-                    'content_uz' => $row['content_uz'] ?? '',
-                    'is_active' => isset($row['is_active']) ? (int)$row['is_active'] : 1,
-                    'meta_title_ru' => $row['meta_title_ru'] ?? null,
-                    'meta_title_uz' => $row['meta_title_uz'] ?? null,
-                    'meta_description_ru' => $row['meta_description_ru'] ?? null,
-                    'meta_description_uz' => $row['meta_description_uz'] ?? null,
-                    'meta_keywords_ru' => $row['meta_keywords_ru'] ?? null,
-                    'meta_keywords_uz' => $row['meta_keywords_uz'] ?? null,
-                    'og_title_ru' => $row['og_title_ru'] ?? null,
-                    'og_title_uz' => $row['og_title_uz'] ?? null,
-                    'og_description_ru' => $row['og_description_ru'] ?? null,
-                    'og_description_uz' => $row['og_description_uz'] ?? null,
-                    'og_image' => $row['og_image'] ?? null,
-                    'jsonld_ru' => $row['jsonld_ru'] ?? null,
-                    'jsonld_uz' => $row['jsonld_uz'] ?? null
-                ];
-                
-                if ($this->rotationModel->create($insertData)) {
-                    $created++;
+                if ($ext === 'csv') {
+                    $data = $this->parseCSV($file['tmp_name']);
                 } else {
-                    $errors[] = "Row " . ($index + 1) . ": Failed to create rotation";
+                    $content = file_get_contents($file['tmp_name']);
+                    $data = json_decode($content, true);
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        throw new Exception('Invalid JSON format');
+                    }
                 }
+                
+                $created = 0;
+                $errors = [];
+                
+                foreach ($data as $index => $row) {
+                    // Validate required fields
+                    if (empty($row['page_id']) || empty($row['active_month'])) {
+                        $errors[] = "Row " . ($index + 1) . ": Missing page_id or active_month";
+                        continue;
+                    }
+                    
+                    // Check if month already has content
+                    if ($this->rotationModel->monthHasContent($row['page_id'], $row['active_month'])) {
+                        $errors[] = "Row " . ($index + 1) . ": Month {$row['active_month']} already has content";
+                        continue;
+                    }
+                    
+                    // Prepare data with new fields
+                    $insertData = [
+                        'page_id' => (int)$row['page_id'],
+                        'active_month' => (int)$row['active_month'],
+                        'title_ru' => $row['title_ru'] ?? null,
+                        'title_uz' => $row['title_uz'] ?? null,
+                        'description_ru' => $row['description_ru'] ?? null,
+                        'description_uz' => $row['description_uz'] ?? null,
+                        'content_ru' => $row['content_ru'] ?? '',
+                        'content_uz' => $row['content_uz'] ?? '',
+                        'is_active' => isset($row['is_active']) ? (int)$row['is_active'] : 1,
+                        'meta_title_ru' => $row['meta_title_ru'] ?? null,
+                        'meta_title_uz' => $row['meta_title_uz'] ?? null,
+                        'meta_description_ru' => $row['meta_description_ru'] ?? null,
+                        'meta_description_uz' => $row['meta_description_uz'] ?? null,
+                        'meta_keywords_ru' => $row['meta_keywords_ru'] ?? null,
+                        'meta_keywords_uz' => $row['meta_keywords_uz'] ?? null,
+                        'og_title_ru' => $row['og_title_ru'] ?? null,
+                        'og_title_uz' => $row['og_title_uz'] ?? null,
+                        'og_description_ru' => $row['og_description_ru'] ?? null,
+                        'og_description_uz' => $row['og_description_uz'] ?? null,
+                        'og_image' => $row['og_image'] ?? null,
+                        'jsonld_ru' => $row['jsonld_ru'] ?? null,
+                        'jsonld_uz' => $row['jsonld_uz'] ?? null
+                    ];
+                    
+                    if ($this->rotationModel->create($insertData)) {
+                        $created++;
+                    } else {
+                        $errors[] = "Row " . ($index + 1) . ": Failed to create rotation";
+                    }
+                }
+                
+                $message = "Created $created rotation(s)";
+                if (!empty($errors)) {
+                    $message .= ". Errors: " . implode(', ', array_slice($errors, 0, 5));
+                }
+                
+                $_SESSION['success'] = $message;
+                
+            } catch (Exception $e) {
+                $_SESSION['error'] = 'Upload failed: ' . $e->getMessage();
             }
             
-            $message = "Created $created rotation(s)";
-            if (!empty($errors)) {
-                $message .= ". Errors: " . implode(', ', array_slice($errors, 0, 5));
-            }
-            
-            $_SESSION['success'] = $message;
-            
-        } catch (Exception $e) {
-            $_SESSION['error'] = 'Upload failed: ' . $e->getMessage();
+            $this->redirect('/admin/rotations/overview');
         }
-        
-        $this->redirect('/admin/rotations/overview');
-    }
 
     private function parseCSV($filepath) {
         $data = [];
@@ -394,21 +394,23 @@ class RotationAdminController extends Controller {
         
         $output = fopen('php://output', 'w');
         
-        // Headers with new fields
+        // Headers with keywords included
         fputcsv($output, [
             'page_id', 'active_month', 'title_ru', 'title_uz', 
             'description_ru', 'description_uz', 'content_ru', 'content_uz', 
             'is_active', 'meta_title_ru', 'meta_title_uz', 
-            'meta_description_ru', 'meta_description_uz'
+            'meta_description_ru', 'meta_description_uz',
+            'meta_keywords_ru', 'meta_keywords_uz'  // ADD THESE
         ]);
         
-        // Example row
+        // Example row with keywords
         fputcsv($output, [
             '1', '1', 'January Title RU', 'January Title UZ',
             'Brief description RU', 'Brief description UZ',
             'Full content RU', 'Full content UZ',
             '1', 'Meta title RU', 'Meta title UZ',
-            'Meta description RU', 'Meta description UZ'
+            'Meta description RU', 'Meta description UZ',
+            'keyword1, keyword2, keyword3', 'kalit1, kalit2, kalit3'  // ADD THESE
         ]);
         
         fclose($output);

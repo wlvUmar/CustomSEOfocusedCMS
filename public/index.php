@@ -321,6 +321,24 @@ $router->notFound(function() {
     http_response_code(404);
     echo '<h1>404 - Page Not Found</h1>';
 });
+$router->post('/admin/faqs/bulk-upload', function() {
+    require_once BASE_PATH . '/controllers/admin/FAQAdminController.php';
+    $controller = new FAQAdminController();
+    $controller->bulkUpload();
+});
+
+$router->get('/admin/faqs/download-template', function() {
+    require_once BASE_PATH . '/controllers/admin/FAQAdminController.php';
+    $controller = new FAQAdminController();
+    $controller->downloadTemplate();
+});
+
+// Media bulk upload
+$router->post('/admin/media/bulk-upload', function() {
+    require_once BASE_PATH . '/controllers/admin/MediaController.php';
+    $controller = new MediaController();
+    $controller->bulkUpload();
+});
 
 
 $router->dispatch();
