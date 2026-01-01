@@ -1,26 +1,31 @@
-// Tab switching
-// 
-
-function switchTab(tab) {
+// ----------------------------
+// Tabs
+// ----------------------------
+function switchTab(tab, event) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
     event.target.classList.add('active');
     document.getElementById('tab-' + tab).classList.add('active');
 }
 
-// Confirm delete
-document.addEventListener('DOMContentLoaded', function() {
-    const deleteForms = document.querySelectorAll('form[action*="delete"]');
-    const wrapper = document.querySelector('.admin-wrapper');
-    const sidebar = document.querySelector('.sidebar');
-    const toggle = document.querySelector('.sidebar-toggle');
-    deleteForms.forEach(form => {
-        form.addEventListener('submit', function(e) {
+// ----------------------------
+// DOM Ready
+// ----------------------------
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('form[action*="delete"]').forEach(form => {
+        form.addEventListener('submit', e => {
             if (!confirm('Are you sure you want to delete this item?')) {
                 e.preventDefault();
             }
         });
+    });
 
+    const wrapper = document.querySelector('.admin-wrapper');
+    const sidebar = document.querySelector('.sidebar');
+    const toggle = document.querySelector('.sidebar-toggle');
+
+    if (!wrapper || !sidebar || !toggle) return;
 
     function updateIcon() {
         toggle.innerHTML = wrapper.classList.contains('sidebar-collapsed')
@@ -29,13 +34,13 @@ document.addEventListener('DOMContentLoaded', function() {
         feather.replace();
     }
 
-    toggle.addEventListener('click', (e) => {
+    toggle.addEventListener('click', e => {
         e.stopPropagation();
         wrapper.classList.toggle('sidebar-collapsed');
         updateIcon();
     });
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', e => {
         if (
             e.target.closest('.sidebar') ||
             e.target.closest('.sidebar-toggle')
@@ -47,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Initial state
+    wrapper.classList.add('sidebar-collapsed');
     updateIcon();
 });
-});
-

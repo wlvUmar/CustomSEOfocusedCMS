@@ -15,8 +15,6 @@
     --success-hover: #047857;
     --danger: #dc3545;
     --danger-hover: #c82333;
-    --sidebar-width: 260px;
-    --toggle-size: 28px;
 }
 
 body {
@@ -113,15 +111,12 @@ body {
 }
 
 .admin-wrapper {
-    position: relative;
     display: flex;
     min-height: 100vh;
 }
 
 .sidebar {
-    top: 0;
-    left: 0;
-    width: var(--sidebar-width);
+    width: 250px;
     background: var(--primary-dark);
     color: var(--primary-light);
     position: fixed;
@@ -129,10 +124,11 @@ body {
     overflow-y: auto;
     transform: translateX(0);
     transition: transform 0.3s ease;
-    z-index: 1000;
 }
 
-/* Sidebar scroll styling */
+.admin-wrapper.sidebar-collapsed .sidebar {
+    transform: translateX(-250px);
+}
 
 /* Chrome, Edge, Safari */
 .sidebar::-webkit-scrollbar {
@@ -158,6 +154,33 @@ body {
     scrollbar-color: var(--accent-dark) var(--primary-dark); /* thumb color | track color */
 }
 
+.sidebar-toggle {
+    position: fixed;
+    top: 120px;
+    left: 236px; /* 250px - half button */
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: none;
+    background: var(--primary-dark);
+    color: var(--primary-light);
+    cursor: pointer;
+    z-index: 1500;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transition: left 0.3s ease, background 0.2s ease;
+}
+
+.admin-wrapper.sidebar-collapsed .sidebar-toggle {
+    left: 6px;
+}
+
+.sidebar-toggle:hover {
+    background: var(--accent-dark);
+}
 
 .logo {
     padding: 20px;
@@ -188,50 +211,13 @@ body {
 
 .admin-main {
     flex: 1;
-    margin-left: var(--sidebar-width);
+    margin-left: 250px;
     padding: 30px;
-    width: calc(100% - var(--sidebar-width));
-    min-height: 100vh;
-    transition: margin-left 0.3s ease, width 0.3s ease;
-}
-
-.admin-wrapper.sidebar-collapsed .sidebar {
-    transform: translateX(calc(-1 * var(--sidebar-width)));
+    transition: margin-left 0.3s ease;
 }
 
 .admin-wrapper.sidebar-collapsed .admin-main {
     margin-left: 0;
-    width: 100%;
-}
-
-/* Toggle button */
-.sidebar-toggle {
-    position: fixed;
-    top: 120px;
-    left: calc(var(--sidebar-width) - var(--toggle-size) / 2);
-    width: var(--toggle-size);
-    height: var(--toggle-size);
-    border-radius: 999px;
-    border: none;
-    background: #111827;
-    color: #fff;
-    cursor: pointer;
-    z-index: 1500;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    transition: left 0.3s ease, background 0.2s ease;
-}
-
-.sidebar-toggle:hover {
-    background: #1f2937;
-}
-
-/* Toggle position when collapsed */
-.admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    left: 6px;
 }
 
 .admin-content {
