@@ -133,8 +133,9 @@ body {
 
 /* Base toggle style */
 .sidebar-toggle {
-    position: fixed;           /* always relative to viewport */
+    position: fixed;           /* relative to viewport, not sidebar */
     bottom: 80px;
+    left: 0;                   /* default collapsed position */
 
     width: 36px;
     height: 56px;
@@ -170,20 +171,21 @@ body {
     transform: scale(0.96);
 }
 
-/* Toggle position depending on sidebar state */
+/* Sidebar open → move toggle to stick out from sidebar */
 .admin-wrapper:not(.sidebar-collapsed) .sidebar-toggle {
-    left: 250px; /* sidebar width */
+    left: var(--sidebar-width);  /* sticks out from sidebar */
 }
 
+/* Sidebar collapsed → toggle sits at edge */
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    left: 0;     /* sticks to edge of viewport */
+    left: 0;                     /* sticks to left edge */
 }
 
 /* Sidebar collapse animation */
 .sidebar {
     top: 0;
     left: 0;
-    width: var(--sidebar-width, 250px);
+    width: var(--sidebar-width);
     background: var(--primary-dark);
     color: var(--primary-light);
     position: fixed;
@@ -192,7 +194,6 @@ body {
     transform: translateX(0);
     transition: transform 0.3s ease;
 }
-
 .admin-wrapper.sidebar-collapsed .sidebar {
     transform: translateX(calc(-1 * var(--sidebar-width)));
 }
