@@ -15,6 +15,8 @@
     --success-hover: #047857;
     --danger: #dc3545;
     --danger-hover: #c82333;
+    --sidebar-width: 260px;
+    --toggle-size: 28px;
 }
 
 body {
@@ -116,6 +118,8 @@ body {
 }
 
 .sidebar {
+    top: 0;
+    left: 0;
     width: 250px;
     background: var(--primary-dark);
     color: var(--primary-light);
@@ -126,9 +130,7 @@ body {
     transition: transform 0.3s ease;
 }
 
-.admin-wrapper.sidebar-collapsed .sidebar {
-    transform: translateX(-250px);
-}
+
 
 /* Chrome, Edge, Safari */
 .sidebar::-webkit-scrollbar {
@@ -196,8 +198,12 @@ body {
     transform: translateX(calc(var(--sidebar-width) - 12px)) scale(0.96);
 }
 
+.admin-wrapper.sidebar-collapsed .sidebar {
+    transform: translateX(calc(-1 * var(--sidebar-width)));
+}
+
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    transform: translateX(-12px);
+     right: -24px;
 }
 
 .admin-wrapper.sidebar-collapsed .sidebar-toggle:hover {

@@ -80,6 +80,9 @@
                     <i data-feather="log-out"></i> Logout
                 </a>
             </nav>
+          <button class="sidebar-toggle" aria-label="Toggle sidebar">
+              <i data-feather="chevron-right"></i>
+          </button>
         </aside>
         <main class="admin-main">
             <div class="admin-content">
