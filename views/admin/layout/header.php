@@ -11,17 +11,11 @@
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin.css">
     <?php
     if (!empty($pageName)) {
-        $cssFile = "admin/{$pageName}.css"; // include 'admin' folder in URL and path
+        $cssFile = "admin/{$pageName}.css";
         $cssPath = BASE_PATH . "/public/css/{$cssFile}";
 
-        // debug
-        echo "<!-- Debug: Trying CSS path: {$cssPath} -->";
-
         if (file_exists($cssPath)) {
-            echo "<!-- Debug: CSS file exists, linking it -->";
             echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$cssFile}" . '">';
-        } else {
-            echo "<!-- Debug: CSS file NOT found -->";
         }
     }
     ?>
@@ -29,6 +23,11 @@
 <body>
     <div class="admin-wrapper">
         <aside class="sidebar">
+            <!-- Toggle button INSIDE sidebar -->
+            <button class="sidebar-toggle" aria-label="Toggle sidebar">
+                <i data-feather="chevron-left"></i>
+            </button>
+            
             <div class="logo">
                 <h2>Admin Panel</h2>
             </div>
@@ -81,9 +80,7 @@
                 </a>
             </nav>
         </aside>
-        <button class="sidebar-toggle" aria-label="Toggle sidebar">
-              <i data-feather="chevron-right"></i>
-          </button>
+        
         <main class="admin-main">
             <div class="admin-content">
                 <?php if (isset($_SESSION['success'])): ?>
@@ -95,4 +92,3 @@
                     <div class="alert alert-error"><?= e($_SESSION['error']) ?></div>
                     <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>
-

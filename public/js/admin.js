@@ -48,29 +48,50 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sidebar Toggle
     // ----------------------------
     function updateIcon() {
-        toggle.innerHTML = wrapper.classList.contains('sidebar-collapsed')
-            ? '<i data-feather="chevron-right"></i>'
-            : '<i data-feather="chevron-left"></i>';
-        feather.replace(); // render feather icons
+        // Just swap the chevron direction - CSS handles rotation
+        toggle.innerHTML = '<i data-feather="chevron-left"></i>';
+        feather.replace();
     }
 
     // Toggle click
     toggle.addEventListener('click', e => {
-        e.stopPropagation(); // prevent document click
+        e.stopPropagation();
         wrapper.classList.toggle('sidebar-collapsed');
         updateIcon();
     });
 
-    // Click outside sidebar to collapse
+    // Click outside sidebar to collapse (only on mobile/tablet)
     document.addEventListener('click', e => {
-        if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) {
-            if (!wrapper.classList.contains('sidebar-collapsed')) {
-                wrapper.classList.add('sidebar-collapsed');
-                updateIcon();
+        if (window.innerWidth <= 1024) { // Only on smaller screens
+            if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) {
+                if (!wrapper.classList.contains('sidebar-collapsed')) {
+                    wrapper.classList.add('sidebar-collapsed');
+                    updateIcon();
+                }
             }
         }
     });
 
-    wrapper.classList.add('sidebar-collapsed'); // start collapsed
+    // Start collapsed on mobile, expanded on desktop
+    if (window.innerWidth <= 1024) {
+        wrapper.classList.add('sidebar-collapsed');
+    } else {
+        wrapper.classList.remove('sidebar-collapsed');
+    }
+    
     updateIcon();
+
+    // Handle window resize
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (window.innerWidth > 1024) {
+                wrapper.classList.remove('sidebar-collapsed');
+            } else {
+                wrapper.classList.add('sidebar-collapsed');
+            }
+            updateIcon();
+        }, 250);
+    });
 });
