@@ -120,7 +120,7 @@ body {
 .sidebar {
     top: 0;
     left: 0;
-    width: 250px;
+    width: var(--sidebar-width, 250px);
     background: var(--primary-dark);
     color: var(--primary-light);
     position: fixed;
@@ -157,10 +157,10 @@ body {
 }
 
 .sidebar-toggle {
-    position: fixed;
+    position: absolute;       /* changed from fixed */
     bottom: 80px;
-    left: 0;
-
+    right: -12px;             /* protrudes outside the sidebar */
+    
     width: 36px;
     height: 56px;
 
@@ -174,9 +174,9 @@ body {
     justify-content: center;
 
     cursor: pointer;
-    z-index: 1500;
+    z-index: 10;
 
-    transform: translateX(calc(var(--sidebar-width) - 12px));
+    transform: scale(1);
     transform-origin: left center;
 
     box-shadow:
@@ -189,19 +189,26 @@ body {
 }
 
 .sidebar-toggle:hover {
-    transform: translateX(calc(var(--sidebar-width) - 10px)) scale(1.04);
+    transform: scale(1.04);
     box-shadow:
         0 6px 14px rgba(0, 0, 0, 0.3),
         inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
+
 .sidebar-toggle:active {
-    transform: translateX(calc(var(--sidebar-width) - 12px)) scale(0.96);
+    transform: scale(0.96);
 }
 
+
+
+
+
+/* Collapsed sidebar */
 .admin-wrapper.sidebar-collapsed .sidebar {
     transform: translateX(calc(-1 * var(--sidebar-width)));
 }
 
+/* Keep toggle partially visible when collapsed */
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
      right: -24px;
 }
