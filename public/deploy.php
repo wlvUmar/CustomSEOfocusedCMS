@@ -129,6 +129,11 @@ require BASE_PATH . '/views/admin/layout/header.php';
     margin: 0;
 }
 
+.deploy-commits ul li {
+    white-space: pre-wrap; /* Wrap long lines */
+    word-break: break-word;
+}
+
 .deploy-commits li {
     padding: 6px 0;
     border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -209,8 +214,22 @@ require BASE_PATH . '/views/admin/layout/header.php';
         : '<i data-feather="x-circle" class="text-danger"></i> Deploy Failed' 
     ?>
 </h2>
-<pre><?= $outputHtml ?></pre>
+<div class="deploy-commits">
+    <ul>
+    <?php 
+        $lines = explode("\n", $deployOutput);
+        foreach($lines as $line):
+            $lineHtml = htmlspecialchars($line);
+            $lineHtml = preg_replace('/Already up[ -]to[ -]date/', '<span class="success">Already up-to-date</span>', $lineHtml);
+            $lineHtml = preg_replace('/No local changes to save/', '<span class="info-text">No local changes</span>', $lineHtml);
+            $lineHtml = preg_replace('/CONFLICT/', '<span class="danger">CONFLICT</span>', $lineHtml);
+    ?>
+        <li><?= $lineHtml ?></li>
+    <?php endforeach; ?>
+    </ul>
+</div>
 <?php endif; ?>
+
 
 <form method="POST">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['deploy_csrf']) ?>">
