@@ -1,6 +1,8 @@
 <?php
 // path: ./public/deploy.php
 // DEPLOY UI + WEBHOOK LAST-PUSH PREVIEW
+require_once '../config/security.php';
+require_once '../config/config.php';
 
 session_start();
 
