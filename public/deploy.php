@@ -19,6 +19,8 @@ function logDeploy($msg){
 // Check for GitHub webhook
 // --------------------
 $latestCommit = null;
+$allCommits = [];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_GITHUB_EVENT'])) {
     $payload = file_get_contents('php://input');
     $data = json_decode($payload, true);
@@ -26,13 +28,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_GITHUB_EVENT
         $repoName = $data['repository']['name'] ?? '';
         $branch = $data['ref'] ?? '';
         if ($repoName === GITHUB_REPO_NAME && $branch === 'refs/heads/master') {
-            $latestCommit = [
-                'sha' => substr($data['after'] ?? '', 0, 7),
-                'message' => $data['head_commit']['message'] ?? '',
-                'author' => $data['head_commit']['author']['name'] ?? '',
-                'date' => $data['head_commit']['timestamp'] ?? '',
-            ];
-            logDeploy("[WEBHOOK] Latest push detected: ".$latestCommit['sha']." by ".$latestCommit['author']);
+
+            $allCommits = $data['commits'] ?? [];
+
+            if (!empty($allCommits)) {
+                $lastCommit = end($allCommits);
+                $latestCommit = [
+                    'sha' => substr($lastCommit['id'] ?? '', 0, 7),
+                    'message' => $lastCommit['message'] ?? '',
+                    'author' => $lastCommit['author']['name'] ?? '',
+                    'date' => $lastCommit['timestamp'] ?? '',
+                ];
+            }
+
+            logDeploy("[WEBHOOK] Push detected: " . ($latestCommit['sha'] ?? 'N/A'));
         }
     }
 }
@@ -75,9 +84,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_
     $deployExit = $exit;
     $manualDeployed = true;
     logDeploy("[MANUAL DEPLOY] ".$deployOutput);
+
+    // highlight common messages
+    $outputHtml = htmlspecialchars($deployOutput);
+    $outputHtml = preg_replace('/Already up[ -]to[ -]date/', '<span class="success">Already up-to-date</span>', $outputHtml);
+    $outputHtml = preg_replace('/No local changes to save/', '<span class="info-text">No local changes</span>', $outputHtml);
+    $outputHtml = preg_replace('/CONFLICT/', '<span class="danger">CONFLICT</span>', $outputHtml);
 }
 
-// Get last push on origin/master
+// --------------------
+// Last push from origin/master (for info if no webhook)
+// --------------------
 $lastPush = null;
 $gitOutput = shell_exec("cd ".REPO_PATH." && git log origin/master -1 --pretty=format:'%h|%an|%ad|%s'");
 if ($gitOutput) {
@@ -96,13 +113,19 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <h1><i data-feather="zap"></i> Git Deploy</h1>
 </div>
 
-
-<?php if($latestCommit): ?>
+<?php if(!empty($allCommits)): ?>
 <div class="alert alert-success">
-    Latest push from webhook detected: 
-    <strong><?= htmlspecialchars($latestCommit['sha']) ?></strong> - 
-    <?= htmlspecialchars($latestCommit['message']) ?> by 
-    <?= htmlspecialchars($latestCommit['author']) ?> at <?= htmlspecialchars($latestCommit['date']) ?>
+    Latest push from webhook detected:
+    <ul>
+    <?php foreach($allCommits as $commit): ?>
+        <li>
+            <strong><?= htmlspecialchars(substr($commit['id'],0,7)) ?></strong> - 
+            <?= htmlspecialchars($commit['message']) ?> by 
+            <?= htmlspecialchars($commit['author']['name']) ?> at 
+            <?= htmlspecialchars($commit['timestamp']) ?>
+        </li>
+    <?php endforeach; ?>
+    </ul>
 </div>
 <?php elseif($lastPush): ?>
 <div class="alert alert-info">
@@ -115,14 +138,19 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <?php if($manualDeployed): ?>
 <h2>
-    <?= $deployExit===0 ? '<i data-feather="check-circle" class="text-success"></i> Deploy Completed' : '<i data-feather="x-circle" class="text-danger"></i> Deploy Failed' ?>
+    <?= $deployExit===0 
+        ? '<i data-feather="check-circle" class="text-success"></i> Deploy Completed' 
+        : '<i data-feather="x-circle" class="text-danger"></i> Deploy Failed' 
+    ?>
 </h2>
 <pre><?= $outputHtml ?></pre>
 <?php endif; ?>
 
 <form method="POST">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['deploy_csrf']) ?>">
-    <button type="submit" class="btn btn-primary"><i data-feather="zap"></i> Deploy Now</button>
+    <button type="submit" class="btn btn-primary">
+        <i data-feather="zap"></i> Deploy Now
+    </button>
 </form>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
