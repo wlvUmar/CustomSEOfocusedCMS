@@ -1,7 +1,8 @@
 <?php
 // error.php
 
-require 'views/templates/header.php';
+require BASE_PATH . '/views/templates/header.php';
+
 
 $code = $_GET['code'] ?? 500;
 $code = intval($code);
@@ -38,4 +39,4 @@ http_response_code($code);
     </div>
 </main>
 
-<?php require 'views/templates/footer.php'; ?>
+<?php require BASE_PATH . '/views/templates/footer.php'; ?>

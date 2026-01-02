@@ -129,10 +129,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
     margin: 0;
 }
 
-.deploy-commits ul li {
-    white-space: pre-wrap; /* Wrap long lines */
-    word-break: break-word;
-}
 
 .deploy-commits li {
     padding: 6px 0;
