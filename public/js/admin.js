@@ -2,7 +2,6 @@
 // Tabs
 // ----------------------------
 function switchTab(tab, event) {
-    // Handle both direct calls and event-based calls
     if (event && event.currentTarget) {
         event.preventDefault();
     }
@@ -48,12 +47,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sidebar Toggle
     // ----------------------------
     function updateIcon() {
-        // Just swap the chevron direction - CSS handles rotation
         toggle.innerHTML = '<i data-feather="chevron-left"></i>';
         feather.replace();
     }
 
-    // Toggle click
     toggle.addEventListener('click', e => {
         e.stopPropagation();
         wrapper.classList.toggle('sidebar-collapsed');
@@ -62,22 +59,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Click outside sidebar to collapse (only on mobile/tablet)
     document.addEventListener('click', e => {
-        if (window.innerWidth <= 1024) { // Only on smaller screens
-            if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) {
-                if (!wrapper.classList.contains('sidebar-collapsed')) {
-                    wrapper.classList.add('sidebar-collapsed');
-                    updateIcon();
-                }
+        // Remove the screen size check
+        if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) {
+            if (!wrapper.classList.contains('sidebar-collapsed')) {
+                wrapper.classList.add('sidebar-collapsed');
+                updateIcon();
             }
         }
     });
 
+
     // Start collapsed on mobile, expanded on desktop
-    if (window.innerWidth <= 1024) {
-        wrapper.classList.add('sidebar-collapsed');
-    } else {
-        wrapper.classList.remove('sidebar-collapsed');
-    }
     
     updateIcon();
 

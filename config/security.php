@@ -15,12 +15,13 @@ if (IS_PRODUCTION) {
 $csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com",
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com", // <- added cdnjs here
     "img-src 'self' data: https:",
     "font-src 'self' data:",
     "connect-src 'self' https://unpkg.com",
     "frame-ancestors 'self'"
 ];
+
 header('Content-Security-Policy: ' . implode('; ', $csp));
 
 // --------------------

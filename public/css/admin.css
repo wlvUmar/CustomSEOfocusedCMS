@@ -126,17 +126,15 @@ body {
     position: fixed;
     height: 100vh;
     overflow-y: auto;
-    overflow-x: visible; /* CRITICAL: Allow toggle to overflow */
+    overflow-x: visible; 
     transform: translateX(0);
     transition: transform 0.3s ease;
     z-index: 1000;
     display: flex;
     flex-direction: column;
 }
-/* Base toggle style */
 
 
-/* Chrome, Edge, Safari */
 .sidebar::-webkit-scrollbar {
     width: 6px;
 }
@@ -174,7 +172,7 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 1001; /* CRITICAL: Above sidebar */
+    z-index: 1001; 
     transition: all 0.3s ease;
     box-shadow: 2px 0 8px rgba(0,0,0,0.2);
 }
@@ -189,14 +187,6 @@ body {
     background: var(--accent-dark);
 }
 
-.sidebar-toggle:hover {
-    width: 24px;
-    background: var(--accent-dark);
-    box-shadow: 3px 0 12px rgba(0,0,0,0.3);
-}
-.sidebar-toggle:hover::before {
-    background: var(--primary-light);
-}
 
 .sidebar-toggle:active {
     width: 18px;
@@ -254,7 +244,7 @@ body {
         right: -24px;
         width: 24px;
         height: 48px;
-        z-index: 1002; /* Even higher on mobile */
+        z-index: 1002; 
     }
     
     .admin-wrapper.sidebar-collapsed .sidebar-toggle {
