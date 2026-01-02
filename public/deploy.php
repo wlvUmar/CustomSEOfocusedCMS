@@ -120,6 +120,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
 <style>
+.btn {margin-top:5;display: inline-flex;align-items: center;gap: 6px;}
 .deploy-container { max-width: 900px; margin:20px auto; }
 .deploy-commits { background-color:#1e1e1e; color:#d4d4d4; font-family:monospace; font-size:14px; line-height:1.5; padding:16px; border-radius:6px; overflow-x:auto; max-height:400px; }
 .deploy-commits ul { list-style:none; padding-left:0; margin:0; }
