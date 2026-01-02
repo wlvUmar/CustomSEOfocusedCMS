@@ -1,7 +1,6 @@
 <?php 
 // path: ./views/admin/media/manager.php
-// IMPLEMENTATION: Replace the existing media/manager.php
-$pageName = 'media/manager'
+$pageName = 'media/manager';
 require BASE_PATH . '/views/admin/layout/header.php'; 
 ?>
 

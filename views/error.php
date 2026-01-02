@@ -1,6 +1,5 @@
 <?php
 // error.php
-require_once __DIR__ . '/../config/init.php';
 
 require 'views/templates/header.php';
 
