@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/config.php';    
+require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/database.php';
-require_once __DIR__ . '/security.php';  
+require_once __DIR__ . '/security.php';
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 
@@ -12,6 +12,7 @@ if (!isset($_SESSION['last_regeneration'])) {
     $_SESSION['last_regeneration'] = time();
 }
 
+// Session timeout (1 hour)
 $timeout = 1800;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $timeout) {
     session_unset();
