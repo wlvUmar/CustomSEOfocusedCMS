@@ -161,4 +161,3 @@ require BASE_PATH.'/views/admin/layout/header.php';
 <?php endif; ?>
 
 <?php require BASE_PATH.'/views/admin/layout/footer.php'; ?>
-  
