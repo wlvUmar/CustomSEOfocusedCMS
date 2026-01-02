@@ -15,6 +15,19 @@ function setLanguage($lang) {
     }
 }
 
+function showError(int $code = 500) {
+    // Check if $router exists in this scope
+    global $router;
+
+    if (isset($router) && method_exists($router, 'error')) {
+        $router->error($code);
+    } else {
+        // fallback if router is unavailable
+        http_response_code($code);
+        echo "Error $code";
+        exit;
+    }
+}
 /**
  * Enhanced template engine with Jinja-like syntax
  * Supports: {{variable}}, {{object.property}}, {{array.0}}, loops, conditionals

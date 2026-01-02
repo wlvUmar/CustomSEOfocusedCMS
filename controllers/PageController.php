@@ -35,8 +35,7 @@ class PageController extends Controller {
         $page = $this->pageModel->getBySlug($slug);
         
         if (!$page) {
-            http_response_code(404);
-            die('Page not found');
+            showError(404);
         }
         
         // Track which content is being shown
