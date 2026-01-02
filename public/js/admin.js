@@ -73,17 +73,4 @@ document.addEventListener('DOMContentLoaded', () => {
     
     updateIcon();
 
-    // Handle window resize
-    let resizeTimer;
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-            if (window.innerWidth > 1024) {
-                wrapper.classList.remove('sidebar-collapsed');
-            } else {
-                wrapper.classList.add('sidebar-collapsed');
-            }
-            updateIcon();
-        }, 250);
-    });
 });
