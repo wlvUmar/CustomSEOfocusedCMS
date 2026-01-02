@@ -73,17 +73,18 @@ if(!isset($_SESSION['deploy_csrf'])){
 // --------------------
 $manualDeployed = false;
 $deployMessage = '';
-if($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_SESSION['deploy_csrf']){
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_SESSION['deploy_csrf']) {
     // Find latest non-deployed push
     $latest = null;
-    foreach($queue as &$q){
-        if(!$q['deployed']){
+    foreach ($queue as &$q) {
+        if (!$q['deployed']) {
             $latest = &$q;
             break;
         }
     }
 
-    if($latest){
+    if ($latest) {
         $commands = [
             'git reset --hard',
             'git clean -fd',
@@ -91,12 +92,12 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_S
         ];
         $output = [];
         $exit = 0;
-        foreach($commands as $cmd){
+        foreach ($commands as $cmd) {
             $full = "cd ".REPO_PATH." && $cmd 2>&1";
             exec($full, $cmdOut, $cmdExit);
             $output[] = "$ $cmd";
             $output = array_merge($output, $cmdOut);
-            if($cmdExit !== 0) $exit = $cmdExit;
+            if ($cmdExit !== 0) $exit = $cmdExit;
         }
 
         $deployOutput = implode("\n", $output);
@@ -110,6 +111,9 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_S
     } else {
         $deployMessage = "No pending push to deploy.";
     }
+
+    header('Location: deploy.php'); // optional: append ?deployed=1
+    exit;
 }
 
 // --------------------
