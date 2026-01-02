@@ -109,30 +109,84 @@ $pageName = 'deploy';
 require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
+<style>
+.deploy-commits {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    max-height: 300px;
+    margin-bottom: 20px;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
+}
+
+.deploy-commits ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.deploy-commits li {
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.deploy-commits li strong {
+    color: #569cd6;
+}
+
+.deploy-commits li span.author {
+    color: #9cdcfe;
+}
+
+.deploy-commits li span.timestamp {
+    color: #c586c0;
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+.deploy-commits li:last-child {
+    border-bottom: none;
+}
+
+.deploy-commits li::before {
+    content: "$ ";
+    color: #6a9955;
+    margin-right: 4px;
+}
+</style>
+
 <div class="page-header">
     <h1><i data-feather="zap"></i> Git Deploy</h1>
 </div>
 
 <?php if(!empty($allCommits)): ?>
-<div class="alert alert-success">
-    Latest push from webhook detected:
+<div class="deploy-commits">
     <ul>
     <?php foreach($allCommits as $commit): ?>
         <li>
             <strong><?= htmlspecialchars(substr($commit['id'],0,7)) ?></strong> - 
-            <?= htmlspecialchars($commit['message']) ?> by 
-            <?= htmlspecialchars($commit['author']['name']) ?> at 
-            <?= htmlspecialchars($commit['timestamp']) ?>
+            <?= htmlspecialchars($commit['message']) ?> 
+            <span class="author"><?= htmlspecialchars($commit['author']['name']) ?></span>
+            <span class="timestamp"><?= htmlspecialchars($commit['timestamp']) ?></span>
         </li>
     <?php endforeach; ?>
     </ul>
 </div>
 <?php elseif($lastPush): ?>
-<div class="alert alert-info">
-    Last push on origin/master: 
-    <strong><?= htmlspecialchars($lastPush['sha']) ?></strong> - 
-    <?= htmlspecialchars($lastPush['message']) ?> by 
-    <?= htmlspecialchars($lastPush['author']) ?> at <?= htmlspecialchars($lastPush['date']) ?>
+<div class="deploy-commits">
+    <ul>
+        <li>
+            <strong><?= htmlspecialchars($lastPush['sha']) ?></strong> - 
+            <?= htmlspecialchars($lastPush['message']) ?> 
+            <span class="author"><?= htmlspecialchars($lastPush['author']) ?></span>
+            <span class="timestamp"><?= htmlspecialchars($lastPush['date']) ?></span>
+        </li>
+    </ul>
 </div>
 <?php endif; ?>
 
