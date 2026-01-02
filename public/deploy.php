@@ -1,134 +1,116 @@
 <?php
 // path: ./views/admin/deploy.php
-
 require_once __DIR__ . '/../config/init.php';
 
 define('REPO_PATH', '/home/kuplyuta/appliances'); 
 define('GITHUB_REPO_NAME', 'seowebsite');
+define('DEPLOY_QUEUE', REPO_PATH.'/deploy_queue.json');
+define('DEPLOY_LOG', REPO_PATH.'/deploy.log');
 
 // --------------------
-// Logging function
+// Helper functions
 // --------------------
 function logDeploy($msg){
-    $logFile = REPO_PATH.'/deploy.log';
-    $line = "[".date('Y-m-d H:i:s')."] ".$msg.PHP_EOL;
-    file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
+    file_put_contents(DEPLOY_LOG, "[".date('Y-m-d H:i:s')."] $msg\n", FILE_APPEND | LOCK_EX);
+}
+
+function loadQueue(){
+    if(file_exists(DEPLOY_QUEUE)){
+        return json_decode(file_get_contents(DEPLOY_QUEUE), true) ?: [];
+    }
+    return [];
+}
+
+function saveQueue($queue){
+    file_put_contents(DEPLOY_QUEUE, json_encode($queue, JSON_PRETTY_PRINT));
 }
 
 // --------------------
-// Detect if this is a webhook
+// Webhook stores push
 // --------------------
 $isWebhook = isset($_SERVER['HTTP_X_GITHUB_EVENT']);
-
-// --------------------
-// Validate access
-// --------------------
-if (!$isWebhook && !isset($_SESSION['user_id'])) {
-    http_response_code(403);
-    die('Access Denied. Please <a href="/admin/login">login</a> first.');
-}
-
-// --------------------
-// Handle GitHub Webhook
-// --------------------
-$latestCommit = null;
-if ($isWebhook && $_SERVER['REQUEST_METHOD'] === 'POST') {
-
+if($isWebhook && $_SERVER['REQUEST_METHOD']==='POST'){
     $payload = file_get_contents('php://input');
-    $data = json_decode($payload, true);
-
-    if ($data) {
+    $data = json_decode($payload,true);
+    if($data){
         $repoName = $data['repository']['name'] ?? '';
         $branch = $data['ref'] ?? '';
-
-        if ($repoName === GITHUB_REPO_NAME && $branch === 'refs/heads/master') {
+        if($repoName===GITHUB_REPO_NAME && $branch==='refs/heads/master'){
             $commits = $data['commits'] ?? [];
-            if (!empty($commits)) {
+            if(!empty($commits)){
                 $last = end($commits);
-                $latestCommit = [
-                    'sha' => substr($last['id'] ?? '', 0, 7),
-                    'message' => $last['message'] ?? '',
-                    'author' => $last['author']['name'] ?? '',
-                    'date' => $last['timestamp'] ?? '',
+                $queue = loadQueue();
+                $queue[] = [
+                    'sha' => substr($last['id'],0,7),
+                    'message' => $last['message'],
+                    'timestamp' => $last['timestamp'],
+                    'deployed' => false
                 ];
+                saveQueue($queue);
+                logDeploy("[WEBHOOK] Push stored: ".$queue[count($queue)-1]['sha']);
             }
-            logDeploy("[WEBHOOK] Push detected: " . ($latestCommit['sha'] ?? 'N/A'));
         }
     }
-
-    // Execute Git pull automatically for webhook
-    $commands = [
-        'git reset --hard',
-        'git clean -fd',
-        'git pull origin master'
-    ];
-
-    $output = [];
-    $exit = 0;
-    foreach ($commands as $cmd) {
-        $full = "cd ".REPO_PATH." && $cmd 2>&1";
-        exec($full, $cmdOut, $cmdExit);
-        $output[] = "$ $cmd";
-        $output = array_merge($output, $cmdOut);
-        if ($cmdExit !== 0) $exit = $cmdExit;
-    }
-
-    $deployOutput = implode("\n", $output);
-    $deployExit = $exit;
-
-    logDeploy("[WEBHOOK DEPLOY] " . $deployOutput);
-
-    // Respond to GitHub
     header('Content-Type: application/json');
-    echo json_encode(['status' => $deployExit===0 ? 'success' : 'failed', 'output' => $deployOutput]);
+    echo json_encode(['status'=>'ok']);
     exit;
 }
 
 // --------------------
-// Manual deploy (admin only)
+// Admin access for manual deploy
 // --------------------
-if (!isset($_SESSION['deploy_csrf'])) {
+if(!isset($_SESSION['user_id'])){
+    http_response_code(403);
+    die('Access Denied. Please <a href="/admin/login">login</a> first.');
+}
+
+// CSRF
+if(!isset($_SESSION['deploy_csrf'])){
     $_SESSION['deploy_csrf'] = bin2hex(random_bytes(32));
 }
 
+// --------------------
+// Deploy latest push
+// --------------------
+$queue = loadQueue();
 $deployOutput = '';
 $deployExit = null;
 $manualDeployed = false;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_SESSION['deploy_csrf'] && !$isWebhook) {
-    $commands = [
-        'git reset --hard',
-        'git clean -fd',
-        'git pull origin master'
-    ];
-
-    $output = [];
-    $exit = 0;
-    foreach ($commands as $cmd) {
-        $full = "cd ".REPO_PATH." && $cmd 2>&1";
-        exec($full, $cmdOut, $cmdExit);
-        $output[] = "$ $cmd";
-        $output = array_merge($output, $cmdOut);
-        if ($cmdExit !== 0) $exit = $cmdExit;
+if($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['csrf_token']??'') === $_SESSION['deploy_csrf']){
+    // find first non-deployed push
+    $next = null;
+    foreach($queue as &$item){
+        if(!$item['deployed']){
+            $next = &$item;
+            break;
+        }
     }
 
-    $deployOutput = implode("\n", $output);
-    $deployExit = $exit;
-    $manualDeployed = true;
+    if($next){
+        $commands = [
+            'git reset --hard',
+            'git clean -fd',
+            'git pull origin master'
+        ];
+        $output = [];
+        $exit = 0;
+        foreach($commands as $cmd){
+            $full = "cd ".REPO_PATH." && $cmd 2>&1";
+            exec($full, $cmdOut, $cmdExit);
+            $output[] = "$ $cmd";
+            $output = array_merge($output,$cmdOut);
+            if($cmdExit!==0) $exit = $cmdExit;
+        }
 
-    logDeploy("[MANUAL DEPLOY] ".$deployOutput);
-}
-
-// --------------------
-// Fetch latest commits (always)
-// --------------------
-$allCommits = [];
-$gitLogOutput = shell_exec("cd ".REPO_PATH." && git log origin/master -5 --pretty=format:'%h|%an|%ad|%s'");
-if ($gitLogOutput) {
-    $lines = explode("\n", $gitLogOutput);
-    foreach ($lines as $line) {
-        list($sha, $author, $date, $message) = explode('|', $line, 4);
-        $allCommits[] = compact('sha','author','date','message');
+        $deployOutput = implode("\n",$output);
+        $deployExit = $exit;
+        $manualDeployed = true;
+        $next['deployed'] = true;
+        saveQueue($queue);
+        logDeploy("[MANUAL DEPLOY] SHA: {$next['sha']} Output:\n".$deployOutput);
+    } else {
+        $deployOutput = "No pending push to deploy.";
     }
 }
 
@@ -136,90 +118,46 @@ if ($gitLogOutput) {
 // Page layout
 // --------------------
 $pageName = 'deploy';
-require BASE_PATH . '/views/admin/layout/header.php';
+require BASE_PATH.'/views/admin/layout/header.php';
 ?>
 
 <style>
-.deploy-commits {
-    background-color: #1e1e1e;
-    color: #d4d4d4;
-    font-family: 'Fira Code', 'Courier New', monospace;
-    font-size: 14px;
-    line-height: 1.5;
-    padding: 16px;
-    border-radius: 6px;
-    overflow-x: auto;
-    max-height: 400px;
-    margin-bottom: 20px;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+.deploy-queue {
+    font-family: 'Fira Code', monospace;
+    background:#1e1e1e; color:#d4d4d4; padding:16px; border-radius:6px;
 }
-.deploy-commits ul { list-style: none; padding-left: 0; margin: 0; }
-.deploy-commits li { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-.deploy-commits li:last-child { border-bottom: none; }
-.deploy-commits li::before { content: "$ "; color: #6a9955; margin-right: 4px; }
-.deploy-commits li .sha { color: #569cd6; font-weight: bold; }
-.deploy-commits li .author { color: #9cdcfe; }
-.deploy-commits li .timestamp { color: #c586c0; font-size: 12px; margin-left: 6px; }
-.deploy-commits li .message { color: #d4d4d4; }
-.deploy-commits li .message .success { color: #6a9955; font-weight: bold; }
-.deploy-commits li .message .info-text { color: #4fc1ff; }
-.deploy-commits li .message .danger { color: #f44747; font-weight: bold; }
-.deploy-commits li.new-push { background-color: #2d2d2d; border-left: 4px solid #ffcc00; padding-left: 12px; }
+.deploy-queue ul { list-style:none; margin:0; padding:0; }
+.deploy-queue li { padding:6px; border-bottom:1px solid rgba(255,255,255,0.05); }
+.deploy-queue li:last-child{border-bottom:none;}
+.deploy-queue li.deployed{opacity:0.5;}
+.deploy-queue li span.sha{color:#569cd6; font-weight:bold;}
+.deploy-queue li span.msg{color:#d4d4d4;}
+.deploy-output{background:#111; color:#d4d4d4; padding:16px; border-radius:6px; font-family:'Fira Code', monospace; margin-top:20px; white-space:pre-wrap;}
 </style>
 
-<div class="page-header">
-    <h1><i data-feather="zap"></i> Git Deploy</h1>
-</div>
+<div class="page-header"><h1><i data-feather="zap"></i> Deploy Dashboard</h1></div>
 
-<?php if(!empty($allCommits)): ?>
-<div class="deploy-commits">
+<h2>Push Queue</h2>
+<div class="deploy-queue">
     <ul>
-    <?php foreach($allCommits as $commit): 
-        $messageHtml = htmlspecialchars($commit['message']);
-        $messageHtml = preg_replace('/Already up[ -]to[ -]date/', '<span class="success">Already up-to-date</span>', $messageHtml);
-        $messageHtml = preg_replace('/No local changes to save/', '<span class="info-text">No local changes</span>', $messageHtml);
-        $messageHtml = preg_replace('/CONFLICT/', '<span class="danger">CONFLICT</span>', $messageHtml);
-        $isNew = ($latestCommit && $commit['sha'] === $latestCommit['sha']);
-    ?>
-        <li class="<?= $isNew ? 'new-push' : '' ?>">
-            <span class="sha"><?= htmlspecialchars($commit['sha']) ?></span> - 
-            <span class="message"><?= $messageHtml ?></span>
-            <span class="author"><?= htmlspecialchars($commit['author']) ?></span>
-            <span class="timestamp"><?= htmlspecialchars($commit['date']) ?></span>
-        </li>
-    <?php endforeach; ?>
+        <?php foreach($queue as $item): ?>
+            <li class="<?= $item['deployed']?'deployed':'' ?>">
+                <span class="sha"><?= htmlspecialchars($item['sha']) ?></span> - 
+                <span class="msg"><?= htmlspecialchars($item['message']) ?></span>
+                <?php if($item['deployed']): ?><em> (deployed)</em><?php endif; ?>
+            </li>
+        <?php endforeach; ?>
     </ul>
 </div>
-<?php endif; ?>
 
-<?php if($manualDeployed): ?>
-<h2>
-    <?= $deployExit===0 
-        ? '<i data-feather="check-circle" class="text-success"></i> Deploy Completed' 
-        : '<i data-feather="x-circle" class="text-danger"></i> Deploy Failed' 
-    ?>
-</h2>
-<div class="deploy-commits">
-    <ul>
-    <?php 
-        $lines = explode("\n", $deployOutput);
-        foreach($lines as $line):
-            $lineHtml = htmlspecialchars($line);
-            $lineHtml = preg_replace('/Already up[ -]to[ -]date/', '<span class="success">Already up-to-date</span>', $lineHtml);
-            $lineHtml = preg_replace('/No local changes to save/', '<span class="info-text">No local changes</span>', $lineHtml);
-            $lineHtml = preg_replace('/CONFLICT/', '<span class="danger">CONFLICT</span>', $lineHtml);
-    ?> 
-        <li><?= $lineHtml ?></li>
-    <?php endforeach; ?>
-    </ul>
-</div>
-<?php endif; ?>
-
-<form method="POST">
+<form method="POST" style="margin-top:20px;">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['deploy_csrf']) ?>">
-    <button type="submit" class="btn btn-primary">
-        <i data-feather="zap"></i> Deploy Now
-    </button>
+    <button type="submit" class="btn btn-primary"><i data-feather="zap"></i> Deploy Latest Push</button>
 </form>
 
-<?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
+<?php if($manualDeployed): ?>
+    <h3>Deploy Output:</h3>
+    <div class="deploy-output"><?= htmlspecialchars($deployOutput) ?></div>
+<?php endif; ?>
+
+<?php require BASE_PATH.'/views/admin/layout/footer.php'; ?>
