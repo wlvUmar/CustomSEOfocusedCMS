@@ -164,4 +164,4 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) >
     exit;
 }
 $_SESSION['last_activity'] = time();
-?>');
+?>
