@@ -16,16 +16,31 @@ function logDeploy($msg){
 }
 
 // --------------------
+// Detect if this is a webhook
+// --------------------
+$isWebhook = isset($_SERVER['HTTP_X_GITHUB_EVENT']);
+
+// --------------------
+// Validate access
+// --------------------
+if (!$isWebhook && !isset($_SESSION['user_id'])) {
+    http_response_code(403);
+    die('Access Denied. Please <a href="/admin/login">login</a> first.');
+}
+
+// --------------------
 // Handle GitHub Webhook
 // --------------------
 $latestCommit = null;
+if ($isWebhook && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_GITHUB_EVENT'])) {
     $payload = file_get_contents('php://input');
     $data = json_decode($payload, true);
+
     if ($data) {
         $repoName = $data['repository']['name'] ?? '';
         $branch = $data['ref'] ?? '';
+
         if ($repoName === GITHUB_REPO_NAME && $branch === 'refs/heads/master') {
             $commits = $data['commits'] ?? [];
             if (!empty($commits)) {
@@ -40,17 +55,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['HTTP_X_GITHUB_EVENT
             logDeploy("[WEBHOOK] Push detected: " . ($latestCommit['sha'] ?? 'N/A'));
         }
     }
+
+    // Execute Git pull automatically for webhook
+    $commands = [
+        'git reset --hard',
+        'git clean -fd',
+        'git pull origin master'
+    ];
+
+    $output = [];
+    $exit = 0;
+    foreach ($commands as $cmd) {
+        $full = "cd ".REPO_PATH." && $cmd 2>&1";
+        exec($full, $cmdOut, $cmdExit);
+        $output[] = "$ $cmd";
+        $output = array_merge($output, $cmdOut);
+        if ($cmdExit !== 0) $exit = $cmdExit;
+    }
+
+    $deployOutput = implode("\n", $output);
+    $deployExit = $exit;
+
+    logDeploy("[WEBHOOK DEPLOY] " . $deployOutput);
+
+    // Respond to GitHub
+    header('Content-Type: application/json');
+    echo json_encode(['status' => $deployExit===0 ? 'success' : 'failed', 'output' => $deployOutput]);
+    exit;
 }
 
 // --------------------
 // Manual deploy (admin only)
 // --------------------
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(403);
-    die('Access Denied. Please <a href="/admin/login">login</a> first.');
-}
-
-// CSRF token
 if (!isset($_SESSION['deploy_csrf'])) {
     $_SESSION['deploy_csrf'] = bin2hex(random_bytes(32));
 }
@@ -59,7 +95,7 @@ $deployOutput = '';
 $deployExit = null;
 $manualDeployed = false;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_SESSION['deploy_csrf'] && !isset($_SERVER['HTTP_X_GITHUB_EVENT'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_SESSION['deploy_csrf'] && !$isWebhook) {
     $commands = [
         'git reset --hard',
         'git clean -fd',
@@ -79,13 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_
     $deployOutput = implode("\n", $output);
     $deployExit = $exit;
     $manualDeployed = true;
-    logDeploy("[MANUAL DEPLOY] ".$deployOutput);
 
-    // highlight common messages
-    $outputHtml = htmlspecialchars($deployOutput);
-    $outputHtml = preg_replace('/Already up[ -]to[ -]date/', '<span class="success">Already up-to-date</span>', $outputHtml);
-    $outputHtml = preg_replace('/No local changes to save/', '<span class="info-text">No local changes</span>', $outputHtml);
-    $outputHtml = preg_replace('/CONFLICT/', '<span class="danger">CONFLICT</span>', $outputHtml);
+    logDeploy("[MANUAL DEPLOY] ".$deployOutput);
 }
 
 // --------------------
@@ -102,7 +133,7 @@ if ($gitLogOutput) {
 }
 
 // --------------------
-// Page layout variables
+// Page layout
 // --------------------
 $pageName = 'deploy';
 require BASE_PATH . '/views/admin/layout/header.php';
@@ -122,59 +153,18 @@ require BASE_PATH . '/views/admin/layout/header.php';
     margin-bottom: 20px;
     box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
 }
-
-.deploy-commits ul {
-    list-style: none;
-    padding-left: 0;
-    margin: 0;
-}
-
-
-.deploy-commits li {
-    padding: 6px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-
-.deploy-commits li:last-child {
-    border-bottom: none;
-}
-
-.deploy-commits li::before {
-    content: "$ ";
-    color: #6a9955;
-    margin-right: 4px;
-}
-
-.deploy-commits li .sha {
-    color: #569cd6;
-    font-weight: bold;
-}
-
-.deploy-commits li .author {
-    color: #9cdcfe;
-}
-
-.deploy-commits li .timestamp {
-    color: #c586c0;
-    font-size: 12px;
-    margin-left: 6px;
-}
-
-.deploy-commits li .message {
-    color: #d4d4d4;
-}
-
-/* Highlight keywords */
+.deploy-commits ul { list-style: none; padding-left: 0; margin: 0; }
+.deploy-commits li { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.deploy-commits li:last-child { border-bottom: none; }
+.deploy-commits li::before { content: "$ "; color: #6a9955; margin-right: 4px; }
+.deploy-commits li .sha { color: #569cd6; font-weight: bold; }
+.deploy-commits li .author { color: #9cdcfe; }
+.deploy-commits li .timestamp { color: #c586c0; font-size: 12px; margin-left: 6px; }
+.deploy-commits li .message { color: #d4d4d4; }
 .deploy-commits li .message .success { color: #6a9955; font-weight: bold; }
 .deploy-commits li .message .info-text { color: #4fc1ff; }
 .deploy-commits li .message .danger { color: #f44747; font-weight: bold; }
-
-/* Highlight latest push */
-.deploy-commits li.new-push {
-    background-color: #2d2d2d;
-    border-left: 4px solid #ffcc00;
-    padding-left: 12px;
-}
+.deploy-commits li.new-push { background-color: #2d2d2d; border-left: 4px solid #ffcc00; padding-left: 12px; }
 </style>
 
 <div class="page-header">
@@ -189,7 +179,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
         $messageHtml = preg_replace('/Already up[ -]to[ -]date/', '<span class="success">Already up-to-date</span>', $messageHtml);
         $messageHtml = preg_replace('/No local changes to save/', '<span class="info-text">No local changes</span>', $messageHtml);
         $messageHtml = preg_replace('/CONFLICT/', '<span class="danger">CONFLICT</span>', $messageHtml);
-
         $isNew = ($latestCommit && $commit['sha'] === $latestCommit['sha']);
     ?>
         <li class="<?= $isNew ? 'new-push' : '' ?>">
@@ -225,7 +214,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </ul>
 </div>
 <?php endif; ?>
-
 
 <form method="POST">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['deploy_csrf']) ?>">
