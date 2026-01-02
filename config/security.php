@@ -95,9 +95,10 @@ $csp = [
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    "connect-src 'self' https://unpkg.com",
     "frame-ancestors 'self'"
 ];
+
 header('Content-Security-Policy: ' . implode('; ', $csp));
 
 
