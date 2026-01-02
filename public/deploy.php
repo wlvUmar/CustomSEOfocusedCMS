@@ -1,23 +1,15 @@
 <?php
-// path: ./public/deploy.php
-// DEPLOY UI + WEBHOOK LAST-PUSH PREVIEW
-require_once '../config/security.php';
-require_once '../config/config.php';
+require_once __DIR__ . '/config/init.php';
 
-session_start();
-
-define('BASE_PATH', dirname(__DIR__));
 define('REPO_PATH', '/home/kuplyuta/appliances'); 
 define('GITHUB_REPO_NAME', 'seowebsite');
 
-// Helper: log
 function logDeploy($msg){
     $logFile = REPO_PATH.'/deploy.log';
     $line = "[".date('Y-m-d H:i:s')."] ".$msg.PHP_EOL;
     file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
 }
 
-// ===================== GITHUB WEBHOOK =====================
 $isWebhook = ($_SERVER['REQUEST_METHOD']==='POST' && isset($_SERVER['HTTP_X_GITHUB_EVENT']));
 $latestCommit = null;
 
