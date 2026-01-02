@@ -75,8 +75,18 @@ if($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['csrf_token']??'') === $_SESSI
     } else {
         $deployOutput = "No pending push to deploy.";
     }
-    echo json_encode(['queue'=>$queue,'deployOutput'=>$deployOutput]);
-    exit;
+    // Detect AJAX request
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) 
+              && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+    if($isAjax){
+        header('Content-Type: application/json');
+        echo json_encode(['queue'=>$queue,'deployOutput'=>$deployOutput]);
+        exit;
+    } else {
+        $deployMessage = $deployOutput;
+    }
+
 }
 
 // -------------------
@@ -98,6 +108,7 @@ require BASE_PATH.'/views/admin/layout/header.php';
 </style>
 
 <div class="page-header"><h1><i data-feather="zap"></i> Deploy Dashboard</h1></div>
+<pre id="deployOutput" class="deploy-output"><?= htmlspecialchars($deployMessage ?? '') ?></pre>
 
 <h2>Push Queue</h2>
 <div class="deploy-queue">
