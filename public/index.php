@@ -168,9 +168,57 @@ $router->post('/admin/seo/save', fn() => requireSEO('save'));
 | 404 Route
 |--------------------------------------------------------------------------
 */
-$router->notFound(function() {
-    http_response_code(404);
-    echo '<h1>404 - Page Not Found</h1>';
+
+$router->notFound(function () {
+    $router->error(404);
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Preview Routes (Admin Only)
+|--------------------------------------------------------------------------
+*/
+$router->get('/admin/preview/{id}', function($id) {
+    require_once BASE_PATH . '/controllers/admin/PreviewController.php';
+    $controller = new PreviewController();
+    $controller->show($id);
+});
+
+$router->get('/admin/preview/{id}/content', function($id) {
+    require_once BASE_PATH . '/controllers/admin/PreviewController.php';
+    $controller = new PreviewController();
+    $controller->getPreviewContent($id);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Sitemap & SEO Routes
+|--------------------------------------------------------------------------
+*/
+$router->get('/sitemap.xml', function() {
+    require_once BASE_PATH . '/controllers/SitemapController.php';
+    $controller = new SitemapController();
+    $controller->generateXML();
+});
+
+$router->get('/robots.txt', function() {
+    require_once BASE_PATH . '/controllers/SitemapController.php';
+    $controller = new SitemapController();
+    $controller->generateRobotsTxt();
+});
+
+// Admin sitemap management
+$router->get('/admin/seo/sitemap', function() {
+    require_once BASE_PATH . '/controllers/SitemapController.php';
+    $controller = new SitemapController();
+    $controller->adminPanel();
+});
+
+$router->post('/admin/seo/sitemap/ping', function() {
+    require_once BASE_PATH . '/controllers/SitemapController.php';
+    $controller = new SitemapController();
+    $controller->pingSearchEngines();
 });
 
 $router->dispatch();

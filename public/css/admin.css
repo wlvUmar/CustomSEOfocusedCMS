@@ -160,7 +160,7 @@ body {
 .sidebar-toggle {
     position: absolute;
     top: 50%;
-    right: -20px;
+    left: var(--sidebar-width);
     transform: translateY(-50%);
     width: 20px;
     height: 60px;

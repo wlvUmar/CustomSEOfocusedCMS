@@ -7,6 +7,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <div class="page-header">
     <h1>Content Rotations: <?= e($page['title_ru']) ?></h1>
     <div class="btn-group">
+        <button onclick="showPreviewModal()" class="btn btn-primary">
+            <i data-feather="eye"></i> Preview Page
+        </button>
         <a href="<?= BASE_URL ?>/admin/rotations/overview" class="btn btn-secondary">
             <i data-feather="list"></i> Overview
         </a>
@@ -220,6 +223,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </form>
     </div>
 </div>
+
+
 <div id="upload-modal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
@@ -268,7 +273,69 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </form>
     </div>
 </div>
+
+<div id="preview-modal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2><i data-feather="eye"></i> Preview Page with Rotation</h2>
+            <button onclick="closePreviewModal()" class="close-btn"><i data-feather="x"></i></button>
+        </div>
+        
+        <div style="padding: 20px;">
+            <div class="form-row" style="margin-bottom: 20px;">
+                <div class="form-group">
+                    <label><strong>Select Month:</strong></label>
+                    <select id="preview-month" class="btn" style="width: 100%;">
+                        <?php foreach ($months as $num => $name): ?>
+                        <option value="<?= $num ?>" <?= $num == date('n') ? 'selected' : '' ?>>
+                            <?= $name ?> <?= $num == date('n') ? '(Current)' : '' ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label><strong>Language:</strong></label>
+                    <select id="preview-lang" class="btn" style="width: 100%;">
+                        <option value="ru">Русский</option>
+                        <option value="uz">O'zbekcha</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button onclick="openPreview()" class="btn btn-primary" style="width: 100%;">
+                    <i data-feather="external-link"></i> Open Preview in New Tab
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+function showPreviewModal() {
+    document.getElementById('preview-modal').style.display = 'flex';
+    feather.replace();
+}
+
+function closePreviewModal() {
+    document.getElementById('preview-modal').style.display = 'none';
+}
+
+function openPreview() {
+    const month = document.getElementById('preview-month').value;
+    const lang = document.getElementById('preview-lang').value;
+    const url = '<?= BASE_URL ?>/admin/preview/<?= $page['id'] ?>?month=' + month + '&lang=' + lang;
+    window.open(url, '_blank', 'width=1200,height=800');
+    closePreviewModal();
+}
+
+// Close modal on outside click
+document.getElementById('preview-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closePreviewModal();
+    }
+});
 function toggleAll(checkbox) {
     document.querySelectorAll('.row-checkbox').forEach(cb => {
         cb.checked = checkbox.checked;
