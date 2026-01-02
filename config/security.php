@@ -16,10 +16,10 @@ $csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com",
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
-    "style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com", // <-- add this
+    "style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com", // TinyMCE styles
     "img-src 'self' data: https:",
-    "font-src 'self' data:",
-    "connect-src 'self' https://unpkg.com",
+    "font-src 'self' data: https://cdnjs.cloudflare.com", // TinyMCE fonts
+    "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com", // TinyMCE resources
     "frame-ancestors 'self'"
 ];
 

@@ -1,6 +1,5 @@
 <?php 
 // path: ./views/templates/preview.php
-// IMPLEMENTATION: Place in views/templates/preview.php
 
 $lang = $lang ?? getCurrentLanguage();
 $seo = $seo ?? [];
@@ -55,40 +54,102 @@ $seo = $seo ?? [];
             align-items: center;
             flex-wrap: wrap;
         }
-        .preview-controls select,
-        .preview-controls a,
-        .preview-controls button {
-            padding: 6px 12px;
+        
+        /* Styled Select Dropdowns */
+        .preview-controls select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding: 8px 32px 8px 12px;
             background: rgba(255,255,255,0.2);
             border: 1px solid rgba(255,255,255,0.3);
             color: white;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            min-width: 140px;
+        }
+        
+        .preview-controls select:hover {
+            background-color: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        .preview-controls select:focus {
+            outline: none;
+            background-color: rgba(255,255,255,0.35);
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
+        }
+        
+        .preview-controls select option {
+            background: #303034;
+            color: white;
+            padding: 8px;
+        }
+        
+        .preview-controls a,
+        .preview-controls button {
+            padding: 8px 14px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
             cursor: pointer;
             text-decoration: none;
             transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
         }
-        .preview-controls select:hover,
+        
         .preview-controls a:hover,
         .preview-controls button:hover {
             background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
         }
+        
+        .preview-controls button.close-btn {
+            background: rgba(220, 38, 38, 0.3);
+            border-color: rgba(220, 38, 38, 0.5);
+        }
+        
+        .preview-controls button.close-btn:hover {
+            background: rgba(220, 38, 38, 0.5);
+        }
+        
         body.preview-mode {
             padding-top: 120px;
         }
         body.preview-mode header {
             top: 60px;
         }
+        
         @media (max-width: 768px) {
             .preview-banner {
                 font-size: 12px;
                 padding: 10px 15px;
             }
+            .preview-controls {
+                width: 100%;
+            }
             .preview-controls select,
             .preview-controls a,
             .preview-controls button {
-                padding: 5px 10px;
+                padding: 7px 12px;
                 font-size: 12px;
+                flex: 1;
+                min-width: auto;
+            }
+            .preview-controls select {
+                padding-right: 28px;
             }
             body.preview-mode {
                 padding-top: 140px;
@@ -117,7 +178,7 @@ $seo = $seo ?? [];
         </div>
         
         <div class="preview-controls">
-            <select id="month-selector" onchange="changeMonth()">
+            <select id="month-selector" onchange="changeMonth()" aria-label="Select month">
                 <?php
                 $months = [
                     1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
@@ -127,26 +188,28 @@ $seo = $seo ?? [];
                 foreach ($months as $num => $name):
                 ?>
                 <option value="<?= $num ?>" <?= $num == $previewMonth ? 'selected' : '' ?>>
-                    <?= $name ?>
+                    <?= $name ?><?= $num == date('n') ? ' (Now)' : '' ?>
                 </option>
                 <?php endforeach; ?>
             </select>
             
-            <select id="lang-selector" onchange="changeLang()">
+            <select id="lang-selector" onchange="changeLang()" aria-label="Select language">
                 <option value="ru" <?= $lang === 'ru' ? 'selected' : '' ?>>Русский</option>
                 <option value="uz" <?= $lang === 'uz' ? 'selected' : '' ?>>O'zbekcha</option>
             </select>
             
-            <a href="<?= BASE_URL ?>/admin/rotations/manage/<?= $page['id'] ?>">
-                Edit Rotations
+            <a href="<?= BASE_URL ?>/admin/rotations/manage/<?= $page['id'] ?>" title="Edit rotations">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                Edit
             </a>
             
-            <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>">
-                Edit Page
-            </a>
-            
-            <button onclick="window.close()" style="background: rgba(220, 38, 38, 0.3);">
-                Close Preview
+            <button onclick="window.close()" class="close-btn" title="Close preview">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                Close
             </button>
         </div>
     </div>
