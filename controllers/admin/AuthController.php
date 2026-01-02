@@ -17,6 +17,10 @@ class AuthController extends Controller {
     }
 
     public function login() {
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'Invalid security token';
+            $this->redirect('/admin/login');
+        }
         $username = $_POST['username'] ?? '';
         $password = $_POST['password'] ?? '';
 

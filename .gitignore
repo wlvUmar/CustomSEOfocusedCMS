@@ -1,6 +1,26 @@
-database/schema.sql
-public/uploads/
-parse.py
-all_source_files.txt
-./database/schema.sql
-/public/.user.ini
+# Environment files
+.env
+.env.local
+.env.production
+
+# Logs
+/logs/*.log
+/public/logs/*.log
+
+# Uploads (optional - depends on strategy)
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+*.tmp
+*.bak
+*.cache

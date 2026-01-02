@@ -36,6 +36,7 @@ register_shutdown_function(function () use ($customLogFile) {
 });
 require_once '../config/database.php';
 require_once '../config/config.php';
+require_once '../config/security.php';
 require_once '../core/Database.php';
 require_once '../core/Router.php';
 require_once '../core/Controller.php';

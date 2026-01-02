@@ -28,6 +28,7 @@
                 </div>
                 
                 <button type="submit" class="btn btn-primary">Login</button>
+                <?= csrfField() ?>
             </form>
         </div>
     </div>

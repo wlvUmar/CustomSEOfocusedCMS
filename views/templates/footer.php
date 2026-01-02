@@ -60,5 +60,7 @@
         window.baseUrl = "<?= rtrim(BASE_URL, '/') ?>";
     </script>
     <script src="<?= BASE_URL ?>/public/js/link-tracking.js" defer></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script>feather.replace();</script>
 </body>
 </html>

@@ -33,6 +33,9 @@ $faqSchema = '';
 if (!empty($faqs)) {
     $faqSchema = generateFAQSchema($faqs, $lang);
 }
+
+// Check if user is logged in as admin
+$isAdmin = isset($_SESSION['user_id']);
 ?>
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
@@ -110,8 +113,141 @@ if (!empty($faqs)) {
     }
     </script>
     <?php endif; ?>
+    
+    <?php if ($isAdmin): ?>
+    <!-- Admin Toolbar Styles -->
+    <style>
+    .admin-toolbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        padding: 8px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 9999;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        font-size: 13px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .admin-toolbar-left,
+    .admin-toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .admin-toolbar a,
+    .admin-toolbar button {
+        color: white;
+        text-decoration: none;
+        padding: 6px 12px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 4px;
+        border: 1px solid rgba(255,255,255,0.2);
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .admin-toolbar a:hover,
+    .admin-toolbar button:hover {
+        background: rgba(255,255,255,0.25);
+        transform: translateY(-1px);
+    }
+    .admin-toolbar-badge {
+        background: rgba(255,255,255,0.3);
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-weight: 600;
+        font-size: 12px;
+    }
+    body.admin-mode {
+        padding-top: 50px;
+    }
+    @media (max-width: 768px) {
+        .admin-toolbar {
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        .admin-toolbar a,
+        .admin-toolbar button {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        body.admin-mode {
+            padding-top: 55px;
+        }
+    }
+    </style>
+    <?php endif; ?>
 </head>
-<body>
+<body<?= $isAdmin ? ' class="admin-mode"' : '' ?>>
+    
+    <?php if ($isAdmin): ?>
+    <!-- Admin Toolbar -->
+    <div class="admin-toolbar">
+        <div class="admin-toolbar-left">
+            <span class="admin-toolbar-badge">
+                <svg width="14" height="14" fill="currentColor" viewBox="0 0 20 20" style="vertical-align: middle;">
+                    <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                ADMIN
+            </span>
+            <span style="opacity: 0.9; font-size: 12px;">
+                <?= htmlspecialchars($_SESSION['username'] ?? 'Admin') ?>
+            </span>
+        </div>
+        
+        <div class="admin-toolbar-right">
+            <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                Edit
+            </a>
+            
+            <?php if ($page['enable_rotation']): ?>
+            <a href="<?= BASE_URL ?>/admin/rotations/manage/<?= $page['id'] ?>">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Rotate
+            </a>
+            <?php endif; ?>
+            
+            <a href="<?= BASE_URL ?>/admin/analytics/page/<?= e($page['slug']) ?>">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                Stats
+            </a>
+            
+            <a href="<?= BASE_URL ?>/admin/dashboard">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                Dashboard
+            </a>
+            
+            <button onclick="if(confirm('Logout?')) window.location='<?= BASE_URL ?>/admin/logout'" style="background: rgba(255,255,255,0.2);">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="vertical-align: middle;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+                Logout
+            </button>
+        </div>
+    </div>
+    <?php endif; ?>
+    
     <header>
         <div class="container">
             <nav>
