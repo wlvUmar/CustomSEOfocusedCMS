@@ -208,7 +208,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
             $lineHtml = preg_replace('/Already up[ -]to[ -]date/', '<span class="success">Already up-to-date</span>', $lineHtml);
             $lineHtml = preg_replace('/No local changes to save/', '<span class="info-text">No local changes</span>', $lineHtml);
             $lineHtml = preg_replace('/CONFLICT/', '<span class="danger">CONFLICT</span>', $lineHtml);
-    ?>
+    ?> 
         <li><?= $lineHtml ?></li>
     <?php endforeach; ?>
     </ul>
