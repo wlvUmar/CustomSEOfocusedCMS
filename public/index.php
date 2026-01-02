@@ -318,10 +318,7 @@ $router->get('/admin/rotations/download-template', function() {
     $controller->downloadTemplate();
 });
 
-$router->notFound(function() {
-    http_response_code(404);
-    echo '<h1>404 - Page Not Found</h1>';
-});
+
 $router->post('/admin/faqs/bulk-upload', function() {
     require_once BASE_PATH . '/controllers/admin/FAQAdminController.php';
     $controller = new FAQAdminController();
@@ -341,5 +338,9 @@ $router->post('/admin/media/bulk-upload', function() {
     $controller->bulkUpload();
 });
 
+$router->notFound(function() {
+    http_response_code(404);
+    echo '<h1>404 - Page Not Found</h1>';
+});
 
 $router->dispatch();
