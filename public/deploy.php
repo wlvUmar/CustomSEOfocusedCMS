@@ -212,3 +212,4 @@ document.getElementById('deployForm').addEventListener('submit', async e=>{
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
+ 
