@@ -1,7 +1,7 @@
 <?php
 // path: ./views/admin/deploy.php
 
-require_once __DIR__ . '/../../config/init.php';
+require_once __DIR__ . '/../config/init.php';
 
 define('REPO_PATH', '/home/kuplyuta/appliances'); 
 define('GITHUB_REPO_NAME', 'seowebsite');
