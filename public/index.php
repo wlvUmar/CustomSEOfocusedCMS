@@ -1,5 +1,6 @@
 <?php
-require_once __DIR__ . '/config/init.php';
+require_once __DIR__ . '/../config/init.php';
+
 require_once '../core/Database.php';
 require_once '../core/Router.php';
 require_once '../core/Controller.php';

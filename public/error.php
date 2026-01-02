@@ -1,6 +1,7 @@
 <?php
 // error.php
-require_once __DIR__ . '/config/init.php';
+require_once __DIR__ . '/../config/init.php';
+
 require 'views/templates/header.php';
 
 $code = $_GET['code'] ?? 500;
