@@ -49,7 +49,7 @@ if($isWebhook && $_SERVER['REQUEST_METHOD'] === 'POST'){
             }
             file_put_contents(DEPLOY_FILE, json_encode(['queue'=>$queue,'deployOutput'=>$deployOutput]));
             logDeploy("[WEBHOOK] Push received from {$repoName}");
-    }
+        }
     }
     http_response_code(200);
     exit; // webhook returns OK
@@ -113,6 +113,19 @@ if($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_S
 }
 
 // --------------------
+// AJAX JSON response
+// --------------------
+if(isset($_GET['ajax'])){
+    header('Content-Type: application/json');
+    echo json_encode([
+        'queue' => $queue,
+        'deployOutput' => $deployMessage,
+        'hasPending' => count(array_filter($queue, fn($q)=>!$q['deployed']))>0
+    ]);
+    exit;
+}
+
+// --------------------
 // Page layout
 // --------------------
 $pageName = 'deploy';
@@ -120,8 +133,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
 <style>
-.btn {margin-top:5;display: inline-flex;align-items: center;gap: 6px;}
-.deploy-container { max-width: 900px; margin:20px auto; }
+.btn { margin-top:5px; display:inline-flex; align-items:center; gap:6px; }
+.deploy-container { max-width:900px; margin:20px auto; }
 .deploy-commits { background-color:#1e1e1e; color:#d4d4d4; font-family:monospace; font-size:14px; line-height:1.5; padding:16px; border-radius:6px; overflow-x:auto; max-height:400px; }
 .deploy-commits ul { list-style:none; padding-left:0; margin:0; }
 .deploy-commits li { padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
@@ -148,13 +161,11 @@ button:disabled { opacity:0.5; cursor:not-allowed; }
         </ul>
     </div>
 
-    <?php if($manualDeployed): ?>
     <div class="deploy-output" id="deployOutput"><?= htmlspecialchars($deployMessage) ?></div>
-    <?php endif; ?>
 
     <form method="POST" id="deployForm">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['deploy_csrf']) ?>">
-        <button type="submit" class="btn btn-primary" <?= count(array_filter($queue, fn($q)=>!$q['deployed']))===0?'disabled':'' ?>>
+        <button id="deploy-btn" type="submit" class="btn btn-primary" disabled>
             <i data-feather="zap"></i> Deploy Latest Push
         </button>
     </form>
@@ -165,41 +176,38 @@ button:disabled { opacity:0.5; cursor:not-allowed; }
 
 <script>
 // --------------------
-// AJAX live update
+// Live AJAX update
 // --------------------
-function fetchQueue(){
-    fetch('deploy.php')
-        .then(res => res.text())
-        .then(html=>{
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html,'text/html');
-            const newQueue = doc.querySelector('#deployQueue');
-            const newOutput = doc.querySelector('#deployOutput');
-            if(newQueue) document.querySelector('#deployQueue').innerHTML = newQueue.innerHTML;
-            if(newOutput){
-                let out = document.querySelector('#deployOutput');
-                if(out) out.innerHTML = newOutput.innerHTML;
-                else {
-                    const div = document.createElement('div');
-                    div.id='deployOutput'; div.className='deploy-output';
-                    div.innerHTML = newOutput.innerHTML;
-                    document.querySelector('.deploy-container').appendChild(div);
-                }
-            }
-        });
+async function refreshQueue(){
+    const res = await fetch('deploy.php?ajax=1');
+    const data = await res.json();
+
+    // Update button
+    const btn = document.getElementById('deploy-btn');
+    btn.disabled = !data.hasPending;
+
+    // Update push list
+    const queueDiv = document.getElementById('deployQueue');
+    queueDiv.innerHTML = '<ul>' + data.queue.map(q=>`
+        <li class="${q.deployed ? 'deployed' : 'pending'}">
+            <span class="sha">${q.sha}</span> - <span class="message">${q.message}</span>
+        </li>`).join('') + '</ul>';
+
+    // Update deploy output
+    const outDiv = document.getElementById('deployOutput');
+    outDiv.innerHTML = data.deployOutput;
 }
 
-// auto-refresh every 5 seconds
-setInterval(fetchQueue,5000);
+// initial load + interval
+refreshQueue();
+setInterval(refreshQueue, 3000);
 
-// Optional: prevent full page reload for manual deploy
-document.getElementById('deployForm').addEventListener('submit', function(e){
+// handle manual deploy without page reload
+document.getElementById('deployForm').addEventListener('submit', async e=>{
     e.preventDefault();
-    const formData = new FormData(this);
-    fetch('deploy.php',{
-        method:'POST',
-        body:formData
-    }).then(fetchQueue);
+    const formData = new FormData(e.target);
+    await fetch('deploy.php', {method:'POST', body:formData});
+    refreshQueue();
 });
 </script>
 
