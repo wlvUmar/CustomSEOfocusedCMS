@@ -22,11 +22,12 @@
 </head>
 <body>
     <div class="admin-wrapper">
-        <aside class="sidebar">
-            <!-- Toggle button INSIDE sidebar -->
-            <button class="sidebar-toggle" aria-label="Toggle sidebar">
+        <button class="sidebar-toggle" aria-label="Toggle sidebar">
                 <i data-feather="chevron-left"></i>
             </button>
+        <aside class="sidebar">
+            <!-- Toggle button INSIDE sidebar -->
+            
             
             <div class="logo">
                 <h2>Admin Panel</h2>
