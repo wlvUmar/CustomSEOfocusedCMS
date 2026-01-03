@@ -1,4 +1,5 @@
 <?php
+ob_start();
 require_once __DIR__ . '/../config/init.php';
 require_once '../core/Database.php';
 require_once '../core/Router.php';
@@ -180,11 +181,8 @@ $router->get('/{slug}', function($slug) {
 $router->notFound(function() { $router->error(404); });
 
 // Dispatch router
-try {
-    $router->dispatch();
-} catch (Exception $e) {
-    $router->error(500);      
-}
+$router->dispatch();
+
 
 /*
 |--------------------------------------------------------------------------
@@ -232,3 +230,4 @@ function requireSEO($method) {
     require_once BASE_PATH . '/controllers/admin/SEOController.php';
     (new SEOController())->$method();
 }
+ob_end_flush();
