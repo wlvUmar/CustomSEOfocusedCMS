@@ -46,28 +46,6 @@
                     <a href="<?= BASE_URL ?>/admin/pages" class="<?= strpos($_SERVER['REQUEST_URI'], '/pages') !== false ? 'active' : '' ?>">
                         <i data-feather="file-text"></i> Pages & Links
                     </a>
-                    <a href="<?= BASE_URL ?>/admin/internal-links/health" class="<?= strpos($_SERVER['REQUEST_URI'], '/health') !== false ? 'active' : '' ?>">
-                        <i data-feather="shield"></i> Link Health
-                        <?php
-                        // FIX: Require Database before InternalLinks
-                        require_once BASE_PATH . '/core/Database.php';
-                        require_once BASE_PATH . '/models/InternalLinks.php';
-                        
-                        try {
-                            $linksModel = new InternalLinks();
-                            $summary = $linksModel->getLinkHealthSummary();
-                            if ($summary['total_broken'] > 0):
-                        ?>
-                        <span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7em; margin-left: 5px;">
-                            <?= $summary['total_broken'] ?>
-                        </span>
-                        <?php 
-                            endif;
-                        } catch (Exception $e) {
-                            // Silently fail if database not available
-                        }
-                        ?>
-                    </a>
                 </div>
                 
                 <div class="nav-section">
