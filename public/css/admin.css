@@ -165,7 +165,7 @@ body {
    SEAMLESS SIDEBAR TOGGLE BUTTON
    ======================================== */
 .sidebar-toggle {
-    position: absolute;
+    position: fixed;
     top: 80vh;
     right: calc(-1 * var(--sidebar-width) + 100vw - 20px); 
     width: 20px;
