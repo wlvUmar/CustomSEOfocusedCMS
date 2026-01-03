@@ -28,10 +28,10 @@ $queue = $deployData['queue'] ?? [];
 $deployOutput = $deployData['deployOutput'] ?? '';
 
 // --------------------
-// Handle GitHub Webhook
+// Handle GitHub Webhook (queue only)
 // --------------------
-$headers = getallheaders();
-$isWebhook = !empty($headers['X-GitHub-Event']) && $_SERVER['REQUEST_METHOD'] === 'POST';
+$headers = function_exists('getallheaders') ? getallheaders() : [];
+$isWebhook = ($_SERVER['REQUEST_METHOD'] === 'POST') && (!empty($headers['X-GitHub-Event']) || !empty($_SERVER['HTTP_X_GITHUB_EVENT']));
 
 if($isWebhook){
     $payload = file_get_contents('php://input');
@@ -39,11 +39,10 @@ if($isWebhook){
     logDeploy("[WEBHOOK] Payload: ".$payload);
 
     $data = json_decode($payload, true);
-    if($data){
-        $repoName = $data['repository']['name'] ?? '';
+    if($data && isset($data['repository']['name'])){
+        $repoName = $data['repository']['name'];
         $branch = $data['ref'] ?? '';
 
-        // Accept master or main branch
         $targetBranches = ['refs/heads/master', 'refs/heads/main'];
 
         if($repoName === GITHUB_REPO_NAME && in_array($branch, $targetBranches)){
@@ -60,7 +59,7 @@ if($isWebhook){
             logDeploy("[WEBHOOK] Push queued from {$repoName} on {$branch}");
         }
     } else {
-        logDeploy("[WEBHOOK] Invalid JSON payload.");
+        logDeploy("[WEBHOOK] Invalid payload or missing repository name.");
     }
 
     http_response_code(200);
@@ -68,9 +67,9 @@ if($isWebhook){
 }
 
 // --------------------
-// Admin authentication
+// Admin authentication for manual deploy
 // --------------------
-if(!$isWebhook && !isset($_SESSION['user_id'])){
+if(!isset($_SESSION['user_id'])){
     http_response_code(403);
     die('Access Denied. Please <a href="/admin/login">login</a> first.');
 }
@@ -81,13 +80,12 @@ if(!isset($_SESSION['deploy_csrf'])){
 }
 
 // --------------------
-// Manual deploy (approve latest push)
+// Manual deploy
 // --------------------
 $manualDeployed = false;
 $deployMessage = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_SESSION['deploy_csrf']) {
-    // Find latest non-deployed push
     $latest = null;
     foreach ($queue as &$q) {
         if (!$q['deployed']) {
@@ -116,7 +114,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_
         $deployMessage = $deployOutput;
         $manualDeployed = true;
 
-        // mark deployed
         $latest['deployed'] = true;
         file_put_contents(DEPLOY_FILE, json_encode(['queue'=>$queue,'deployOutput'=>$deployOutput]));
         logDeploy("[MANUAL DEPLOY] ".$deployOutput);
@@ -150,6 +147,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <style>
 /* ------------------- Deploy Page CSS ------------------- */
+/* Keep all your previous styles as-is */
 .btn { 
     margin-top: 5px; 
     display: inline-flex; 

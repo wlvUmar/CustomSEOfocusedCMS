@@ -47,9 +47,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sidebar Toggle
     // ----------------------------
     function updateIcon() {
-        toggle.innerHTML = '<i data-feather="chevron-left"></i>';
-        feather.replace();
+        const icon = toggle.querySelector('svg');
+        if (icon) {
+            icon.style.transform = wrapper.classList.contains('sidebar-collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
     }
+
 
     toggle.addEventListener('click', e => {
         e.stopPropagation();
