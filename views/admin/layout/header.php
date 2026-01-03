@@ -1,8 +1,5 @@
 <?php
 // FIXED: views/admin/layout/header.php
-// Issue: Database not loaded before InternalLinks instantiation
-// Solution: Require Database before checking broken links
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -100,15 +97,16 @@
                     <a href="<?= BASE_URL ?>/admin/media" class="<?= strpos($_SERVER['REQUEST_URI'], '/media') !== false ? 'active' : '' ?>">
                         <i data-feather="image"></i> Media
                     </a>
-                </div>
                 
-                <a href="<?= BASE_URL ?>/deploy.php" class="<?= strpos($_SERVER['REQUEST_URI'], '/deploy.php') !== false ? 'active' : '' ?>">
-                    <i data-feather="upload-cloud"></i> Deploy
-                </a>
+                
+                    <a href="<?= BASE_URL ?>/deploy.php" class="<?= strpos($_SERVER['REQUEST_URI'], '/deploy.php') !== false ? 'active' : '' ?>">
+                        <i data-feather="upload-cloud"></i> Deploy
+                    </a>
 
-                <a href="<?= BASE_URL ?>/admin/logout" style="margin-top: 20px; color: #dc3545;">
-                    <i data-feather="log-out"></i> Logout
-                </a>
+                    <a href="<?= BASE_URL ?>/admin/logout" style="margin-top: 20px; color: #dc3545;">
+                        <i data-feather="log-out"></i> Logout
+                    </a>
+                </div>
             </nav>
         </aside>
         <button class="sidebar-toggle" aria-label="Toggle sidebar">
