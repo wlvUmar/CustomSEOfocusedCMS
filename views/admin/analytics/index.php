@@ -143,28 +143,29 @@ $conversionFunnel = $this->getAnalyticsModel()->getConversionFunnel($stats['mont
 
 <!-- Funnel -->
 <div class="funnel-container">
-    <?php
-    $steps = [
-        ['label' => 'Page Visits', 'value' => (int)($stats['total']['total_visits'] ?? 0)],
-        ['label' => 'Engaged (2+ pages)', 'value' => is_array($conversionFunnel['engaged'] ?? null) ? 0 : (int)($conversionFunnel['engaged'] ?? 0)],
-        ['label' => 'Actions / Clicks', 'value' => (int)($stats['total']['total_clicks'] ?? 0)]
-    ];
+<?php
+$steps = [
+    ['label' => 'Page Visits', 'value' => (int)($stats['total']['total_visits'] ?? 0)],
+    ['label' => 'Engaged (2+ pages)', 'value' => is_array($conversionFunnel['engaged'] ?? null) ? 0 : (int)($conversionFunnel['engaged'] ?? 0)],
+    ['label' => 'Actions / Clicks', 'value' => (int)($stats['total']['total_clicks'] ?? 0)]
+];
 
-    $max = max($steps[0]['value'], 1);
+$max = max($steps[0]['value'], 1);
 
-    foreach ($steps as $step):
-        $width = max(round(($step['value'] / $max) * 100), 10);
-    ?>
-        <div class="funnel-step">
-            <div class="funnel-bar" style="width: <?= $width ?>%;">
-                <span class="funnel-label"><?= htmlspecialchars($step['label']) ?></span>
-                <span class="funnel-value"><?= number_format($step['value']) ?></span>
-
-                <!-- looping flow -->
-                <div class="funnel-flow"></div>
-            </div>
+foreach ($steps as $step):
+    $fill = max(round(($step['value'] / $max) * 100), 5);
+?>
+    <div class="funnel-step">
+        <div class="liquid-circle">
+            <div class="liquid-fill" style="height: <?= $fill ?>%;"></div>
         </div>
-    <?php endforeach; ?>
+
+        <div class="funnel-meta">
+            <div class="label"><?= htmlspecialchars($step['label']) ?></div>
+            <div class="value"><?= number_format($step['value']) ?></div>
+        </div>
+    </div>
+<?php endforeach; ?>
 </div>
 
 
