@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const baseRight = parseFloat(style.right) || 0;
         const scrollbarWidth =
             window.innerWidth - document.documentElement.clientWidth;
-        toggle.style.right = `${baseRight + scrollbarWidth}px`;
+        toggle.style.right = `${baseRight - scrollbarWidth}px`;
     }
 
 
