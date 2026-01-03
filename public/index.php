@@ -8,56 +8,24 @@ require_once '../core/helpers.php';
 $router = new Router();
 
 /*
-|------------------------------------------------------------------
-| Public Routes
-|------------------------------------------------------------------
+|--------------------------------------------------------------------------
+| Admin Routes
+|--------------------------------------------------------------------------
 */
-$router->get('/', function() {
-    require_once BASE_PATH . '/controllers/PageController.php';
-    (new PageController())->show('home');
-});
 
-$router->get('/{slug}', function($slug) {
-    require_once BASE_PATH . '/controllers/PageController.php';
-    setLanguage(DEFAULT_LANGUAGE);
-    (new PageController())->show($slug);
-});
-
-$router->get('/{slug}/{lang}', function($slug, $lang) {
-    require_once BASE_PATH . '/controllers/PageController.php';
-    (new PageController())->show($slug, $lang);
-});
-
-// Click / Internal link tracking
-$router->post('/track-click', fn() => (require_once BASE_PATH . '/controllers/PageController.php') && (new PageController())->trackClick());
-$router->post('/track-internal-link', fn() => (require_once BASE_PATH . '/controllers/PageController.php') && (new PageController())->trackInternalLink());
-
-/*
-|------------------------------------------------------------------
-| Admin Auth Routes
-|------------------------------------------------------------------
-*/
+// Admin Auth
 $router->get('/admin', function() {
     header("Location: " . (!empty($_SESSION['user_id']) ? "/admin/dashboard" : "/admin/login"));
     exit;
 });
-
 $router->get('/admin/login', fn() => requireAdminController('AuthController', 'showLogin'));
 $router->post('/admin/login', fn() => requireAdminController('AuthController', 'login'));
 $router->get('/admin/logout', fn() => requireAdminController('AuthController', 'logout'));
 
-/*
-|------------------------------------------------------------------
-| Admin Dashboard
-|------------------------------------------------------------------
-*/
+// Admin Dashboard
 $router->get('/admin/dashboard', fn() => requireAdminController('DashboardController', 'index'));
 
-/*
-|------------------------------------------------------------------
-| Admin Page Management
-|------------------------------------------------------------------
-*/
+// Admin Page Management
 $router->group('/admin/pages', function($router) {
     $router->get('/', fn() => requirePageAdmin('index'));
     $router->get('/new', fn() => requirePageAdmin('edit'));
@@ -66,11 +34,7 @@ $router->group('/admin/pages', function($router) {
     $router->post('/delete', fn() => requirePageAdmin('delete'));
 });
 
-/*
-|------------------------------------------------------------------
-| Admin Rotation Management
-|------------------------------------------------------------------
-*/
+// Admin Rotation Management
 $router->group('/admin/rotations', function($router) {
     $router->get('/manage/{pageId}', fn($pageId) => requireRotationAdmin('manage', null, $pageId));
     $router->get('/new/{pageId}', fn($pageId) => requireRotationAdmin('edit', null, $pageId));
@@ -85,11 +49,7 @@ $router->group('/admin/rotations', function($router) {
     $router->get('/download-template', fn() => requireRotationAdmin('downloadTemplate'));
 });
 
-/*
-|------------------------------------------------------------------
-| Admin FAQ Management
-|------------------------------------------------------------------
-*/
+// Admin FAQ Management
 $router->group('/admin/faqs', function($router) {
     $router->get('/', fn() => requireFAQAdmin('index'));
     $router->get('/new', fn() => requireFAQAdmin('edit'));
@@ -100,11 +60,7 @@ $router->group('/admin/faqs', function($router) {
     $router->get('/download-template', fn() => requireFAQAdmin('downloadTemplate'));
 });
 
-/*
-|------------------------------------------------------------------
-| Admin Link Widget
-|------------------------------------------------------------------
-*/
+// Admin Link Widget
 $router->group('/admin/link-widget', function($router) {
     $router->get('/manage/{pageId}', fn($pageId) => require_once BASE_PATH . '/controllers/admin/LinkWidgetController.php' && (new LinkWidgetController())->manage($pageId));
     $router->post('/add', fn() => require_once BASE_PATH . '/controllers/admin/LinkWidgetController.php' && (new LinkWidgetController())->addLink());
@@ -113,12 +69,7 @@ $router->group('/admin/link-widget', function($router) {
     $router->post('/toggle', fn() => require_once BASE_PATH . '/controllers/admin/LinkWidgetController.php' && (new LinkWidgetController())->toggleWidget());
 });
 
-
-/*
-|------------------------------------------------------------------
-| Admin Media Management
-|------------------------------------------------------------------
-*/
+// Admin Media Management
 $router->group('/admin/media', function($router) {
     $router->get('/', fn() => requireMediaAdmin('index'));
     $router->post('/upload', fn() => requireMediaAdmin('upload'));
@@ -126,11 +77,7 @@ $router->group('/admin/media', function($router) {
     $router->post('/bulk-upload', fn() => requireMediaAdmin('bulkUpload'));
 });
 
-/*
-|------------------------------------------------------------------
-| Admin Analytics
-|------------------------------------------------------------------
-*/
+// Admin Analytics
 $router->group('/admin/analytics', function($router) {
     $router->get('/', fn() => requireAnalytics('index'));
     $router->get('/rotation', fn() => requireAnalytics('rotationAnalytics'));
@@ -140,11 +87,7 @@ $router->group('/admin/analytics', function($router) {
     $router->get('/navigation', fn() => requireAnalytics('navigationAnalytics'));
 });
 
-/*
-|------------------------------------------------------------------
-| Admin SEO
-|------------------------------------------------------------------
-*/
+// Admin SEO
 $router->group('/admin/seo', function($router) {
     $router->get('/', fn() => requireSEO('index'));
     $router->post('/save', fn() => requireSEO('save'));
@@ -152,33 +95,49 @@ $router->group('/admin/seo', function($router) {
     $router->post('/sitemap/ping', fn() => require_once BASE_PATH . '/controllers/SitemapController.php' && (new SitemapController())->pingSearchEngines());
 });
 
-/*
-|------------------------------------------------------------------
-| Admin Preview
-|------------------------------------------------------------------
-*/
+// Admin Preview
 $router->group('/admin/preview', function($router) {
     $router->get('/{id}', fn($id) => requireAdminController('PreviewController', 'show', $id));
     $router->get('/{id}/content', fn($id) => requireAdminController('PreviewController', 'getPreviewContent', $id));
 });
 
+
 /*
-|------------------------------------------------------------------
-| Sitemap & SEO Public
-|------------------------------------------------------------------
+|--------------------------------------------------------------------------
+| Public / SEO Routes
+|--------------------------------------------------------------------------
 */
 $router->get('/sitemap.xml', fn() => require_once BASE_PATH . '/controllers/SitemapController.php' && (new SitemapController())->generateXML());
 $router->get('/robots.txt', fn() => require_once BASE_PATH . '/controllers/SitemapController.php' && (new SitemapController())->generateRobotsTxt());
 
+// Click / Internal link tracking
+$router->post('/track-click', fn() => require_once BASE_PATH . '/controllers/PageController.php' && (new PageController())->trackClick());
+$router->post('/track-internal-link', fn() => require_once BASE_PATH . '/controllers/PageController.php' && (new PageController())->trackInternalLink());
 
+
+// Catch-all public pages (always at the end)
+$router->get('/{slug}/{lang}', function($slug, $lang) {
+    require_once BASE_PATH . '/controllers/PageController.php';
+    (new PageController())->show($slug, $lang);
+});
+
+$router->get('/{slug}', function($slug) {
+    require_once BASE_PATH . '/controllers/PageController.php';
+    setLanguage(DEFAULT_LANGUAGE);
+    (new PageController())->show($slug);
+});
+
+// 404 handler
 $router->notFound(fn() => $router->error(404));
 
+// Dispatch router
 $router->dispatch();
 
+
 /*
-|------------------------------------------------------------------
+|--------------------------------------------------------------------------
 | Helper functions for cleaner admin controller calls
-|------------------------------------------------------------------
+|--------------------------------------------------------------------------
 */
 function requireAdminController($controller, $method, $arg = null) {
     require_once BASE_PATH . "/controllers/admin/{$controller}.php";
@@ -221,5 +180,3 @@ function requireSEO($method) {
     require_once BASE_PATH . '/controllers/admin/SEOController.php';
     (new SEOController())->$method();
 }
-
-

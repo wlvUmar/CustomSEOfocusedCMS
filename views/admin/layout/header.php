@@ -43,9 +43,6 @@
                     <a href="<?= BASE_URL ?>/admin/faqs" class="<?= strpos($_SERVER['REQUEST_URI'], '/faqs') !== false ? 'active' : '' ?>">
                         <i data-feather="help-circle"></i> FAQs
                     </a>
-                    <a href="<?= BASE_URL ?>/admin/pages" class="<?= strpos($_SERVER['REQUEST_URI'], '/pages') !== false ? 'active' : '' ?>">
-                        <i data-feather="file-text"></i> Pages & Links
-                    </a>
                 </div>
                 
                 <div class="nav-section">
