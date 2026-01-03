@@ -21,9 +21,6 @@
     ?>
 </head>
 <body>
-    <button class="sidebar-toggle" aria-label="Toggle sidebar">
-            <i data-feather="chevron-left"></i>
-    </button>
     <div class="admin-wrapper">
         <aside class="sidebar">
            
@@ -88,7 +85,9 @@
                 </a>
             </nav>
         </aside>
-        
+        <button class="sidebar-toggle" aria-label="Toggle sidebar">
+            <i data-feather="chevron-left"></i>
+        </button>
         <main class="admin-main">
             <div class="admin-content">
                 <?php if (isset($_SESSION['success'])): ?>

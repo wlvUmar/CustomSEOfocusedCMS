@@ -47,20 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sidebar Toggle
     // ----------------------------
     function updateIcon() {
-        if (!toggle) return; // safety check
         const icon = toggle.querySelector('svg');
-        if (!icon) return; // safety if SVG not yet in DOM
-
-        // Add smooth transition if not already
-        if (!icon.style.transition) {
-            icon.style.transition = 'transform 0.3s ease';
+        if (icon) {
+            icon.style.transform = wrapper.classList.contains('sidebar-collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
         }
-
-        // Rotate based on wrapper collapsed state
-        const rotated = wrapper.classList.contains('sidebar-collapsed') ? 180 : 0;
-        icon.style.transform = `rotate(${rotated}deg)`;
     }
-
 
 
     toggle.addEventListener('click', e => {
