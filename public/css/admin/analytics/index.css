@@ -165,91 +165,98 @@
 
 /* ---------- Funnel ---------- */
 /* ==============================
-   Liquid Funnel (Spherical)
+   TRUE LIQUID FUNNEL
    ============================== */
 
-.funnel-container {
-    display: flex;
-    gap: 32px;
-    padding: 20px;
-}
-
-/* each step */
-.funnel-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 140px;
-}
-
-/* outer bowl */
 .liquid-circle {
     position: relative;
     width: 110px;
     height: 110px;
     border-radius: 50%;
     border: 2px solid #cfd8e3;
-    overflow: hidden;
     background: #f7f9fc;
+    overflow: hidden;
 }
 
-/* liquid body */
+/* liquid mass */
 .liquid-fill {
     position: absolute;
     bottom: 0;
-    width: 200%;
-    left: -50%;
+    width: 120%;
+    left: -10%;
     background: linear-gradient(
         180deg,
-        #00b4d8,
+        #4cc9f0,
         #0077b6
     );
-    animation: waveMove 3s linear infinite;
+    animation:
+        pressureDrift 6s ease-in-out infinite;
 }
 
-/* wave surface */
-.liquid-fill::before {
-    content: "";
+/* common wave layer */
+.wave {
     position: absolute;
-    top: -14px;
-    left: 0;
+    top: -20px;
+    left: -50%;
     width: 200%;
-    height: 28px;
-    background: radial-gradient(
-        circle at 25px 14px,
-        rgba(255,255,255,0.45) 25%,
-        transparent 26%
-    );
-    animation: waveSurface 2.2s linear infinite;
+    height: 40px;
+    border-radius: 45%;
+    background: rgba(255,255,255,0.35);
+    filter: blur(1px);
 }
 
-/* label + value */
-.funnel-meta {
-    margin-top: 10px;
-    text-align: center;
+/* primary wave (slow, heavy) */
+.wave-1 {
+    animation:
+        waveX1 7.5s ease-in-out infinite,
+        waveY1 3.5s ease-in-out infinite;
+    opacity: 0.45;
 }
 
-.funnel-meta .label {
-    font-size: 0.85em;
-    font-weight: 600;
-    color: #2c3e50;
+/* secondary wave (fast, chaotic) */
+.wave-2 {
+    top: -26px;
+    animation:
+        waveX2 4.2s ease-in-out infinite,
+        waveY2 2.1s ease-in-out infinite;
+    opacity: 0.25;
 }
 
-.funnel-meta .value {
-    font-size: 1em;
-    font-weight: 700;
-    color: #0077b6;
+/* ==============================
+   Animations
+   ============================== */
+
+/* slow mass breathing */
+@keyframes pressureDrift {
+    0%   { transform: translateY(0); }
+    50%  { transform: translateY(-3px); }
+    100% { transform: translateY(0); }
 }
 
-/* animations */
-@keyframes waveMove {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
+/* horizontal chaos */
+@keyframes waveX1 {
+    0%   { transform: translateX(0); }
+    50%  { transform: translateX(-15%); }
+    100% { transform: translateX(0); }
 }
 
-@keyframes waveSurface {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
+@keyframes waveX2 {
+    0%   { transform: translateX(0); }
+    50%  { transform: translateX(20%); }
+    100% { transform: translateX(0); }
+}
+
+/* vertical surface instability */
+@keyframes waveY1 {
+    0%   { border-radius: 42% 58% 55% 45%; }
+    50%  { border-radius: 58% 42% 45% 55%; }
+    100% { border-radius: 42% 58% 55% 45%; }
+}
+
+@keyframes waveY2 {
+    0%   { border-radius: 60% 40% 50% 50%; }
+    50%  { border-radius: 40% 60% 55% 45%; }
+    100% { border-radius: 60% 40% 50% 50%; }
 }
 
 
