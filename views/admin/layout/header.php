@@ -46,6 +46,20 @@
                     <a href="<?= BASE_URL ?>/admin/internal-links" class="<?= strpos($_SERVER['REQUEST_URI'], '/internal-links') !== false ? 'active' : '' ?>">
                         <i data-feather="link"></i> Internal Links
                     </a>
+                    <a href="<?= BASE_URL ?>/admin/internal-links/health" class="<?= strpos($_SERVER['REQUEST_URI'], '/health') !== false ? 'active' : '' ?>">
+                        <i data-feather="alert-triangle"></i> Link Health
+                        <?php
+                        // Show badge if broken links exist
+                        require_once BASE_PATH . '/models/InternalLinks.php';
+                        $linksModel = new InternalLinks();
+                        $summary = $linksModel->getLinkHealthSummary();
+                        if ($summary['total_broken'] > 0):
+                        ?>
+                        <span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7em; margin-left: 5px;">
+                            <?= $summary['total_broken'] ?>
+                        </span>
+                        <?php endif; ?>
+                    </a>
                 </div>
                 
                 <div class="nav-section">
