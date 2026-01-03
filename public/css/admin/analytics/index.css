@@ -166,7 +166,7 @@
 /* ---------- Funnel ---------- */
 
 /* ==============================
-   Funnel Layout
+   Layout
    ============================== */
 
 .funnel-container {
@@ -182,7 +182,7 @@
 }
 
 /* ==============================
-   Track (placeholder)
+   Track
    ============================== */
 
 .funnel-track {
@@ -201,10 +201,8 @@
 
 .funnel-bar {
     position: absolute;
-    left: 0;
-    top: 0;
-    height: 100%;
-    min-width: 120px; /* readability over accuracy */
+    inset: 0 auto 0 0;
+    min-width: 120px; /* visual stability > precision */
     background: linear-gradient(
         90deg,
         #d1d5db,
@@ -215,7 +213,7 @@
 }
 
 /* ==============================
-   Text Layer (not clipped)
+   Content Layer
    ============================== */
 
 .funnel-content {
@@ -224,37 +222,42 @@
     height: 100%;
     padding: 0 16px;
 
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto;
     align-items: center;
+    column-gap: 12px;
 }
 
 /* ==============================
-   Text
+   Text (SAFE)
    ============================== */
 
 .funnel-label {
     font-size: 0.9em;
     font-weight: 600;
     color: #111827;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .funnel-value {
-    margin-left: auto;
     font-size: 0.95em;
     font-weight: 700;
     color: #374151;
+    white-space: nowrap;
 }
 
 /* ==============================
-   Directional Flow
+   Direction Cue
    ============================== */
 
 .funnel-flow {
     position: absolute;
     top: 0;
-    left: -35%;
-    width: 35%;
+    left: -30%;
+    width: 30%;
     height: 100%;
     background: linear-gradient(
         90deg,
@@ -263,7 +266,6 @@
         transparent
     );
     animation: funnelFlow 2.4s ease-in-out infinite;
-    pointer-events: none;
 }
 
 /* ==============================
@@ -271,7 +273,7 @@
    ============================== */
 
 @keyframes funnelFlow {
-    0%   { left: -35%; opacity: 0; }
+    0%   { left: -30%; opacity: 0; }
     35%  { opacity: 0.5; }
     100% { left: 100%; opacity: 0; }
 }
