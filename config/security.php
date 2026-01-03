@@ -25,7 +25,7 @@ $csp = [
     "child-src 'self' blob:"
 ];
 
-header('Content-Security-Policy: ' . implode('; ', $csp));
+// header('Content-Security-Policy: ' . implode('; ', $csp));
 
 
 // --------------------
