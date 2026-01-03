@@ -6,9 +6,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/security.php';
 
-// ========================================
-// ERROR LOGGING SETUP
-// ========================================
+
 $logDir = BASE_PATH . '/logs';
 if (!is_dir($logDir)) {
     mkdir($logDir, 0750, true);
@@ -17,7 +15,6 @@ if (!is_dir($logDir)) {
 $errorLogFile = $logDir . '/php_errors.log';
 $securityLogFile = $logDir . '/security.log';
 
-// Ensure log files exist and are writable
 if (!file_exists($errorLogFile)) {
     touch($errorLogFile);
     chmod($errorLogFile, 0640);
@@ -51,7 +48,6 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) use ($errorLogFi
     return false;
 });
 
-// Exception handler
 set_exception_handler(function($exception) use ($errorLogFile) {
     $timestamp = date('Y-m-d H:i:s');
     $message = sprintf(
@@ -74,9 +70,7 @@ set_exception_handler(function($exception) use ($errorLogFile) {
     }
 });
 
-// ========================================
-// SESSION SETUP (existing code continues...)
-// ========================================
+
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['last_regeneration'])) {
@@ -86,7 +80,6 @@ if (!isset($_SESSION['last_regeneration'])) {
     $_SESSION['last_regeneration'] = time();
 }
 
-// Session timeout (1 hour)
 $timeout = 1800;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $timeout) {
     session_unset();

@@ -26,9 +26,6 @@ RewriteEngine On
     # Uncomment after enabling SSL:
     # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
     
-    # Content Security Policy (adjust as needed)
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
-    
     # Remove server signature
     Header always unset X-Powered-By
     Header always unset Server
