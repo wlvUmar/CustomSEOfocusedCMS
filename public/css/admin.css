@@ -267,11 +267,13 @@ body {
 }
 
 .admin-nav a {
-    display: block;
+    display: flex;
     padding: 12px 20px;
     color: var(--primary-light);
     text-decoration: none;
     transition: background 0.2s;
+    align-items: center;
+    gap: 15px;
 }
 
 .admin-nav a:hover {
