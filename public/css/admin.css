@@ -117,6 +117,11 @@ body {
     min-height: 100vh;
 }
 
+/* ========================================
+   UPDATED SIDEBAR & TOGGLE STYLES
+   Replace the sidebar section in public/css/admin.css
+   ======================================== */
+
 .sidebar {
     top: 0;
     left: 0;
@@ -126,7 +131,7 @@ body {
     position: fixed;
     height: 100vh;
     overflow-y: auto;
-    overflow-x: visible; 
+    overflow-x: visible;
     transform: translateX(0);
     transition: transform 0.3s ease;
     z-index: 1000;
@@ -134,83 +139,79 @@ body {
     flex-direction: column;
 }
 
-
 .sidebar::-webkit-scrollbar {
     width: 6px;
 }
+
 .sidebar::-webkit-scrollbar-track {
-    background: var(--primary-dark);  /* track matches sidebar background */
+    background: var(--primary-dark);
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-    background: var(--accent-dark);  /* thumb slightly lighter/darker */
-    border-radius: 3px;              /* rounded edges */
+    background: var(--accent-dark);
+    border-radius: 3px;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-light); /* subtle hover effect */
+    background: var(--accent-light);
 }
 
-/* Firefox */
 .sidebar {
-    scrollbar-width: thin;                 /* thin scrollbar */
-    scrollbar-color: var(--accent-dark) var(--primary-dark); /* thumb color | track color */
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-dark) var(--primary-dark);
 }
 
+/* ========================================
+   SEAMLESS SIDEBAR TOGGLE BUTTON
+   ======================================== */
 .sidebar-toggle {
     position: absolute;
-    top: 50%;
-    left: var(--sidebar-width);
-    transform: translateY(-50%);
+    top: 20px;
+    right: -20px; /* Attach to right edge of sidebar */
     width: 20px;
-    height: 60px;
+    height: 48px;
     background: var(--primary-dark);
     color: var(--primary-light);
     border: none;
-    border-radius: 0 8px 8px 0;
+    border-radius: 0 6px 6px 0; /* Only round right side */
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 1001; 
+    z-index: 1001;
     transition: all 0.3s ease;
-    box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.15);
 }
 
-.sidebar-toggle::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--accent-dark);
+/* Remove hover/active styles as requested */
+.sidebar-toggle:hover {
+    background: var(--primary-dark);
 }
-
 
 .sidebar-toggle:active {
-    width: 18px;
+    transform: none;
 }
 
 .sidebar-toggle svg {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     stroke-width: 2.5;
     transition: transform 0.3s ease;
 }
 
-
+/* Rotate icon based on state */
 .admin-wrapper:not(.sidebar-collapsed) .sidebar-toggle svg {
     transform: rotate(0deg);
 }
+
 .admin-wrapper.sidebar-collapsed .sidebar-toggle svg {
     transform: rotate(180deg);
 }
 
+/* When collapsed, button moves with sidebar */
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
     right: auto;
-    left: 0;
-    border-radius: 0 8px 8px 0;
+    left: calc(-1 * var(--sidebar-width) + 100vw - 20px); /* Position at left edge of viewport */
 }
 
 .admin-wrapper.sidebar-collapsed .sidebar {
@@ -221,19 +222,21 @@ body {
     margin-left: 0;
 }
 
-@keyframes pulse-glow {
+/* Subtle pulse animation only when collapsed */
+@keyframes subtle-pulse {
     0%, 100% {
-        box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+        box-shadow: 2px 2px 8px rgba(0,0,0,0.15);
     }
     50% {
-        box-shadow: 2px 0 16px rgba(237, 235, 215, 0.3);
+        box-shadow: 2px 2px 12px rgba(237, 235, 215, 0.2);
     }
 }
 
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    animation: pulse-glow 3s ease-in-out infinite;
+    animation: subtle-pulse 3s ease-in-out infinite;
 }
 
+/* Stop animation on hover */
 .sidebar-toggle:hover {
     animation: none !important;
 }
@@ -244,16 +247,24 @@ body {
         right: -24px;
         width: 24px;
         height: 48px;
-        z-index: 1002; 
+        z-index: 1002;
     }
     
     .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-        left: 0;
+        left: calc(-1 * var(--sidebar-width) + 100vw - 24px);
     }
 }
 
-
-
+/* Ensure sidebar toggle is above other content */
+.sidebar-toggle::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent-dark);
+}
   
 
 .logo {

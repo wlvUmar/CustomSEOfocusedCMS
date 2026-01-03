@@ -33,7 +33,6 @@ $faqSchema = '';
 if (!empty($faqs)) {
     $faqSchema = generateFAQSchema($faqs, $lang);
 }
-
 // Check if user is logged in as admin
 $isAdmin = isset($_SESSION['user_id']);
 ?>
@@ -93,6 +92,41 @@ $isAdmin = isset($_SESSION['user_id']);
             <?= $faqSchema ?>
         </script>
     <?php endif; ?>
+    <?php
+        // ADD THIS SECTION in views/templates/header.php
+        // Place it AFTER the existing JSON-LD sections (after FAQ schema)
+        // and BEFORE the closing </head> tag
+
+        // Output auto-generated schemas from SEO settings
+        if (!empty($seo['organization_schema'])) {
+            echo '<script type="application/ld+json">' . "\n";
+            echo $seo['organization_schema'] . "\n";
+            echo '</script>' . "\n";
+        }
+
+        if (!empty($seo['website_schema'])) {
+            echo '<script type="application/ld+json">' . "\n";
+            echo $seo['website_schema'] . "\n";
+            echo '</script>' . "\n";
+        }
+
+        if (!empty($seo['service_schema'])) {
+            echo '<script type="application/ld+json">' . "\n";
+            echo $seo['service_schema'] . "\n";
+            echo '</script>' . "\n";
+        }
+
+        if ($page['slug'] !== 'home') {
+            $breadcrumbs = [
+                ['name' => $seo["site_name_$lang"], 'url' => '/'],
+                ['name' => $page["title_$lang"], 'url' => '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '')]
+            ];
+            
+            echo '<script type="application/ld+json">' . "\n";
+            echo JsonLdGenerator::generateBreadcrumbs($breadcrumbs, BASE_URL) . "\n";
+            echo '</script>' . "\n";
+        }
+        ?>
     
     <?php if ($seo['phone'] || $seo['email']): ?>
     <script type="application/ld+json">

@@ -132,6 +132,56 @@ $router->post('/admin/faqs/delete', fn() => requireFAQAdmin('delete'));
 $router->post('/admin/faqs/bulk-upload', fn() => requireFAQAdmin('bulkUpload'));
 $router->get('/admin/faqs/download-template', fn() => requireFAQAdmin('downloadTemplate'));
 
+
+/*
+|--------------------------------------------------------------------------
+| Internal Links Management (Admin)
+| ADD THIS SECTION to public/index.php after the FAQ routes
+|--------------------------------------------------------------------------
+*/
+
+// Internal Links Overview
+$router->get('/admin/internal-links', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->index();
+});
+
+// Manage links for specific page
+$router->get('/admin/internal-links/manage/{pageId}', function($pageId) {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->managePage($pageId);
+});
+
+// Auto-insert links
+$router->post('/admin/internal-links/auto-insert', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->autoInsert();
+});
+
+// Remove all links
+$router->post('/admin/internal-links/remove-links', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->removeLinks();
+});
+
+// Bulk auto-insert
+$router->post('/admin/internal-links/bulk-auto-insert', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->bulkAutoInsert();
+});
+
+// Get suggestions API
+$router->get('/admin/internal-links/api/suggestions', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->getSuggestions();
+});
+
 /*
 |--------------------------------------------------------------------------
 | Media Management (Admin)

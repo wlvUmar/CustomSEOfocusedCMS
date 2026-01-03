@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 01, 2026 at 09:32 PM
+-- Generation Time: Jan 03, 2026 at 01:49 PM
 -- Server version: 10.3.39-MariaDB-log-cll-lve
 -- PHP Version: 8.1.30
 
@@ -118,8 +118,12 @@ CREATE TABLE `analytics_rotations` (
 CREATE TABLE `content_rotations` (
   `id` int(11) NOT NULL,
   `page_id` int(11) NOT NULL,
+  `title_ru` varchar(200) DEFAULT NULL,
+  `title_uz` varchar(200) DEFAULT NULL,
   `content_ru` longtext DEFAULT NULL,
   `content_uz` longtext DEFAULT NULL,
+  `description_ru` text DEFAULT NULL,
+  `description_uz` text DEFAULT NULL,
   `meta_title_ru` varchar(200) DEFAULT NULL,
   `meta_title_uz` varchar(200) DEFAULT NULL,
   `meta_description_ru` text DEFAULT NULL,
@@ -227,6 +231,26 @@ CREATE TABLE `seo_settings` (
   `address_uz` text DEFAULT NULL,
   `working_hours_ru` varchar(200) DEFAULT NULL,
   `working_hours_uz` varchar(200) DEFAULT NULL,
+  `organization_schema` text DEFAULT NULL,
+  `website_schema` text DEFAULT NULL,
+  `service_schema` text DEFAULT NULL,
+  `breadcrumb_schema` text DEFAULT NULL,
+  `article_schema` text DEFAULT NULL,
+  `image_schema` text DEFAULT NULL,
+  `org_type` varchar(50) DEFAULT 'LocalBusiness',
+  `org_logo` varchar(500) DEFAULT NULL,
+  `org_description_ru` text DEFAULT NULL,
+  `org_description_uz` text DEFAULT NULL,
+  `city` varchar(100) DEFAULT NULL,
+  `region` varchar(100) DEFAULT NULL,
+  `postal_code` varchar(20) DEFAULT NULL,
+  `country` varchar(10) DEFAULT 'UZ',
+  `opening_hours` text DEFAULT NULL,
+  `price_range` varchar(20) DEFAULT NULL,
+  `social_facebook` varchar(500) DEFAULT NULL,
+  `social_instagram` varchar(500) DEFAULT NULL,
+  `social_twitter` varchar(500) DEFAULT NULL,
+  `social_youtube` varchar(500) DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -518,9 +542,3 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-
-ALTER TABLE `content_rotations` 
-ADD COLUMN `title_ru` VARCHAR(200) NULL AFTER `page_id`,
-ADD COLUMN `title_uz` VARCHAR(200) NULL AFTER `title_ru`,
-ADD COLUMN `description_ru` TEXT NULL AFTER `content_uz`,
-ADD COLUMN `description_uz` TEXT NULL AFTER `description_ru`;

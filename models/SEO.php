@@ -1,4 +1,7 @@
 <?php
+// UPDATED: models/SEO.php
+// Replace the entire file
+
 class SEO {
     private $db;
 
@@ -18,7 +21,17 @@ class SEO {
                 meta_description_ru = ?, meta_description_uz = ?,
                 phone = ?, email = ?,
                 address_ru = ?, address_uz = ?,
-                working_hours_ru = ?, working_hours_uz = ?
+                working_hours_ru = ?, working_hours_uz = ?,
+                city = ?, region = ?, postal_code = ?, country = ?,
+                org_type = ?, org_logo = ?,
+                org_description_ru = ?, org_description_uz = ?,
+                opening_hours = ?, price_range = ?,
+                social_facebook = ?, social_instagram = ?,
+                social_twitter = ?, social_youtube = ?,
+                service_type = ?, service_name_ru = ?, service_name_uz = ?,
+                service_desc_ru = ?, service_desc_uz = ?,
+                area_served = ?, service_price = ?,
+                organization_schema = ?, website_schema = ?, service_schema = ?
                 WHERE id = 1";
         
         return $this->db->query($sql, [
@@ -33,7 +46,31 @@ class SEO {
             $data['address_ru'],
             $data['address_uz'],
             $data['working_hours_ru'],
-            $data['working_hours_uz']
+            $data['working_hours_uz'],
+            $data['city'] ?? '',
+            $data['region'] ?? '',
+            $data['postal_code'] ?? '',
+            $data['country'] ?? 'UZ',
+            $data['org_type'] ?? 'LocalBusiness',
+            $data['org_logo'] ?? '',
+            $data['org_description_ru'] ?? '',
+            $data['org_description_uz'] ?? '',
+            $data['opening_hours'] ?? '',
+            $data['price_range'] ?? '',
+            $data['social_facebook'] ?? '',
+            $data['social_instagram'] ?? '',
+            $data['social_twitter'] ?? '',
+            $data['social_youtube'] ?? '',
+            $data['service_type'] ?? '',
+            $data['service_name_ru'] ?? '',
+            $data['service_name_uz'] ?? '',
+            $data['service_desc_ru'] ?? '',
+            $data['service_desc_uz'] ?? '',
+            $data['area_served'] ?? '',
+            $data['service_price'] ?? '',
+            $data['organization_schema'] ?? '',
+            $data['website_schema'] ?? '',
+            $data['service_schema'] ?? ''
         ]);
     }
 }

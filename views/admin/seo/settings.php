@@ -1,95 +1,362 @@
-<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
+<?php
+// UPDATED: views/admin/seo/settings.php
+// Replace the entire file
+require BASE_PATH . '/views/admin/layout/header.php';
+?>
 
-<h1>Global SEO Settings</h1>
+<h1>Global SEO Settings & JSON-LD Schemas</h1>
 
 <form method="POST" action="<?= BASE_URL ?>/admin/seo/save" class="admin-form">
-    <div class="form-section">
-        <h3>Site Information</h3>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Site Name (RU)*</label>
-                <input type="text" name="site_name_ru" value="<?= $settings['site_name_ru'] ?? '' ?>" required>
+    <div class="tabs">
+        <button type="button" class="tab-btn active" onclick="switchTab('general')">General Info</button>
+        <button type="button" class="tab-btn" onclick="switchTab('meta')">Default Meta</button>
+        <button type="button" class="tab-btn" onclick="switchTab('organization')">Organization Schema</button>
+        <button type="button" class="tab-btn" onclick="switchTab('website')">Website Schema</button>
+        <button type="button" class="tab-btn" onclick="switchTab('service')">Service Schema</button>
+    </div>
+    
+    <!-- GENERAL TAB -->
+    <div id="tab-general" class="tab-content active">
+        <div class="form-section">
+            <h3>Site Information</h3>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Site Name (RU)*</label>
+                    <input type="text" name="site_name_ru" value="<?= e($settings['site_name_ru'] ?? '') ?>" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Site Name (UZ)*</label>
+                    <input type="text" name="site_name_uz" value="<?= e($settings['site_name_uz'] ?? '') ?>" required>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label>Site Name (UZ)*</label>
-                <input type="text" name="site_name_uz" value="<?= $settings['site_name_uz'] ?? '' ?>" required>
-            </div>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Phone</label>
-                <input type="text" name="phone" value="<?= $settings['phone'] ?? '' ?>">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" name="phone" value="<?= e($settings['phone'] ?? '') ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" value="<?= e($settings['email'] ?? '') ?>">
+                </div>
             </div>
             
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" name="email" value="<?= $settings['email'] ?? '' ?>">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Address (RU)</label>
+                    <textarea name="address_ru" rows="2"><?= e($settings['address_ru'] ?? '') ?></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Address (UZ)</label>
+                    <textarea name="address_uz" rows="2"><?= e($settings['address_uz'] ?? '') ?></textarea>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" name="city" value="<?= e($settings['city'] ?? 'Tashkent') ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label>Region/State</label>
+                    <input type="text" name="region" value="<?= e($settings['region'] ?? 'Tashkent') ?>">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Postal Code</label>
+                    <input type="text" name="postal_code" value="<?= e($settings['postal_code'] ?? '') ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label>Country Code</label>
+                    <input type="text" name="country" value="<?= e($settings['country'] ?? 'UZ') ?>">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Working Hours (RU)</label>
+                    <input type="text" name="working_hours_ru" value="<?= e($settings['working_hours_ru'] ?? '') ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label>Working Hours (UZ)</label>
+                    <input type="text" name="working_hours_uz" value="<?= e($settings['working_hours_uz'] ?? '') ?>">
+                </div>
             </div>
         </div>
     </div>
     
-    <div class="form-section">
-        <h3>Default Meta Tags</h3>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Meta Keywords (RU)</label>
-                <textarea name="meta_keywords_ru" rows="3"><?= $settings['meta_keywords_ru'] ?? '' ?></textarea>
+    <!-- META TAB -->
+    <div id="tab-meta" class="tab-content">
+        <div class="form-section">
+            <h3>Default Meta Tags</h3>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Meta Keywords (RU)</label>
+                    <textarea name="meta_keywords_ru" rows="3"><?= e($settings['meta_keywords_ru'] ?? '') ?></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Meta Keywords (UZ)</label>
+                    <textarea name="meta_keywords_uz" rows="3"><?= e($settings['meta_keywords_uz'] ?? '') ?></textarea>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label>Meta Keywords (UZ)</label>
-                <textarea name="meta_keywords_uz" rows="3"><?= $settings['meta_keywords_uz'] ?? '' ?></textarea>
-            </div>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Meta Description (RU)</label>
-                <textarea name="meta_description_ru" rows="3"><?= $settings['meta_description_ru'] ?? '' ?></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>Meta Description (UZ)</label>
-                <textarea name="meta_description_uz" rows="3"><?= $settings['meta_description_uz'] ?? '' ?></textarea>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Meta Description (RU)</label>
+                    <textarea name="meta_description_ru" rows="3"><?= e($settings['meta_description_ru'] ?? '') ?></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Meta Description (UZ)</label>
+                    <textarea name="meta_description_uz" rows="3"><?= e($settings['meta_description_uz'] ?? '') ?></textarea>
+                </div>
             </div>
         </div>
     </div>
     
-    <div class="form-section">
-        <h3>Contact Information</h3>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Address (RU)</label>
-                <textarea name="address_ru" rows="2"><?= $settings['address_ru'] ?? '' ?></textarea>
+    <!-- ORGANIZATION SCHEMA TAB -->
+    <div id="tab-organization" class="tab-content">
+        <div class="form-section">
+            <h3>Organization / LocalBusiness Schema</h3>
+            <p class="help-text">
+                This schema helps search engines understand your business. It appears on your homepage and contact pages.
+            </p>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Organization Type</label>
+                    <select name="org_type">
+                        <option value="LocalBusiness" <?= ($settings['org_type'] ?? '') === 'LocalBusiness' ? 'selected' : '' ?>>Local Business</option>
+                        <option value="Organization" <?= ($settings['org_type'] ?? '') === 'Organization' ? 'selected' : '' ?>>Organization</option>
+                        <option value="Store" <?= ($settings['org_type'] ?? '') === 'Store' ? 'selected' : '' ?>>Store</option>
+                        <option value="HomeAndConstructionBusiness" <?= ($settings['org_type'] ?? '') === 'HomeAndConstructionBusiness' ? 'selected' : '' ?>>Home & Construction</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Logo URL</label>
+                    <input type="text" name="org_logo" value="<?= e($settings['org_logo'] ?? '') ?>" 
+                           placeholder="https://example.com/logo.png">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Description (RU)</label>
+                    <textarea name="org_description_ru" rows="3"><?= e($settings['org_description_ru'] ?? '') ?></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Description (UZ)</label>
+                    <textarea name="org_description_uz" rows="3"><?= e($settings['org_description_uz'] ?? '') ?></textarea>
+                </div>
             </div>
             
             <div class="form-group">
-                <label>Address (UZ)</label>
-                <textarea name="address_uz" rows="2"><?= $settings['address_uz'] ?? '' ?></textarea>
+                <label>Opening Hours (one per line, format: Mo-Fr 09:00-18:00)</label>
+                <textarea name="opening_hours" rows="3" placeholder="Mo-Fr 09:00-18:00
+Sa 10:00-15:00"><?= e($settings['opening_hours'] ?? '') ?></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Price Range (e.g., $$, $$$)</label>
+                <input type="text" name="price_range" value="<?= e($settings['price_range'] ?? '') ?>" placeholder="$$">
+            </div>
+            
+            <h4>Social Media Links</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Facebook URL</label>
+                    <input type="text" name="social_facebook" value="<?= e($settings['social_facebook'] ?? '') ?>" 
+                           placeholder="https://facebook.com/yourpage">
+                </div>
+                
+                <div class="form-group">
+                    <label>Instagram URL</label>
+                    <input type="text" name="social_instagram" value="<?= e($settings['social_instagram'] ?? '') ?>" 
+                           placeholder="https://instagram.com/yourpage">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Twitter URL</label>
+                    <input type="text" name="social_twitter" value="<?= e($settings['social_twitter'] ?? '') ?>" 
+                           placeholder="https://twitter.com/yourpage">
+                </div>
+                
+                <div class="form-group">
+                    <label>YouTube URL</label>
+                    <input type="text" name="social_youtube" value="<?= e($settings['social_youtube'] ?? '') ?>" 
+                           placeholder="https://youtube.com/c/yourchannel">
+                </div>
+            </div>
+            
+            <button type="button" onclick="generateOrgSchema()" class="btn">
+                <i data-feather="code"></i> Preview Generated Schema
+            </button>
+            
+            <pre id="org-schema-preview" style="display: none; background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; margin-top: 15px; overflow-x: auto;"></pre>
+        </div>
+    </div>
+    
+    <!-- WEBSITE SCHEMA TAB -->
+    <div id="tab-website" class="tab-content">
+        <div class="form-section">
+            <h3>Website Schema</h3>
+            <p class="help-text">
+                This schema describes your website to search engines.
+            </p>
+            
+            <div class="info-banner" style="background: #eff6ff; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6; margin-bottom: 20px;">
+                <strong>📘 Note:</strong> This schema is auto-generated from your Site Name and Meta Description. 
+                It will be included on your homepage automatically.
+            </div>
+            
+            <div style="background: #f9fafb; padding: 15px; border-radius: 6px; border-left: 3px solid #10b981;">
+                <strong>✅ Auto-Generated Schema Preview:</strong>
+                <pre style="background: #1e1e1e; color: #10b981; padding: 15px; border-radius: 6px; margin-top: 10px; overflow-x: auto; font-size: 12px; font-family: monospace;">{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "<?= e($settings['site_name_ru'] ?? 'Your Site') ?>",
+  "url": "<?= BASE_URL ?>",
+  "description": "<?= e($settings['meta_description_ru'] ?? '') ?>"
+}</pre>
             </div>
         </div>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Working Hours (RU)</label>
-                <input type="text" name="working_hours_ru" value="<?= $settings['working_hours_ru'] ?? '' ?>">
-            </div>
+    </div>
+    
+    <!-- SERVICE SCHEMA TAB -->
+    <div id="tab-service" class="tab-content">
+        <div class="form-section">
+            <h3>Service Schema</h3>
+            <p class="help-text">
+                Define your main service for search engines. This helps when users search for specific services.
+            </p>
             
             <div class="form-group">
-                <label>Working Hours (UZ)</label>
-                <input type="text" name="working_hours_uz" value="<?= $settings['working_hours_uz'] ?? '' ?>">
+                <label>Service Type</label>
+                <input type="text" name="service_type" value="<?= e($settings['service_type'] ?? '') ?>" 
+                       placeholder="e.g., Electronics Recycling, Appliance Buyback">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Service Name (RU)</label>
+                    <input type="text" name="service_name_ru" value="<?= e($settings['service_name_ru'] ?? '') ?>" 
+                           placeholder="Выкуп бытовой техники">
+                </div>
+                
+                <div class="form-group">
+                    <label>Service Name (UZ)</label>
+                    <input type="text" name="service_name_uz" value="<?= e($settings['service_name_uz'] ?? '') ?>" 
+                           placeholder="Maishiy texnikani sotib olish">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Service Description (RU)</label>
+                    <textarea name="service_desc_ru" rows="3"><?= e($settings['service_desc_ru'] ?? '') ?></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Service Description (UZ)</label>
+                    <textarea name="service_desc_uz" rows="3"><?= e($settings['service_desc_uz'] ?? '') ?></textarea>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Area Served</label>
+                    <input type="text" name="area_served" value="<?= e($settings['area_served'] ?? '') ?>" 
+                           placeholder="Tashkent, Uzbekistan">
+                </div>
+                
+                <div class="form-group">
+                    <label>Price Range / Starting Price</label>
+                    <input type="text" name="service_price" value="<?= e($settings['service_price'] ?? '') ?>" 
+                           placeholder="Free consultation">
+                </div>
             </div>
         </div>
     </div>
     
     <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Save Settings</button>
+        <button type="submit" class="btn btn-primary">
+            <i data-feather="save"></i> Save All Settings
+        </button>
     </div>
 </form>
+
+<script>
+function generateOrgSchema() {
+    const preview = document.getElementById('org-schema-preview');
+    
+    const data = {
+        type: document.querySelector('[name="org_type"]').value,
+        name: '<?= e($settings['site_name_ru'] ?? '') ?>',
+        url: '<?= BASE_URL ?>',
+        logo: document.querySelector('[name="org_logo"]').value,
+        description: document.querySelector('[name="org_description_ru"]').value,
+        telephone: document.querySelector('[name="phone"]').value,
+        email: document.querySelector('[name="email"]').value,
+        address: document.querySelector('[name="address_ru"]').value,
+        city: document.querySelector('[name="city"]').value,
+        region: document.querySelector('[name="region"]').value,
+        postal: document.querySelector('[name="postal_code"]').value,
+        country: document.querySelector('[name="country"]').value,
+        openingHours: document.querySelector('[name="opening_hours"]').value.split('\n').filter(Boolean),
+        priceRange: document.querySelector('[name="price_range"]').value,
+        sameAs: [
+            document.querySelector('[name="social_facebook"]').value,
+            document.querySelector('[name="social_instagram"]').value,
+            document.querySelector('[name="social_twitter"]').value,
+            document.querySelector('[name="social_youtube"]').value
+        ].filter(Boolean)
+    };
+    
+    const schema = {
+        "@context": "https://schema.org",
+        "@type": data.type,
+        "name": data.name,
+        "url": data.url
+    };
+    
+    if (data.logo) schema.logo = data.logo;
+    if (data.description) schema.description = data.description;
+    if (data.telephone) schema.telephone = data.telephone;
+    if (data.email) schema.email = data.email;
+    
+    if (data.address) {
+        schema.address = {
+            "@type": "PostalAddress",
+            "streetAddress": data.address,
+            "addressLocality": data.city,
+            "addressRegion": data.region,
+            "postalCode": data.postal,
+            "addressCountry": data.country
+        };
+    }
+    
+    if (data.openingHours.length) schema.openingHours = data.openingHours;
+    if (data.priceRange) schema.priceRange = data.priceRange;
+    if (data.sameAs.length) schema.sameAs = data.sameAs;
+    
+    preview.textContent = JSON.stringify(schema, null, 2);
+    preview.style.display = 'block';
+}
+</script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
