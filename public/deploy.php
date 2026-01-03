@@ -1,20 +1,28 @@
 <?php
 
-session_start();
 require_once __DIR__ . '/../config/init.php';
 
 define('REPO_PATH', '/home/kuplyuta/appliances');
 define('GITHUB_REPO_NAME', 'seowebsite');
 
+/*
+|--------------------------------------------------------------------------
+| Detect webhook vs manual access
+|--------------------------------------------------------------------------
+*/
 
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(403);
-    die('Access Denied. Please <a href="/admin/login">login</a> first.');
-}
+$isWebhook = ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_SERVER['HTTP_X_GITHUB_EVENT'])
+);
 
+/*
+|--------------------------------------------------------------------------
+| Run deploy
+|--------------------------------------------------------------------------
+*/
 
-$deployOutput = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+function runDeploy(): string
+{
     $commands = [
         'git reset --hard',
         'git clean -fd',
@@ -22,17 +30,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
 
     $output = [];
+
     foreach ($commands as $cmd) {
-        exec("cd ".REPO_PATH." && $cmd 2>&1", $cmdOut, $exit);
+        exec("cd " . REPO_PATH . " && $cmd 2>&1", $cmdOut, $exit);
         $output[] = "$ $cmd";
         $output = array_merge($output, $cmdOut);
     }
 
-    $deployOutput = implode("\n", $output);
+    return implode("\n", $output);
 }
 
+/*
+|--------------------------------------------------------------------------
+| WEBHOOK MODE
+|--------------------------------------------------------------------------
+*/
 
-$lastCommit = trim(shell_exec("cd ".REPO_PATH." && git log -1 --pretty=format:'%h - %s (%ci)'"));
+if ($isWebhook) {
+    // optional: log payload
+    $payload = file_get_contents('php://input');
+
+    $deployOutput = runDeploy();
+
+    http_response_code(200);
+    header('Content-Type: application/json');
+
+    echo json_encode([
+        'status' => 'ok',
+        'message' => 'Deploy triggered by GitHub webhook'
+    ]);
+
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| MANUAL MODE (admin UI)
+|--------------------------------------------------------------------------
+*/
+
+session_start();
+
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(403);
+    die('Access Denied. Please <a href="/admin/login">login</a> first.');
+}
+
+$deployOutput = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $deployOutput = runDeploy();
+}
+
+$lastCommit = trim(shell_exec(
+    "cd " . REPO_PATH . " && git log -1 --pretty=format:'%h - %s (%ci)'"
+));
 
 $pageName = 'deploy';
 require BASE_PATH . '/views/admin/layout/header.php';
@@ -42,7 +94,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <h1 style="margin-bottom:20px;">Git Deploy</h1>
 
     <div style="margin-bottom:20px;padding:15px;background:#f3f4f6;border-radius:6px;">
-        <strong>Last Push:</strong><br>
+        <strong>Last Commit:</strong><br>
         <?= htmlspecialchars($lastCommit) ?>
     </div>
 
@@ -60,10 +112,18 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </button>
     </form>
 
-    <?php if($deployOutput): ?>
-    <div style="margin-top:20px;padding:15px;background:#111827;color:#10b981;font-family:monospace;white-space:pre-wrap;border-radius:6px;">
-        <?= htmlspecialchars($deployOutput) ?>
-    </div>
+    <?php if ($deployOutput): ?>
+        <div style="
+            margin-top:20px;
+            padding:15px;
+            background:#111827;
+            color:#10b981;
+            font-family:monospace;
+            white-space:pre-wrap;
+            border-radius:6px;
+        ">
+            <?= htmlspecialchars($deployOutput) ?>
+        </div>
     <?php endif; ?>
 </div>
 
