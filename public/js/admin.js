@@ -40,16 +40,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function adjustToggleForScrollbar() {
         const style = getComputedStyle(toggle);
-        const currentRight = parseFloat(style.right) || 0;
-        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-        toggle.style.right = `${currentRight + scrollbarWidth}px`;
+        const baseRight = parseFloat(style.right) || 0;
+        const scrollbarWidth =
+            window.innerWidth - document.documentElement.clientWidth;
+        toggle.style.right = `${baseRight + scrollbarWidth}px`;
     }
+
 
     toggle.addEventListener('click', e => {
         e.stopPropagation();
         wrapper.classList.toggle('sidebar-collapsed');
         updateIcon();
-        adjustToggleForScrollbar();
     });
 
     document.addEventListener('click', e => {
@@ -57,13 +58,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!wrapper.classList.contains('sidebar-collapsed')) {
                 wrapper.classList.add('sidebar-collapsed');
                 updateIcon();
-                adjustToggleForScrollbar();
             }
         }
     });
 
     updateIcon();
     adjustToggleForScrollbar();
-    window.addEventListener('resize', adjustToggleForScrollbar);
-
 });
