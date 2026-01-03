@@ -153,13 +153,10 @@ $conversionFunnel = $this->getAnalyticsModel()->getConversionFunnel($stats['mont
             ['label' => 'Actions / Clicks', 'value' => (int)($stats['total']['total_clicks'] ?? 0)]
         ];
 
-        $max = max(array_column($steps, 'value'), 1); // avoid division by 0
-        $totalProgress = 0;
-        ?>
+        $max = max($steps[0]['value'], 1); // keep original logic
 
-        <?php foreach ($steps as $i => $step):
+        foreach ($steps as $i => $step):
             $widthPercent = max(round(($step['value'] / $max) * 100), 10);
-            $totalProgress += $widthPercent;
         ?>
         <div class="funnel-step" style="flex: <?= $widthPercent ?>;">
             <div class="funnel-bar">
