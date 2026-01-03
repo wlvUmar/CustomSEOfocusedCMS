@@ -68,9 +68,11 @@ class Router {
         $groupRouter = new self();
         $callback($groupRouter);
 
+        $prefix = rtrim($prefix, '/'); // remove trailing slash
         foreach ($groupRouter->routes as $method => $routes) {
             foreach ($routes as $pattern => $handler) {
-                $pattern = rtrim($prefix, '/') . '/' . ltrim($pattern, '/');
+                $pattern = trim($pattern, '/'); // remove leading/trailing slash
+                $pattern = $pattern === '' ? $prefix : $prefix . '/' . $pattern;
                 $this->routes[$method][$pattern] = $handler;
             }
         }
