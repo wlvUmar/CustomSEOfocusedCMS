@@ -153,26 +153,24 @@ $conversionFunnel = $this->getAnalyticsModel()->getConversionFunnel($stats['mont
             ['label' => 'Actions / Clicks', 'value' => $stats['total']['total_clicks']]
         ];
 
-        $max = max($steps[0]['value'], 1);
-
+        $maxValue = max(array_column($steps, 'value'), 1); // avoid division by 0
         foreach ($steps as $i => $step):
-            $width = max(round(($step['value'] / $max) * 100), 10);
+            $scale = $step['value'] / $maxValue; // 0..1 relative scale
         ?>
         <div class="funnel-step">
-            <div class="funnel-bar" style="width: <?= $width ?>%;">
+            <div class="funnel-bar" style="--scale: <?= $scale ?>;">
                 <span class="funnel-label"><?= $step['label'] ?></span>
                 <span class="funnel-value"><?= number_format($step['value']) ?></span>
             </div>
 
             <?php if ($i < count($steps) - 1): ?>
-            <div class="funnel-conversion">
-                <?= round(($steps[$i + 1]['value'] / max($step['value'], 1)) * 100, 1) ?>% →
-            </div>
+            <div class="funnel-arrow">↓</div>
             <?php endif; ?>
         </div>
         <?php endforeach; ?>
     </div>
 </div>
+
 
 <!-- Charts -->
 <div class="chart-container">
