@@ -21,23 +21,11 @@ function switchTab(tab, event) {
     if (content) content.classList.add('active');
 }
 
-function adjustToggleForScrollbar() {
-    if (!toggle) return;
 
-    // Get the current computed 'right' value
-    const style = getComputedStyle(toggle);
-    const currentRight = parseFloat(style.right);
-
-    // Calculate scrollbar width
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-
-    // Set new right including scrollbar width
-    toggle.style.right = `${currentRight + scrollbarWidth}px`;
-}
 
 // Call on load and on resize
 window.addEventListener('resize', adjustToggleForScrollbar);
-
+adjustToggleForScrollbar();
 // ----------------------------
 // DOM Ready
 // ----------------------------
@@ -70,11 +58,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
+    function adjustToggleForScrollbar() {
+        if (!toggle) return;
+        const style = getComputedStyle(toggle);
+        const currentRight = parseFloat(style.right);
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        toggle.style.right = `${currentRight + scrollbarWidth}px`;
+    }
+    
     toggle.addEventListener('click', e => {
         e.stopPropagation();
         wrapper.classList.toggle('sidebar-collapsed');
         updateIcon();
+        adjustToggleForScrollbar();
     });
 
     // Click outside sidebar to collapse (only on mobile/tablet)
@@ -83,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) {
             if (!wrapper.classList.contains('sidebar-collapsed')) {
                 wrapper.classList.add('sidebar-collapsed');
+                adjustToggleForScrollbar()
                 updateIcon();
             }
         }
@@ -90,7 +87,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // Start collapsed on mobile, expanded on desktop
-    adjustToggleForScrollbar();
+    
     updateIcon();
+    adjustToggleForScrollbar();
+    window.addEventListener('resize', adjustToggleForScrollbar);
 
 });
