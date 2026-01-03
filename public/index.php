@@ -59,7 +59,7 @@ $router->get('/admin/dashboard', fn() => requireAdminController('DashboardContro
 |------------------------------------------------------------------
 */
 $router->group('/admin/pages', function($router) {
-    $router->get('', fn() => requirePageAdmin('index'));
+    $router->get('/', fn() => requirePageAdmin('index'));
     $router->get('/new', fn() => requirePageAdmin('edit'));
     $router->get('/edit/{id}', fn($id) => requirePageAdmin('edit', $id));
     $router->post('/save', fn() => requirePageAdmin('save'));
@@ -91,7 +91,7 @@ $router->group('/admin/rotations', function($router) {
 |------------------------------------------------------------------
 */
 $router->group('/admin/faqs', function($router) {
-    $router->get('', fn() => requireFAQAdmin('index'));
+    $router->get('/', fn() => requireFAQAdmin('index'));
     $router->get('/new', fn() => requireFAQAdmin('edit'));
     $router->get('/edit/{id}', fn($id) => requireFAQAdmin('edit', $id));
     $router->post('/save', fn() => requireFAQAdmin('save'));
@@ -120,7 +120,7 @@ $router->group('/admin/link-widget', function($router) {
 |------------------------------------------------------------------
 */
 $router->group('/admin/media', function($router) {
-    $router->get('', fn() => requireMediaAdmin('index'));
+    $router->get('/', fn() => requireMediaAdmin('index'));
     $router->post('/upload', fn() => requireMediaAdmin('upload'));
     $router->post('/delete', fn() => requireMediaAdmin('delete'));
     $router->post('/bulk-upload', fn() => requireMediaAdmin('bulkUpload'));
@@ -132,7 +132,7 @@ $router->group('/admin/media', function($router) {
 |------------------------------------------------------------------
 */
 $router->group('/admin/analytics', function($router) {
-    $router->get('', fn() => requireAnalytics('index'));
+    $router->get('/', fn() => requireAnalytics('index'));
     $router->get('/rotation', fn() => requireAnalytics('rotationAnalytics'));
     $router->get('/crawl', fn() => requireAnalytics('crawlAnalysis'));
     $router->get('/page/{slug}', fn($slug) => requireAnalytics('pageDetail', $slug));
@@ -146,7 +146,7 @@ $router->group('/admin/analytics', function($router) {
 |------------------------------------------------------------------
 */
 $router->group('/admin/seo', function($router) {
-    $router->get('', fn() => requireSEO('index'));
+    $router->get('/', fn() => requireSEO('index'));
     $router->post('/save', fn() => requireSEO('save'));
     $router->get('/sitemap', fn() => require_once BASE_PATH . '/controllers/SitemapController.php' && (new SitemapController())->adminPanel());
     $router->post('/sitemap/ping', fn() => require_once BASE_PATH . '/controllers/SitemapController.php' && (new SitemapController())->pingSearchEngines());
