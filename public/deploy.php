@@ -59,6 +59,8 @@ $deployOutput = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $deployOutput = runDeploy();
+    header("Location: " . $_SERVER['REQUEST_URI']);
+    exit;
 }
 
 $lastCommit = trim(shell_exec(
