@@ -22,7 +22,6 @@
 </head>
 <body>
     <div class="admin-wrapper">
-        >
         <aside class="sidebar">
            <button class="sidebar-toggle" aria-label="Toggle sidebar">
                 <i data-feather="chevron-left"></i>
