@@ -157,15 +157,23 @@ foreach ($steps as $step):
 ?>
     <div class="funnel-step">
         <div class="funnel-track">
+
+            <!-- filled portion -->
             <div class="funnel-bar" style="width: <?= $width ?>%;">
-                <span class="funnel-label"><?= htmlspecialchars($step['label']) ?></span>
-                <span class="funnel-value"><?= number_format($step['value']) ?></span>
                 <div class="funnel-flow"></div>
             </div>
+
+            <!-- text layer (always readable) -->
+            <div class="funnel-content">
+                <span class="funnel-label"><?= htmlspecialchars($step['label']) ?></span>
+                <span class="funnel-value"><?= number_format($step['value']) ?></span>
+            </div>
+
         </div>
     </div>
 <?php endforeach; ?>
 </div>
+
 
 
 
