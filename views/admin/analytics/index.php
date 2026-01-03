@@ -146,26 +146,29 @@ $conversionFunnel = $this->getAnalyticsModel()->getConversionFunnel($stats['mont
     <h2><i data-feather="filter"></i> Conversion Funnel</h2>
 
     <?php
+    function safeValue($val) {
+        if (is_array($val)) return 0;
+        return (int) $val;
+    }
+
     $steps = [
-        ['label' => 'Page Visits', 'value' => (int)($stats['total']['total_visits'] ?? 0)],
-        ['label' => 'Engaged (2+ pages)', 'value' => (int)($conversionFunnel['engaged'] ?? 0)],
-        ['label' => 'Actions / Clicks', 'value' => (int)($stats['total']['total_clicks'] ?? 0)]
+        ['label' => 'Page Visits', 'value' => safeValue($stats['total']['total_visits'] ?? 0)],
+        ['label' => 'Engaged (2+ pages)', 'value' => safeValue($conversionFunnel['engaged'] ?? 0)],
+        ['label' => 'Actions / Clicks', 'value' => safeValue($stats['total']['total_clicks'] ?? 0)]
     ];
 
     $maxValue = max(array_map(fn($s) => $s['value'], $steps), 1);
     ?>
 
     <div class="funnel-container">
-        <?php foreach ($steps as $i => $step):
-            $value = $step['value'];
-            $percent = round(($value / $maxValue) * 100);
+        <?php foreach ($steps as $i => $step): 
+            $percent = round(($step['value'] / $maxValue) * 100);
         ?>
         <div class="funnel-step">
-            <div class="funnel-bar" style="--percent: <?= $percent ?>;">
+            <div class="funnel-bar" style="--fill-width: <?= $percent ?>%;">
                 <span class="funnel-label"><?= htmlspecialchars($step['label']) ?></span>
-                <span class="funnel-value"><?= number_format($value) ?></span>
+                <span class="funnel-value"><?= number_format($step['value']) ?></span>
             </div>
-
             <?php if ($i < count($steps) - 1): ?>
             <div class="funnel-arrow">→</div>
             <?php endif; ?>
