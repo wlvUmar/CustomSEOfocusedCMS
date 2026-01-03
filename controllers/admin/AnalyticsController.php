@@ -152,4 +152,7 @@ class AnalyticsController extends Controller {
         
         $this->view('admin/analytics/navigation', $data);
     }
+    public function getAnalyticsModel() {
+        return $this->analyticsModel;
+    }
 }

@@ -131,8 +131,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
 </div>
 
 <?php
-$hourlyData = $this->analyticsModel->getHourlyActivity(7);
-$conversionFunnel = $this->analyticsModel->getConversionFunnel($stats['months']);
+$hourlyData = $this->getAnalyticsModel()->getHourlyActivity(7);
+$conversionFunnel = $this->getAnalyticsModel()->getConversionFunnel($stats['months']);
 ?>
 
 <!-- Heatmap -->

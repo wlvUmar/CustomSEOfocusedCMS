@@ -180,7 +180,12 @@ $router->get('/{slug}', function($slug) {
 $router->notFound(function() { $router->error(404); });
 
 // Dispatch router
-$router->dispatch();
+try {
+    $router->dispatch();
+} catch (Exception $e) {
+    http_response_code(500); // set status code
+    $router->error(500);      // call router's error handler
+}
 
 /*
 |--------------------------------------------------------------------------
