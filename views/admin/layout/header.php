@@ -1,5 +1,4 @@
 <?php
-// path: ./views/admin/layout/header.php
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -43,11 +42,11 @@
                     <a href="<?= BASE_URL ?>/admin/faqs" class="<?= strpos($_SERVER['REQUEST_URI'], '/faqs') !== false ? 'active' : '' ?>">
                         <i data-feather="help-circle"></i> FAQs
                     </a>
-                    <a href="<?= BASE_URL ?>/admin/internal-links" class="<?= strpos($_SERVER['REQUEST_URI'], '/internal-links') !== false ? 'active' : '' ?>">
+                    <a href="<?= BASE_URL ?>/admin/internal-links" class="<?= strpos($_SERVER['REQUEST_URI'], '/internal-links') !== false && strpos($_SERVER['REQUEST_URI'], '/health') === false ? 'active' : '' ?>">
                         <i data-feather="link"></i> Internal Links
                     </a>
                     <a href="<?= BASE_URL ?>/admin/internal-links/health" class="<?= strpos($_SERVER['REQUEST_URI'], '/health') !== false ? 'active' : '' ?>">
-                        <i data-feather="alert-triangle"></i> Link Health
+                        <i data-feather="shield"></i> Link Health
                         <?php
                         // Show badge if broken links exist
                         require_once BASE_PATH . '/models/InternalLinks.php';
@@ -74,7 +73,7 @@
                         <i data-feather="git-branch"></i> Navigation Flow
                     </a>
                     <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="<?= strpos($_SERVER['REQUEST_URI'], '/analytics/crawl') !== false ? 'active' : '' ?>">
-                        <i data-feather="zap"></i> Crawl Analysis
+                        <i data-feather="activity"></i> Crawl Analysis
                     </a>
                 </div>
                 
@@ -90,8 +89,9 @@
                         <i data-feather="image"></i> Media
                     </a>
                 </div>
+                
                 <a href="<?= BASE_URL ?>/deploy.php" class="<?= strpos($_SERVER['REQUEST_URI'], '/deploy.php') !== false ? 'active' : '' ?>">
-                    <i data-feather="zap"></i> Deploy
+                    <i data-feather="upload-cloud"></i> Deploy
                 </a>
 
                 <a href="<?= BASE_URL ?>/admin/logout" style="margin-top: 20px; color: #dc3545;">
@@ -105,11 +105,17 @@
         <main class="admin-main">
             <div class="admin-content">
                 <?php if (isset($_SESSION['success'])): ?>
-                    <div class="alert alert-success"><?= e($_SESSION['success']) ?></div>
+                    <div class="alert alert-success">
+                        <i data-feather="check-circle"></i>
+                        <?= e($_SESSION['success']) ?>
+                    </div>
                     <?php unset($_SESSION['success']); ?>
                 <?php endif; ?>
                 
                 <?php if (isset($_SESSION['error'])): ?>
-                    <div class="alert alert-error"><?= e($_SESSION['error']) ?></div>
+                    <div class="alert alert-error">
+                        <i data-feather="alert-circle"></i>
+                        <?= e($_SESSION['error']) ?>
+                    </div>
                     <?php unset($_SESSION['error']); ?>
                 <?php endif; ?>

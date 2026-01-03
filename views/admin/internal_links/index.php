@@ -1,6 +1,6 @@
 <?php
-// path: views/admin/internal_links/index.php
-// INSTRUCTION: Replace the entire file
+// FIXED: views/admin/internal_links/index.php
+// Cleaner table-based UI with better organization
 
 require BASE_PATH . '/views/admin/layout/header.php';
 ?>
@@ -8,6 +8,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <div class="page-header">
     <h1><i data-feather="link"></i> Internal Links Manager</h1>
     <div class="btn-group">
+        <a href="<?= BASE_URL ?>/admin/internal-links/health" class="btn btn-secondary">
+            <i data-feather="shield"></i> Link Health Check
+        </a>
         <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/bulk-auto-insert" style="display: inline;">
             <button type="submit" class="btn btn-primary" 
                     onclick="return confirm('Auto-insert links for all pages?\n\nThis will add up to 3 relevant links per page.')">
@@ -31,83 +34,94 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
     
     <div class="stat-card">
-        <h3><i data-feather="link"></i> Total Suggestions</h3>
+        <h3><i data-feather="target"></i> Pages with Suggestions</h3>
         <p class="stat-number"><?= count($groupedSuggestions) ?></p>
     </div>
     
     <div class="stat-card">
-        <h3><i data-feather="bar-chart-2"></i> Avg Suggestions/Page</h3>
+        <h3><i data-feather="bar-chart-2"></i> Total Suggestions</h3>
         <p class="stat-number">
             <?php
             $totalSuggestions = 0;
             foreach ($groupedSuggestions as $group) {
                 $totalSuggestions += count($group['suggestions']);
             }
-            echo count($pages) > 0 ? round($totalSuggestions / count($pages), 1) : 0;
+            echo $totalSuggestions;
             ?>
+        </p>
+    </div>
+    
+    <div class="stat-card">
+        <h3><i data-feather="trending-up"></i> Avg Suggestions/Page</h3>
+        <p class="stat-number">
+            <?php echo count($pages) > 0 ? round($totalSuggestions / count($pages), 1) : 0; ?>
         </p>
     </div>
 </div>
 
 <!-- All Pages Table -->
-<div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 30px;">
+<div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
     <h2 style="margin-bottom: 20px;"><i data-feather="list"></i> All Pages</h2>
     
     <table class="data-table">
         <thead>
             <tr>
-                <th><i data-feather="hash"></i> ID</th>
+                <th style="width: 50px;"><i data-feather="hash"></i></th>
                 <th><i data-feather="file-text"></i> Page</th>
-                <th><i data-feather="code"></i> Slug</th>
-                <th><i data-feather="link"></i> Links (RU)</th>
-                <th><i data-feather="link"></i> Links (UZ)</th>
-                <th><i data-feather="target"></i> Suggestions</th>
-                <th><i data-feather="settings"></i> Actions</th>
+                <th style="width: 120px;"><i data-feather="code"></i> Slug</th>
+                <th style="width: 100px; text-align: center;"><i data-feather="link"></i> RU</th>
+                <th style="width: 100px; text-align: center;"><i data-feather="link"></i> UZ</th>
+                <th style="width: 100px; text-align: center;"><i data-feather="lightbulb"></i> Suggestions</th>
+                <th style="width: 180px;"><i data-feather="settings"></i> Actions</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($pages as $page): 
-                $linksRu = count(array_filter($linksModel->getExistingLinks($page['id'], 'ru')));
-                $linksUz = count(array_filter($linksModel->getExistingLinks($page['id'], 'uz')));
+                $linksRu = count($linksModel->getExistingLinks($page['id'], 'ru'));
+                $linksUz = count($linksModel->getExistingLinks($page['id'], 'uz'));
                 $suggestions = isset($groupedSuggestions[$page['id']]) ? count($groupedSuggestions[$page['id']]['suggestions']) : 0;
             ?>
             <tr>
-                <td><strong>#<?= $page['id'] ?></strong></td>
+                <td><strong><?= $page['id'] ?></strong></td>
                 <td>
                     <strong><?= e($page['title_ru']) ?></strong>
                     <br>
                     <small style="color: #6b7280;"><?= e($page['title_uz']) ?></small>
                 </td>
-                <td><code style="background: #f3f4f6; padding: 3px 8px; border-radius: 4px;"><?= e($page['slug']) ?></code></td>
                 <td>
+                    <code style="background: #f3f4f6; padding: 3px 8px; border-radius: 4px; font-size: 0.85em;">
+                        <?= e($page['slug']) ?>
+                    </code>
+                </td>
+                <td style="text-align: center;">
                     <?php if ($linksRu > 0): ?>
-                        <span style="background: #d1f4e0; color: #065f46; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600;">
-                            <i data-feather="check-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i> <?= $linksRu ?>
+                        <span style="background: #d1f4e0; color: #065f46; padding: 6px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+                            <i data-feather="check-circle" style="width: 14px; height: 14px;"></i> <?= $linksRu ?>
                         </span>
                     <?php else: ?>
-                        <span style="color: #9ca3af; font-size: 0.9em;">
-                            <i data-feather="minus-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i> None
+                        <span style="color: #9ca3af;">
+                            <i data-feather="minus-circle" style="width: 16px; height: 16px;"></i>
                         </span>
                     <?php endif; ?>
                 </td>
-                <td>
+                <td style="text-align: center;">
                     <?php if ($linksUz > 0): ?>
-                        <span style="background: #d1f4e0; color: #065f46; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600;">
-                            <i data-feather="check-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i> <?= $linksUz ?>
+                        <span style="background: #d1f4e0; color: #065f46; padding: 6px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+                            <i data-feather="check-circle" style="width: 14px; height: 14px;"></i> <?= $linksUz ?>
                         </span>
                     <?php else: ?>
-                        <span style="color: #9ca3af; font-size: 0.9em;">
-                            <i data-feather="minus-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i> None
+                        <span style="color: #9ca3af;">
+                            <i data-feather="minus-circle" style="width: 16px; height: 16px;"></i>
                         </span>
                     <?php endif; ?>
                 </td>
-                <td>
+                <td style="text-align: center;">
                     <?php if ($suggestions > 0): ?>
-                        <span style="background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600;">
-                            <i data-feather="lightbulb" style="width: 14px; height: 14px; vertical-align: middle;"></i> <?= $suggestions ?>
+                        <span style="background: #fef3c7; color: #92400e; padding: 6px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+                            <i data-feather="lightbulb" style="width: 14px; height: 14px;"></i> <?= $suggestions ?>
                         </span>
                     <?php else: ?>
-                        <span style="color: #9ca3af; font-size: 0.9em;">-</span>
+                        <span style="color: #9ca3af;">-</span>
                     <?php endif; ?>
                 </td>
                 <td>

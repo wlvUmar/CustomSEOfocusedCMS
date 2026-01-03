@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 03, 2026 at 01:49 PM
+-- Generation Time: Jan 03, 2026 at 06:30 PM
 -- Server version: 10.3.39-MariaDB-log-cll-lve
 -- PHP Version: 8.1.30
 
@@ -70,6 +70,23 @@ CREATE TABLE `analytics_internal_links_monthly` (
   `month` int(11) NOT NULL,
   `total_clicks` int(11) DEFAULT 0,
   `unique_days` int(11) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics_link_clicks`
+--
+
+CREATE TABLE `analytics_link_clicks` (
+  `id` int(11) NOT NULL,
+  `from_slug` varchar(100) DEFAULT NULL,
+  `to_slug` varchar(100) DEFAULT NULL,
+  `link_text` varchar(255) DEFAULT NULL,
+  `clicks` int(11) DEFAULT 1,
+  `language` varchar(5) DEFAULT NULL,
+  `date` date DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
@@ -396,6 +413,13 @@ ALTER TABLE `analytics_internal_links_monthly`
   ADD KEY `idx_year_month` (`year`,`month`);
 
 --
+-- Indexes for table `analytics_link_clicks`
+--
+ALTER TABLE `analytics_link_clicks`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_link_click` (`from_slug`,`to_slug`,`link_text`,`language`,`date`);
+
+--
 -- Indexes for table `analytics_monthly`
 --
 ALTER TABLE `analytics_monthly`
@@ -478,6 +502,12 @@ ALTER TABLE `analytics_internal_links`
 -- AUTO_INCREMENT for table `analytics_internal_links_monthly`
 --
 ALTER TABLE `analytics_internal_links_monthly`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `analytics_link_clicks`
+--
+ALTER TABLE `analytics_link_clicks`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --

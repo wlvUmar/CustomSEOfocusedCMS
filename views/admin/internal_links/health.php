@@ -1,12 +1,12 @@
 <?php
-// path: views/admin/internal_links/health.php
-// INSTRUCTION: Create this new file
+// PRODUCTION READY: views/admin/internal_links/health.php
+// Removed BETA badge, improved logic
 
 require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
 <div class="page-header">
-    <h1><i data-feather="alert-triangle"></i> Link Health Checker <span class="badge" style="background: #f59e0b; font-size: 0.5em; padding: 6px 12px; margin-left: 10px;">BETA</span></h1>
+    <h1><i data-feather="shield"></i> Link Health Checker</h1>
     <div class="btn-group">
         <button onclick="location.reload()" class="btn">
             <i data-feather="refresh-cw"></i> Refresh
@@ -20,7 +20,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <!-- Summary Cards -->
 <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
     <div class="stat-card" style="border-left: 4px solid <?= $summary['total_broken'] > 0 ? '#dc3545' : '#10b981' ?>;">
-        <h3><i data-feather="link-2"></i> Total Broken Links</h3>
+        <h3><i data-feather="alert-triangle"></i> Broken Links</h3>
         <p class="stat-number" style="color: <?= $summary['total_broken'] > 0 ? '#dc3545' : '#10b981' ?>;">
             <?= $summary['total_broken'] ?>
         </p>
@@ -35,12 +35,25 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <h3><i data-feather="shield"></i> Health Status</h3>
         <p class="stat-number" style="font-size: 1.5em;">
             <?php if ($summary['total_broken'] === 0): ?>
-                <span style="color: #10b981;"><i data-feather="check-circle"></i> Healthy</span>
+                <span style="color: #10b981; display: flex; align-items: center; gap: 10px;">
+                    <i data-feather="check-circle" style="width: 36px; height: 36px;"></i> Healthy
+                </span>
             <?php elseif ($summary['total_broken'] < 5): ?>
-                <span style="color: #f59e0b;"><i data-feather="alert-circle"></i> Warning</span>
+                <span style="color: #f59e0b; display: flex; align-items: center; gap: 10px;">
+                    <i data-feather="alert-circle" style="width: 36px; height: 36px;"></i> Warning
+                </span>
             <?php else: ?>
-                <span style="color: #dc3545;"><i data-feather="x-circle"></i> Critical</span>
+                <span style="color: #dc3545; display: flex; align-items: center; gap: 10px;">
+                    <i data-feather="x-circle" style="width: 36px; height: 36px;"></i> Critical
+                </span>
             <?php endif; ?>
+        </p>
+    </div>
+    
+    <div class="stat-card">
+        <h3><i data-feather="clock"></i> Last Checked</h3>
+        <p class="stat-number" style="font-size: 1.2em; color: #6b7280;">
+            <?= date('M d, H:i') ?>
         </p>
     </div>
 </div>
@@ -55,6 +68,11 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <p style="color: #6b7280; font-size: 1.1em;">
             No broken internal links detected. Your site's link structure is in great shape.
         </p>
+        <div style="margin-top: 30px;">
+            <a href="<?= BASE_URL ?>/admin/internal-links" class="btn btn-primary">
+                <i data-feather="link"></i> Back to Link Manager
+            </a>
+        </div>
     </div>
 <?php else: ?>
 
@@ -70,7 +88,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     ?>
     
     <div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid #dc3545;">
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
             <div>
                 <h3 style="margin: 0 0 5px 0; font-size: 1.2em;">
                     <i data-feather="file-text"></i> <?= e($page['title_ru']) ?>
@@ -78,7 +96,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <code style="background: #f3f4f6; padding: 3px 8px; border-radius: 4px; font-size: 0.9em;">
                     <?= e($page['slug']) ?>
                 </code>
-                <span class="badge" style="background: #dc3545; margin-left: 10px;">
+                <span class="badge" style="background: #dc3545; margin-left: 10px; color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.85em;">
+                    <i data-feather="alert-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i>
                     <?= count($links) ?> broken
                 </span>
             </div>
@@ -86,7 +105,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <div style="display: flex; gap: 8px;">
                 <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>" 
                    class="btn btn-sm" title="Edit page">
-                    <i data-feather="edit"></i> Edit
+                    <i data-feather="edit"></i> Edit Page
                 </a>
             </div>
         </div>
@@ -96,8 +115,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <tr>
                     <th><i data-feather="link"></i> Broken URL</th>
                     <th><i data-feather="type"></i> Link Text</th>
-                    <th><i data-feather="globe"></i> Language</th>
-                    <th><i data-feather="settings"></i> Action</th>
+                    <th style="width: 80px;"><i data-feather="globe"></i> Lang</th>
+                    <th style="width: 100px;"><i data-feather="tool"></i> Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -115,10 +134,10 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <td>
                         <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/fix-broken" 
                               style="display: inline;"
-                              onsubmit="return confirm('Remove this broken link? The link text will remain.')">
+                              onsubmit="return confirm('Remove this broken link? The link text will remain as plain text.')">
                             <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
                             <input type="hidden" name="language" value="<?= $link['language'] ?>">
-                            <button type="submit" class="btn btn-sm btn-danger" title="Fix broken link">
+                            <button type="submit" class="btn btn-sm btn-primary" title="Fix broken link">
                                 <i data-feather="tool"></i> Fix
                             </button>
                         </form>

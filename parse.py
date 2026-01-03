@@ -2,7 +2,7 @@ import os
 
 EXTENSIONS = {".html", ".php", ".js", ".sql", ".css"}
 SPECIAL_FILES = {".htaccess"}
-OUTPUT_FILE = "al_l_source_files.txt"
+OUTPUT_FILE = "all_source_files.txt"
 
 with open(OUTPUT_FILE, "w", encoding="utf-8") as out:
     for root, dirs, files in os.walk("."):

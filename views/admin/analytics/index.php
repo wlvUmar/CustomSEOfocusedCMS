@@ -1,11 +1,10 @@
 <?php 
-// path: ./views/admin/analytics/index.php
 $pageName = 'analytics/index';
 require BASE_PATH . '/views/admin/layout/header.php'; 
 ?>
 
 <div class="page-header">
-    <h1>Analytics Dashboard</h1>
+    <h1><i data-feather="trending-up"></i> Analytics Dashboard</h1>
     <div class="header-actions">
         <select onchange="window.location='?months='+this.value" class="btn">
             <option value="3" <?= $stats['months'] == 3 ? 'selected' : '' ?>>Last 3 Months</option>
@@ -24,9 +23,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <div class="trend-cards">
     <div class="trend-card">
         <div class="trend-header">
-            <span class="trend-label">Current Month Visits</span>
+            <span class="trend-label"><i data-feather="eye"></i> Current Month Visits</span>
             <span class="trend-change <?= $stats['trends']['changes']['visits'] >= 0 ? 'positive' : 'negative' ?>">
-                <?= $stats['trends']['changes']['visits'] >= 0 ? '↑' : '↓' ?>
+                <i data-feather="<?= $stats['trends']['changes']['visits'] >= 0 ? 'trending-up' : 'trending-down' ?>"></i>
                 <?= abs($stats['trends']['changes']['visits']) ?>%
             </span>
         </div>
@@ -38,9 +37,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
     
     <div class="trend-card">
         <div class="trend-header">
-            <span class="trend-label">Current Month Clicks</span>
+            <span class="trend-label"><i data-feather="mouse-pointer"></i> Current Month Clicks</span>
             <span class="trend-change <?= $stats['trends']['changes']['clicks'] >= 0 ? 'positive' : 'negative' ?>">
-                <?= $stats['trends']['changes']['clicks'] >= 0 ? '↑' : '↓' ?>
+                <i data-feather="<?= $stats['trends']['changes']['clicks'] >= 0 ? 'trending-up' : 'trending-down' ?>"></i>
                 <?= abs($stats['trends']['changes']['clicks']) ?>%
             </span>
         </div>
@@ -52,7 +51,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     
     <div class="trend-card">
         <div class="trend-header">
-            <span class="trend-label">Overall CTR</span>
+            <span class="trend-label"><i data-feather="percent"></i> Overall CTR</span>
         </div>
         <div class="trend-value">
             <?php 
@@ -68,10 +67,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
 </div>
 
-
-<!-- Overview Content -->
-<?php if ($stats['view'] === 'overview'): ?>
-
 <!-- Quick Access Cards -->
 <div class="quick-access-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 40px;">
     <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="quick-card" style="text-decoration: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid #3b82f6; transition: all 0.2s;">
@@ -82,10 +77,10 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <h3 style="margin: 0; font-size: 1.1em; color: var(--text-dark);">Navigation Flow</h3>
         </div>
         <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.5;">
-            See how users navigate between pages. Track internal link clicks, popular paths, and user journeys.
+            Track internal link clicks, popular paths, and user journeys between pages.
         </p>
         <div style="margin-top: 15px; color: #3b82f6; font-weight: 600; font-size: 0.9em; display: flex; align-items: center; gap: 5px;">
-            View Navigation Analytics <i data-feather="arrow-right" style="width: 16px; height: 16px;"></i>
+            View Analytics <i data-feather="arrow-right" style="width: 16px; height: 16px;"></i>
         </div>
     </a>
     
@@ -97,45 +92,51 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <h3 style="margin: 0; font-size: 1.1em; color: var(--text-dark);">Rotation Stats</h3>
         </div>
         <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.5;">
-            Track which content variations are shown and how they perform each month.
+            See which content variations are shown and how they perform each month.
         </p>
         <div style="margin-top: 15px; color: #059669; font-weight: 600; font-size: 0.9em; display: flex; align-items: center; gap: 5px;">
-            View Rotation Analytics <i data-feather="arrow-right" style="width: 16px; height: 16px;"></i>
+            View Analytics <i data-feather="arrow-right" style="width: 16px; height: 16px;"></i>
         </div>
     </a>
     
     <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="quick-card" style="text-decoration: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid #f59e0b; transition: all 0.2s;">
         <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 12px;">
             <div style="width: 48px; height: 48px; background: #fef3c7; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                <i data-feather="zap" style="color: #f59e0b; width: 24px; height: 24px;"></i>
+                <i data-feather="activity" style="color: #f59e0b; width: 24px; height: 24px;"></i>
             </div>
             <h3 style="margin: 0; font-size: 1.1em; color: var(--text-dark);">Crawl Analysis</h3>
         </div>
         <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.5;">
-            Monitor how often search engines crawl your pages and identify stale content.
+            Monitor search engine crawl frequency and identify stale content.
         </p>
         <div style="margin-top: 15px; color: #f59e0b; font-weight: 600; font-size: 0.9em; display: flex; align-items: center; gap: 5px;">
-            View Crawl Analytics <i data-feather="arrow-right" style="width: 16px; height: 16px;"></i>
+            View Analytics <i data-feather="arrow-right" style="width: 16px; height: 16px;"></i>
         </div>
     </a>
 </div>
 
-<style>
-.quick-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
-}
-</style>
+<!-- Charts -->
+<div class="chart-container">
+    <div class="chart-box">
+        <h2><i data-feather="bar-chart-2"></i> Monthly Visits Trend</h2>
+        <canvas id="visitsChart"></canvas>
+    </div>
+    
+    <div class="chart-box">
+        <h2><i data-feather="mouse-pointer"></i> Monthly Clicks Trend</h2>
+        <canvas id="clicksChart"></canvas>
+    </div>
+</div>
 
 <!-- Top Performers -->
 <div class="top-performers">
-    <h2>Top Performing Pages</h2>
+    <h2><i data-feather="award"></i> Top Performing Pages</h2>
     <div class="performers-grid">
         <?php foreach (array_slice($stats['top_performers'], 0, 5) as $performer): ?>
         <div class="performer-card">
             <div class="performer-name">
                 <a href="<?= BASE_URL ?>/admin/analytics/page/<?= e($performer['page_slug']) ?>">
-                    <?= e($performer['page_slug']) ?>
+                    <i data-feather="file-text"></i> <?= e($performer['page_slug']) ?>
                 </a>
             </div>
             <div class="performer-stats">
@@ -160,11 +161,11 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <!-- Language Statistics -->
 <?php if (!empty($stats['language_stats'])): ?>
 <div class="language-stats">
-    <h2>Language Distribution</h2>
+    <h2><i data-feather="globe"></i> Language Distribution</h2>
     <div class="lang-cards">
         <?php foreach ($stats['language_stats'] as $langStat): ?>
         <div class="lang-card">
-            <div class="lang-name"><?= strtoupper($langStat['language']) ?></div>
+            <div class="lang-name"><i data-feather="globe"></i> <?= strtoupper($langStat['language']) ?></div>
             <div class="lang-metrics">
                 <div class="metric">
                     <span class="metric-value"><?= number_format($langStat['visits']) ?></span>
@@ -185,31 +186,18 @@ require BASE_PATH . '/views/admin/layout/header.php';
 </div>
 <?php endif; ?>
 
-<!-- Charts -->
-<div class="chart-container">
-    <div class="chart-box">
-        <h2>Monthly Visits</h2>
-        <canvas id="visitsChart"></canvas>
-    </div>
-    
-    <div class="chart-box">
-        <h2>Monthly Clicks</h2>
-        <canvas id="clicksChart"></canvas>
-    </div>
-</div>
-
 <!-- Detailed Page Stats Table -->
 <div style="margin-top: 40px;">
-    <h2>Page Statistics (Last <?= $stats['months'] ?> Months)</h2>
+    <h2><i data-feather="list"></i> Page Statistics (Last <?= $stats['months'] ?> Months)</h2>
     <table class="data-table">
         <thead>
             <tr>
-                <th>Page</th>
-                <th>Language</th>
-                <th>Visits</th>
-                <th>Clicks</th>
-                <th>CTR</th>
-                <th>Actions</th>
+                <th><i data-feather="file-text"></i> Page</th>
+                <th><i data-feather="globe"></i> Language</th>
+                <th><i data-feather="eye"></i> Visits</th>
+                <th><i data-feather="mouse-pointer"></i> Clicks</th>
+                <th><i data-feather="percent"></i> CTR</th>
+                <th><i data-feather="settings"></i> Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -219,7 +207,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <tr>
                 <td>
                     <a href="<?= BASE_URL ?>/admin/analytics/page/<?= e($page['page_slug']) ?>">
-                        <?= e($page['page_slug']) ?>
+                        <strong><?= e($page['page_slug']) ?></strong>
                     </a>
                 </td>
                 <td><span class="badge"><?= strtoupper($page['language']) ?></span></td>
@@ -233,7 +221,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <td>
                     <a href="<?= BASE_URL ?>/admin/analytics/page/<?= e($page['page_slug']) ?>" 
                        class="btn btn-sm">
-                        <i data-feather="eye"></i> View Details
+                        <i data-feather="bar-chart-2"></i> View Details
                     </a>
                 </td>
             </tr>
@@ -242,14 +230,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </table>
 </div>
 
-<?php endif; ?>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
 const visitsData = <?= json_encode($stats['visits_chart']) ?>;
 const clicksData = <?= json_encode($stats['clicks_chart']) ?>;
 
-// Visits Chart
+// Visits Chart with better styling
 new Chart(document.getElementById('visitsChart'), {
     type: 'line',
     data: {
@@ -257,25 +243,56 @@ new Chart(document.getElementById('visitsChart'), {
         datasets: [{
             label: 'Visits',
             data: visitsData.values,
-            borderColor: '#303034',
-            backgroundColor: 'rgba(48, 48, 52, 0.1)',
-            tension: 0.3,
-            fill: true
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            tension: 0.4,
+            fill: true,
+            borderWidth: 3,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#3b82f6',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { display: false }
+            legend: { 
+                display: false 
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: { size: 14, weight: 'bold' },
+                bodyFont: { size: 13 },
+                cornerRadius: 6
+            }
         },
         scales: {
-            y: { beginAtZero: true }
+            y: { 
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                },
+                ticks: {
+                    font: { size: 12 }
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    font: { size: 12 }
+                }
+            }
         }
     }
 });
 
-// Clicks Chart
+// Clicks Chart with better styling
 new Chart(document.getElementById('clicksChart'), {
     type: 'line',
     data: {
@@ -285,20 +302,63 @@ new Chart(document.getElementById('clicksChart'), {
             data: clicksData.values,
             borderColor: '#059669',
             backgroundColor: 'rgba(5, 150, 105, 0.1)',
-            tension: 0.3,
-            fill: true
+            tension: 0.4,
+            fill: true,
+            borderWidth: 3,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#059669',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { display: false }
+            legend: { 
+                display: false 
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: { size: 14, weight: 'bold' },
+                bodyFont: { size: 13 },
+                cornerRadius: 6
+            }
         },
         scales: {
-            y: { beginAtZero: true }
+            y: { 
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                },
+                ticks: {
+                    font: { size: 12 }
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    font: { size: 12 }
+                }
+            }
         }
     }
 });
 </script>
+
+<style>
+.quick-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+}
+
+.chart-box canvas {
+    min-height: 300px !important;
+}
+</style>
+
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
