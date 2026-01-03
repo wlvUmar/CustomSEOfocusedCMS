@@ -23,11 +23,7 @@
 <body>
     <div class="admin-wrapper">
         <aside class="sidebar">
-           <button class="sidebar-toggle" aria-label="Toggle sidebar">
-                <i data-feather="chevron-left"></i>
-            </button>
-            
-            
+           
             <div class="logo">
                 <h2>Admin Panel</h2>
             </div>
@@ -89,7 +85,9 @@
                 </a>
             </nav>
         </aside>
-        
+        <button class="sidebar-toggle" aria-label="Toggle sidebar">
+            <i data-feather="chevron-left"></i>
+        </button>
         <main class="admin-main">
             <div class="admin-content">
                 <?php if (isset($_SESSION['success'])): ?>
