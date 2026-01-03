@@ -167,7 +167,7 @@ body {
 .sidebar-toggle {
     position: absolute;
     top: 80vh;
-    right: calc(-1 * var(--sidebar-width) + 100vw - 36px); 
+    right: calc(-1 * var(--sidebar-width) + 100vw - 20px); 
     width: 20px;
     height: 48px;
     background: var(--primary-dark);
@@ -672,6 +672,9 @@ body {
         --sidebar-width: 280px;
         font-size: 14px;
     }
+    .sidebar-toggle {
+        right:calc(-1 * var(--sidebar-width) + 100vw - 36px);
+    }
     
     /* Header adjustments */
     .page-header {
@@ -937,19 +940,19 @@ body {
         page-break-inside: avoid;
     }
 }
-
+/*
 @media (prefers-reduced-motion: reduce) {
     * {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
-}
+}*/
 
-@media (prefers-contrast: high) {
+/*@media (prefers-contrast: high) {
     .btn,
     .badge,
     .alert {
         border: 2px solid currentColor;
     }
-}
+}*/
