@@ -22,10 +22,6 @@ function switchTab(tab, event) {
 }
 
 
-
-// Call on load and on resize
-window.addEventListener('resize', adjustToggleForScrollbar);
-adjustToggleForScrollbar();
 // ----------------------------
 // DOM Ready
 // ----------------------------
