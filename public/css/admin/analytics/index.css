@@ -164,69 +164,88 @@
 }
 
 /* ---------- Funnel ---------- */
+/* ==============================
+   Conversion Funnel (Horizontal)
+   ============================== */
 
 .funnel-container {
     display: flex;
-    align-items: flex-end;
-    gap: 10px;
+    flex-direction: column;
+    gap: 14px;
     padding: 20px 10px;
     width: 100%;
-    height: 120px;
-    background: #f7f9fc;
-    border-radius: 10px;
-    overflow: hidden;
 }
 
+/* one funnel row */
 .funnel-step {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    position: relative;
+    width: 100%;
 }
 
+/* bar itself */
 .funnel-bar {
     position: relative;
-    width: 100%;
-    height: 100%;
-    background: #e0e0e0;
+    height: 48px;
+    background: #eef2f6;
     border-radius: 6px;
     overflow: hidden;
+
     display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    padding: 5px 0;
-    text-align: center;
+    align-items: center;
+    padding: 0 14px;
+
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
 }
 
+/* label on the left */
 .funnel-label {
-    font-size: 0.85em;
+    font-size: 0.9em;
     font-weight: 600;
-    color: #333;
-    margin-bottom: 2px;
+    color: #2c3e50;
+    z-index: 2;
+    white-space: nowrap;
 }
 
+/* value on the right */
 .funnel-value {
+    margin-left: auto;
     font-size: 1em;
     font-weight: 700;
     color: #0077b6;
+    z-index: 2;
 }
 
-.funnel-progress {
+/* moving flow indicator */
+.funnel-flow {
     position: absolute;
     top: 0;
-    left: 0;
+    left: -45%;
     height: 100%;
-    width: 0;
-    background: linear-gradient(90deg, #90e0ef, #00b4d8);
-    z-index: 1;
-    animation: progressBar 2s forwards;
+    width: 45%;
+
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(0,180,216,0.35),
+        transparent
+    );
+
+    animation: funnelFlow 1.8s linear infinite;
 }
 
-@keyframes progressBar {
-    from { width: 0; }
-    to { width: 100%; }
+/* animation = direction */
+@keyframes funnelFlow {
+    from {
+        left: -45%;
+    }
+    to {
+        left: 100%;
+    }
 }
 
+/* subtle hover polish */
+.funnel-bar:hover {
+    background: #e6edf5;
+}
 
 
 /* ---------- Top Performers ---------- */

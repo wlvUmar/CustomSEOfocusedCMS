@@ -142,32 +142,31 @@ $conversionFunnel = $this->getAnalyticsModel()->getConversionFunnel($stats['mont
 </div>
 
 <!-- Funnel -->
-<div class="chart-box">
-    <h2><i data-feather="filter"></i> Conversion Funnel</h2>
+<div class="funnel-container">
+    <?php
+    $steps = [
+        ['label' => 'Page Visits', 'value' => (int)($stats['total']['total_visits'] ?? 0)],
+        ['label' => 'Engaged (2+ pages)', 'value' => is_array($conversionFunnel['engaged'] ?? null) ? 0 : (int)($conversionFunnel['engaged'] ?? 0)],
+        ['label' => 'Actions / Clicks', 'value' => (int)($stats['total']['total_clicks'] ?? 0)]
+    ];
 
-    <div class="funnel-container">
-        <?php
-        $steps = [
-            ['label' => 'Page Visits', 'value' => (int)($stats['total']['total_visits'] ?? 0)],
-            ['label' => 'Engaged (2+ pages)', 'value' => is_array($conversionFunnel['engaged'] ?? null) ? 0 : (int)($conversionFunnel['engaged'] ?? 0)],
-            ['label' => 'Actions / Clicks', 'value' => (int)($stats['total']['total_clicks'] ?? 0)]
-        ];
+    $max = max($steps[0]['value'], 1);
 
-        $max = max($steps[0]['value'], 1); // keep original logic
-
-        foreach ($steps as $i => $step):
-            $widthPercent = max(round(($step['value'] / $max) * 100), 10);
-        ?>
-        <div class="funnel-step" style="flex: <?= $widthPercent ?>;">
-            <div class="funnel-bar">
+    foreach ($steps as $step):
+        $width = max(round(($step['value'] / $max) * 100), 10);
+    ?>
+        <div class="funnel-step">
+            <div class="funnel-bar" style="width: <?= $width ?>%;">
                 <span class="funnel-label"><?= htmlspecialchars($step['label']) ?></span>
                 <span class="funnel-value"><?= number_format($step['value']) ?></span>
-                <div class="funnel-progress"></div>
+
+                <!-- looping flow -->
+                <div class="funnel-flow"></div>
             </div>
         </div>
-        <?php endforeach; ?>
-    </div>
+    <?php endforeach; ?>
 </div>
+
 
 
 
