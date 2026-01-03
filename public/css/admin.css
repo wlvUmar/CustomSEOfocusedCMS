@@ -208,8 +208,7 @@ body {
 
 /* When collapsed, button moves with sidebar */
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    right: auto;
-    left: 0;
+    transform: translateX(calc(-1 * var(--sidebar-width)))
 }
 
 .admin-wrapper.sidebar-collapsed .sidebar {
@@ -239,19 +238,6 @@ body {
     animation: none !important;
 }
 
-/* Mobile responsive */
-@media (max-width: 768px) {
-    .sidebar-toggle {
-        right: -24px;
-        width: 24px;
-        height: 48px;
-        z-index: 1002;
-    }
-    
-    .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-        left: calc(-1 * var(--sidebar-width) + 100vw - 24px);
-    }
-}
 
 /* Ensure sidebar toggle is above other content */
 .sidebar-toggle::before {
