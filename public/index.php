@@ -183,8 +183,7 @@ $router->notFound(function() { $router->error(404); });
 try {
     $router->dispatch();
 } catch (Exception $e) {
-    http_response_code(500); // set status code
-    $router->error(500);      // call router's error handler
+    $router->error(500);      
 }
 
 /*
