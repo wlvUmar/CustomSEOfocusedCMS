@@ -93,11 +93,6 @@ $isAdmin = isset($_SESSION['user_id']);
         </script>
     <?php endif; ?>
     <?php
-        // ADD THIS SECTION in views/templates/header.php
-        // Place it AFTER the existing JSON-LD sections (after FAQ schema)
-        // and BEFORE the closing </head> tag
-
-        // Output auto-generated schemas from SEO settings
         if (!empty($seo['organization_schema'])) {
             echo '<script type="application/ld+json">' . "\n";
             echo $seo['organization_schema'] . "\n";

@@ -1,0 +1,131 @@
+/* Layout */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+/* Cards */
+.stat-card {
+    background: #fff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    border-left: 4px solid transparent;
+}
+
+.stat-card h3 {
+    font-size: .85rem;
+    text-transform: uppercase;
+    color: #6b7280;
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.stat-number {
+    font-size: 2.4rem;
+    font-weight: 700;
+}
+
+.stat-muted {
+    font-size: 1.1rem;
+    color: #6b7280;
+}
+
+/* Status colors */
+.stat-success { border-color: #10b981; }
+.stat-danger  { border-color: #dc3545; }
+.stat-info    { border-color: #3b82f6; }
+
+.status {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.3rem;
+}
+
+.status.success { color: #10b981; }
+.status.warning { color: #f59e0b; }
+.status.danger  { color: #dc3545; }
+
+/* Empty state */
+.empty-state {
+    background: #fff;
+    padding: 60px;
+    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.empty-state i {
+    width: 80px;
+    height: 80px;
+    color: #10b981;
+}
+
+.empty-state h2 {
+    margin: 15px 0 10px;
+    color: #10b981;
+}
+
+/* Banner */
+.info-banner {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 4px;
+    margin-bottom: 30px;
+}
+
+.info-banner.warning {
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+}
+
+/* Broken pages */
+.broken-page {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    border-left: 4px solid #dc3545;
+}
+
+.broken-header {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.broken-header code {
+    background: #f3f4f6;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    font-size: .8rem;
+    font-weight: 600;
+    border-radius: 4px;
+    background: #e5e7eb;
+}
+
+.badge.danger {
+    background: #dc3545;
+    color: #fff;
+}
+
+/* Table helpers */
+.text-danger {
+    color: #dc3545;
+}
