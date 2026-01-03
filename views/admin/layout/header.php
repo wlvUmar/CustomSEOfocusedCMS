@@ -43,8 +43,8 @@
                     <a href="<?= BASE_URL ?>/admin/faqs" class="<?= strpos($_SERVER['REQUEST_URI'], '/faqs') !== false ? 'active' : '' ?>">
                         <i data-feather="help-circle"></i> FAQs
                     </a>
-                    <a href="<?= BASE_URL ?>/admin/internal-links" class="<?= strpos($_SERVER['REQUEST_URI'], '/internal-links') !== false && strpos($_SERVER['REQUEST_URI'], '/health') === false ? 'active' : '' ?>">
-                        <i data-feather="link"></i> Internal Links
+                    <a href="<?= BASE_URL ?>/admin/pages" class="<?= strpos($_SERVER['REQUEST_URI'], '/pages') !== false ? 'active' : '' ?>">
+                        <i data-feather="file-text"></i> Pages & Links
                     </a>
                     <a href="<?= BASE_URL ?>/admin/internal-links/health" class="<?= strpos($_SERVER['REQUEST_URI'], '/health') !== false ? 'active' : '' ?>">
                         <i data-feather="shield"></i> Link Health

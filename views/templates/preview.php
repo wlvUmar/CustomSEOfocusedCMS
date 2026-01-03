@@ -9,7 +9,7 @@ $seo = $seo ?? [];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PREVIEW: <?= e($page["title_$lang"]) ?></title>
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/preview.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/preview.css">
 </head>
 <body class="preview-mode">
     

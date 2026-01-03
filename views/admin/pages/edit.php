@@ -76,6 +76,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <a href="<?= BASE_URL ?>/admin/rotations/manage/<?= $page['id'] ?>" class="btn btn-secondary">Manage Content Rotations</a>
         </div>
         <?php endif; ?>
+        
+        <?php if ($page): ?>
+        <a href="<?= BASE_URL ?>/admin/link-widget/manage/<?= $page['id'] ?>" class="btn btn-secondary">
+            <i data-feather="link"></i> Manage Link Widget
+        </a>
+        <?php endif; ?>
     </div>
     
     <div id="tab-seo" class="tab-content">

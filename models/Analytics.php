@@ -419,5 +419,133 @@ class Analytics {
         
         return $this->db->fetchAll($sql, [$months]);
     }
+    public function getHourlyActivity($days = 7) {
+        $days = (int)$days;
+        
+        $sql = "SELECT 
+                    HOUR(created_at) as hour,
+                    COUNT(*) as activity_count
+                FROM (
+                    SELECT created_at FROM analytics 
+                    WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                    UNION ALL
+                    SELECT created_at FROM analytics_internal_links
+                    WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                ) combined
+                GROUP BY hour
+                ORDER BY hour";
+        
+        $results = $this->db->fetchAll($sql, [$days, $days]);
+        
+        // Fill in missing hours
+        $hourlyData = array_fill(0, 24, 0);
+        foreach ($results as $row) {
+            $hourlyData[(int)$row['hour']] = (int)$row['activity_count'];
+        }
+        
+        return [
+            'hours' => array_map(fn($h) => sprintf('%02d:00', $h), range(0, 23)),
+            'values' => array_values($hourlyData)
+        ];
+    }
+
+    /**
+     * Get conversion funnel data
+     */
+    public function getConversionFunnel($months = 3) {
+        $months = (int)$months;
+        
+        // Get users who visited 2+ pages
+        $sql = "SELECT COUNT(DISTINCT page_slug) as engaged_count
+                FROM analytics
+                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY CONCAT(page_slug, language)
+                HAVING engaged_count >= 2";
+        
+        $engaged = $this->db->fetchAll($sql, [$months]);
+        
+        return [
+            'engaged' => count($engaged)
+        ];
+    }
+
+    /**
+     * Get page load speed stats (if tracking)
+     */
+    public function getPageSpeed($months = 1) {
+        $months = (int)$months;
+        
+        $sql = "SELECT 
+                    page_slug,
+                    AVG(avg_time_seconds) as avg_load_time,
+                    COUNT(*) as sample_size
+                FROM analytics
+                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                  AND avg_time_seconds > 0
+                GROUP BY page_slug
+                ORDER BY avg_load_time DESC
+                LIMIT 10";
+        
+        return $this->db->fetchAll($sql, [$months]);
+    }
+
+    /**
+     * Get bounce rate by page
+     */
+    public function getBounceRates($months = 3) {
+        $months = (int)$months;
+        
+        $sql = "SELECT 
+                    page_slug,
+                    language,
+                    AVG(bounce_rate) as avg_bounce,
+                    SUM(visits) as total_visits
+                FROM analytics
+                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY page_slug, language
+                HAVING total_visits > 10
+                ORDER BY avg_bounce DESC
+                LIMIT 10";
+        
+        return $this->db->fetchAll($sql, [$months]);
+    }
+
+    /**
+     * Get growth trends (month over month)
+     */
+    public function getGrowthTrends($months = 6) {
+        $months = (int)$months;
+        
+        $sql = "SELECT 
+                    year,
+                    month,
+                    SUM(total_visits) as visits,
+                    SUM(total_clicks) as clicks,
+                    LAG(SUM(total_visits)) OVER (ORDER BY year, month) as prev_visits,
+                    LAG(SUM(total_clicks)) OVER (ORDER BY year, month) as prev_clicks
+                FROM analytics_monthly
+                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY year, month
+                ORDER BY year, month";
+        
+        $results = $this->db->fetchAll($sql, [$months]);
+        
+        // Calculate growth percentages
+        foreach ($results as &$row) {
+            if ($row['prev_visits'] > 0) {
+                $row['visits_growth'] = round((($row['visits'] - $row['prev_visits']) / $row['prev_visits']) * 100, 1);
+            } else {
+                $row['visits_growth'] = 0;
+            }
+            
+            if ($row['prev_clicks'] > 0) {
+                $row['clicks_growth'] = round((($row['clicks'] - $row['prev_clicks']) / $row['prev_clicks']) * 100, 1);
+            } else {
+                $row['clicks_growth'] = 0;
+            }
+        }
+        
+        return $results;
+    }
 }
     
