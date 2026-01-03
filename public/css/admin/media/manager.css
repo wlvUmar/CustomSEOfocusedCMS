@@ -1,3 +1,7 @@
+/* ============================
+   Media Controls & Filters
+   ============================ */
+
 .media-controls {
     display: flex;
     justify-content: space-between;
@@ -9,10 +13,14 @@
 
 .media-filters {
     display: flex;
-    gap: 10px;
     align-items: center;
+    gap: 10px;
     flex-wrap: wrap;
 }
+
+/* ============================
+   Media Grid
+   ============================ */
 
 .media-grid {
     display: grid;
@@ -21,13 +29,13 @@
 }
 
 .media-item {
+    position: relative;
     background: white;
     border-radius: 8px;
     overflow: hidden;
+    cursor: pointer;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     transition: all 0.2s;
-    cursor: pointer;
-    position: relative;
 }
 
 .media-item:hover {
@@ -39,6 +47,10 @@
     outline: 3px solid #3b82f6;
     outline-offset: 2px;
 }
+
+/* ============================
+   Media Preview
+   ============================ */
 
 .media-preview {
     width: 100%;
@@ -57,6 +69,10 @@
     object-fit: cover;
 }
 
+/* ============================
+   Selection Checkbox
+   ============================ */
+
 .media-checkbox {
     position: absolute;
     top: 10px;
@@ -65,7 +81,7 @@
     height: 22px;
     cursor: pointer;
     z-index: 10;
-    display: none; /* Hidden by default */
+    display: none;
     accent-color: #3b82f6;
     transition: transform 0.2s;
 }
@@ -73,6 +89,10 @@
 .media-checkbox:hover {
     transform: scale(1.1);
 }
+
+/* ============================
+   Media Info
+   ============================ */
 
 .media-info {
     padding: 12px;
@@ -105,6 +125,10 @@
     font-size: 0.8em;
 }
 
+/* ============================
+   Bulk Actions
+   ============================ */
+
 .bulk-actions {
     display: none;
     background: #eff6ff;
@@ -122,7 +146,10 @@
     gap: 10px;
 }
 
-/* Select Mode Button States */
+/* ============================
+   Select Mode Button
+   ============================ */
+
 #select-mode-btn {
     position: relative;
 }
@@ -137,14 +164,14 @@
     margin-left: 6px;
 }
 
-/* Modal styles */
+/* ============================
+   Modal
+   ============================ */
+
 .modal {
     display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: rgba(0,0,0,0.7);
     z-index: 10000;
     align-items: center;
@@ -158,10 +185,10 @@
 .modal-content {
     background: white;
     border-radius: 8px;
+    width: 90%;
     max-width: 600px;
     max-height: 90vh;
     overflow-y: auto;
-    width: 90%;
 }
 
 .modal-header {
@@ -180,14 +207,13 @@
 }
 
 .close-btn {
-    background: none;
+    width: 32px;
+    height: 32px;
     border: none;
+    background: none;
     font-size: 1.5em;
     cursor: pointer;
     color: #6b7280;
-    padding: 0;
-    width: 32px;
-    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -203,6 +229,10 @@
 .modal-body {
     padding: 20px;
 }
+
+/* ============================
+   Insert Options
+   ============================ */
 
 .insert-preview {
     max-width: 100%;
@@ -251,22 +281,69 @@
     font-size: 0.9em;
 }
 
-/* Responsive */
+
 @media (max-width: 768px) {
     .media-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
-    
     .media-controls {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .media-filters {
         width: 100%;
     }
-    
+
     .media-filters button {
+        flex: 1;
+    }
+}
+/* ============================
+   Search & Sort
+   ============================ */
+
+.media-search-sort {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.media-search {
+    padding: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    width: 200px;
+}
+
+/* ============================
+   Insert Modal Footer Button
+   ============================ */
+
+.insert-confirm {
+    width: 100%;
+    margin-top: 20px;
+}
+
+/* ============================
+   Button Group (Bulk Actions)
+   ============================ */
+
+.btn-group {
+    display: flex;
+    gap: 8px;
+}
+
+/* ============================
+   Responsive tweaks
+   ============================ */
+
+@media (max-width: 768px) {
+    .media-search-sort {
+        width: 100%;
+    }
+
+    .media-search {
         flex: 1;
     }
 }

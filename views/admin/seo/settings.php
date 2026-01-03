@@ -1,6 +1,9 @@
 <?php
 // UPDATED: views/admin/seo/settings.php
-// Replace the entire file
+// Changes: Moved inline styles to CSS file, inline scripts to JS file
+// Set pageName for automatic CSS loading
+
+$pageName = 'seo/settings';
 require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
@@ -207,7 +210,7 @@ Sa 10:00-15:00"><?= e($settings['opening_hours'] ?? '') ?></textarea>
                 <i data-feather="code"></i> Preview Generated Schema
             </button>
             
-            <pre id="org-schema-preview" style="display: none; background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; margin-top: 15px; overflow-x: auto;"></pre>
+            <pre id="org-schema-preview" style="display: none;"></pre>
         </div>
     </div>
     
@@ -219,14 +222,14 @@ Sa 10:00-15:00"><?= e($settings['opening_hours'] ?? '') ?></textarea>
                 This schema describes your website to search engines.
             </p>
             
-            <div class="info-banner" style="background: #eff6ff; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6; margin-bottom: 20px;">
+            <div class="info-banner">
                 <strong>📘 Note:</strong> This schema is auto-generated from your Site Name and Meta Description. 
                 It will be included on your homepage automatically.
             </div>
             
             <div style="background: #f9fafb; padding: 15px; border-radius: 6px; border-left: 3px solid #10b981;">
                 <strong>✅ Auto-Generated Schema Preview:</strong>
-                <pre style="background: #1e1e1e; color: #10b981; padding: 15px; border-radius: 6px; margin-top: 10px; overflow-x: auto; font-size: 12px; font-family: monospace;">{
+                <pre>{
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "<?= e($settings['site_name_ru'] ?? 'Your Site') ?>",
@@ -300,63 +303,7 @@ Sa 10:00-15:00"><?= e($settings['opening_hours'] ?? '') ?></textarea>
     </div>
 </form>
 
-<script>
-function generateOrgSchema() {
-    const preview = document.getElementById('org-schema-preview');
-    
-    const data = {
-        type: document.querySelector('[name="org_type"]').value,
-        name: '<?= e($settings['site_name_ru'] ?? '') ?>',
-        url: '<?= BASE_URL ?>',
-        logo: document.querySelector('[name="org_logo"]').value,
-        description: document.querySelector('[name="org_description_ru"]').value,
-        telephone: document.querySelector('[name="phone"]').value,
-        email: document.querySelector('[name="email"]').value,
-        address: document.querySelector('[name="address_ru"]').value,
-        city: document.querySelector('[name="city"]').value,
-        region: document.querySelector('[name="region"]').value,
-        postal: document.querySelector('[name="postal_code"]').value,
-        country: document.querySelector('[name="country"]').value,
-        openingHours: document.querySelector('[name="opening_hours"]').value.split('\n').filter(Boolean),
-        priceRange: document.querySelector('[name="price_range"]').value,
-        sameAs: [
-            document.querySelector('[name="social_facebook"]').value,
-            document.querySelector('[name="social_instagram"]').value,
-            document.querySelector('[name="social_twitter"]').value,
-            document.querySelector('[name="social_youtube"]').value
-        ].filter(Boolean)
-    };
-    
-    const schema = {
-        "@context": "https://schema.org",
-        "@type": data.type,
-        "name": data.name,
-        "url": data.url
-    };
-    
-    if (data.logo) schema.logo = data.logo;
-    if (data.description) schema.description = data.description;
-    if (data.telephone) schema.telephone = data.telephone;
-    if (data.email) schema.email = data.email;
-    
-    if (data.address) {
-        schema.address = {
-            "@type": "PostalAddress",
-            "streetAddress": data.address,
-            "addressLocality": data.city,
-            "addressRegion": data.region,
-            "postalCode": data.postal,
-            "addressCountry": data.country
-        };
-    }
-    
-    if (data.openingHours.length) schema.openingHours = data.openingHours;
-    if (data.priceRange) schema.priceRange = data.priceRange;
-    if (data.sameAs.length) schema.sameAs = data.sameAs;
-    
-    preview.textContent = JSON.stringify(schema, null, 2);
-    preview.style.display = 'block';
-}
-</script>
+<!-- Load external JavaScript -->
+<script src="<?= BASE_URL ?>/js/admin/seo-settings.js"></script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

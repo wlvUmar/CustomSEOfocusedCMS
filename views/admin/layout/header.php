@@ -1,4 +1,8 @@
 <?php
+// FIXED: views/admin/layout/header.php
+// Issue: Database not loaded before InternalLinks instantiation
+// Solution: Require Database before checking broken links
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,16 +52,24 @@
                     <a href="<?= BASE_URL ?>/admin/internal-links/health" class="<?= strpos($_SERVER['REQUEST_URI'], '/health') !== false ? 'active' : '' ?>">
                         <i data-feather="shield"></i> Link Health
                         <?php
-                        // Show badge if broken links exist
+                        // FIX: Require Database before InternalLinks
+                        require_once BASE_PATH . '/core/Database.php';
                         require_once BASE_PATH . '/models/InternalLinks.php';
-                        $linksModel = new InternalLinks();
-                        $summary = $linksModel->getLinkHealthSummary();
-                        if ($summary['total_broken'] > 0):
+                        
+                        try {
+                            $linksModel = new InternalLinks();
+                            $summary = $linksModel->getLinkHealthSummary();
+                            if ($summary['total_broken'] > 0):
                         ?>
                         <span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7em; margin-left: 5px;">
                             <?= $summary['total_broken'] ?>
                         </span>
-                        <?php endif; ?>
+                        <?php 
+                            endif;
+                        } catch (Exception $e) {
+                            // Silently fail if database not available
+                        }
+                        ?>
                     </a>
                 </div>
                 

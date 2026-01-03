@@ -1,5 +1,4 @@
 <?php
-// NEW FILE: controllers/admin/InternalLinksController.php
 
 require_once BASE_PATH . '/models/InternalLinks.php';
 require_once BASE_PATH . '/models/Page.php';

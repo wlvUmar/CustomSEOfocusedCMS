@@ -202,4 +202,4 @@ require BASE_PATH . '/views/admin/layout/header.php';
 }
 </style>
 
-<?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
+<?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>  
