@@ -145,26 +145,29 @@ $conversionFunnel = $this->getAnalyticsModel()->getConversionFunnel($stats['mont
 <div class="chart-box">
     <h2><i data-feather="filter"></i> Conversion Funnel</h2>
 
-    <div class="funnel-container">
-        <?php
-        $steps = [
-            ['label' => 'Page Visits', 'value' => $stats['total']['total_visits']],
-            ['label' => 'Engaged (2+ pages)', 'value' => $conversionFunnel['engaged'] ?? 0],
-            ['label' => 'Actions / Clicks', 'value' => $stats['total']['total_clicks']]
-        ];
+    <?php
+    $steps = [
+        ['label' => 'Page Visits', 'value' => (int)($stats['total']['total_visits'] ?? 0)],
+        ['label' => 'Engaged (2+ pages)', 'value' => (int)($conversionFunnel['engaged'] ?? 0)],
+        ['label' => 'Actions / Clicks', 'value' => (int)($stats['total']['total_clicks'] ?? 0)]
+    ];
 
-        $maxValue = max(array_column($steps, 'value'), 1); // avoid division by 0
-        foreach ($steps as $i => $step):
-            $scale = $step['value'] / $maxValue; // 0..1 relative scale
+    $maxValue = max(array_map(fn($s) => $s['value'], $steps), 1);
+    ?>
+
+    <div class="funnel-container">
+        <?php foreach ($steps as $i => $step):
+            $value = $step['value'];
+            $percent = round(($value / $maxValue) * 100);
         ?>
         <div class="funnel-step">
-            <div class="funnel-bar" style="--scale: <?= $scale ?>;">
-                <span class="funnel-label"><?= $step['label'] ?></span>
-                <span class="funnel-value"><?= number_format($step['value']) ?></span>
+            <div class="funnel-bar" style="--percent: <?= $percent ?>;">
+                <span class="funnel-label"><?= htmlspecialchars($step['label']) ?></span>
+                <span class="funnel-value"><?= number_format($value) ?></span>
             </div>
 
             <?php if ($i < count($steps) - 1): ?>
-            <div class="funnel-arrow">↓</div>
+            <div class="funnel-arrow">→</div>
             <?php endif; ?>
         </div>
         <?php endforeach; ?>
