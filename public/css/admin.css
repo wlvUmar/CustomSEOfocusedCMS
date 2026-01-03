@@ -198,16 +198,16 @@ body {
     transition: transform 0.3s ease;
 }
 
-.admin-wrapper:not(.sidebar-collapsed) .sidebar-toggle svg {
+.admin-wrapper:not(.sidebar-collapsed) ~ .sidebar-toggle svg {
     transform: rotate(0deg);
 }
 
-.admin-wrapper.sidebar-collapsed .sidebar-toggle svg {
+.admin-wrapper.sidebar-collapsed ~ .sidebar-toggle svg {
     transform: rotate(180deg);
 }
 
 /* When collapsed, button moves with sidebar */
-.admin-wrapper.sidebar-collapsed .sidebar-toggle {
+.admin-wrapper.sidebar-collapsed ~ .sidebar-toggle {
     transform: translateX(calc(-1 * var(--sidebar-width)))
 }
 
@@ -222,21 +222,17 @@ body {
 /* Subtle pulse animation only when collapsed */
 @keyframes subtle-pulse {
     0%, 100% {
-        box-shadow: 2px 2px 8px rgba(0,0,0,0.15);
+        box-shadow: 2px 2px 8px rgba(0,0,0,0.5);
     }
     50% {
-        box-shadow: 2px 2px 12px rgba(237, 235, 215, 0.2);
+        box-shadow: 6px 7px 10px rgba(237, 235, 215, 0.5);
     }
 }
 
-.admin-wrapper.sidebar-collapsed .sidebar-toggle {
+.admin-wrapper.sidebar-collapsed ~ .sidebar-toggle {
     animation: subtle-pulse 3s ease-in-out infinite;
 }
 
-/* Stop animation on hover */
-.sidebar-toggle:hover {
-    animation: none !important;
-}
 
 
 /* Ensure sidebar toggle is above other content */
