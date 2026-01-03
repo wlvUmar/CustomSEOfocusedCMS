@@ -10,24 +10,24 @@ $isWebhook = ($_SERVER['REQUEST_METHOD'] === 'POST'
     && isset($_SERVER['HTTP_X_GITHUB_EVENT'])
 );
 
+if ($isWebhook) {
+    // optional: log payload for debug
+    $payload = file_get_contents('php://input');
 
-function runDeploy(): string
-{
-    $commands = [
-        'git reset --hard',
-        'git clean -fd',
-        'git pull origin master'
-    ];
+    // run deploy
+    $deployOutput = runDeploy();
 
-    $output = [];
+    // return proper JSON for GitHub
+    http_response_code(200);
+    header('Content-Type: application/json');
 
-    foreach ($commands as $cmd) {
-        exec("cd " . REPO_PATH . " && $cmd 2>&1", $cmdOut, $exit);
-        $output[] = "$ $cmd";
-        $output = array_merge($output, $cmdOut);
-    }
+    echo json_encode([
+        'status' => 'ok',
+        'message' => 'Deploy triggered successfully',
+        'deploy_output' => $deployOutput 
+    ]);
 
-    return implode("\n", $output);
+    exit; /
 }
 
 
@@ -60,7 +60,7 @@ $deployOutput = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $deployOutput = runDeploy();
     header("Location: " . $_SERVER['REQUEST_URI']);
-    exit;
+    exit; 
 }
 
 $lastCommit = trim(shell_exec(
