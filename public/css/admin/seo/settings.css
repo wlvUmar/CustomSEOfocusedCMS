@@ -1,0 +1,45 @@
+/* FILE: public/css/admin/seo/settings.css */
+
+#org-schema-preview {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 15px;
+    overflow-x: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.info-banner {
+    background: #eff6ff;
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 3px solid #3b82f6;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.info-banner strong {
+    color: #1e40af;
+}
+
+.form-section pre {
+    background: #1e1e1e;
+    color: #10b981;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 10px;
+    overflow-x: auto;
+    font-size: 12px;
+    font-family: monospace;
+    line-height: 1.5;
+}
+
+.btn i[data-feather] {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
