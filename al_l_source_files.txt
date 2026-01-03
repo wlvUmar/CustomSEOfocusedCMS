@@ -46,9 +46,77 @@ define('DB_CHARSET', getenv('DB_CHARSET') ?: 'utf8mb4');
 # path: .\config\init.php
 
 <?php
+// UPDATED: config/init.php
+// Add this section right after the require statements
+
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/security.php';
+
+
+$logDir = BASE_PATH . '/logs';
+if (!is_dir($logDir)) {
+    mkdir($logDir, 0750, true);
+}
+
+$errorLogFile = $logDir . '/php_errors.log';
+$securityLogFile = $logDir . '/security.log';
+
+if (!file_exists($errorLogFile)) {
+    touch($errorLogFile);
+    chmod($errorLogFile, 0640);
+}
+
+// Set PHP error logging
+ini_set('log_errors', 1);
+ini_set('error_log', $errorLogFile);
+ini_set('display_errors', IS_PRODUCTION ? 0 : 1);
+
+// Custom error handler for better logging
+set_error_handler(function($errno, $errstr, $errfile, $errline) use ($errorLogFile) {
+    $errorTypes = [
+        E_ERROR => 'ERROR',
+        E_WARNING => 'WARNING',
+        E_NOTICE => 'NOTICE',
+        E_USER_ERROR => 'USER_ERROR',
+        E_USER_WARNING => 'USER_WARNING',
+        E_USER_NOTICE => 'USER_NOTICE',
+        E_STRICT => 'STRICT',
+        E_DEPRECATED => 'DEPRECATED'
+    ];
+    
+    $type = $errorTypes[$errno] ?? 'UNKNOWN';
+    $timestamp = date('Y-m-d H:i:s');
+    $message = "[$timestamp] [$type] $errstr in $errfile on line $errline\n";
+    
+    error_log($message, 3, $errorLogFile);
+    
+    // Don't execute PHP internal error handler
+    return false;
+});
+
+set_exception_handler(function($exception) use ($errorLogFile) {
+    $timestamp = date('Y-m-d H:i:s');
+    $message = sprintf(
+        "[%s] [EXCEPTION] %s: %s in %s:%d\nStack trace:\n%s\n",
+        $timestamp,
+        get_class($exception),
+        $exception->getMessage(),
+        $exception->getFile(),
+        $exception->getLine(),
+        $exception->getTraceAsString()
+    );
+    
+    error_log($message, 3, $errorLogFile);
+    
+    if (!IS_PRODUCTION) {
+        echo "<pre>$message</pre>";
+    } else {
+        http_response_code(500);
+        require BASE_PATH . '/views/error.php';
+    }
+});
+
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 
@@ -59,7 +127,6 @@ if (!isset($_SESSION['last_regeneration'])) {
     $_SESSION['last_regeneration'] = time();
 }
 
-// Session timeout (1 hour)
 $timeout = 1800;
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $timeout) {
     session_unset();
@@ -68,7 +135,6 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) >
     exit;
 }
 $_SESSION['last_activity'] = time();
-
 
 ================================================================================
 
@@ -91,17 +157,19 @@ if (IS_PRODUCTION) {
 }
 $csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com",
-    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
-    "style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com", // TinyMCE styles
-    "img-src 'self' data: https:",
-    "font-src 'self' data: https://cdnjs.cloudflare.com", // TinyMCE fonts
-    "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com", // TinyMCE resources
-    "frame-ancestors 'self'"
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://unpkg.com", 
+    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
+    "style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
+    "img-src 'self' data: blob: https:", 
+    "font-src 'self' data: https://cdnjs.cloudflare.com",
+    "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com",
+    "frame-ancestors 'self'",
+    "worker-src 'self' blob:", 
+    "child-src 'self' blob:"
 ];
 
-
 header('Content-Security-Policy: ' . implode('; ', $csp));
+
 
 // --------------------
 // CSRF
@@ -978,6 +1046,187 @@ class FAQAdminController extends Controller {
         
         fclose($output);
         exit;
+    }
+}
+
+================================================================================
+
+# InternalLinksController.php
+# path: .\controllers\admin\InternalLinksController.php
+
+<?php
+// NEW FILE: controllers/admin/InternalLinksController.php
+
+require_once BASE_PATH . '/models/InternalLinks.php';
+require_once BASE_PATH . '/models/Page.php';
+
+class InternalLinksController extends Controller {
+    private $linksModel;
+    private $pageModel;
+
+    public function __construct() {
+        parent::__construct();
+        $this->linksModel = new InternalLinks();
+        $this->pageModel = new Page();
+    }
+
+    /**
+     * Main internal links management page
+     */
+    public function index() {
+        $this->requireAuth();
+        
+        $pages = $this->pageModel->getAll(false); // Only published
+        $suggestions = $this->linksModel->generateSuggestions();
+        
+        // Group suggestions by source page
+        $groupedSuggestions = [];
+        foreach ($suggestions as $suggestion) {
+            $fromId = $suggestion['from_page_id'];
+            if (!isset($groupedSuggestions[$fromId])) {
+                $groupedSuggestions[$fromId] = [
+                    'page' => [
+                        'id' => $fromId,
+                        'slug' => $suggestion['from_slug'],
+                        'title' => $suggestion['from_title']
+                    ],
+                    'suggestions' => []
+                ];
+            }
+            $groupedSuggestions[$fromId]['suggestions'][] = $suggestion;
+        }
+        
+        $this->view('admin/internal_links/index', [
+            'pages' => $pages,
+            'groupedSuggestions' => $groupedSuggestions
+        ]);
+    }
+
+    /**
+     * Page-specific link management
+     */
+    public function managePage($pageId) {
+        $this->requireAuth();
+        
+        $page = $this->pageModel->getById($pageId);
+        if (!$page) {
+            $_SESSION['error'] = 'Page not found';
+            $this->redirect('/admin/internal-links');
+            return;
+        }
+        
+        $suggestions = array_filter(
+            $this->linksModel->generateSuggestions(),
+            function($s) use ($pageId) {
+                return $s['from_page_id'] == $pageId;
+            }
+        );
+        
+        $existingLinksRu = $this->linksModel->getExistingLinks($pageId, 'ru');
+        $existingLinksUz = $this->linksModel->getExistingLinks($pageId, 'uz');
+        
+        $this->view('admin/internal_links/manage', [
+            'page' => $page,
+            'suggestions' => $suggestions,
+            'existingLinksRu' => $existingLinksRu,
+            'existingLinksUz' => $existingLinksUz
+        ]);
+    }
+
+    /**
+     * Auto-insert links for a page
+     */
+    public function autoInsert() {
+        $this->requireAuth();
+        
+        $pageId = $_POST['page_id'] ?? null;
+        $maxLinks = intval($_POST['max_links'] ?? 3);
+        $language = $_POST['language'] ?? 'ru';
+        
+        if (!$pageId) {
+            $this->json(['success' => false, 'message' => 'Page ID required'], 400);
+            return;
+        }
+        
+        $insertedCount = $this->linksModel->autoInsertLinks($pageId, $maxLinks, $language);
+        
+        if ($insertedCount > 0) {
+            $_SESSION['success'] = "Inserted $insertedCount internal link(s) in $language content";
+            $this->json(['success' => true, 'inserted' => $insertedCount]);
+        } else {
+            $_SESSION['error'] = 'No suitable positions found for links';
+            $this->json(['success' => false, 'message' => 'No links inserted']);
+        }
+    }
+
+    /**
+     * Remove all internal links from a page
+     */
+    public function removeLinks() {
+        $this->requireAuth();
+        
+        $pageId = $_POST['page_id'] ?? null;
+        $language = $_POST['language'] ?? 'ru';
+        
+        if (!$pageId) {
+            $this->json(['success' => false, 'message' => 'Page ID required'], 400);
+            return;
+        }
+        
+        $result = $this->linksModel->removeAllLinks($pageId, $language);
+        
+        if ($result) {
+            $_SESSION['success'] = "Removed all internal links from $language content";
+            $this->json(['success' => true]);
+        } else {
+            $_SESSION['error'] = 'Failed to remove links';
+            $this->json(['success' => false]);
+        }
+    }
+
+    /**
+     * Bulk auto-insert for all pages
+     */
+    public function bulkAutoInsert() {
+        $this->requireAuth();
+        
+        $pages = $this->pageModel->getAll(false);
+        $totalInserted = 0;
+        $processedPages = 0;
+        
+        foreach ($pages as $page) {
+            $insertedRu = $this->linksModel->autoInsertLinks($page['id'], 3, 'ru');
+            $insertedUz = $this->linksModel->autoInsertLinks($page['id'], 3, 'uz');
+            
+            if ($insertedRu > 0 || $insertedUz > 0) {
+                $processedPages++;
+                $totalInserted += $insertedRu + $insertedUz;
+            }
+        }
+        
+        $_SESSION['success'] = "Processed $processedPages pages. Inserted $totalInserted links total.";
+        $this->redirect('/admin/internal-links');
+    }
+
+    /**
+     * Get suggestions API
+     */
+    public function getSuggestions() {
+        $this->requireAuth();
+        
+        $pageId = $_GET['page_id'] ?? null;
+        $suggestions = $this->linksModel->generateSuggestions();
+        
+        if ($pageId) {
+            $suggestions = array_filter($suggestions, function($s) use ($pageId) {
+                return $s['from_page_id'] == $pageId;
+            });
+        }
+        
+        $this->json([
+            'success' => true,
+            'suggestions' => array_values($suggestions)
+        ]);
     }
 }
 
@@ -1877,7 +2126,11 @@ class RotationAdminController extends Controller {
 # path: .\controllers\admin\SEOController.php
 
 <?php
+// UPDATED: controllers/admin/SEOController.php
+// Replace the entire file
+
 require_once BASE_PATH . '/models/SEO.php';
+require_once BASE_PATH . '/models/JsonLdGenerator.php';
 
 class SEOController extends Controller {
     private $seoModel;
@@ -1897,6 +2150,7 @@ class SEOController extends Controller {
         $this->requireAuth();
         
         $data = [
+            // Basic info
             'site_name_ru' => trim($_POST['site_name_ru']),
             'site_name_uz' => trim($_POST['site_name_uz']),
             'meta_keywords_ru' => trim($_POST['meta_keywords_ru']),
@@ -1908,13 +2162,99 @@ class SEOController extends Controller {
             'address_ru' => trim($_POST['address_ru']),
             'address_uz' => trim($_POST['address_uz']),
             'working_hours_ru' => trim($_POST['working_hours_ru']),
-            'working_hours_uz' => trim($_POST['working_hours_uz'])
+            'working_hours_uz' => trim($_POST['working_hours_uz']),
+            
+            // Location
+            'city' => trim($_POST['city'] ?? ''),
+            'region' => trim($_POST['region'] ?? ''),
+            'postal_code' => trim($_POST['postal_code'] ?? ''),
+            'country' => trim($_POST['country'] ?? 'UZ'),
+            
+            // Organization
+            'org_type' => trim($_POST['org_type'] ?? 'LocalBusiness'),
+            'org_logo' => trim($_POST['org_logo'] ?? ''),
+            'org_description_ru' => trim($_POST['org_description_ru'] ?? ''),
+            'org_description_uz' => trim($_POST['org_description_uz'] ?? ''),
+            'opening_hours' => trim($_POST['opening_hours'] ?? ''),
+            'price_range' => trim($_POST['price_range'] ?? ''),
+            
+            // Social media
+            'social_facebook' => trim($_POST['social_facebook'] ?? ''),
+            'social_instagram' => trim($_POST['social_instagram'] ?? ''),
+            'social_twitter' => trim($_POST['social_twitter'] ?? ''),
+            'social_youtube' => trim($_POST['social_youtube'] ?? ''),
+            
+            // Service
+            'service_type' => trim($_POST['service_type'] ?? ''),
+            'service_name_ru' => trim($_POST['service_name_ru'] ?? ''),
+            'service_name_uz' => trim($_POST['service_name_uz'] ?? ''),
+            'service_desc_ru' => trim($_POST['service_desc_ru'] ?? ''),
+            'service_desc_uz' => trim($_POST['service_desc_uz'] ?? ''),
+            'area_served' => trim($_POST['area_served'] ?? ''),
+            'service_price' => trim($_POST['service_price'] ?? '')
         ];
+        
+        // Generate JSON-LD schemas
+        $data['organization_schema'] = $this->generateOrganizationSchema($data);
+        $data['website_schema'] = $this->generateWebsiteSchema($data);
+        
+        if (!empty($data['service_type'])) {
+            $data['service_schema'] = $this->generateServiceSchema($data);
+        }
         
         $this->seoModel->updateSettings($data);
         $_SESSION['success'] = 'SEO settings updated successfully';
         
         $this->redirect('/admin/seo');
+    }
+    
+    private function generateOrganizationSchema($data) {
+        $socialMedia = array_filter([
+            $data['social_facebook'],
+            $data['social_instagram'],
+            $data['social_twitter'],
+            $data['social_youtube']
+        ]);
+        
+        $openingHours = array_filter(explode("\n", $data['opening_hours']));
+        
+        return JsonLdGenerator::generateOrganization([
+            'type' => $data['org_type'],
+            'name' => $data['site_name_ru'],
+            'url' => BASE_URL,
+            'logo' => $data['org_logo'],
+            'description' => $data['org_description_ru'],
+            'telephone' => $data['phone'],
+            'email' => $data['email'],
+            'address' => $data['address_ru'],
+            'city' => $data['city'],
+            'region' => $data['region'],
+            'postal' => $data['postal_code'],
+            'country' => $data['country'],
+            'opening_hours' => $openingHours,
+            'price_range' => $data['price_range'],
+            'social_media' => $socialMedia
+        ]);
+    }
+    
+    private function generateWebsiteSchema($data) {
+        return JsonLdGenerator::generateWebsite([
+            'name' => $data['site_name_ru'],
+            'url' => BASE_URL,
+            'description' => $data['meta_description_ru']
+        ]);
+    }
+    
+    private function generateServiceSchema($data) {
+        return JsonLdGenerator::generateService([
+            'service_type' => $data['service_type'],
+            'name' => $data['service_name_ru'],
+            'description' => $data['service_desc_ru'],
+            'provider' => $data['site_name_ru'],
+            'area_served' => $data['area_served'],
+            'price' => $data['service_price'],
+            'currency' => 'UZS'
+        ]);
     }
 }
 
@@ -2385,7 +2725,7 @@ function generateFAQSchema($faqs, $lang) {
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 01, 2026 at 09:32 PM
+-- Generation Time: Jan 03, 2026 at 01:49 PM
 -- Server version: 10.3.39-MariaDB-log-cll-lve
 -- PHP Version: 8.1.30
 
@@ -2500,8 +2840,12 @@ CREATE TABLE `analytics_rotations` (
 CREATE TABLE `content_rotations` (
   `id` int(11) NOT NULL,
   `page_id` int(11) NOT NULL,
+  `title_ru` varchar(200) DEFAULT NULL,
+  `title_uz` varchar(200) DEFAULT NULL,
   `content_ru` longtext DEFAULT NULL,
   `content_uz` longtext DEFAULT NULL,
+  `description_ru` text DEFAULT NULL,
+  `description_uz` text DEFAULT NULL,
   `meta_title_ru` varchar(200) DEFAULT NULL,
   `meta_title_uz` varchar(200) DEFAULT NULL,
   `meta_description_ru` text DEFAULT NULL,
@@ -2609,6 +2953,26 @@ CREATE TABLE `seo_settings` (
   `address_uz` text DEFAULT NULL,
   `working_hours_ru` varchar(200) DEFAULT NULL,
   `working_hours_uz` varchar(200) DEFAULT NULL,
+  `organization_schema` text DEFAULT NULL,
+  `website_schema` text DEFAULT NULL,
+  `service_schema` text DEFAULT NULL,
+  `breadcrumb_schema` text DEFAULT NULL,
+  `article_schema` text DEFAULT NULL,
+  `image_schema` text DEFAULT NULL,
+  `org_type` varchar(50) DEFAULT 'LocalBusiness',
+  `org_logo` varchar(500) DEFAULT NULL,
+  `org_description_ru` text DEFAULT NULL,
+  `org_description_uz` text DEFAULT NULL,
+  `city` varchar(100) DEFAULT NULL,
+  `region` varchar(100) DEFAULT NULL,
+  `postal_code` varchar(20) DEFAULT NULL,
+  `country` varchar(10) DEFAULT 'UZ',
+  `opening_hours` text DEFAULT NULL,
+  `price_range` varchar(20) DEFAULT NULL,
+  `social_facebook` varchar(500) DEFAULT NULL,
+  `social_instagram` varchar(500) DEFAULT NULL,
+  `social_twitter` varchar(500) DEFAULT NULL,
+  `social_youtube` varchar(500) DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -2901,11 +3265,6 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 
-ALTER TABLE `content_rotations` 
-ADD COLUMN `title_ru` VARCHAR(200) NULL AFTER `page_id`,
-ADD COLUMN `title_uz` VARCHAR(200) NULL AFTER `title_ru`,
-ADD COLUMN `description_ru` TEXT NULL AFTER `content_uz`,
-ADD COLUMN `description_uz` TEXT NULL AFTER `description_ru`;
 
 ================================================================================
 
@@ -3696,6 +4055,447 @@ class FAQ {
 
 ================================================================================
 
+# InternalLinks.php
+# path: .\models\InternalLinks.php
+
+<?php
+// NEW FILE: models/InternalLinks.php
+
+class InternalLinks {
+    private $db;
+
+    public function __construct() {
+        $this->db = Database::getInstance();
+    }
+
+    /**
+     * Analyze all pages and suggest internal links
+     */
+    public function generateSuggestions() {
+        $pages = $this->db->fetchAll("SELECT * FROM pages WHERE is_published = 1");
+        $suggestions = [];
+
+        foreach ($pages as $fromPage) {
+            foreach ($pages as $toPage) {
+                // Don't link to self
+                if ($fromPage['id'] === $toPage['id']) continue;
+
+                // Check if toPage keywords/title appear in fromPage content
+                $score = $this->calculateRelevanceScore($fromPage, $toPage);
+                
+                if ($score > 0) {
+                    $suggestions[] = [
+                        'from_page_id' => $fromPage['id'],
+                        'from_slug' => $fromPage['slug'],
+                        'from_title' => $fromPage['title_ru'],
+                        'to_page_id' => $toPage['id'],
+                        'to_slug' => $toPage['slug'],
+                        'to_title' => $toPage['title_ru'],
+                        'anchor_text_ru' => $toPage['title_ru'],
+                        'anchor_text_uz' => $toPage['title_uz'],
+                        'relevance_score' => $score,
+                        'suggested_position' => 'auto'
+                    ];
+                }
+            }
+        }
+
+        // Sort by relevance
+        usort($suggestions, function($a, $b) {
+            return $b['relevance_score'] <=> $a['relevance_score'];
+        });
+
+        return $suggestions;
+    }
+
+    /**
+     * Calculate how relevant a link would be
+     */
+    private function calculateRelevanceScore($fromPage, $toPage) {
+        $score = 0;
+        
+        // Check title mentions
+        $toTitleRu = mb_strtolower($toPage['title_ru']);
+        $toTitleUz = mb_strtolower($toPage['title_uz']);
+        $fromContentRu = mb_strtolower(strip_tags($fromPage['content_ru']));
+        $fromContentUz = mb_strtolower(strip_tags($fromPage['content_uz']));
+        
+        if (mb_strpos($fromContentRu, $toTitleRu) !== false) $score += 10;
+        if (mb_strpos($fromContentUz, $toTitleUz) !== false) $score += 10;
+        
+        // Keyword overlap
+        $toKeywordsRu = explode(',', mb_strtolower($toPage['meta_keywords_ru'] ?? ''));
+        $toKeywordsUz = explode(',', mb_strtolower($toPage['meta_keywords_uz'] ?? ''));
+        
+        foreach ($toKeywordsRu as $keyword) {
+            $keyword = trim($keyword);
+            if ($keyword && mb_strpos($fromContentRu, $keyword) !== false) {
+                $score += 2;
+            }
+        }
+        
+        foreach ($toKeywordsUz as $keyword) {
+            $keyword = trim($keyword);
+            if ($keyword && mb_strpos($fromContentUz, $keyword) !== false) {
+                $score += 2;
+            }
+        }
+        
+        // Boost for related slugs
+        if (strpos($fromPage['slug'], $toPage['slug']) !== false || 
+            strpos($toPage['slug'], $fromPage['slug']) !== false) {
+            $score += 5;
+        }
+        
+        return $score;
+    }
+
+    /**
+     * Auto-insert links into page content
+     */
+    public function autoInsertLinks($pageId, $maxLinks = 3, $language = 'ru') {
+        $page = $this->db->fetchOne("SELECT * FROM pages WHERE id = ?", [$pageId]);
+        if (!$page) return false;
+
+        $suggestions = array_filter($this->generateSuggestions(), function($s) use ($pageId) {
+            return $s['from_page_id'] == $pageId;
+        });
+
+        // Take top N suggestions
+        $suggestions = array_slice($suggestions, 0, $maxLinks);
+        
+        $content = $page["content_$language"];
+        $insertedCount = 0;
+
+        foreach ($suggestions as $suggestion) {
+            $anchorText = $suggestion["anchor_text_$language"];
+            $toSlug = $suggestion['to_slug'];
+            $linkHtml = '<a href="' . BASE_URL . '/' . htmlspecialchars($toSlug) . '">' . 
+                        htmlspecialchars($anchorText) . '</a>';
+
+            // Find and replace first occurrence of anchor text (case-insensitive)
+            $pattern = '/\b' . preg_quote($anchorText, '/') . '\b/ui';
+            $replaced = preg_replace($pattern, $linkHtml, $content, 1, $count);
+            
+            if ($count > 0) {
+                $content = $replaced;
+                $insertedCount++;
+            }
+        }
+
+        // Update page content
+        if ($insertedCount > 0) {
+            $this->db->query(
+                "UPDATE pages SET content_$language = ? WHERE id = ?",
+                [$content, $pageId]
+            );
+        }
+
+        return $insertedCount;
+    }
+
+    /**
+     * Get existing internal links in content
+     */
+    public function getExistingLinks($pageId, $language = 'ru') {
+        $page = $this->db->fetchOne("SELECT * FROM pages WHERE id = ?", [$pageId]);
+        if (!$page) return [];
+
+        $content = $page["content_$language"];
+        $links = [];
+
+        // Extract all internal links
+        preg_match_all('/<a\s+href=["\']([^"\']*)["\'][^>]*>(.*?)<\/a>/i', $content, $matches, PREG_SET_ORDER);
+        
+        foreach ($matches as $match) {
+            $href = $match[1];
+            $text = strip_tags($match[2]);
+            
+            // Check if it's an internal link
+            if (strpos($href, BASE_URL) === 0 || strpos($href, '/') === 0) {
+                $links[] = [
+                    'href' => $href,
+                    'anchor_text' => $text,
+                    'full_html' => $match[0]
+                ];
+            }
+        }
+
+        return $links;
+    }
+
+    /**
+     * Remove all internal links from content
+     */
+    public function removeAllLinks($pageId, $language = 'ru') {
+        $page = $this->db->fetchOne("SELECT * FROM pages WHERE id = ?", [$pageId]);
+        if (!$page) return false;
+
+        $content = $page["content_$language"];
+        
+        // Remove internal links but keep anchor text
+        $content = preg_replace_callback(
+            '/<a\s+href=["\']([^"\']*)["\'][^>]*>(.*?)<\/a>/i',
+            function($matches) {
+                $href = $matches[1];
+                $text = $matches[2];
+                
+                // Only remove internal links
+                if (strpos($href, BASE_URL) === 0 || (strpos($href, '/') === 0 && strpos($href, '//') !== 0)) {
+                    return $text; // Return just the text
+                }
+                
+                return $matches[0]; // Keep external links
+            },
+            $content
+        );
+
+        $this->db->query(
+            "UPDATE pages SET content_$language = ? WHERE id = ?",
+            [$content, $pageId]
+        );
+
+        return true;
+    }
+}
+
+================================================================================
+
+# JsonLdGenerator.php
+# path: .\models\JsonLdGenerator.php
+
+<?php
+// NEW FILE: models/JsonLdGenerator.php
+
+class JsonLdGenerator {
+    
+    /**
+     * Generate Organization/LocalBusiness schema
+     */
+    public static function generateOrganization($data) {
+        $schema = [
+            "@context" => "https://schema.org",
+            "@type" => $data['type'] ?? "LocalBusiness",
+            "name" => $data['name'],
+            "url" => $data['url'],
+        ];
+        
+        if (!empty($data['logo'])) {
+            $schema['logo'] = $data['logo'];
+        }
+        
+        if (!empty($data['description'])) {
+            $schema['description'] = $data['description'];
+        }
+        
+        if (!empty($data['telephone'])) {
+            $schema['telephone'] = $data['telephone'];
+        }
+        
+        if (!empty($data['email'])) {
+            $schema['email'] = $data['email'];
+        }
+        
+        // Address
+        if (!empty($data['address'])) {
+            $schema['address'] = [
+                "@type" => "PostalAddress",
+                "streetAddress" => $data['address'],
+                "addressLocality" => $data['city'] ?? '',
+                "addressRegion" => $data['region'] ?? '',
+                "postalCode" => $data['postal'] ?? '',
+                "addressCountry" => $data['country'] ?? 'UZ'
+            ];
+        }
+        
+        // Opening hours
+        if (!empty($data['opening_hours'])) {
+            $schema['openingHours'] = is_array($data['opening_hours']) 
+                ? $data['opening_hours'] 
+                : [$data['opening_hours']];
+        }
+        
+        // Price range
+        if (!empty($data['price_range'])) {
+            $schema['priceRange'] = $data['price_range'];
+        }
+        
+        // Social media
+        if (!empty($data['social_media'])) {
+            $schema['sameAs'] = array_values(array_filter($data['social_media']));
+        }
+        
+        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+    
+    /**
+     * Generate Service schema
+     */
+    public static function generateService($data) {
+        $schema = [
+            "@context" => "https://schema.org",
+            "@type" => "Service",
+            "serviceType" => $data['service_type'],
+            "name" => $data['name'],
+            "description" => $data['description']
+        ];
+        
+        // Provider
+        if (!empty($data['provider'])) {
+            $schema['provider'] = [
+                "@type" => "Organization",
+                "name" => $data['provider']
+            ];
+        }
+        
+        // Area served
+        if (!empty($data['area_served'])) {
+            $schema['areaServed'] = $data['area_served'];
+        }
+        
+        // Price
+        if (!empty($data['price'])) {
+            $schema['offers'] = [
+                "@type" => "Offer",
+                "price" => $data['price'],
+                "priceCurrency" => $data['currency'] ?? 'UZS'
+            ];
+        }
+        
+        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+    
+    /**
+     * Generate BreadcrumbList schema
+     */
+    public static function generateBreadcrumbs($items, $baseUrl) {
+        $listItems = [];
+        
+        foreach ($items as $index => $item) {
+            $listItems[] = [
+                "@type" => "ListItem",
+                "position" => $index + 1,
+                "name" => $item['name'],
+                "item" => rtrim($baseUrl, '/') . '/' . ltrim($item['url'], '/')
+            ];
+        }
+        
+        $schema = [
+            "@context" => "https://schema.org",
+            "@type" => "BreadcrumbList",
+            "itemListElement" => $listItems
+        ];
+        
+        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+    
+    /**
+     * Generate Article/BlogPosting schema
+     */
+    public static function generateArticle($data) {
+        $schema = [
+            "@context" => "https://schema.org",
+            "@type" => $data['type'] ?? "Article",
+            "headline" => $data['headline'],
+            "description" => $data['description']
+        ];
+        
+        if (!empty($data['image'])) {
+            $schema['image'] = $data['image'];
+        }
+        
+        if (!empty($data['author'])) {
+            $schema['author'] = [
+                "@type" => "Person",
+                "name" => $data['author']
+            ];
+        }
+        
+        if (!empty($data['publisher'])) {
+            $schema['publisher'] = [
+                "@type" => "Organization",
+                "name" => $data['publisher'],
+                "logo" => [
+                    "@type" => "ImageObject",
+                    "url" => $data['publisher_logo'] ?? ''
+                ]
+            ];
+        }
+        
+        if (!empty($data['date_published'])) {
+            $schema['datePublished'] = $data['date_published'];
+        }
+        
+        if (!empty($data['date_modified'])) {
+            $schema['dateModified'] = $data['date_modified'];
+        }
+        
+        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+    
+    /**
+     * Generate ImageObject schema
+     */
+    public static function generateImage($data) {
+        $schema = [
+            "@context" => "https://schema.org",
+            "@type" => "ImageObject",
+            "url" => $data['url'],
+            "contentUrl" => $data['url']
+        ];
+        
+        if (!empty($data['caption'])) {
+            $schema['caption'] = $data['caption'];
+        }
+        
+        if (!empty($data['width'])) {
+            $schema['width'] = $data['width'];
+        }
+        
+        if (!empty($data['height'])) {
+            $schema['height'] = $data['height'];
+        }
+        
+        if (!empty($data['description'])) {
+            $schema['description'] = $data['description'];
+        }
+        
+        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+    
+    /**
+     * Generate WebSite schema with search action
+     */
+    public static function generateWebsite($data) {
+        $schema = [
+            "@context" => "https://schema.org",
+            "@type" => "WebSite",
+            "name" => $data['name'],
+            "url" => $data['url']
+        ];
+        
+        if (!empty($data['description'])) {
+            $schema['description'] = $data['description'];
+        }
+        
+        // Add search action if search URL provided
+        if (!empty($data['search_url'])) {
+            $schema['potentialAction'] = [
+                "@type" => "SearchAction",
+                "target" => [
+                    "@type" => "EntryPoint",
+                    "urlTemplate" => $data['search_url'] . "?q={search_term_string}"
+                ],
+                "query-input" => "required name=search_term_string"
+            ];
+        }
+        
+        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+}
+
+================================================================================
+
 # Media.php
 # path: .\models\Media.php
 
@@ -3865,6 +4665,9 @@ class Page {
 # path: .\models\SEO.php
 
 <?php
+// UPDATED: models/SEO.php
+// Replace the entire file
+
 class SEO {
     private $db;
 
@@ -3884,7 +4687,17 @@ class SEO {
                 meta_description_ru = ?, meta_description_uz = ?,
                 phone = ?, email = ?,
                 address_ru = ?, address_uz = ?,
-                working_hours_ru = ?, working_hours_uz = ?
+                working_hours_ru = ?, working_hours_uz = ?,
+                city = ?, region = ?, postal_code = ?, country = ?,
+                org_type = ?, org_logo = ?,
+                org_description_ru = ?, org_description_uz = ?,
+                opening_hours = ?, price_range = ?,
+                social_facebook = ?, social_instagram = ?,
+                social_twitter = ?, social_youtube = ?,
+                service_type = ?, service_name_ru = ?, service_name_uz = ?,
+                service_desc_ru = ?, service_desc_uz = ?,
+                area_served = ?, service_price = ?,
+                organization_schema = ?, website_schema = ?, service_schema = ?
                 WHERE id = 1";
         
         return $this->db->query($sql, [
@@ -3899,7 +4712,31 @@ class SEO {
             $data['address_ru'],
             $data['address_uz'],
             $data['working_hours_ru'],
-            $data['working_hours_uz']
+            $data['working_hours_uz'],
+            $data['city'] ?? '',
+            $data['region'] ?? '',
+            $data['postal_code'] ?? '',
+            $data['country'] ?? 'UZ',
+            $data['org_type'] ?? 'LocalBusiness',
+            $data['org_logo'] ?? '',
+            $data['org_description_ru'] ?? '',
+            $data['org_description_uz'] ?? '',
+            $data['opening_hours'] ?? '',
+            $data['price_range'] ?? '',
+            $data['social_facebook'] ?? '',
+            $data['social_instagram'] ?? '',
+            $data['social_twitter'] ?? '',
+            $data['social_youtube'] ?? '',
+            $data['service_type'] ?? '',
+            $data['service_name_ru'] ?? '',
+            $data['service_name_uz'] ?? '',
+            $data['service_desc_ru'] ?? '',
+            $data['service_desc_uz'] ?? '',
+            $data['area_served'] ?? '',
+            $data['service_price'] ?? '',
+            $data['organization_schema'] ?? '',
+            $data['website_schema'] ?? '',
+            $data['service_schema'] ?? ''
         ]);
     }
 }
@@ -3961,9 +4798,6 @@ RewriteEngine On
     # HTTPS enforcement (if using HTTPS)
     # Uncomment after enabling SSL:
     # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
-    
-    # Content Security Policy (adjust as needed)
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
     
     # Remove server signature
     Header always unset X-Powered-By
@@ -4181,16 +5015,24 @@ $queue = $deployData['queue'] ?? [];
 $deployOutput = $deployData['deployOutput'] ?? '';
 
 // --------------------
-// Handle GitHub Webhook
+// Handle GitHub Webhook (queue only)
 // --------------------
-$isWebhook = !empty($_SERVER['HTTP_X_GITHUB_EVENT']);
-if($isWebhook && $_SERVER['REQUEST_METHOD'] === 'POST'){
+$headers = function_exists('getallheaders') ? getallheaders() : [];
+$isWebhook = ($_SERVER['REQUEST_METHOD'] === 'POST') && (!empty($headers['X-GitHub-Event']) || !empty($_SERVER['HTTP_X_GITHUB_EVENT']));
+
+if($isWebhook){
     $payload = file_get_contents('php://input');
+    logDeploy("[WEBHOOK] Headers: ".json_encode($headers));
+    logDeploy("[WEBHOOK] Payload: ".$payload);
+
     $data = json_decode($payload, true);
-    if($data){
-        $repoName = $data['repository']['name'] ?? '';
+    if($data && isset($data['repository']['name'])){
+        $repoName = $data['repository']['name'];
         $branch = $data['ref'] ?? '';
-        if($repoName === GITHUB_REPO_NAME && $branch === 'refs/heads/master'){
+
+        $targetBranches = ['refs/heads/master', 'refs/heads/main'];
+
+        if($repoName === GITHUB_REPO_NAME && in_array($branch, $targetBranches)){
             $commits = $data['commits'] ?? [];
             foreach($commits as $commit){
                 $queue[] = [
@@ -4201,17 +5043,20 @@ if($isWebhook && $_SERVER['REQUEST_METHOD'] === 'POST'){
                 ];
             }
             file_put_contents(DEPLOY_FILE, json_encode(['queue'=>$queue,'deployOutput'=>$deployOutput]));
-            logDeploy("[WEBHOOK] Push received from {$repoName}");
+            logDeploy("[WEBHOOK] Push queued from {$repoName} on {$branch}");
         }
+    } else {
+        logDeploy("[WEBHOOK] Invalid payload or missing repository name.");
     }
+
     http_response_code(200);
     exit; // webhook returns OK
 }
 
 // --------------------
-// Admin authentication
+// Admin authentication for manual deploy
 // --------------------
-if(!$isWebhook && !isset($_SESSION['user_id'])){
+if(!isset($_SESSION['user_id'])){
     http_response_code(403);
     die('Access Denied. Please <a href="/admin/login">login</a> first.');
 }
@@ -4222,13 +5067,12 @@ if(!isset($_SESSION['deploy_csrf'])){
 }
 
 // --------------------
-// Manual deploy (approve latest push)
+// Manual deploy
 // --------------------
 $manualDeployed = false;
 $deployMessage = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_SESSION['deploy_csrf']) {
-    // Find latest non-deployed push
     $latest = null;
     foreach ($queue as &$q) {
         if (!$q['deployed']) {
@@ -4257,7 +5101,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_
         $deployMessage = $deployOutput;
         $manualDeployed = true;
 
-        // mark deployed
         $latest['deployed'] = true;
         file_put_contents(DEPLOY_FILE, json_encode(['queue'=>$queue,'deployOutput'=>$deployOutput]));
         logDeploy("[MANUAL DEPLOY] ".$deployOutput);
@@ -4265,7 +5108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_
         $deployMessage = "No pending push to deploy.";
     }
 
-    header('Location: deploy.php'); // optional: append ?deployed=1
+    header('Location: deploy.php');
     exit;
 }
 
@@ -4290,18 +5133,134 @@ require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
 <style>
-.btn { margin-top:5px; display:inline-flex; align-items:center; gap:6px; }
-.deploy-container { max-width:900px; margin:20px auto; }
-.deploy-commits { background-color:#1e1e1e; color:#d4d4d4; font-family:monospace; font-size:14px; line-height:1.5; padding:16px; border-radius:6px; overflow-x:auto; max-height:400px; }
-.deploy-commits ul { list-style:none; padding-left:0; margin:0; }
-.deploy-commits li { padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
-.deploy-commits li:last-child { border-bottom:none; }
-.deploy-commits li .sha { color:#569cd6; font-weight:bold; }
-.deploy-commits li .message { color:#d4d4d4; }
-.deploy-commits li.deployed { background-color:#2d2d2d; border-left:4px solid #6a9955; padding-left:12px; }
-.deploy-commits li.pending { background-color:#2d2d2d; border-left:4px solid #ffcc00; padding-left:12px; }
-.deploy-output { background:#222; color:#fff; padding:12px; border-radius:6px; margin-top:10px; white-space:pre-wrap; max-height:400px; overflow:auto; }
-button:disabled { opacity:0.5; cursor:not-allowed; }
+/* ------------------- Deploy Page CSS ------------------- */
+/* Keep all your previous styles as-is */
+.btn { 
+    margin-top: 5px; 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+}
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+.btn:disabled { 
+    opacity: 0.5; 
+    cursor: not-allowed;
+    transform: none !important;
+}
+.deploy-container { 
+    max-width: 1000px; 
+    margin: 30px auto; 
+    padding: 0 20px;
+}
+.deploy-container h1 {
+    font-size: 2em;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #1f2937;
+}
+.deploy-container h1 i { color: #3b82f6; }
+
+/* Commit List - Modern Card Design */
+.deploy-commits { 
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #e2e8f0;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    max-height: 450px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.deploy-commits ul { list-style: none; padding-left: 0; margin: 0; }
+.deploy-commits li { 
+    padding: 12px 16px; 
+    margin-bottom: 8px; 
+    border-radius: 8px; 
+    background: rgba(255,255,255,0.03); 
+    border-left: 3px solid transparent; 
+    transition: all 0.2s;
+}
+.deploy-commits li:hover { background: rgba(255,255,255,0.06); transform: translateX(4px); }
+.deploy-commits li:last-child { margin-bottom: 0; }
+.deploy-commits li .sha { 
+    color: #60a5fa; font-weight: bold; font-size: 13px; font-family: monospace;
+    background: rgba(59, 130, 246, 0.15); padding: 2px 8px; border-radius: 4px; display: inline-block; margin-right: 8px;
+}
+.deploy-commits li .message { color: #e2e8f0; font-size: 14px; }
+.deploy-commits li.deployed { background: rgba(16, 185, 129, 0.1); border-left-color: #10b981; }
+.deploy-commits li.deployed .sha { color: #10b981; background: rgba(16, 185, 129, 0.15); }
+.deploy-commits li.pending { background: rgba(251, 191, 36, 0.1); border-left-color: #fbbf24; animation: pulse-pending 2s ease-in-out infinite; }
+.deploy-commits li.pending .sha { color: #fbbf24; background: rgba(251, 191, 36, 0.15); }
+@keyframes pulse-pending { 0%,100%{opacity:1;}50%{opacity:0.8;} }
+
+/* Deploy Output - Terminal Style */
+.deploy-output { 
+    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+    color: #10b981;
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 15px;
+    margin-bottom: 20px;
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.deploy-output:empty::before { content: 'No deployment output yet. Click "Deploy Latest Push" to start.'; color: #6b7280; font-style: italic; }
+
+/* Status Badges */
+.status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-left: 10px; }
+.status-deployed { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+.status-pending { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+
+/* Form Styling */
+#deployForm { margin-top: 20px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .deploy-container { padding: 0 15px; margin: 20px auto; }
+    .deploy-container h1 { font-size: 1.5em; }
+    .deploy-commits, .deploy-output { font-size: 12px; padding: 15px; max-height: 300px; }
+    .btn { width: 100%; justify-content: center; }
+}
+
+/* Button loading spinner */
+.btn.loading { position: relative; pointer-events: none; }
+.btn.loading::after {
+    content: '';
+    position: absolute;
+    right: 12px;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
 <div class="deploy-container">
@@ -4332,25 +5291,20 @@ button:disabled { opacity:0.5; cursor:not-allowed; }
 <script>feather.replace();</script>
 
 <script>
-// --------------------
 // Live AJAX update
-// --------------------
 async function refreshQueue(){
     const res = await fetch('deploy.php?ajax=1');
     const data = await res.json();
 
-    // Update button
     const btn = document.getElementById('deploy-btn');
     btn.disabled = !data.hasPending;
 
-    // Update push list
     const queueDiv = document.getElementById('deployQueue');
     queueDiv.innerHTML = '<ul>' + data.queue.map(q=>`
         <li class="${q.deployed ? 'deployed' : 'pending'}">
             <span class="sha">${q.sha}</span> - <span class="message">${q.message}</span>
         </li>`).join('') + '</ul>';
 
-    // Update deploy output
     const outDiv = document.getElementById('deployOutput');
     outDiv.innerHTML = data.deployOutput;
 }
@@ -4369,7 +5323,7 @@ document.getElementById('deployForm').addEventListener('submit', async e=>{
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
- 
+
 
 ================================================================================
 
@@ -4509,6 +5463,56 @@ $router->post('/admin/faqs/save', fn() => requireFAQAdmin('save'));
 $router->post('/admin/faqs/delete', fn() => requireFAQAdmin('delete'));
 $router->post('/admin/faqs/bulk-upload', fn() => requireFAQAdmin('bulkUpload'));
 $router->get('/admin/faqs/download-template', fn() => requireFAQAdmin('downloadTemplate'));
+
+
+/*
+|--------------------------------------------------------------------------
+| Internal Links Management (Admin)
+| ADD THIS SECTION to public/index.php after the FAQ routes
+|--------------------------------------------------------------------------
+*/
+
+// Internal Links Overview
+$router->get('/admin/internal-links', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->index();
+});
+
+// Manage links for specific page
+$router->get('/admin/internal-links/manage/{pageId}', function($pageId) {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->managePage($pageId);
+});
+
+// Auto-insert links
+$router->post('/admin/internal-links/auto-insert', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->autoInsert();
+});
+
+// Remove all links
+$router->post('/admin/internal-links/remove-links', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->removeLinks();
+});
+
+// Bulk auto-insert
+$router->post('/admin/internal-links/bulk-auto-insert', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->bulkAutoInsert();
+});
+
+// Get suggestions API
+$router->get('/admin/internal-links/api/suggestions', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->getSuggestions();
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -4769,6 +5773,11 @@ body {
     min-height: 100vh;
 }
 
+/* ========================================
+   UPDATED SIDEBAR & TOGGLE STYLES
+   Replace the sidebar section in public/css/admin.css
+   ======================================== */
+
 .sidebar {
     top: 0;
     left: 0;
@@ -4778,91 +5787,84 @@ body {
     position: fixed;
     height: 100vh;
     overflow-y: auto;
-    overflow-x: visible; 
+    overflow-x: visible;
     transform: translateX(0);
     transition: transform 0.3s ease;
-    z-index: 1000;
+    z-index: 1000; 
     display: flex;
     flex-direction: column;
 }
 
-
 .sidebar::-webkit-scrollbar {
     width: 6px;
 }
+
 .sidebar::-webkit-scrollbar-track {
-    background: var(--primary-dark);  /* track matches sidebar background */
+    background: var(--primary-dark);
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-    background: var(--accent-dark);  /* thumb slightly lighter/darker */
-    border-radius: 3px;              /* rounded edges */
+    background: var(--accent-dark);
+    border-radius: 3px;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-light); /* subtle hover effect */
+    background: var(--accent-light);
 }
 
-/* Firefox */
 .sidebar {
-    scrollbar-width: thin;                 /* thin scrollbar */
-    scrollbar-color: var(--accent-dark) var(--primary-dark); /* thumb color | track color */
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-dark) var(--primary-dark);
 }
 
+/* ========================================
+   SEAMLESS SIDEBAR TOGGLE BUTTON
+   ======================================== */
 .sidebar-toggle {
-    position: absolute;
-    top: 50%;
-    left: var(--sidebar-width);
-    transform: translateY(-50%);
+    position: fixed;
+    top: 80vh;
+    right: calc(-1 * var(--sidebar-width) + 100vw - 20px); 
     width: 20px;
-    height: 60px;
+    height: 48px;
     background: var(--primary-dark);
     color: var(--primary-light);
     border: none;
-    border-radius: 0 8px 8px 0;
+    border-radius: 0 6px 6px 0; /* Only round right side */
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 1001; 
-    transition: all 0.3s ease;
-    box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+    z-index: 1001;
+    transition: left 0.3s ease, transform 0.3s ease;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.15);
 }
 
-.sidebar-toggle::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--accent-dark);
+/* Remove hover/active styles as requested */
+.sidebar-toggle:hover {
+    background: var(--primary-dark);
 }
-
 
 .sidebar-toggle:active {
-    width: 18px;
+    transform: none;
 }
 
 .sidebar-toggle svg {
-    width: 16px;
-    height: 16px;
-    stroke-width: 2.5;
+    width: 24px;
+    stroke-width: 5px;
     transition: transform 0.3s ease;
 }
-
 
 .admin-wrapper:not(.sidebar-collapsed) .sidebar-toggle svg {
     transform: rotate(0deg);
 }
+
 .admin-wrapper.sidebar-collapsed .sidebar-toggle svg {
     transform: rotate(180deg);
 }
 
+/* When collapsed, button moves with sidebar */
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    right: auto;
-    left: 0;
-    border-radius: 0 8px 8px 0;
+    transform: translateX(calc(-1 * var(--sidebar-width)))
 }
 
 .admin-wrapper.sidebar-collapsed .sidebar {
@@ -4873,39 +5875,36 @@ body {
     margin-left: 0;
 }
 
-@keyframes pulse-glow {
+/* Subtle pulse animation only when collapsed */
+@keyframes subtle-pulse {
     0%, 100% {
-        box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+        box-shadow: 2px 2px 8px rgba(0,0,0,0.15);
     }
     50% {
-        box-shadow: 2px 0 16px rgba(237, 235, 215, 0.3);
+        box-shadow: 2px 2px 12px rgba(237, 235, 215, 0.2);
     }
 }
 
 .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-    animation: pulse-glow 3s ease-in-out infinite;
+    animation: subtle-pulse 3s ease-in-out infinite;
 }
 
+/* Stop animation on hover */
 .sidebar-toggle:hover {
     animation: none !important;
 }
 
-/* Mobile responsive */
-@media (max-width: 768px) {
-    .sidebar-toggle {
-        right: -24px;
-        width: 24px;
-        height: 48px;
-        z-index: 1002; 
-    }
-    
-    .admin-wrapper.sidebar-collapsed .sidebar-toggle {
-        left: 0;
-    }
+
+/* Ensure sidebar toggle is above other content */
+.sidebar-toggle::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #303034;
 }
-
-
-
   
 
 .logo {
@@ -5329,6 +6328,9 @@ body {
         --sidebar-width: 280px;
         font-size: 14px;
     }
+    .sidebar-toggle {
+        right:calc(-1 * var(--sidebar-width) + 100vw - 36px);
+    }
     
     /* Header adjustments */
     .page-header {
@@ -5594,22 +6596,22 @@ body {
         page-break-inside: avoid;
     }
 }
-
+/*
 @media (prefers-reduced-motion: reduce) {
     * {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
-}
+}*/
 
-@media (prefers-contrast: high) {
+/*@media (prefers-contrast: high) {
     .btn,
     .badge,
     .alert {
         border: 2px solid currentColor;
     }
-}
+}*/
 
 ================================================================================
 
@@ -8127,32 +9129,21 @@ main a:hover img {
 # admin.js
 # path: .\public\js\admin.js
 
-// ----------------------------
-// Tabs
-// ----------------------------
 function switchTab(tab, event) {
     if (event && event.currentTarget) {
         event.preventDefault();
     }
-    
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-    // Find and activate the button that was clicked
-    const clickedBtn = event && event.currentTarget ? event.currentTarget : 
-                       document.querySelector(`[onclick*="switchTab('${tab}')"]`);
-    
-    if (clickedBtn) {
-        clickedBtn.classList.add('active');
-    }
-    
+    const clickedBtn = event?.currentTarget || document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+    if (clickedBtn) clickedBtn.classList.add('active');
+
     const content = document.getElementById('tab-' + tab);
     if (content) content.classList.add('active');
 }
 
-// ----------------------------
-// DOM Ready
-// ----------------------------
+
 document.addEventListener('DOMContentLoaded', () => {
 
     const wrapper = document.querySelector('.admin-wrapper');
@@ -8161,9 +9152,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!wrapper || !sidebar || !toggle) return;
 
-    // ----------------------------
-    // Delete Confirmation
-    // ----------------------------
+
     document.querySelectorAll('form[action*="delete"]').forEach(form => {
         form.addEventListener('submit', e => {
             if (!confirm('Are you sure you want to delete this item?')) {
@@ -8172,13 +9161,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ----------------------------
-    // Sidebar Toggle
-    // ----------------------------
+
     function updateIcon() {
-        toggle.innerHTML = '<i data-feather="chevron-left"></i>';
-        feather.replace();
+        const icon = toggle.querySelector('svg');
+        if (icon) {
+            icon.style.transform = wrapper.classList.contains('sidebar-collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
     }
+
+    function adjustToggleForScrollbar() {
+        const style = getComputedStyle(toggle);
+        const baseRight = parseFloat(style.right) || 0;
+        const scrollbarWidth =
+            window.innerWidth - document.documentElement.clientWidth;
+        toggle.style.right = `${baseRight - scrollbarWidth}px`;
+    }
+
 
     toggle.addEventListener('click', e => {
         e.stopPropagation();
@@ -8186,9 +9184,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateIcon();
     });
 
-    // Click outside sidebar to collapse (only on mobile/tablet)
     document.addEventListener('click', e => {
-        // Remove the screen size check
         if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) {
             if (!wrapper.classList.contains('sidebar-collapsed')) {
                 wrapper.classList.add('sidebar-collapsed');
@@ -8197,12 +9193,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-
-    // Start collapsed on mobile, expanded on desktop
-    
     updateIcon();
-
+    adjustToggleForScrollbar();
 });
+
 
 ================================================================================
 
@@ -10003,6 +10997,391 @@ function closeUploadModal() {
 
 ================================================================================
 
+# index.php
+# path: .\views\admin\internal_links\index.php
+
+<?php
+// NEW FILE: views/admin/internal_links/index.php
+require BASE_PATH . '/views/admin/layout/header.php';
+?>
+
+<div class="page-header">
+    <h1><i data-feather="link"></i> Internal Links Manager</h1>
+    <div class="btn-group">
+        <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/bulk-auto-insert" style="display: inline;">
+            <button type="submit" class="btn btn-primary" 
+                    onclick="return confirm('Auto-insert links for all pages? This will add up to 3 relevant links per page.')">
+                <i data-feather="zap"></i> Bulk Auto-Insert
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="info-banner" style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 16px; margin-bottom: 30px; border-radius: 4px;">
+    <strong><i data-feather="info"></i> How It Works:</strong>
+    The system analyzes your page content and suggests relevant internal links based on title matches and keyword overlap. 
+    You can auto-insert links or manage them manually per page.
+</div>
+
+<!-- Statistics Overview -->
+<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+    <div class="stat-card">
+        <h3>Total Pages</h3>
+        <p class="stat-number"><?= count($pages) ?></p>
+    </div>
+    
+    <div class="stat-card">
+        <h3>Total Suggestions</h3>
+        <p class="stat-number"><?= count($groupedSuggestions) ?></p>
+    </div>
+    
+    <div class="stat-card">
+        <h3>Avg Suggestions/Page</h3>
+        <p class="stat-number">
+            <?php
+            $totalSuggestions = 0;
+            foreach ($groupedSuggestions as $group) {
+                $totalSuggestions += count($group['suggestions']);
+            }
+            echo count($pages) > 0 ? round($totalSuggestions / count($pages), 1) : 0;
+            ?>
+        </p>
+    </div>
+</div>
+
+<!-- Pages with Suggestions -->
+<?php if (empty($groupedSuggestions)): ?>
+    <div class="empty-state" style="background: white; padding: 60px; text-align: center; border-radius: 8px;">
+        <h2>No Link Suggestions</h2>
+        <p>Make sure your pages have titles and keywords set for better suggestions.</p>
+    </div>
+<?php else: ?>
+
+<div style="display: grid; gap: 20px;">
+    <?php foreach ($groupedSuggestions as $group): 
+        $page = $group['page'];
+        $suggestions = array_slice($group['suggestions'], 0, 5); // Show top 5
+    ?>
+    
+    <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+            <div>
+                <h3 style="margin: 0 0 5px 0; font-size: 1.2em;">
+                    <?= e($page['title']) ?>
+                </h3>
+                <code style="background: #f3f4f6; padding: 3px 8px; border-radius: 4px; font-size: 0.85em;">
+                    <?= e($page['slug']) ?>
+                </code>
+            </div>
+            
+            <div style="display: flex; gap: 8px;">
+                <a href="<?= BASE_URL ?>/admin/internal-links/manage/<?= $page['id'] ?>" 
+                   class="btn btn-sm btn-primary">
+                    <i data-feather="settings"></i> Manage
+                </a>
+            </div>
+        </div>
+        
+        <div style="background: #f9fafb; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6;">
+            <strong style="color: #374151; margin-bottom: 10px; display: block;">
+                <i data-feather="target"></i> Top Suggested Links:
+            </strong>
+            
+            <div style="display: grid; gap: 10px;">
+                <?php foreach ($suggestions as $suggestion): ?>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
+                    <div style="flex: 1;">
+                        <strong style="color: #1f2937;"><?= e($suggestion['to_title']) ?></strong>
+                        <span style="color: #6b7280; font-size: 0.85em; margin-left: 10px;">
+                            (<?= e($suggestion['to_slug']) ?>)
+                        </span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: #10b981; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600;">
+                            Score: <?= $suggestion['relevance_score'] ?>
+                        </span>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            
+            <?php if (count($group['suggestions']) > 5): ?>
+            <p style="margin-top: 10px; color: #6b7280; font-size: 0.9em;">
+                + <?= count($group['suggestions']) - 5 ?> more suggestions
+            </p>
+            <?php endif; ?>
+        </div>
+    </div>
+    
+    <?php endforeach; ?>
+</div>
+
+<?php endif; ?>
+
+<?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
+
+================================================================================
+
+# manage.php
+# path: .\views\admin\internal_links\manage.php
+
+<?php
+// NEW FILE: views/admin/internal_links/manage.php
+require BASE_PATH . '/views/admin/layout/header.php';
+?>
+
+<div class="page-header">
+    <h1><i data-feather="link"></i> Manage Internal Links: <?= e($page['title_ru']) ?></h1>
+    <div class="btn-group">
+        <a href="<?= BASE_URL ?>/admin/internal-links" class="btn btn-secondary">
+            <i data-feather="arrow-left"></i> Back
+        </a>
+        <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>" class="btn btn-secondary">
+            <i data-feather="edit"></i> Edit Page
+        </a>
+    </div>
+</div>
+
+<!-- Language Tabs -->
+<div class="tabs" style="margin-bottom: 30px;">
+    <button type="button" class="tab-btn active" onclick="switchTab('ru')">Russian (RU)</button>
+    <button type="button" class="tab-btn" onclick="switchTab('uz')">Uzbek (UZ)</button>
+</div>
+
+<!-- Russian Tab -->
+<div id="tab-ru" class="tab-content active">
+    <div style="display: grid; gap: 20px;">
+        
+        <!-- Auto-Insert Section -->
+        <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <h2 style="margin-bottom: 15px;">
+                <i data-feather="zap"></i> Auto-Insert Links (RU)
+            </h2>
+            
+            <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/auto-insert" 
+                  onsubmit="return confirm('Insert suggested links into RU content?')">
+                <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
+                <input type="hidden" name="language" value="ru">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Maximum Links to Insert:</label>
+                        <select name="max_links" class="btn" style="width: 200px;">
+                            <option value="3">3 links</option>
+                            <option value="5">5 links</option>
+                            <option value="7">7 links</option>
+                            <option value="10">10 links</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-feather="plus-circle"></i> Auto-Insert Links
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Existing Links -->
+        <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">
+                    <i data-feather="list"></i> Existing Links (<?= count($existingLinksRu) ?>)
+                </h2>
+                
+                <?php if (!empty($existingLinksRu)): ?>
+                <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/remove-links" 
+                      style="display: inline;"
+                      onsubmit="return confirm('Remove ALL internal links from RU content?')">
+                    <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
+                    <input type="hidden" name="language" value="ru">
+                    <button type="submit" class="btn btn-sm btn-danger">
+                        <i data-feather="trash-2"></i> Remove All
+                    </button>
+                </form>
+                <?php endif; ?>
+            </div>
+            
+            <?php if (empty($existingLinksRu)): ?>
+                <p style="color: #6b7280; font-style: italic;">No internal links found in RU content.</p>
+            <?php else: ?>
+                <div style="display: grid; gap: 10px;">
+                    <?php foreach ($existingLinksRu as $link): ?>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 6px; border-left: 3px solid #10b981;">
+                        <div style="margin-bottom: 5px;">
+                            <strong style="color: #1f2937;"><?= e($link['anchor_text']) ?></strong>
+                        </div>
+                        <code style="font-size: 0.85em; color: #6b7280;">
+                            → <?= e($link['href']) ?>
+                        </code>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        
+        <!-- Suggestions -->
+        <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <h2 style="margin-bottom: 15px;">
+                <i data-feather="target"></i> Suggested Links (<?= count($suggestions) ?>)
+            </h2>
+            
+            <?php if (empty($suggestions)): ?>
+                <p style="color: #6b7280; font-style: italic;">
+                    No suggestions available. Make sure other pages have relevant keywords.
+                </p>
+            <?php else: ?>
+                <div style="display: grid; gap: 10px;">
+                    <?php foreach ($suggestions as $suggestion): ?>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1;">
+                            <strong style="color: #1f2937;"><?= e($suggestion['to_title']) ?></strong>
+                            <br>
+                            <span style="font-size: 0.85em; color: #6b7280;">
+                                Anchor: "<?= e($suggestion['anchor_text_ru']) ?>" 
+                                → <code><?= e($suggestion['to_slug']) ?></code>
+                            </span>
+                        </div>
+                        <div>
+                            <span style="background: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600;">
+                                Score: <?= $suggestion['relevance_score'] ?>
+                            </span>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        
+    </div>
+</div>
+
+<!-- Uzbek Tab -->
+<div id="tab-uz" class="tab-content">
+    <div style="display: grid; gap: 20px;">
+        
+        <!-- Auto-Insert Section -->
+        <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <h2 style="margin-bottom: 15px;">
+                <i data-feather="zap"></i> Auto-Insert Links (UZ)
+            </h2>
+            
+            <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/auto-insert" 
+                  onsubmit="return confirm('Insert suggested links into UZ content?')">
+                <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
+                <input type="hidden" name="language" value="uz">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Maximum Links to Insert:</label>
+                        <select name="max_links" class="btn" style="width: 200px;">
+                            <option value="3">3 links</option>
+                            <option value="5">5 links</option>
+                            <option value="7">7 links</option>
+                            <option value="10">10 links</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-feather="plus-circle"></i> Auto-Insert Links
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Existing Links -->
+        <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">
+                    <i data-feather="list"></i> Existing Links (<?= count($existingLinksUz) ?>)
+                </h2>
+                
+                <?php if (!empty($existingLinksUz)): ?>
+                <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/remove-links" 
+                      style="display: inline;"
+                      onsubmit="return confirm('Remove ALL internal links from UZ content?')">
+                    <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
+                    <input type="hidden" name="language" value="uz">
+                    <button type="submit" class="btn btn-sm btn-danger">
+                        <i data-feather="trash-2"></i> Remove All
+                    </button>
+                </form>
+                <?php endif; ?>
+            </div>
+            
+            <?php if (empty($existingLinksUz)): ?>
+                <p style="color: #6b7280; font-style: italic;">No internal links found in UZ content.</p>
+            <?php else: ?>
+                <div style="display: grid; gap: 10px;">
+                    <?php foreach ($existingLinksUz as $link): ?>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 6px; border-left: 3px solid #10b981;">
+                        <div style="margin-bottom: 5px;">
+                            <strong style="color: #1f2937;"><?= e($link['anchor_text']) ?></strong>
+                        </div>
+                        <code style="font-size: 0.85em; color: #6b7280;">
+                            → <?= e($link['href']) ?>
+                        </code>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        
+        <!-- Suggestions -->
+        <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <h2 style="margin-bottom: 15px;">
+                <i data-feather="target"></i> Suggested Links (<?= count($suggestions) ?>)
+            </h2>
+            
+            <?php if (empty($suggestions)): ?>
+                <p style="color: #6b7280; font-style: italic;">
+                    No suggestions available. Make sure other pages have relevant keywords.
+                </p>
+            <?php else: ?>
+                <div style="display: grid; gap: 10px;">
+                    <?php foreach ($suggestions as $suggestion): ?>
+                    <div style="background: #f9fafb; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1;">
+                            <strong style="color: #1f2937;"><?= e($suggestion['to_title']) ?></strong>
+                            <br>
+                            <span style="font-size: 0.85em; color: #6b7280;">
+                                Anchor: "<?= e($suggestion['anchor_text_uz']) ?>" 
+                                → <code><?= e($suggestion['to_slug']) ?></code>
+                            </span>
+                        </div>
+                        <div>
+                            <span style="background: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600;">
+                                Score: <?= $suggestion['relevance_score'] ?>
+                            </span>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        
+    </div>
+</div>
+
+<script>
+function switchTab(lang) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    
+    // Show selected tab
+    document.getElementById('tab-' + lang).classList.add('active');
+    event.target.classList.add('active');
+}
+</script>
+
+<?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
+
+================================================================================
+
 # footer.php
 # path: .\views\admin\layout\footer.php
 
@@ -10047,13 +11426,8 @@ function closeUploadModal() {
 </head>
 <body>
     <div class="admin-wrapper">
-        <button class="sidebar-toggle" aria-label="Toggle sidebar">
-                <i data-feather="chevron-left"></i>
-            </button>
         <aside class="sidebar">
-            <!-- Toggle button INSIDE sidebar -->
-            
-            
+           
             <div class="logo">
                 <h2>Admin Panel</h2>
             </div>
@@ -10072,6 +11446,9 @@ function closeUploadModal() {
                     </a>
                     <a href="<?= BASE_URL ?>/admin/faqs" class="<?= strpos($_SERVER['REQUEST_URI'], '/faqs') !== false ? 'active' : '' ?>">
                         <i data-feather="help-circle"></i> FAQs
+                    </a>
+                    <a href="<?= BASE_URL ?>/admin/internal-links" class="<?= strpos($_SERVER['REQUEST_URI'], '/internal-links') !== false ? 'active' : '' ?>">
+                        <i data-feather="link"></i> Internal Links
                     </a>
                 </div>
                 
@@ -10112,7 +11489,9 @@ function closeUploadModal() {
                 </a>
             </nav>
         </aside>
-        
+        <button class="sidebar-toggle" aria-label="Toggle sidebar">
+            <i data-feather="chevron-left"></i>
+        </button>
         <main class="admin-main">
             <div class="admin-content">
                 <?php if (isset($_SESSION['success'])): ?>
@@ -11572,99 +12951,366 @@ require BASE_PATH . '/views/admin/layout/header.php';
 # settings.php
 # path: .\views\admin\seo\settings.php
 
-<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
+<?php
+// UPDATED: views/admin/seo/settings.php
+// Replace the entire file
+require BASE_PATH . '/views/admin/layout/header.php';
+?>
 
-<h1>Global SEO Settings</h1>
+<h1>Global SEO Settings & JSON-LD Schemas</h1>
 
 <form method="POST" action="<?= BASE_URL ?>/admin/seo/save" class="admin-form">
-    <div class="form-section">
-        <h3>Site Information</h3>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Site Name (RU)*</label>
-                <input type="text" name="site_name_ru" value="<?= $settings['site_name_ru'] ?? '' ?>" required>
+    <div class="tabs">
+        <button type="button" class="tab-btn active" onclick="switchTab('general')">General Info</button>
+        <button type="button" class="tab-btn" onclick="switchTab('meta')">Default Meta</button>
+        <button type="button" class="tab-btn" onclick="switchTab('organization')">Organization Schema</button>
+        <button type="button" class="tab-btn" onclick="switchTab('website')">Website Schema</button>
+        <button type="button" class="tab-btn" onclick="switchTab('service')">Service Schema</button>
+    </div>
+    
+    <!-- GENERAL TAB -->
+    <div id="tab-general" class="tab-content active">
+        <div class="form-section">
+            <h3>Site Information</h3>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Site Name (RU)*</label>
+                    <input type="text" name="site_name_ru" value="<?= e($settings['site_name_ru'] ?? '') ?>" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Site Name (UZ)*</label>
+                    <input type="text" name="site_name_uz" value="<?= e($settings['site_name_uz'] ?? '') ?>" required>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label>Site Name (UZ)*</label>
-                <input type="text" name="site_name_uz" value="<?= $settings['site_name_uz'] ?? '' ?>" required>
-            </div>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Phone</label>
-                <input type="text" name="phone" value="<?= $settings['phone'] ?? '' ?>">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" name="phone" value="<?= e($settings['phone'] ?? '') ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" value="<?= e($settings['email'] ?? '') ?>">
+                </div>
             </div>
             
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" name="email" value="<?= $settings['email'] ?? '' ?>">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Address (RU)</label>
+                    <textarea name="address_ru" rows="2"><?= e($settings['address_ru'] ?? '') ?></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Address (UZ)</label>
+                    <textarea name="address_uz" rows="2"><?= e($settings['address_uz'] ?? '') ?></textarea>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" name="city" value="<?= e($settings['city'] ?? 'Tashkent') ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label>Region/State</label>
+                    <input type="text" name="region" value="<?= e($settings['region'] ?? 'Tashkent') ?>">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Postal Code</label>
+                    <input type="text" name="postal_code" value="<?= e($settings['postal_code'] ?? '') ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label>Country Code</label>
+                    <input type="text" name="country" value="<?= e($settings['country'] ?? 'UZ') ?>">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Working Hours (RU)</label>
+                    <input type="text" name="working_hours_ru" value="<?= e($settings['working_hours_ru'] ?? '') ?>">
+                </div>
+                
+                <div class="form-group">
+                    <label>Working Hours (UZ)</label>
+                    <input type="text" name="working_hours_uz" value="<?= e($settings['working_hours_uz'] ?? '') ?>">
+                </div>
             </div>
         </div>
     </div>
     
-    <div class="form-section">
-        <h3>Default Meta Tags</h3>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Meta Keywords (RU)</label>
-                <textarea name="meta_keywords_ru" rows="3"><?= $settings['meta_keywords_ru'] ?? '' ?></textarea>
+    <!-- META TAB -->
+    <div id="tab-meta" class="tab-content">
+        <div class="form-section">
+            <h3>Default Meta Tags</h3>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Meta Keywords (RU)</label>
+                    <textarea name="meta_keywords_ru" rows="3"><?= e($settings['meta_keywords_ru'] ?? '') ?></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Meta Keywords (UZ)</label>
+                    <textarea name="meta_keywords_uz" rows="3"><?= e($settings['meta_keywords_uz'] ?? '') ?></textarea>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label>Meta Keywords (UZ)</label>
-                <textarea name="meta_keywords_uz" rows="3"><?= $settings['meta_keywords_uz'] ?? '' ?></textarea>
-            </div>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Meta Description (RU)</label>
-                <textarea name="meta_description_ru" rows="3"><?= $settings['meta_description_ru'] ?? '' ?></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>Meta Description (UZ)</label>
-                <textarea name="meta_description_uz" rows="3"><?= $settings['meta_description_uz'] ?? '' ?></textarea>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Meta Description (RU)</label>
+                    <textarea name="meta_description_ru" rows="3"><?= e($settings['meta_description_ru'] ?? '') ?></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Meta Description (UZ)</label>
+                    <textarea name="meta_description_uz" rows="3"><?= e($settings['meta_description_uz'] ?? '') ?></textarea>
+                </div>
             </div>
         </div>
     </div>
     
-    <div class="form-section">
-        <h3>Contact Information</h3>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Address (RU)</label>
-                <textarea name="address_ru" rows="2"><?= $settings['address_ru'] ?? '' ?></textarea>
+    <!-- ORGANIZATION SCHEMA TAB -->
+    <div id="tab-organization" class="tab-content">
+        <div class="form-section">
+            <h3>Organization / LocalBusiness Schema</h3>
+            <p class="help-text">
+                This schema helps search engines understand your business. It appears on your homepage and contact pages.
+            </p>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Organization Type</label>
+                    <select name="org_type">
+                        <option value="LocalBusiness" <?= ($settings['org_type'] ?? '') === 'LocalBusiness' ? 'selected' : '' ?>>Local Business</option>
+                        <option value="Organization" <?= ($settings['org_type'] ?? '') === 'Organization' ? 'selected' : '' ?>>Organization</option>
+                        <option value="Store" <?= ($settings['org_type'] ?? '') === 'Store' ? 'selected' : '' ?>>Store</option>
+                        <option value="HomeAndConstructionBusiness" <?= ($settings['org_type'] ?? '') === 'HomeAndConstructionBusiness' ? 'selected' : '' ?>>Home & Construction</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Logo URL</label>
+                    <input type="text" name="org_logo" value="<?= e($settings['org_logo'] ?? '') ?>" 
+                           placeholder="https://example.com/logo.png">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Description (RU)</label>
+                    <textarea name="org_description_ru" rows="3"><?= e($settings['org_description_ru'] ?? '') ?></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Description (UZ)</label>
+                    <textarea name="org_description_uz" rows="3"><?= e($settings['org_description_uz'] ?? '') ?></textarea>
+                </div>
             </div>
             
             <div class="form-group">
-                <label>Address (UZ)</label>
-                <textarea name="address_uz" rows="2"><?= $settings['address_uz'] ?? '' ?></textarea>
+                <label>Opening Hours (one per line, format: Mo-Fr 09:00-18:00)</label>
+                <textarea name="opening_hours" rows="3" placeholder="Mo-Fr 09:00-18:00
+Sa 10:00-15:00"><?= e($settings['opening_hours'] ?? '') ?></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Price Range (e.g., $$, $$$)</label>
+                <input type="text" name="price_range" value="<?= e($settings['price_range'] ?? '') ?>" placeholder="$$">
+            </div>
+            
+            <h4>Social Media Links</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Facebook URL</label>
+                    <input type="text" name="social_facebook" value="<?= e($settings['social_facebook'] ?? '') ?>" 
+                           placeholder="https://facebook.com/yourpage">
+                </div>
+                
+                <div class="form-group">
+                    <label>Instagram URL</label>
+                    <input type="text" name="social_instagram" value="<?= e($settings['social_instagram'] ?? '') ?>" 
+                           placeholder="https://instagram.com/yourpage">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Twitter URL</label>
+                    <input type="text" name="social_twitter" value="<?= e($settings['social_twitter'] ?? '') ?>" 
+                           placeholder="https://twitter.com/yourpage">
+                </div>
+                
+                <div class="form-group">
+                    <label>YouTube URL</label>
+                    <input type="text" name="social_youtube" value="<?= e($settings['social_youtube'] ?? '') ?>" 
+                           placeholder="https://youtube.com/c/yourchannel">
+                </div>
+            </div>
+            
+            <button type="button" onclick="generateOrgSchema()" class="btn">
+                <i data-feather="code"></i> Preview Generated Schema
+            </button>
+            
+            <pre id="org-schema-preview" style="display: none; background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; margin-top: 15px; overflow-x: auto;"></pre>
+        </div>
+    </div>
+    
+    <!-- WEBSITE SCHEMA TAB -->
+    <div id="tab-website" class="tab-content">
+        <div class="form-section">
+            <h3>Website Schema</h3>
+            <p class="help-text">
+                This schema describes your website to search engines.
+            </p>
+            
+            <div class="info-banner" style="background: #eff6ff; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6; margin-bottom: 20px;">
+                <strong>📘 Note:</strong> This schema is auto-generated from your Site Name and Meta Description. 
+                It will be included on your homepage automatically.
+            </div>
+            
+            <div style="background: #f9fafb; padding: 15px; border-radius: 6px; border-left: 3px solid #10b981;">
+                <strong>✅ Auto-Generated Schema Preview:</strong>
+                <pre style="background: #1e1e1e; color: #10b981; padding: 15px; border-radius: 6px; margin-top: 10px; overflow-x: auto; font-size: 12px; font-family: monospace;">{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "<?= e($settings['site_name_ru'] ?? 'Your Site') ?>",
+  "url": "<?= BASE_URL ?>",
+  "description": "<?= e($settings['meta_description_ru'] ?? '') ?>"
+}</pre>
             </div>
         </div>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label>Working Hours (RU)</label>
-                <input type="text" name="working_hours_ru" value="<?= $settings['working_hours_ru'] ?? '' ?>">
-            </div>
+    </div>
+    
+    <!-- SERVICE SCHEMA TAB -->
+    <div id="tab-service" class="tab-content">
+        <div class="form-section">
+            <h3>Service Schema</h3>
+            <p class="help-text">
+                Define your main service for search engines. This helps when users search for specific services.
+            </p>
             
             <div class="form-group">
-                <label>Working Hours (UZ)</label>
-                <input type="text" name="working_hours_uz" value="<?= $settings['working_hours_uz'] ?? '' ?>">
+                <label>Service Type</label>
+                <input type="text" name="service_type" value="<?= e($settings['service_type'] ?? '') ?>" 
+                       placeholder="e.g., Electronics Recycling, Appliance Buyback">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Service Name (RU)</label>
+                    <input type="text" name="service_name_ru" value="<?= e($settings['service_name_ru'] ?? '') ?>" 
+                           placeholder="Выкуп бытовой техники">
+                </div>
+                
+                <div class="form-group">
+                    <label>Service Name (UZ)</label>
+                    <input type="text" name="service_name_uz" value="<?= e($settings['service_name_uz'] ?? '') ?>" 
+                           placeholder="Maishiy texnikani sotib olish">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Service Description (RU)</label>
+                    <textarea name="service_desc_ru" rows="3"><?= e($settings['service_desc_ru'] ?? '') ?></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Service Description (UZ)</label>
+                    <textarea name="service_desc_uz" rows="3"><?= e($settings['service_desc_uz'] ?? '') ?></textarea>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Area Served</label>
+                    <input type="text" name="area_served" value="<?= e($settings['area_served'] ?? '') ?>" 
+                           placeholder="Tashkent, Uzbekistan">
+                </div>
+                
+                <div class="form-group">
+                    <label>Price Range / Starting Price</label>
+                    <input type="text" name="service_price" value="<?= e($settings['service_price'] ?? '') ?>" 
+                           placeholder="Free consultation">
+                </div>
             </div>
         </div>
     </div>
     
     <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Save Settings</button>
+        <button type="submit" class="btn btn-primary">
+            <i data-feather="save"></i> Save All Settings
+        </button>
     </div>
 </form>
+
+<script>
+function generateOrgSchema() {
+    const preview = document.getElementById('org-schema-preview');
+    
+    const data = {
+        type: document.querySelector('[name="org_type"]').value,
+        name: '<?= e($settings['site_name_ru'] ?? '') ?>',
+        url: '<?= BASE_URL ?>',
+        logo: document.querySelector('[name="org_logo"]').value,
+        description: document.querySelector('[name="org_description_ru"]').value,
+        telephone: document.querySelector('[name="phone"]').value,
+        email: document.querySelector('[name="email"]').value,
+        address: document.querySelector('[name="address_ru"]').value,
+        city: document.querySelector('[name="city"]').value,
+        region: document.querySelector('[name="region"]').value,
+        postal: document.querySelector('[name="postal_code"]').value,
+        country: document.querySelector('[name="country"]').value,
+        openingHours: document.querySelector('[name="opening_hours"]').value.split('\n').filter(Boolean),
+        priceRange: document.querySelector('[name="price_range"]').value,
+        sameAs: [
+            document.querySelector('[name="social_facebook"]').value,
+            document.querySelector('[name="social_instagram"]').value,
+            document.querySelector('[name="social_twitter"]').value,
+            document.querySelector('[name="social_youtube"]').value
+        ].filter(Boolean)
+    };
+    
+    const schema = {
+        "@context": "https://schema.org",
+        "@type": data.type,
+        "name": data.name,
+        "url": data.url
+    };
+    
+    if (data.logo) schema.logo = data.logo;
+    if (data.description) schema.description = data.description;
+    if (data.telephone) schema.telephone = data.telephone;
+    if (data.email) schema.email = data.email;
+    
+    if (data.address) {
+        schema.address = {
+            "@type": "PostalAddress",
+            "streetAddress": data.address,
+            "addressLocality": data.city,
+            "addressRegion": data.region,
+            "postalCode": data.postal,
+            "addressCountry": data.country
+        };
+    }
+    
+    if (data.openingHours.length) schema.openingHours = data.openingHours;
+    if (data.priceRange) schema.priceRange = data.priceRange;
+    if (data.sameAs.length) schema.sameAs = data.sameAs;
+    
+    preview.textContent = JSON.stringify(schema, null, 2);
+    preview.style.display = 'block';
+}
+</script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
 
@@ -11988,7 +13634,6 @@ $faqSchema = '';
 if (!empty($faqs)) {
     $faqSchema = generateFAQSchema($faqs, $lang);
 }
-
 // Check if user is logged in as admin
 $isAdmin = isset($_SESSION['user_id']);
 ?>
@@ -12048,6 +13693,41 @@ $isAdmin = isset($_SESSION['user_id']);
             <?= $faqSchema ?>
         </script>
     <?php endif; ?>
+    <?php
+        // ADD THIS SECTION in views/templates/header.php
+        // Place it AFTER the existing JSON-LD sections (after FAQ schema)
+        // and BEFORE the closing </head> tag
+
+        // Output auto-generated schemas from SEO settings
+        if (!empty($seo['organization_schema'])) {
+            echo '<script type="application/ld+json">' . "\n";
+            echo $seo['organization_schema'] . "\n";
+            echo '</script>' . "\n";
+        }
+
+        if (!empty($seo['website_schema'])) {
+            echo '<script type="application/ld+json">' . "\n";
+            echo $seo['website_schema'] . "\n";
+            echo '</script>' . "\n";
+        }
+
+        if (!empty($seo['service_schema'])) {
+            echo '<script type="application/ld+json">' . "\n";
+            echo $seo['service_schema'] . "\n";
+            echo '</script>' . "\n";
+        }
+
+        if ($page['slug'] !== 'home') {
+            $breadcrumbs = [
+                ['name' => $seo["site_name_$lang"], 'url' => '/'],
+                ['name' => $page["title_$lang"], 'url' => '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '')]
+            ];
+            
+            echo '<script type="application/ld+json">' . "\n";
+            echo JsonLdGenerator::generateBreadcrumbs($breadcrumbs, BASE_URL) . "\n";
+            echo '</script>' . "\n";
+        }
+        ?>
     
     <?php if ($seo['phone'] || $seo['email']): ?>
     <script type="application/ld+json">

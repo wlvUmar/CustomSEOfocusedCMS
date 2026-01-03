@@ -271,6 +271,18 @@ $router->post('/admin/seo/sitemap/ping', function() {
     $controller->pingSearchEngines();
 });
 
+$router->get('/admin/internal-links/health', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->health();
+});
+
+$router->post('/admin/internal-links/fix-broken', function() {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $controller = new InternalLinksController();
+    $controller->fixBroken();
+});
+
 $router->dispatch();
 
 /*

@@ -14,6 +14,7 @@
         const lastPart = pathParts[pathParts.length - 1];
         return lastPart === 'uz' ? 'uz' : 'ru';
     }
+
     
     function trackInternalLink(toSlug) {
         const fromSlug = getCurrentSlug();
@@ -69,4 +70,17 @@
     } else {
         setupLinkTracking();
     }
+    document.querySelectorAll('main a[href^="/"], main a[href^="' + window.baseUrl + '"]').forEach(link => {
+        link.addEventListener('click', function() {
+            const linkText = this.textContent;
+            const toSlug = extractSlugFromHref(this.href);
+            
+            navigator.sendBeacon(window.baseUrl + '/track-link-click', new URLSearchParams({
+                from: getCurrentSlug(),
+                to: toSlug,
+                text: linkText,
+                lang: getCurrentLanguage()
+            }));
+        });
+    });
 })();

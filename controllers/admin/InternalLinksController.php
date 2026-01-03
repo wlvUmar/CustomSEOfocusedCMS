@@ -42,7 +42,8 @@ class InternalLinksController extends Controller {
         
         $this->view('admin/internal_links/index', [
             'pages' => $pages,
-            'groupedSuggestions' => $groupedSuggestions
+            'groupedSuggestions' => $groupedSuggestions,
+            'linksModel' => $this->linksModel  // ADD THIS LINE
         ]);
     }
 
@@ -171,5 +172,54 @@ class InternalLinksController extends Controller {
             'success' => true,
             'suggestions' => array_values($suggestions)
         ]);
+    }
+    /**
+     * BETA: Link health dashboard
+     */
+    public function health() {
+        $this->requireAuth();
+        
+        $brokenLinks = $this->linksModel->checkLinkHealth();
+        $summary = $this->linksModel->getLinkHealthSummary();
+        
+        // Group by page
+        $byPage = [];
+        foreach ($brokenLinks as $link) {
+            $pageId = $link['page_id'];
+            if (!isset($byPage[$pageId])) {
+                $page = $this->pageModel->getById($pageId);
+                $byPage[$pageId] = [
+                    'page' => $page,
+                    'broken_links' => []
+                ];
+            }
+            $byPage[$pageId]['broken_links'][] = $link;
+        }
+        
+        $this->view('admin/internal_links/health', [
+            'brokenLinks' => $brokenLinks,
+            'summary' => $summary,
+            'byPage' => $byPage
+        ]);
+    }
+
+    /**
+     * BETA: Fix broken links for a page
+     */
+    public function fixBroken() {
+        $this->requireAuth();
+        
+        $pageId = $_POST['page_id'] ?? null;
+        $language = $_POST['language'] ?? 'ru';
+        
+        if (!$pageId) {
+            $this->json(['success' => false, 'message' => 'Page ID required'], 400);
+            return;
+        }
+        
+        $fixed = $this->linksModel->fixBrokenLinks($pageId, $language);
+        
+        $_SESSION['success'] = "Fixed $fixed broken link(s) in $language content";
+        $this->json(['success' => true, 'fixed' => $fixed]);
     }
 }

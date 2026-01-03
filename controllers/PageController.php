@@ -1,11 +1,13 @@
 <?php
 // path: ./controllers/PageController.php
+// INSTRUCTION: Replace the entire PageController.php file
 
 require_once BASE_PATH . '/models/Page.php';
 require_once BASE_PATH . '/models/SEO.php';
 require_once BASE_PATH . '/models/FAQ.php';
 require_once BASE_PATH . '/models/ContentRotation.php';
 require_once BASE_PATH . '/models/Analytics.php';
+require_once BASE_PATH . '/models/JsonLdGenerator.php'; // ADD THIS LINE
 
 class PageController extends Controller {
     private $pageModel;
@@ -122,10 +124,8 @@ class PageController extends Controller {
             ]
         ];
         
-        // Render content with template engine
         $page["content_$currentLang"] = renderTemplate($page["content_$currentLang"], $templateData);
         
-        // Prepare data for view
         $data = [
             'page' => $page,
             'seo' => $seoSettings,
@@ -149,9 +149,6 @@ class PageController extends Controller {
         $this->json(['success' => false], 400);
     }
 
-    /**
-     * Track internal link navigation
-     */
     public function trackInternalLink() {
         $fromSlug = $_POST['from'] ?? '';
         $toSlug = $_POST['to'] ?? '';

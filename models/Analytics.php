@@ -136,7 +136,7 @@ class Analytics {
                     unique_days = IF(DATE(last_shown) != DATE(?), unique_days + 1, unique_days),
                     last_shown = ?";
                             
-            $this->db->query($sql, [$slug, $year, $rotationMonth, $language, $date, $slug, $year, $rotationMonth, $date]);
+            $this->db->query($sql, [$slug, $year, $rotationMonth, $language, $date, $date, $date]);
         } catch (Exception $e) {
             error_log("Rotation tracking error: " . $e->getMessage());
         }

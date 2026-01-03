@@ -1,5 +1,7 @@
 <?php
-// NEW FILE: views/admin/internal_links/index.php
+// path: views/admin/internal_links/index.php
+// INSTRUCTION: Replace the entire file
+
 require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
@@ -8,8 +10,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <div class="btn-group">
         <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/bulk-auto-insert" style="display: inline;">
             <button type="submit" class="btn btn-primary" 
-                    onclick="return confirm('Auto-insert links for all pages? This will add up to 3 relevant links per page.')">
-                <i data-feather="zap"></i> Bulk Auto-Insert
+                    onclick="return confirm('Auto-insert links for all pages?\n\nThis will add up to 3 relevant links per page.')">
+                <i data-feather="zap"></i> Bulk Auto-Insert All
             </button>
         </form>
     </div>
@@ -17,24 +19,24 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <div class="info-banner" style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 16px; margin-bottom: 30px; border-radius: 4px;">
     <strong><i data-feather="info"></i> How It Works:</strong>
-    The system analyzes your page content and suggests relevant internal links based on title matches and keyword overlap. 
-    You can auto-insert links or manage them manually per page.
+    The system analyzes your page content and suggests relevant internal links based on keyword matches and title mentions. 
+    Links improve SEO and user navigation.
 </div>
 
 <!-- Statistics Overview -->
 <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
     <div class="stat-card">
-        <h3>Total Pages</h3>
+        <h3><i data-feather="file-text"></i> Total Pages</h3>
         <p class="stat-number"><?= count($pages) ?></p>
     </div>
     
     <div class="stat-card">
-        <h3>Total Suggestions</h3>
+        <h3><i data-feather="link"></i> Total Suggestions</h3>
         <p class="stat-number"><?= count($groupedSuggestions) ?></p>
     </div>
     
     <div class="stat-card">
-        <h3>Avg Suggestions/Page</h3>
+        <h3><i data-feather="bar-chart-2"></i> Avg Suggestions/Page</h3>
         <p class="stat-number">
             <?php
             $totalSuggestions = 0;
@@ -47,73 +49,123 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
 </div>
 
-<!-- Pages with Suggestions -->
-<?php if (empty($groupedSuggestions)): ?>
-    <div class="empty-state" style="background: white; padding: 60px; text-align: center; border-radius: 8px;">
-        <h2>No Link Suggestions</h2>
-        <p>Make sure your pages have titles and keywords set for better suggestions.</p>
-    </div>
-<?php else: ?>
-
-<div style="display: grid; gap: 20px;">
-    <?php foreach ($groupedSuggestions as $group): 
-        $page = $group['page'];
-        $suggestions = array_slice($group['suggestions'], 0, 5); // Show top 5
-    ?>
+<!-- All Pages Table -->
+<div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 30px;">
+    <h2 style="margin-bottom: 20px;"><i data-feather="list"></i> All Pages</h2>
     
-    <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
-            <div>
-                <h3 style="margin: 0 0 5px 0; font-size: 1.2em;">
-                    <?= e($page['title']) ?>
-                </h3>
-                <code style="background: #f3f4f6; padding: 3px 8px; border-radius: 4px; font-size: 0.85em;">
-                    <?= e($page['slug']) ?>
-                </code>
-            </div>
-            
-            <div style="display: flex; gap: 8px;">
-                <a href="<?= BASE_URL ?>/admin/internal-links/manage/<?= $page['id'] ?>" 
-                   class="btn btn-sm btn-primary">
-                    <i data-feather="settings"></i> Manage
-                </a>
-            </div>
-        </div>
-        
-        <div style="background: #f9fafb; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6;">
-            <strong style="color: #374151; margin-bottom: 10px; display: block;">
-                <i data-feather="target"></i> Top Suggested Links:
-            </strong>
-            
-            <div style="display: grid; gap: 10px;">
-                <?php foreach ($suggestions as $suggestion): ?>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                    <div style="flex: 1;">
-                        <strong style="color: #1f2937;"><?= e($suggestion['to_title']) ?></strong>
-                        <span style="color: #6b7280; font-size: 0.85em; margin-left: 10px;">
-                            (<?= e($suggestion['to_slug']) ?>)
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th><i data-feather="hash"></i> ID</th>
+                <th><i data-feather="file-text"></i> Page</th>
+                <th><i data-feather="code"></i> Slug</th>
+                <th><i data-feather="link"></i> Links (RU)</th>
+                <th><i data-feather="link"></i> Links (UZ)</th>
+                <th><i data-feather="target"></i> Suggestions</th>
+                <th><i data-feather="settings"></i> Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($pages as $page): 
+                $linksRu = count(array_filter($linksModel->getExistingLinks($page['id'], 'ru')));
+                $linksUz = count(array_filter($linksModel->getExistingLinks($page['id'], 'uz')));
+                $suggestions = isset($groupedSuggestions[$page['id']]) ? count($groupedSuggestions[$page['id']]['suggestions']) : 0;
+            ?>
+            <tr>
+                <td><strong>#<?= $page['id'] ?></strong></td>
+                <td>
+                    <strong><?= e($page['title_ru']) ?></strong>
+                    <br>
+                    <small style="color: #6b7280;"><?= e($page['title_uz']) ?></small>
+                </td>
+                <td><code style="background: #f3f4f6; padding: 3px 8px; border-radius: 4px;"><?= e($page['slug']) ?></code></td>
+                <td>
+                    <?php if ($linksRu > 0): ?>
+                        <span style="background: #d1f4e0; color: #065f46; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600;">
+                            <i data-feather="check-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i> <?= $linksRu ?>
                         </span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="background: #10b981; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600;">
-                            Score: <?= $suggestion['relevance_score'] ?>
+                    <?php else: ?>
+                        <span style="color: #9ca3af; font-size: 0.9em;">
+                            <i data-feather="minus-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i> None
                         </span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if ($linksUz > 0): ?>
+                        <span style="background: #d1f4e0; color: #065f46; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600;">
+                            <i data-feather="check-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i> <?= $linksUz ?>
+                        </span>
+                    <?php else: ?>
+                        <span style="color: #9ca3af; font-size: 0.9em;">
+                            <i data-feather="minus-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i> None
+                        </span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if ($suggestions > 0): ?>
+                        <span style="background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600;">
+                            <i data-feather="lightbulb" style="width: 14px; height: 14px; vertical-align: middle;"></i> <?= $suggestions ?>
+                        </span>
+                    <?php else: ?>
+                        <span style="color: #9ca3af; font-size: 0.9em;">-</span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <div style="display: flex; gap: 5px;">
+                        <a href="<?= BASE_URL ?>/admin/internal-links/manage/<?= $page['id'] ?>" 
+                           class="btn btn-sm btn-primary" title="Manage links">
+                            <i data-feather="settings"></i> Manage
+                        </a>
+                        <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>" 
+                           class="btn btn-sm" title="Edit page">
+                            <i data-feather="edit"></i>
+                        </a>
                     </div>
-                </div>
-                <?php endforeach; ?>
-            </div>
-            
-            <?php if (count($group['suggestions']) > 5): ?>
-            <p style="margin-top: 10px; color: #6b7280; font-size: 0.9em;">
-                + <?= count($group['suggestions']) - 5 ?> more suggestions
-            </p>
-            <?php endif; ?>
-        </div>
-    </div>
-    
-    <?php endforeach; ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
 </div>
 
-<?php endif; ?>
+<style>
+.stat-card {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.stat-card h3 {
+    font-size: 0.9em;
+    color: #6b7280;
+    margin-bottom: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stat-number {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #303034;
+    line-height: 1;
+    margin: 0;
+}
+
+.info-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.info-banner i {
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+</style>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
