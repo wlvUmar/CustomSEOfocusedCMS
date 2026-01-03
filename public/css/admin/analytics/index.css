@@ -166,45 +166,48 @@
 /* ---------- Funnel ---------- */
 
 .funnel-container {
-    padding: 20px 0;
+    padding: 10px 0;
+    max-width: 400px;
+    margin: auto;
+    font-family: sans-serif;
 }
 
 .funnel-step {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 .funnel-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
-    border-radius: 6px;
-    background-color: #e5e7eb; /* subtle light gray instead of gradient */
-    color: #111827; /* dark gray text */
+    padding: 8px 12px;
+    border-radius: 4px;
+    background: #e2e8f0; /* neutral light gray */
+    color: #111;
+    position: relative;
+    transition: background 0.2s;
+}
+
+.funnel-bar span {
     font-weight: 600;
-    transition: transform 0.15s ease;
-}
-
-.funnel-bar:hover {
-    transform: translateX(2px); /* small hover movement for subtle interaction */
-}
-
-.funnel-label {
     font-size: 0.95em;
 }
 
-.funnel-value {
-    font-size: 1.1em;
-    font-weight: 700;
+.funnel-bar .funnel-value {
+    font-weight: bold;
+}
+
+.funnel-bar:hover {
+    background: #cbd5e1;
 }
 
 .funnel-conversion {
-    margin: 6px 0;
     text-align: center;
     font-size: 0.85em;
-    font-weight: 600;
-    color: #059669; /* softer green instead of bright green */
+    margin: 4px 0 -6px 0;
+    color: #64748b; /* soft gray/blue */
 }
+
 
 
 /* ---------- Top Performers ---------- */
