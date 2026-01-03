@@ -5,21 +5,11 @@ require_once __DIR__ . '/../config/init.php';
 define('REPO_PATH', '/home/kuplyuta/appliances');
 define('GITHUB_REPO_NAME', 'seowebsite');
 
-/*
-|--------------------------------------------------------------------------
-| Detect webhook vs manual access
-|--------------------------------------------------------------------------
-*/
 
 $isWebhook = ($_SERVER['REQUEST_METHOD'] === 'POST'
     && isset($_SERVER['HTTP_X_GITHUB_EVENT'])
 );
 
-/*
-|--------------------------------------------------------------------------
-| Run deploy
-|--------------------------------------------------------------------------
-*/
 
 function runDeploy(): string
 {
@@ -40,11 +30,7 @@ function runDeploy(): string
     return implode("\n", $output);
 }
 
-/*
-|--------------------------------------------------------------------------
-| WEBHOOK MODE
-|--------------------------------------------------------------------------
-*/
+
 
 if ($isWebhook) {
     // optional: log payload
@@ -63,13 +49,6 @@ if ($isWebhook) {
     exit;
 }
 
-/*
-|--------------------------------------------------------------------------
-| MANUAL MODE (admin UI)
-|--------------------------------------------------------------------------
-*/
-
-session_start();
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(403);
