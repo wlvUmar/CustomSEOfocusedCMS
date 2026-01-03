@@ -30,14 +30,23 @@ $deployOutput = $deployData['deployOutput'] ?? '';
 // --------------------
 // Handle GitHub Webhook
 // --------------------
-$isWebhook = !empty($_SERVER['HTTP_X_GITHUB_EVENT']);
-if($isWebhook && $_SERVER['REQUEST_METHOD'] === 'POST'){
+$headers = getallheaders();
+$isWebhook = !empty($headers['X-GitHub-Event']) && $_SERVER['REQUEST_METHOD'] === 'POST';
+
+if($isWebhook){
     $payload = file_get_contents('php://input');
+    logDeploy("[WEBHOOK] Headers: ".json_encode($headers));
+    logDeploy("[WEBHOOK] Payload: ".$payload);
+
     $data = json_decode($payload, true);
     if($data){
         $repoName = $data['repository']['name'] ?? '';
         $branch = $data['ref'] ?? '';
-        if($repoName === GITHUB_REPO_NAME && $branch === 'refs/heads/master'){
+
+        // Accept master or main branch
+        $targetBranches = ['refs/heads/master', 'refs/heads/main'];
+
+        if($repoName === GITHUB_REPO_NAME && in_array($branch, $targetBranches)){
             $commits = $data['commits'] ?? [];
             foreach($commits as $commit){
                 $queue[] = [
@@ -48,9 +57,12 @@ if($isWebhook && $_SERVER['REQUEST_METHOD'] === 'POST'){
                 ];
             }
             file_put_contents(DEPLOY_FILE, json_encode(['queue'=>$queue,'deployOutput'=>$deployOutput]));
-            logDeploy("[WEBHOOK] Push received from {$repoName}");
+            logDeploy("[WEBHOOK] Push queued from {$repoName} on {$branch}");
         }
+    } else {
+        logDeploy("[WEBHOOK] Invalid JSON payload.");
     }
+
     http_response_code(200);
     exit; // webhook returns OK
 }
@@ -112,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['csrf_token'] ?? '') === $_
         $deployMessage = "No pending push to deploy.";
     }
 
-    header('Location: deploy.php'); // optional: append ?deployed=1
+    header('Location: deploy.php');
     exit;
 }
 
@@ -137,7 +149,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
 <style>
-/* Modern Deploy Page Styling */
+/* ------------------- Deploy Page CSS ------------------- */
 .btn { 
     margin-top: 5px; 
     display: inline-flex; 
@@ -150,29 +162,24 @@ require BASE_PATH . '/views/admin/layout/header.php';
     border: none;
     cursor: pointer;
 }
-
 .btn-primary {
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: white;
 }
-
 .btn-primary:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
-
 .btn:disabled { 
     opacity: 0.5; 
     cursor: not-allowed;
     transform: none !important;
 }
-
 .deploy-container { 
     max-width: 1000px; 
     margin: 30px auto; 
     padding: 0 20px;
 }
-
 .deploy-container h1 {
     font-size: 2em;
     margin-bottom: 25px;
@@ -181,10 +188,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     gap: 12px;
     color: #1f2937;
 }
-
-.deploy-container h1 i {
-    color: #3b82f6;
-}
+.deploy-container h1 i { color: #3b82f6; }
 
 /* Commit List - Modern Card Design */
 .deploy-commits { 
@@ -201,91 +205,27 @@ require BASE_PATH . '/views/admin/layout/header.php';
     margin-bottom: 20px;
     border: 1px solid rgba(255,255,255,0.1);
 }
-
-.deploy-commits::-webkit-scrollbar {
-    width: 8px;
-}
-
-.deploy-commits::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.05);
-    border-radius: 4px;
-}
-
-.deploy-commits::-webkit-scrollbar-thumb {
-    background: rgba(59, 130, 246, 0.5);
-    border-radius: 4px;
-}
-
-.deploy-commits::-webkit-scrollbar-thumb:hover {
-    background: rgba(59, 130, 246, 0.7);
-}
-
-.deploy-commits ul { 
-    list-style: none; 
-    padding-left: 0; 
-    margin: 0; 
-}
-
+.deploy-commits ul { list-style: none; padding-left: 0; margin: 0; }
 .deploy-commits li { 
-    padding: 12px 16px;
-    margin-bottom: 8px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.03);
-    border-left: 3px solid transparent;
+    padding: 12px 16px; 
+    margin-bottom: 8px; 
+    border-radius: 8px; 
+    background: rgba(255,255,255,0.03); 
+    border-left: 3px solid transparent; 
     transition: all 0.2s;
 }
-
-.deploy-commits li:hover {
-    background: rgba(255,255,255,0.06);
-    transform: translateX(4px);
-}
-
-.deploy-commits li:last-child { 
-    margin-bottom: 0;
-}
-
+.deploy-commits li:hover { background: rgba(255,255,255,0.06); transform: translateX(4px); }
+.deploy-commits li:last-child { margin-bottom: 0; }
 .deploy-commits li .sha { 
-    color: #60a5fa;
-    font-weight: bold;
-    font-size: 13px;
-    font-family: monospace;
-    background: rgba(59, 130, 246, 0.15);
-    padding: 2px 8px;
-    border-radius: 4px;
-    display: inline-block;
-    margin-right: 8px;
+    color: #60a5fa; font-weight: bold; font-size: 13px; font-family: monospace;
+    background: rgba(59, 130, 246, 0.15); padding: 2px 8px; border-radius: 4px; display: inline-block; margin-right: 8px;
 }
-
-.deploy-commits li .message { 
-    color: #e2e8f0;
-    font-size: 14px;
-}
-
-.deploy-commits li.deployed { 
-    background: rgba(16, 185, 129, 0.1);
-    border-left-color: #10b981;
-}
-
-.deploy-commits li.deployed .sha {
-    color: #10b981;
-    background: rgba(16, 185, 129, 0.15);
-}
-
-.deploy-commits li.pending { 
-    background: rgba(251, 191, 36, 0.1);
-    border-left-color: #fbbf24;
-    animation: pulse-pending 2s ease-in-out infinite;
-}
-
-.deploy-commits li.pending .sha {
-    color: #fbbf24;
-    background: rgba(251, 191, 36, 0.15);
-}
-
-@keyframes pulse-pending {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
-}
+.deploy-commits li .message { color: #e2e8f0; font-size: 14px; }
+.deploy-commits li.deployed { background: rgba(16, 185, 129, 0.1); border-left-color: #10b981; }
+.deploy-commits li.deployed .sha { color: #10b981; background: rgba(16, 185, 129, 0.15); }
+.deploy-commits li.pending { background: rgba(251, 191, 36, 0.1); border-left-color: #fbbf24; animation: pulse-pending 2s ease-in-out infinite; }
+.deploy-commits li.pending .sha { color: #fbbf24; background: rgba(251, 191, 36, 0.15); }
+@keyframes pulse-pending { 0%,100%{opacity:1;}50%{opacity:0.8;} }
 
 /* Deploy Output - Terminal Style */
 .deploy-output { 
@@ -304,71 +244,26 @@ require BASE_PATH . '/views/admin/layout/header.php';
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     border: 1px solid rgba(16, 185, 129, 0.2);
 }
-
-.deploy-output:empty::before {
-    content: 'No deployment output yet. Click "Deploy Latest Push" to start.';
-    color: #6b7280;
-    font-style: italic;
-}
+.deploy-output:empty::before { content: 'No deployment output yet. Click "Deploy Latest Push" to start.'; color: #6b7280; font-style: italic; }
 
 /* Status Badges */
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    margin-left: 10px;
-}
-
-.status-deployed {
-    background: rgba(16, 185, 129, 0.2);
-    color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.status-pending {
-    background: rgba(251, 191, 36, 0.2);
-    color: #fbbf24;
-    border: 1px solid rgba(251, 191, 36, 0.3);
-}
+.status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-left: 10px; }
+.status-deployed { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+.status-pending { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
 
 /* Form Styling */
-#deployForm {
-    margin-top: 20px;
-}
+#deployForm { margin-top: 20px; }
 
 /* Responsive */
 @media (max-width: 768px) {
-    .deploy-container {
-        padding: 0 15px;
-        margin: 20px auto;
-    }
-    
-    .deploy-container h1 {
-        font-size: 1.5em;
-    }
-    
-    .deploy-commits,
-    .deploy-output {
-        font-size: 12px;
-        padding: 15px;
-        max-height: 300px;
-    }
-    
-    .btn {
-        width: 100%;
-        justify-content: center;
-    }
+    .deploy-container { padding: 0 15px; margin: 20px auto; }
+    .deploy-container h1 { font-size: 1.5em; }
+    .deploy-commits, .deploy-output { font-size: 12px; padding: 15px; max-height: 300px; }
+    .btn { width: 100%; justify-content: center; }
 }
 
-.btn.loading {
-    position: relative;
-    pointer-events: none;
-}
-
+/* Button loading spinner */
+.btn.loading { position: relative; pointer-events: none; }
 .btn.loading::after {
     content: '';
     position: absolute;
@@ -380,10 +275,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
 }
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
 <div class="deploy-container">
@@ -414,25 +306,20 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <script>feather.replace();</script>
 
 <script>
-// --------------------
 // Live AJAX update
-// --------------------
 async function refreshQueue(){
     const res = await fetch('deploy.php?ajax=1');
     const data = await res.json();
 
-    // Update button
     const btn = document.getElementById('deploy-btn');
     btn.disabled = !data.hasPending;
 
-    // Update push list
     const queueDiv = document.getElementById('deployQueue');
     queueDiv.innerHTML = '<ul>' + data.queue.map(q=>`
         <li class="${q.deployed ? 'deployed' : 'pending'}">
             <span class="sha">${q.sha}</span> - <span class="message">${q.message}</span>
         </li>`).join('') + '</ul>';
 
-    // Update deploy output
     const outDiv = document.getElementById('deployOutput');
     outDiv.innerHTML = data.deployOutput;
 }
@@ -451,4 +338,3 @@ document.getElementById('deployForm').addEventListener('submit', async e=>{
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
- 
