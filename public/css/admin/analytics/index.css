@@ -165,66 +165,90 @@
 
 /* ---------- Funnel ---------- */
 
+
 .funnel-container {
     display: flex;
-    align-items: flex-end;
-    gap: 10px;
+    flex-direction: column;
+    gap: 14px;
     padding: 20px 10px;
     width: 100%;
-    height: 120px;
-    background: #f7f9fc;
-    border-radius: 10px;
-    overflow: hidden;
 }
 
 .funnel-step {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    position: relative;
+    width: 100%;
 }
+
+
+
+.funnel-track {
+    position: relative;
+    width: 100%;
+    height: 48px;
+    background: #f1f4f8;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+}
+
+
 
 .funnel-bar {
     position: relative;
-    width: 100%;
     height: 100%;
-    background: #e0e0e0;
+    background: linear-gradient(
+        90deg,
+        #cfeffd,
+        #90dbf4
+    );
     border-radius: 6px;
-    overflow: hidden;
     display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    padding: 5px 0;
-    text-align: center;
+    align-items: center;
+    padding: 0 14px;
+    overflow: hidden;
 }
 
+
+
 .funnel-label {
-    font-size: 0.85em;
+    font-size: 0.9em;
     font-weight: 600;
-    color: #333;
-    margin-bottom: 2px;
+    color: #1f2933;
+    white-space: nowrap;
+    z-index: 2;
 }
 
 .funnel-value {
+    margin-left: auto;
     font-size: 1em;
     font-weight: 700;
-    color: #0077b6;
+    color: #005f8f;
+    z-index: 2;
 }
 
-.funnel-progress {
+
+
+.funnel-flow {
     position: absolute;
     top: 0;
-    left: 0;
+    left: -30%;
+    width: 30%;
     height: 100%;
-    width: 0;
-    background: linear-gradient(90deg, #90e0ef, #00b4d8);
-    z-index: 1;
-    animation: progressBar 2s forwards;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255,255,255,0.5),
+        transparent
+    );
+    animation: funnelFlow 2.2s ease-in-out infinite;
+    pointer-events: none;
 }
 
-@keyframes progressBar {
-    from { width: 0; }
-    to { width: 100%; }
+
+
+@keyframes funnelFlow {
+    0%   { left: -30%; opacity: 0; }
+    30%  { opacity: 0.6; }
+    100% { left: 100%; opacity: 0; }
 }
 
 

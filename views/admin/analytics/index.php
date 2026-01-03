@@ -153,16 +153,15 @@ $steps = [
 $max = max($steps[0]['value'], 1);
 
 foreach ($steps as $step):
-    $fill = max(round(($step['value'] / $max) * 100), 5);
+    $width = max(round(($step['value'] / $max) * 100), 10);
 ?>
     <div class="funnel-step">
-        <div class="liquid-circle">
-            <div class="liquid-fill" style="height: <?= $fill ?>%;"></div>
-        </div>
-
-        <div class="funnel-meta">
-            <div class="label"><?= htmlspecialchars($step['label']) ?></div>
-            <div class="value"><?= number_format($step['value']) ?></div>
+        <div class="funnel-track">
+            <div class="funnel-bar" style="width: <?= $width ?>%;">
+                <span class="funnel-label"><?= htmlspecialchars($step['label']) ?></span>
+                <span class="funnel-value"><?= number_format($step['value']) ?></span>
+                <div class="funnel-flow"></div>
+            </div>
         </div>
     </div>
 <?php endforeach; ?>
