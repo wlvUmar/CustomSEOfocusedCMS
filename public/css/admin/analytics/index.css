@@ -164,100 +164,69 @@
 }
 
 /* ---------- Funnel ---------- */
-/* ==============================
-   TRUE LIQUID FUNNEL
-   ============================== */
 
-.liquid-circle {
-    position: relative;
-    width: 110px;
-    height: 110px;
-    border-radius: 50%;
-    border: 2px solid #cfd8e3;
+.funnel-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 20px 10px;
+    width: 100%;
+    height: 120px;
     background: #f7f9fc;
+    border-radius: 10px;
     overflow: hidden;
 }
 
-/* liquid mass */
-.liquid-fill {
+.funnel-step {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    position: relative;
+}
+
+.funnel-bar {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 5px 0;
+    text-align: center;
+}
+
+.funnel-label {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 2px;
+}
+
+.funnel-value {
+    font-size: 1em;
+    font-weight: 700;
+    color: #0077b6;
+}
+
+.funnel-progress {
     position: absolute;
-    bottom: 0;
-    width: 120%;
-    left: -10%;
-    background: linear-gradient(
-        180deg,
-        #4cc9f0,
-        #0077b6
-    );
-    animation:
-        pressureDrift 6s ease-in-out infinite;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #90e0ef, #00b4d8);
+    z-index: 1;
+    animation: progressBar 2s forwards;
 }
 
-/* common wave layer */
-.wave {
-    position: absolute;
-    top: -20px;
-    left: -50%;
-    width: 200%;
-    height: 40px;
-    border-radius: 45%;
-    background: rgba(255,255,255,0.35);
-    filter: blur(1px);
+@keyframes progressBar {
+    from { width: 0; }
+    to { width: 100%; }
 }
 
-/* primary wave (slow, heavy) */
-.wave-1 {
-    animation:
-        waveX1 7.5s ease-in-out infinite,
-        waveY1 3.5s ease-in-out infinite;
-    opacity: 0.45;
-}
-
-/* secondary wave (fast, chaotic) */
-.wave-2 {
-    top: -26px;
-    animation:
-        waveX2 4.2s ease-in-out infinite,
-        waveY2 2.1s ease-in-out infinite;
-    opacity: 0.25;
-}
-
-/* ==============================
-   Animations
-   ============================== */
-
-/* slow mass breathing */
-@keyframes pressureDrift {
-    0%   { transform: translateY(0); }
-    50%  { transform: translateY(-3px); }
-    100% { transform: translateY(0); }
-}
-
-/* horizontal chaos */
-@keyframes waveX1 {
-    0%   { transform: translateX(0); }
-    50%  { transform: translateX(-15%); }
-    100% { transform: translateX(0); }
-}
-
-@keyframes waveX2 {
-    0%   { transform: translateX(0); }
-    50%  { transform: translateX(20%); }
-    100% { transform: translateX(0); }
-}
-
-/* vertical surface instability */
-@keyframes waveY1 {
-    0%   { border-radius: 42% 58% 55% 45%; }
-    50%  { border-radius: 58% 42% 45% 55%; }
-    100% { border-radius: 42% 58% 55% 45%; }
-}
-
-@keyframes waveY2 {
-    0%   { border-radius: 60% 40% 50% 50%; }
-    50%  { border-radius: 40% 60% 55% 45%; }
-    100% { border-radius: 60% 40% 50% 50%; }
-}
 
 
 /* ---------- Top Performers ---------- */
