@@ -167,71 +167,64 @@
 
 .funnel-container {
     display: flex;
-    justify-content: space-between;
     align-items: flex-end;
-    gap: 20px;
+    gap: 10px;
     padding: 20px 10px;
-    max-width: 100%;
-    height: 200px; /* max height for funnel bars */
+    width: 100%;
+    height: 120px; /* height of bars */
+    background: #f7f9fc;
+    border-radius: 10px;
+    overflow: hidden;
 }
 
 .funnel-step {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    justify-content: flex-end;
     position: relative;
-    transition: transform 0.3s ease;
 }
 
 .funnel-bar {
-    width: 80%;
-    background: linear-gradient(145deg, #a0c4ff, #caf0f8);
-    border-radius: 8px 8px 0 0;
-    text-align: center;
-    color: var(--text-dark);
-    font-weight: 600;
-    padding-top: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     position: relative;
-    transform: scaleY(0);
-    transform-origin: bottom;
-    animation: growBar 0.8s forwards;
-}
-
-.funnel-bar span {
-    display: block;
+    width: 100%;
+    height: 100%;
+    background: #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 5px 0;
+    text-align: center;
 }
 
 .funnel-label {
-    margin-bottom: 5px;
-    font-size: 0.95em;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 2px;
 }
 
 .funnel-value {
-    font-size: 1.25em;
+    font-size: 1em;
     font-weight: 700;
     color: #0077b6;
 }
 
-.funnel-arrow {
+.funnel-progress {
     position: absolute;
-    bottom: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 1.2em;
-    color: #90e0ef;
-    animation: bounceArrow 1s infinite alternate;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #90e0ef, #00b4d8);
+    z-index: 1;
+    animation: progressBar 2s forwards;
 }
 
-@keyframes growBar {
-    from { transform: scaleY(0); }
-    to { transform: scaleY(var(--scale)); }
-}
-
-@keyframes bounceArrow {
-    0% { transform: translateX(-50%) translateY(0); }
-    100% { transform: translateX(-50%) translateY(6px); }
+@keyframes progressBar {
+    from { width: 0; }
+    to { width: 100%; }
 }
 
 
