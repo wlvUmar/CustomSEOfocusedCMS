@@ -21,6 +21,23 @@ function switchTab(tab, event) {
     if (content) content.classList.add('active');
 }
 
+function adjustToggleForScrollbar() {
+    if (!toggle) return;
+
+    // Get the current computed 'right' value
+    const style = getComputedStyle(toggle);
+    const currentRight = parseFloat(style.right);
+
+    // Calculate scrollbar width
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    // Set new right including scrollbar width
+    toggle.style.right = `${currentRight + scrollbarWidth}px`;
+}
+
+// Call on load and on resize
+window.addEventListener('resize', adjustToggleForScrollbar);
+
 // ----------------------------
 // DOM Ready
 // ----------------------------
@@ -73,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // Start collapsed on mobile, expanded on desktop
-    
+    adjustToggleForScrollbar();
     updateIcon();
 
 });
