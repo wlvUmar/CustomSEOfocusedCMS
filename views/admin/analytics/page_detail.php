@@ -10,9 +10,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>" target="_blank" class="btn">
             <i data-feather="eye"></i> View Page
         </a>
-        <a href="<?= BASE_URL ?>/admin/analytics" class="btn btn-secondary">
-            <i data-feather="arrow-left"></i> Back to Analytics
-        </a>
     </div>
 </div>
 

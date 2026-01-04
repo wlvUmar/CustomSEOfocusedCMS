@@ -223,12 +223,12 @@ Sa 10:00-15:00"><?= e($settings['opening_hours'] ?? '') ?></textarea>
             </p>
             
             <div class="info-banner">
-                <strong>📘 Note:</strong> This schema is auto-generated from your Site Name and Meta Description. 
+                <strong><i data-feather="book"></i> Note:</strong> This schema is auto-generated from your Site Name and Meta Description. 
                 It will be included on your homepage automatically.
             </div>
             
             <div style="background: #f9fafb; padding: 15px; border-radius: 6px; border-left: 3px solid #10b981;">
-                <strong>✅ Auto-Generated Schema Preview:</strong>
+                <strong>Auto-Generated Schema Preview:</strong>
                 <pre>{
   "@context": "https://schema.org",
   "@type": "WebSite",

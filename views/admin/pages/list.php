@@ -29,12 +29,16 @@
                 </span>
             </td>
             <td>
-                <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>" class="btn btn-sm">Edit</a>
-                <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>" class="btn btn-sm" target="_blank">View</a>
+                <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>" class="btn btn-sm"> 
+                    <i data-feather="edit"></i>
+                </a>
+                <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>" class="btn btn-sm" target="_blank">
+                     <i data-feather="eye"></i>
+                </a>
                 <form method="POST" action="<?= BASE_URL ?>/admin/pages/delete" style="display:inline;" 
                       onsubmit="return confirm('Delete this page?')">
                     <input type="hidden" name="id" value="<?= $page['id'] ?>">
-                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    <button type="submit" class="btn btn-sm btn-danger"> <i data-feather="trash-2"></i></button>
                 </form>
             </td>
         </tr>

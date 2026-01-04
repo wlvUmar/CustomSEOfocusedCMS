@@ -137,7 +137,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <td>
                     <?php if ($rotation): ?>
                         <div class="content-preview">
-                            <?= e(substr(strip_tags($rotation['content_ru']), 0, 100)) ?>
+                                <?= e(substr(strip_tags($rotation['content_ru']), 0, 100)) ?>
                             <?php if (strlen(strip_tags($rotation['content_ru'])) > 100): ?>...<?php endif; ?>
                         </div>
                     <?php else: ?>
@@ -148,11 +148,11 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <td>
                     <?php if ($rotation): ?>
                         <span class="badge <?= $rotation['is_active'] ? 'badge-success' : 'badge-danger' ?>">
-                            <?= $rotation['is_active'] ? '<i data-feather="check-circle"></i> Active' : '<i data-feather="x-circle"></i> Inactive' ?>
+                            <?= $rotation['is_active'] ? 'Active' : 'inactive' ?>
                         </span>
                     <?php else: ?>
                         <span class="badge" style="background: #e5e7eb; color: #6b7280;">
-                            <i data-feather="minus-circle"></i> Empty
+                             empty
                         </span>
                     <?php endif; ?>
                 </td>
@@ -162,12 +162,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         <?php if ($rotation): ?>
                             <a href="<?= BASE_URL ?>/admin/rotations/edit/<?= $rotation['id'] ?>" 
                                class="btn btn-sm" title="Edit">
-                                <i data-feather="edit"></i> Edit
+                                <i data-feather="edit"></i>
                             </a>
                             
                             <button type="button" onclick="showCloneModal(<?= $rotation['id'] ?>, '<?= e($name) ?>')" 
                                     class="btn btn-sm" title="Clone to other months">
-                                <i data-feather="copy"></i> Clone
+                                <i data-feather="copy"></i>
                             </button>
                             
                             <form method="POST" action="<?= BASE_URL ?>/admin/rotations/delete" 

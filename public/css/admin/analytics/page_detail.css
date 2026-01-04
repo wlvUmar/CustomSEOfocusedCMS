@@ -22,7 +22,7 @@
 .header-actions .btn {
     padding: 8px 16px;
     text-decoration: none;
-    background: var(--primary);
+    background: var(--primary-dark);
     color: white;
     border-radius: 4px;
     font-weight: 600;
@@ -34,14 +34,7 @@
     color: var(--text-dark);
 }
 
-/* --- Info Banner --- */
-.info-banner {
-    background: var(--accent-light);
-    padding: 15px 20px;
-    border-radius: 6px;
-    margin-bottom: 30px;
-    font-size: 0.95em;
-}
+
 
 /* --- Summary Cards --- */
 .crawl-summary-cards {

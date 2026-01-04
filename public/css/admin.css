@@ -393,6 +393,16 @@ body {
     color: var(--text-muted);
 }
 
+
+.info-banner {
+    background: #eff6ff;
+    border-left: 4px solid #3b82f6;
+    padding: 16px;
+    margin-bottom: 30px;
+    border-radius: 4px;
+    color: #1e3a8a;
+}
+
 /* Buttons */
 .btn {
     display: inline-flex;
@@ -411,6 +421,7 @@ body {
     gap: 6px;
     user-select: none;
     -webkit-user-select: none;
+    margin-top: 5px;
 }
 
 .btn:hover {

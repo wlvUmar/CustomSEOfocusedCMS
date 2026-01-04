@@ -12,14 +12,6 @@
     line-height: 1.5;
 }
 
-.info-banner {
-    background: #eff6ff;
-    padding: 15px;
-    border-radius: 6px;
-    border-left: 3px solid #3b82f6;
-    margin-bottom: 20px;
-    line-height: 1.6;
-}
 
 .info-banner strong {
     color: #1e40af;

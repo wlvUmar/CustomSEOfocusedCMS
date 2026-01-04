@@ -13,9 +13,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <option value="6" <?= $months == 6 ? 'selected' : '' ?>>Last 6 Months</option>
             <option value="12" <?= $months == 12 ? 'selected' : '' ?>>Last 12 Months</option>
         </select>
-        <a href="<?= BASE_URL ?>/admin/analytics" class="btn btn-secondary">
-            <i data-feather="arrow-left"></i> Back to Analytics
-        </a>
     </div>
 </div>
 
@@ -75,7 +72,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <div class="rotation-month">
                     <?= $monthName ?>
                     <?php if ($isCurrentMonth): ?>
-                    <span class="current-badge"><i data-feather="clock"></i> NOW</span>
+                    <span class="current-badge"></i> now</span>
                     <?php endif; ?>
                 </div>
                 

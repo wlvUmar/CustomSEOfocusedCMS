@@ -38,18 +38,18 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <td><?= $faq['sort_order'] ?></td>
             <td>
                 <span class="badge <?= $faq['is_active'] ? 'badge-success' : 'badge-danger' ?>">
-                    <?= $faq['is_active'] ? 'Active' : 'Inactive' ?>
+                    <?= $faq['is_active'] ?     'active' : 'inactive' ?>
                 </span>
             </td>
             <td>
                 <a href="<?= BASE_URL ?>/admin/faqs/edit/<?= $faq['id'] ?>" class="btn btn-sm">
-                    <i data-feather="edit"></i> Edit
+                    <i data-feather="edit"></i>
                 </a>
                 <form method="POST" action="<?= BASE_URL ?>/admin/faqs/delete" style="display:inline;" 
                       onsubmit="return confirm('Delete this FAQ?')">
                     <input type="hidden" name="id" value="<?= $faq['id'] ?>">
                     <button type="submit" class="btn btn-sm btn-danger">
-                        <i data-feather="trash-2"></i> Delete
+                        <i data-feather="trash-2"></i>
                     </button>
                 </form>
             </td>

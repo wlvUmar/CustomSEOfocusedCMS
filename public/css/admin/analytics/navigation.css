@@ -24,14 +24,6 @@
     margin-top: 10px;
 }
 
-.info-banner {
-    background: #eff6ff;
-    border-left: 4px solid #3b82f6;
-    padding: 16px;
-    margin-bottom: 30px;
-    border-radius: 4px;
-    color: #1e3a8a;
-}
 
 .empty-state {
     background: white;
