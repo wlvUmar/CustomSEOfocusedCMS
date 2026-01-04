@@ -53,10 +53,10 @@
             <a href="<?= BASE_URL ?>/admin/pages/new" class="btn btn-primary btn-sm">
                 <i data-feather="plus"></i> New Page
             </a>
-            <a href="<?= BASE_URL ?>/admin/faqs/new" class="btn btn-primary btn-sm">
+            <a href="<?= BASE_URL ?>/admin/faqs/new" class="btn btn-info btn-sm">
                 <i data-feather="plus"></i> New FAQ
             </a>
-            <a href="<?= BASE_URL ?>/admin/media" class="btn btn-primary btn-sm">
+            <a href="<?= BASE_URL ?>/admin/media" class="btn btn-success btn-sm">
                 <i data-feather="upload"></i> Upload Media
             </a>
         </div>
@@ -141,7 +141,7 @@
             <a href="<?= BASE_URL ?>/admin/analytics" class="btn btn-primary btn-sm">
                 <i data-feather="bar-chart-2"></i> Full Analytics
             </a>
-            <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="btn btn-primary btn-sm">
+            <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="btn btn-info btn-sm">
                 <i data-feather="bar-chart"></i> Rotation Stats
             </a>
         </div>
@@ -157,10 +157,10 @@
         <a href="<?= BASE_URL ?>/admin/seo" class="btn btn-secondary">
             <i data-feather="search"></i> Edit SEO Settings
         </a>
-        <a href="<?= BASE_URL ?>/" class="btn btn-secondary" target="_blank">
+        <a href="<?= BASE_URL ?>/" class="btn btn-info" target="_blank">
             <i data-feather="external-link"></i> View Website
         </a>
-        <a href="<?= BASE_URL ?>/admin/analytics" class="btn btn-secondary">
+        <a href="<?= BASE_URL ?>/admin/analytics" class="btn btn-success">
             <i data-feather="trending-up"></i> View Analytics
         </a>
     </div>

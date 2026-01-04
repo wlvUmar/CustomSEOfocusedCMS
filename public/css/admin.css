@@ -15,6 +15,12 @@
     --success-hover: #047857;
     --danger: #dc3545;
     --danger-hover: #c82333;
+    --info: #0ea5e9;
+    --info-hover: #0284c7;
+    --warning: #f59e0b;
+    --warning-hover: #d97706;
+    --secondary: #64748b;
+    --secondary-hover: #475569;
     --sidebar-width: 260px;
     --toggle-size: 20px;
 }
@@ -409,67 +415,164 @@ body {
     align-items: center;
     justify-content: center;
     padding: 10px 20px;
-    background: var(--text-muted);
+    background: var(--secondary);
     color: white;
     text-decoration: none;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
-    transition: background 0.2s, transform 0.1s;
+    transition: all 0.3s ease;
     white-space: nowrap;
     gap: 6px;
     user-select: none;
     -webkit-user-select: none;
     margin-top: 5px;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn:hover {
-    background: var(--text-dark);
-    transform: translateY(-1px);
+    background: var(--secondary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .btn:active {
     transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.btn:hover {
-    background: var(--text-dark);
-}
-
+/* Primary Button - Modern Blue */
 .btn-primary {
-    background: var(--primary-dark);
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
 }
 
 .btn-primary:hover {
-    background: var(--accent-dark);
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    box-shadow: 0 8px 16px rgba(14, 165, 233, 0.3);
 }
 
+/* Secondary Button - Slate Gray */
 .btn-secondary {
-    background: var(--text-muted);
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
 }
 
 .btn-secondary:hover {
-    background: var(--text-dark);
+    background: linear-gradient(135deg, #475569 0%, #334155 100%);
+    box-shadow: 0 8px 16px rgba(100, 116, 139, 0.3);
 }
 
+/* Success Button - Green */
+.btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+}
+
+/* Danger Button - Red */
 .btn-danger {
-    background: var(--danger);
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
 
 .btn-danger:hover {
-    background: var(--danger-hover);
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
+}
+
+/* Warning Button - Orange */
+.btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #1f2937;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    color: #1f2937;
+    box-shadow: 0 8px 16px rgba(245, 158, 11, 0.3);
+}
+
+/* Info Button - Cyan */
+.btn-info {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+}
+
+.btn-info:hover {
+    background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+    box-shadow: 0 8px 16px rgba(6, 182, 212, 0.3);
+}
+
+/* Outline Button Variants */
+.btn-outline {
+    background: transparent;
+    border: 2px solid currentColor;
+    color: var(--text-dark);
+}
+
+.btn-outline:hover {
+    background: rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+}
+
+.btn-outline.btn-primary {
+    color: #0ea5e9;
+    border-color: #0ea5e9;
+}
+
+.btn-outline.btn-primary:hover {
+    background: rgba(14, 165, 233, 0.1);
+}
+
+.btn-outline.btn-success {
+    color: #10b981;
+    border-color: #10b981;
+}
+
+.btn-outline.btn-success:hover {
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.btn-outline.btn-danger {
+    color: #ef4444;
+    border-color: #ef4444;
+}
+
+.btn-outline.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.1);
 }
 
 .btn-sm {
-    padding: 5px 10px;
+    padding: 6px 12px;
     font-size: 12px;
+    border-radius: 4px;
+}
+
+.btn-lg {
+    padding: 14px 28px;
+    font-size: 16px;
+}
+
+.btn-block {
+    display: flex;
+    width: 100%;
 }
 
 .btn-group {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     flex-wrap: wrap;
+}
+
+.btn-group-vertical {
+    flex-direction: column;
+}
+
+.btn-group-vertical .btn {
+    width: 100%;
+    justify-content: center;
 }
 
 /* Tables */
@@ -756,13 +859,13 @@ body {
 .dashboard-grid {
     display: flex;
     flex-direction: column;
-    gap: 40px;
-    margin-bottom: 40px;
+    gap: 50px;
+    margin-bottom: 50px;
 }
 
 .dashboard-section {
     background: white;
-    padding: 30px;
+    padding: 35px;
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
@@ -770,7 +873,7 @@ body {
 .section-title {
     font-size: 18px;
     color: var(--text-dark);
-    margin-bottom: 20px;
+    margin-bottom: 25px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -784,7 +887,7 @@ body {
 
 .stat-card {
     background: linear-gradient(135deg, #ffffff 0%, #fafaf9 100%);
-    padding: 25px;
+    padding: 30px;
     border-radius: 8px;
     border-left: 4px solid var(--primary-dark);
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -847,17 +950,17 @@ body {
 }
 
 .quick-links {
-    margin-top: 20px;
+    margin-top: 25px;
     display: flex;
-    gap: 10px;
+    gap: 12px;
     flex-wrap: wrap;
-    padding-top: 20px;
+    padding-top: 25px;
     border-top: 1px solid var(--primary-light);
 }
 
 .dashboard-footer {
     background: white;
-    padding: 30px;
+    padding: 35px;
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
@@ -865,7 +968,7 @@ body {
 .dashboard-footer h2 {
     font-size: 18px;
     color: var(--text-dark);
-    margin-bottom: 20px;
+    margin-bottom: 25px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -878,7 +981,13 @@ body {
     }
     
     .dashboard-section {
-        padding: 20px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .dashboard-grid {
+        gap: 35px;
+        margin-bottom: 35px;
     }
     
     .stats-grid {
@@ -886,7 +995,7 @@ body {
     }
     
     .stat-card {
-        padding: 20px;
+        padding: 25px;
     }
     
     .stat-number {
@@ -895,20 +1004,30 @@ body {
     
     .quick-links {
         flex-direction: column;
+        gap: 10px;
+        margin-top: 20px;
+        padding-top: 20px;
     }
     
     .quick-links .btn {
         width: 100%;
         justify-content: center;
+        margin-top: 0;
+    }
+    
+    .dashboard-footer {
+        padding: 25px;
     }
     
     .dashboard-footer .btn-group {
         flex-direction: column;
+        gap: 10px;
     }
     
     .dashboard-footer .btn {
         width: 100%;
         justify-content: center;
+        margin-top: 0;
     }
 }
 

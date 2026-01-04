@@ -83,8 +83,9 @@ if ($isWebhook) {
 
 // For non-webhook requests, require authentication
 if (!isset($_SESSION['user_id'])) {
-    http_response_code(403);
-    die('Access Denied. Please <a href="/admin/login">login</a> first.');
+    $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
+    header("Location: " . BASE_URL . "/admin/login");
+    exit;
 }
 
 $deployOutput = '';
@@ -92,8 +93,9 @@ $deployOutput = '';
 // Handle manual POST deploy
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
-        http_response_code(403);
-        die('CSRF token validation failed');
+        $_SESSION['error'] = 'CSRF token validation failed';
+        header("Location: " . BASE_URL . "/deploy.php");
+        exit;
     }
     $deployOutput = runDeploy('manual-admin');
 }
