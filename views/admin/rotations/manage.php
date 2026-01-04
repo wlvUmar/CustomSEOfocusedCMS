@@ -18,7 +18,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </a>
     </div>
 </div>
-<div class="bulk-actions-bar" style="margin-bottom: 20px; justify-content: flex-end;">
+<div class="bulk-actions-bar flex-end spacing-bottom">
     <div class="bulk-buttons">
         <button onclick="showUploadModal()" class="btn">
             <i data-feather="upload"></i> Bulk Upload
@@ -193,7 +193,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 </form>
 
 <!-- Clone Modal -->
-<div id="clone-modal" class="modal" style="display: none;">
+<div id="clone-modal" class="modal hidden">
     <div class="modal-content">
         <div class="modal-header">
             <h2>Clone Content to Other Months</h2>
@@ -225,7 +225,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 </div>
 
 
-<div id="upload-modal" class="modal" style="display: none;">
+<div id="upload-modal" class="modal hidden">
     <div class="modal-content">
         <div class="modal-header">
             <h2><i data-feather="upload"></i> Bulk Upload Rotations</h2>
@@ -235,7 +235,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <form method="POST" action="<?= BASE_URL ?>/admin/rotations/bulk-upload" enctype="multipart/form-data">
             <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
             
-            <div class="help-text" style="margin-bottom: 20px;">
+            <div class="help-text spacing-bottom">
                 <strong>Supported formats:</strong> CSV, JSON<br>
                 <strong>Required fields:</strong> page_id, active_month, content_ru, content_uz<br>
                 <strong>Optional fields:</strong> is_active, meta_title_ru, meta_title_uz, meta_description_ru, meta_description_uz, etc.
@@ -246,11 +246,10 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <input type="file" name="file" accept=".csv,.json" required>
             </div>
             
-            <details style="margin: 20px 0;">
-                <summary style="cursor: pointer; font-weight: 600; margin-bottom: 10px;">
+            <details class="spacing-vertical">
                     JSON Format Example
                 </summary>
-                <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 12px;">[
+                <pre class="code-box">[
   {
     "page_id": 1,
     "active_month": 1,
@@ -274,7 +273,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
 </div>
 
-<div id="preview-modal" class="modal" style="display: none;">
+<div id="preview-modal" class="modal hidden">
     <div class="modal-content" style="max-width: 700px;">
         <div class="modal-header">
             <h2><i data-feather="eye"></i> Preview Page with Rotation</h2>
