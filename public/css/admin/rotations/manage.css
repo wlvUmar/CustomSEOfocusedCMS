@@ -6,17 +6,24 @@
     border-radius: 6px;
     margin-bottom: 20px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    flex-wrap: wrap;
 }
 
 .stat-item {
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    min-width: 150px;
 }
 
 .stat-label {
     font-size: 0.85em;
     color: var(--text-muted);
     margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
 }
 
 .stat-value {
@@ -37,11 +44,14 @@
     background: var(--accent-light);
     border-radius: 6px;
     margin-bottom: 15px;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 
 .bulk-buttons {
     display: flex;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
 .rotation-table {

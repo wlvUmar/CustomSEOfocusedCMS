@@ -15,7 +15,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <i data-feather="file-text"></i> View Robots.txt
         </a>
         <?php if ($isProduction): ?>
-        <form method="POST" action="<?= BASE_URL ?>/admin/seo/sitemap/ping" class="inline-form">
+        <form method="POST" action="<?= BASE_URL ?>/admin/seo/sitemap/ping" style="display: inline;">
             <button type="submit" class="btn btn-primary" 
                     onclick="return confirm('Ping Google and Bing about sitemap updates?')">
                 <i data-feather="zap"></i> Ping Search Engines
@@ -35,7 +35,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <div class="stat-card">
         <h3>Total URLs</h3>
         <p class="stat-number"><?= $totalUrls ?></p>
-        <p class="text-muted">
+        <p style="font-size: 0.85em; color: #6b7280; margin-top: 5px;">
             (<?= $totalPages ?> pages × 2 languages)
         </p>
     </div>
@@ -52,15 +52,15 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <div class="form-section">
     <h3><i data-feather="map"></i> Sitemap.xml</h3>
     
-    <div class="help-text spacing-bottom">
+    <div class="help-text" style="margin-bottom: 15px;">
         <strong>URL:</strong> <a href="<?= $sitemapUrl ?>" target="_blank"><?= $sitemapUrl ?></a>
     </div>
     
-    <p class="spacing-bottom">
+    <p style="margin-bottom: 15px; line-height: 1.6;">
         The sitemap is automatically generated from your published pages and includes:
     </p>
     
-    <ul class="spacing-bottom">
+    <ul style="margin-bottom: 15px; padding-left: 25px; line-height: 1.8;">
         <li>✓ All published pages in both Russian and Uzbek</li>
         <li>✓ Alternate language links (hreflang tags)</li>
         <li>✓ Last modification dates</li>
@@ -69,7 +69,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <li>✓ Pages without rotation = yearly update frequency</li>
     </ul>
     
-    <div class="info-box">
+    <div style="background: #f9fafb; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6;">
         <strong>📋 Submit to Search Engines:</strong>
         <ul style="margin-top: 10px; padding-left: 20px;">
             <li><a href="https://search.google.com/search-console" target="_blank">Google Search Console</a></li>
@@ -83,17 +83,17 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <div class="form-section">
     <h3><i data-feather="file-text"></i> Robots.txt</h3>
     
-    <div class="help-text spacing-bottom">
+    <div class="help-text" style="margin-bottom: 15px;">
         <strong>URL:</strong> <a href="<?= $robotsUrl ?>" target="_blank"><?= $robotsUrl ?></a>
     </div>
     
     <?php if ($isProduction): ?>
-        <div class="success-box">
+        <div style="background: #d1f4e0; padding: 15px; border-radius: 6px; border-left: 3px solid #059669; margin-bottom: 15px;">
             <strong>✅ Production Mode:</strong> All pages are crawlable
         </div>
         
-        <p class="spacing-bottom"><strong>Current Configuration:</strong></p>
-        <pre class="code-box">User-agent: *
+        <p style="margin-bottom: 10px;"><strong>Current Configuration:</strong></p>
+        <pre style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; overflow-x: auto; font-family: monospace; font-size: 13px;">User-agent: *
 Allow: /
 
 Disallow: /admin/
@@ -103,12 +103,12 @@ Disallow: /database/
 
 Sitemap: <?= $sitemapUrl ?></pre>
     <?php else: ?>
-        <div class="warning-box">
+        <div style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 3px solid #f59e0b; margin-bottom: 15px;">
             <strong>⚠️ Development Mode:</strong> All crawlers are blocked
         </div>
         
-        <p class="spacing-bottom"><strong>Current Configuration:</strong></p>
-        <pre class="code-box">User-agent: *
+        <p style="margin-bottom: 10px;"><strong>Current Configuration:</strong></p>
+        <pre style="background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; overflow-x: auto; font-family: monospace; font-size: 13px;">User-agent: *
 Disallow: /</pre>
     <?php endif; ?>
 </div>
@@ -146,7 +146,7 @@ Disallow: /</pre>
                 <td>
                     <code><?= $page['slug'] === 'home' ? '1.0' : '0.8' ?></code>
                 </td>
-                <td class="text-sm">
+                <td style="font-size: 0.85em;">
                     <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>" target="_blank">
                         <i data-feather="external-link"></i> RU
                     </a>

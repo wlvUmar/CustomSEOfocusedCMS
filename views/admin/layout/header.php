@@ -9,9 +9,6 @@
     <title>Admin Panel</title>
     <link rel="icon" type="image/x-icon" href="https://test.kuplyu-tashkent.uz/css/favicon.ico">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/_utilities.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/_modals.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/_badges.css">
     <?php
     if (!empty($pageName)) {
         $cssFile = "admin/{$pageName}.css";
