@@ -101,6 +101,11 @@ class RotationAdminController extends Controller {
     public function save() {
         $this->requireAuth();
         
+        if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+            http_response_code(403);
+            die('CSRF token validation failed');
+        }
+        
         $id = $_POST['id'] ?? null;
         $pageId = intval($_POST['page_id']);
         $activeMonth = intval($_POST['active_month']);
@@ -119,7 +124,8 @@ class RotationAdminController extends Controller {
         }
         
         // Check for duplicate month
-        if (!$id || ($id && $this->rotationModel->getById($id)['active_month'] != $activeMonth)) {
+        $existingRotation = !$id ? null : $this->rotationModel->getById($id);
+        if (!$id || ($existingRotation && $existingRotation['active_month'] != $activeMonth)) {
             if ($this->rotationModel->monthHasContent($pageId, $activeMonth)) {
                 $_SESSION['error'] = 'This month already has content. Please edit the existing entry or choose a different month.';
                 $this->redirect('/admin/rotations/manage/' . $pageId);
@@ -272,7 +278,7 @@ class RotationAdminController extends Controller {
             body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
             h1, h2, h3 { color: #303034; }
         </style></head><body>';
-        echo $content;
+        echo htmlspecialchars($content, ENT_QUOTES, 'UTF-8');
         echo '</body></html>';
         exit;
     }

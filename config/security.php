@@ -14,7 +14,7 @@ if (IS_PRODUCTION) {
 }
 $csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://unpkg.com", 
+    "script-src 'self' https://cdnjs.cloudflare.com https://unpkg.com", 
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
     "style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
     "img-src 'self' data: blob: https:", 

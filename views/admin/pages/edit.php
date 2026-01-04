@@ -6,6 +6,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <h1><?= $page ? 'Edit Page' : 'Create Page' ?></h1>
 
 <form method="POST" action="<?= BASE_URL ?>/admin/pages/save" class="admin-form">
+    <?= csrfField() ?>
     <?php if ($page): ?>
     <input type="hidden" name="id" value="<?= $page['id'] ?>">
     <?php endif; ?>

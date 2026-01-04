@@ -6,6 +6,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <h1><?= $faq ? 'Edit FAQ' : 'Create FAQ' ?></h1>
 
 <form method="POST" action="<?= BASE_URL ?>/admin/faqs/save" class="admin-form">
+    <?= csrfField() ?>
     <?php if ($faq): ?>
         <input type="hidden" name="id" value="<?= $faq['id'] ?>">
     <?php endif; ?>

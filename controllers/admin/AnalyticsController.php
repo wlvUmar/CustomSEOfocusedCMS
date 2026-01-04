@@ -17,8 +17,13 @@ class AnalyticsController extends Controller {
     public function index() {
         $this->requireAuth();
         
-        $months = $_GET['months'] ?? 6;
+        $months = isset($_GET['months']) ? intval($_GET['months']) : 6;
+        $months = max(1, min(24, $months));
+        
         $view = $_GET['view'] ?? 'overview';
+        if (!in_array($view, ['overview', 'rotation', 'navigation', 'crawl'])) {
+            $view = 'overview';
+        }
         
         $stats = [
             'total' => $this->analyticsModel->getTotalStats(),
@@ -42,7 +47,8 @@ class AnalyticsController extends Controller {
     public function rotationAnalytics() {
         $this->requireAuth();
         
-        $months = $_GET['months'] ?? 3;
+        $months = isset($_GET['months']) ? intval($_GET['months']) : 3;
+        $months = max(1, min(24, $months));
         
         $data = [
             'effectiveness' => $this->analyticsModel->getRotationEffectiveness($months),

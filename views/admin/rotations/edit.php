@@ -6,6 +6,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <h1><?= $rotation ? 'Edit Content Rotation' : 'Create Content Rotation' ?></h1>
 
 <form method="POST" action="<?= BASE_URL ?>/admin/rotations/save" class="admin-form">
+    <?= csrfField() ?>
     <?php if ($rotation): ?>
         <input type="hidden" name="id" value="<?= $rotation['id'] ?>">
     <?php endif; ?>

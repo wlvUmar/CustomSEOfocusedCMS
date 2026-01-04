@@ -35,6 +35,11 @@ class PageAdminController extends Controller {
     public function save() {
         $this->requireAuth();
         
+        if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+            http_response_code(403);
+            die('CSRF token validation failed');
+        }
+        
         $id = $_POST['id'] ?? null;
         $data = [
             'slug' => trim($_POST['slug']),

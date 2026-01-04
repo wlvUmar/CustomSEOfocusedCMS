@@ -79,7 +79,13 @@ function renderTemplate($text, $data = []) {
         function($matches) use ($data) {
             $key = $matches[1];
             $value = getNestedValue($data, $key);
-            return $value !== null ? (is_array($value) ? json_encode($value) : $value) : '';
+            if ($value === null) {
+                return '';
+            }
+            if (is_array($value)) {
+                return htmlspecialchars(json_encode($value), ENT_QUOTES, 'UTF-8');
+            }
+            return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
         },
         $text
     );

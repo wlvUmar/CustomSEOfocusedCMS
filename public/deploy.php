@@ -11,33 +11,9 @@ $isWebhook = ($_SERVER['REQUEST_METHOD'] === 'POST'
 );
 
 if ($isWebhook) {
-    // optional: log payload for debug
     $payload = file_get_contents('php://input');
-
-    // run deploy
     $deployOutput = runDeploy();
-
-    // return proper JSON for GitHub
-    http_response_code(200);
-    header('Content-Type: application/json');
-
-    echo json_encode([
-        'status' => 'ok',
-        'message' => 'Deploy triggered successfully',
-        'deploy_output' => $deployOutput 
-    ]);
-
-    exit; /
-}
-
-
-
-if ($isWebhook) {
-    // optional: log payload
-    $payload = file_get_contents('php://input');
-
-    $deployOutput = runDeploy();
- 
+    
     http_response_code(200);
     header('Content-Type: application/json');
 
@@ -49,7 +25,6 @@ if ($isWebhook) {
     exit;
 }
 
-
 if (!isset($_SESSION['user_id'])) {
     http_response_code(403);
     die('Access Denied. Please <a href="/admin/login">login</a> first.');
@@ -58,13 +33,17 @@ if (!isset($_SESSION['user_id'])) {
 $deployOutput = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+        http_response_code(403);
+        die('CSRF token validation failed');
+    }
     $deployOutput = runDeploy();
     header("Location: " . $_SERVER['REQUEST_URI']);
     exit; 
 }
 
 $lastCommit = trim(shell_exec(
-    "cd " . REPO_PATH . " && git log -1 --pretty=format:'%h - %s (%ci)'"
+    "cd " . escapeshellarg(REPO_PATH) . " && git log -1 --pretty=format:'%h - %s (%ci)'"
 ));
 
 $pageName = 'deploy';
@@ -80,6 +59,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
 
     <form method="POST">
+        <?= csrfField() ?>
         <button type="submit" style="
             padding:10px 20px;
             border:none;

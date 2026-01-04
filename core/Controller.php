@@ -7,7 +7,9 @@ class Controller {
     }
 
     protected function view($file, $data = []) {
-        extract($data);
+        foreach ($data as $key => $value) {
+            $$key = $value;
+        }
         require BASE_PATH . '/views/' . $file . '.php';
     }
 
