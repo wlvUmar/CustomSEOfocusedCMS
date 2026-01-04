@@ -43,7 +43,11 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <div class="stat-card">
         <h3>Environment</h3>
         <p class="stat-number" style="font-size: 1.5em;">
-            <?= $isProduction ? '🌐 Production' : '🔧 Development' ?>
+           <?= $isProduction 
+                ? '<i data-feather="globe"></i> Production' 
+                : '<i data-feather="tool"></i> Development' 
+            ?>
+
         </p>
     </div>
 </div>
@@ -89,7 +93,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     
     <?php if ($isProduction): ?>
         <div style="background: #d1f4e0; padding: 15px; border-radius: 6px; border-left: 3px solid #059669; margin-bottom: 15px;">
-            <strong>✅ Production Mode:</strong> All pages are crawlable
+            <strong><i data-feather="globe"></i> Production Mode:</strong> All pages are crawlable
         </div>
         
         <p style="margin-bottom: 10px;"><strong>Current Configuration:</strong></p>
@@ -104,7 +108,7 @@ Disallow: /database/
 Sitemap: <?= $sitemapUrl ?></pre>
     <?php else: ?>
         <div style="background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 3px solid #f59e0b; margin-bottom: 15px;">
-            <strong>⚠️ Development Mode:</strong> All crawlers are blocked
+            <strong><i data-feather="tool"></i> Development Mode:</strong> All crawlers are blocked
         </div>
         
         <p style="margin-bottom: 10px;"><strong>Current Configuration:</strong></p>

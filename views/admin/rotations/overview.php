@@ -6,7 +6,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <div class="page-header">
     <h1>Content Rotation Overview</h1>
-    <a href="<?= BASE_URL ?>/admin/pages" class="btn btn-secondary">Back to Pages</a>
 </div>
 
 <?php if (!empty($incompletePages)): ?>

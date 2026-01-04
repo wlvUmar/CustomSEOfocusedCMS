@@ -6,9 +6,7 @@ define('REPO_PATH', '/home/kuplyuta/appliances');
 define('GITHUB_REPO_NAME', 'seowebsite');
 define('GITHUB_WEBHOOK_SECRET', getenv('GITHUB_WEBHOOK_SECRET') ?: 'your-webhook-secret');
 
-/**
- * Verify GitHub webhook signature
- */
+
 function verifyGitHubSignature() {
     $payload = file_get_contents('php://input');
     $signature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
@@ -21,9 +19,7 @@ function verifyGitHubSignature() {
     return hash_equals($hash, $signature);
 }
 
-/**
- * Execute git deploy
- */
+
 function runDeploy($caller = 'manual') {
     $output = '';
     
@@ -142,12 +138,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
         
         <?php if (trim($deploymentStatus)): ?>
             <div style="padding: 10px; background: #fef3c7; border-left: 3px solid #f59e0b; margin-bottom: 15px; border-radius: 4px;">
-                <strong style="color: #92400e;">⚠️ Uncommitted Changes Detected</strong>
+                <strong style="color: #92400e;"><i data-feather="alert-triangle"></i> Uncommitted Changes Detected</strong>
                 <pre style="margin-top: 8px; font-size: 12px; color: #111827; overflow-x: auto;"><?= htmlspecialchars($deploymentStatus) ?></pre>
             </div>
         <?php else: ?>
             <div style="padding: 10px; background: #d1f4e0; border-left: 3px solid #059669; border-radius: 4px;">
-                <strong style="color: #166534;">✅ Working Directory Clean</strong>
+                <strong style="color: #166534;"><i data-feather="check"></i> Working Directory Clean</strong>
             </div>
         <?php endif; ?>
     </div>
@@ -193,7 +189,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </div>
         
         <div style="padding: 10px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 13px; color: #92400e;">
-            <strong>⚠️ Security Note:</strong> Set the webhook secret as an environment variable <code>GITHUB_WEBHOOK_SECRET</code>. Update <code>.env</code> file with a strong secret key.
+            <strong><i data-feather="alert-triangle"></i> Security Note:</strong> Set the webhook secret as an environment variable <code>GITHUB_WEBHOOK_SECRET</code>. Update <code>.env</code> file with a strong secret key.
         </div>
     </div>
     

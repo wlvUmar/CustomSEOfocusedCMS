@@ -13,7 +13,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <option value="60" <?= $days == 60 ? 'selected' : '' ?>>Last 60 Days</option>
             <option value="90" <?= $days == 90 ? 'selected' : '' ?>>Last 90 Days</option>
         </select>
-        <a href="<?= BASE_URL ?>/admin/analytics" class="btn btn-secondary">Back to Analytics</a>
     </div>
 </div>
 
