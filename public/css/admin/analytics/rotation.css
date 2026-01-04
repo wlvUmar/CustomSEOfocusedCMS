@@ -85,8 +85,8 @@
 .rotation-item.current {
     background: #ffffff;
     margin: 8px 4px;
-    border-radius: 10px
-    box-shadow: 1px 2px 4px 0.5px #0000001c
+    border-radius: 10px;
+    box-shadow: 1px 2px 4px 0.5px #0000001c;
 }
 
 .rotation-month {
