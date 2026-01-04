@@ -1,0 +1,161 @@
+/* Utility Classes for Admin Panel */
+
+/* Display Utilities */
+.inline-form {
+    display: inline;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.visible {
+    display: block !important;
+}
+
+/* Box Styles - Info, Success, Warning */
+.info-box {
+    background: #f9fafb;
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 3px solid #3b82f6;
+    margin-bottom: 15px;
+}
+
+.success-box {
+    background: #d1f4e0;
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 3px solid #059669;
+    margin-bottom: 15px;
+}
+
+.warning-box {
+    background: #fef3c7;
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 3px solid #f59e0b;
+    margin-bottom: 15px;
+}
+
+.error-box {
+    background: #fee2e2;
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 3px solid #dc2626;
+    margin-bottom: 15px;
+}
+
+.code-box {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 15px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+/* Badge Spacing */
+.badge-inline {
+    margin-left: 8px;
+}
+
+/* Form Utilities */
+.modal select,
+.modal input[type="text"],
+.modal input[type="email"],
+.modal input[type="number"],
+.modal textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Icon Utilities */
+.feather-icon-inline {
+    vertical-align: middle;
+}
+
+.feather-sm {
+    width: 16px;
+    height: 16px;
+}
+
+.feather-md {
+    width: 20px;
+    height: 20px;
+}
+
+.feather-lg {
+    width: 24px;
+    height: 24px;
+}
+
+.feather-xl {
+    width: 32px;
+    height: 32px;
+}
+
+/* Flex Utilities */
+.flex-end {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.flex-start {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+/* Spacing Utilities */
+.spacing-top {
+    margin-top: 20px;
+}
+
+.spacing-bottom {
+    margin-bottom: 20px;
+}
+
+.spacing-vertical {
+    margin: 20px 0;
+}
+
+/* Text Utilities */
+.text-muted {
+    font-size: 0.85em;
+    color: #6b7280;
+    margin-top: 5px;
+}
+
+.text-sm {
+    font-size: 0.85em;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+/* Responsiveness Helpers */
+@media (max-width: 768px) {
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+@media (min-width: 769px) {
+    .show-mobile {
+        display: none !important;
+    }
+}

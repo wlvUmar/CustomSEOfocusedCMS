@@ -5,6 +5,34 @@ require_once __DIR__ . '/../config/init.php';
 define('REPO_PATH', '/home/kuplyuta/appliances');
 define('GITHUB_REPO_NAME', 'seowebsite');
 
+/**
+ * Execute git deploy
+ */
+function runDeploy() {
+    $output = '';
+    
+    try {
+        $commands = [
+            "cd " . escapeshellarg(REPO_PATH),
+            "git fetch origin",
+            "git reset --hard origin/main",
+            "git log -1 --oneline"
+        ];
+        
+        foreach ($commands as $cmd) {
+            $output .= "$ " . $cmd . "\n";
+            $result = shell_exec($cmd . " 2>&1");
+            $output .= $result . "\n";
+        }
+        
+        securityLog("Deploy executed successfully");
+        return $output;
+    } catch (Exception $e) {
+        securityLog("Deploy failed: " . $e->getMessage(), 'ERROR');
+        return "Error: " . $e->getMessage();
+    }
+}
+
 
 $isWebhook = ($_SERVER['REQUEST_METHOD'] === 'POST'
     && isset($_SERVER['HTTP_X_GITHUB_EVENT'])
