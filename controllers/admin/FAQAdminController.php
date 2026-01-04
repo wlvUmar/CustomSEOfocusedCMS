@@ -42,8 +42,8 @@ class FAQAdminController extends Controller {
         $this->requireAuth();
         
         if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
-            http_response_code(403);
-            die('CSRF token validation failed');
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/faqs');
         }
         
         $id = $_POST['id'] ?? null;

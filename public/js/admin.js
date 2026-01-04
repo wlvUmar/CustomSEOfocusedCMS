@@ -12,6 +12,18 @@ function switchTab(tab, event) {
     if (content) content.classList.add('active');
 }
 
+// Auto-dismiss alerts after 5 seconds
+function setupAlertDismissal() {
+    document.querySelectorAll('.alert').forEach(alert => {
+        setTimeout(() => {
+            alert.style.transition = 'opacity 0.3s ease';
+            alert.style.opacity = '0';
+            setTimeout(() => {
+                alert.remove();
+            }, 300);
+        }, 5000);
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -21,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!wrapper || !sidebar || !toggle) return;
 
+    // Setup alert dismissal
+    setupAlertDismissal();
 
     document.querySelectorAll('form[action*="delete"]').forEach(form => {
         form.addEventListener('submit', e => {

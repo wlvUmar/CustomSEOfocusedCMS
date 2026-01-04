@@ -29,7 +29,11 @@ class AuthController extends Controller {
         if ($user) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
-            $this->redirect('/admin/dashboard');
+            
+            // Redirect to intended page or dashboard
+            $redirectUrl = $_SESSION['redirect_after_login'] ?? '/admin/dashboard';
+            unset($_SESSION['redirect_after_login']);
+            $this->redirect($redirectUrl);
         } else {
             $_SESSION['error'] = 'Invalid credentials';
             $this->redirect('/admin/login');

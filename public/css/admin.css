@@ -736,6 +736,180 @@ body {
         font-size: 1.8em;
     }
 }
+
+/* Dashboard Styles */
+.dashboard-header {
+    margin-bottom: 30px;
+}
+
+.dashboard-header h1 {
+    font-size: 32px;
+    color: var(--text-dark);
+    margin-bottom: 5px;
+}
+
+.dashboard-subtitle {
+    color: var(--text-muted);
+    font-size: 16px;
+}
+
+.dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    margin-bottom: 40px;
+}
+
+.dashboard-section {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.section-title {
+    font-size: 18px;
+    color: var(--text-dark);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--primary-light);
+}
+
+.section-title i {
+    color: var(--primary-dark);
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #ffffff 0%, #fafaf9 100%);
+    padding: 25px;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-dark);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.stat-card.accent-success {
+    border-left-color: var(--success);
+    background: linear-gradient(135deg, #d1f4e0 0%, #f0fde8 100%);
+}
+
+.stat-card.accent-info {
+    border-left-color: #3b82f6;
+    background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.card-header h3 {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin: 0;
+}
+
+.card-header i {
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.stat-number {
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin: 10px 0;
+}
+
+.stat-card.accent-success .stat-number {
+    color: var(--success);
+}
+
+.stat-card.accent-info .stat-number {
+    color: #3b82f6;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.quick-links {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-top: 20px;
+    border-top: 1px solid var(--primary-light);
+}
+
+.dashboard-footer {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.dashboard-footer h2 {
+    font-size: 18px;
+    color: var(--text-dark);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Responsive dashboard */
+@media (max-width: 768px) {
+    .dashboard-header h1 {
+        font-size: 24px;
+    }
+    
+    .dashboard-section {
+        padding: 20px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-card {
+        padding: 20px;
+    }
+    
+    .stat-number {
+        font-size: 32px;
+    }
+    
+    .quick-links {
+        flex-direction: column;
+    }
+    
+    .quick-links .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .dashboard-footer .btn-group {
+        flex-direction: column;
+    }
+    
+    .dashboard-footer .btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 /* Mobile devices */
