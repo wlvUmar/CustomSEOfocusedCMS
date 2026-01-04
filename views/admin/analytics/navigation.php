@@ -12,9 +12,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <option value="3" <?= $months == 3 ? 'selected' : '' ?>>Last 3 Months</option>
             <option value="6" <?= $months == 6 ? 'selected' : '' ?>>Last 6 Months</option>
         </select>
-        <a href="<?= BASE_URL ?>/admin/analytics" class="btn btn-secondary">
-            <i data-feather="arrow-left"></i> Back to Analytics
-        </a>
     </div>
 </div>
 
