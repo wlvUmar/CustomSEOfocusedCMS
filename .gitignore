@@ -1,8 +1,7 @@
 # Environment files
-.env
+
 .env.local
 .env.production
-
 # Logs
 /logs/*.log
 /public/logs/*.log
@@ -24,3 +23,4 @@ desktop.ini
 *.tmp
 *.bak
 *.cache
+.env
