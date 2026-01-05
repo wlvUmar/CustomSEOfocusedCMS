@@ -101,22 +101,43 @@ class Analytics {
     }
 
     /**
-     * Get crawl frequency per slug
+     * Get crawl frequency per slug from BOT visits only
      */
     public function getCrawlFrequency($days = 30) {
         $days = (int)$days;
 
         $sql = "SELECT 
                     page_slug,
-                    COUNT(DISTINCT date) as days_with_visits,
+                    bot_type,
+                    COUNT(DISTINCT visit_date) as days_with_visits,
                     SUM(visits) as total_visits,
                     AVG(visits) as avg_visits_per_day,
-                    MAX(date) as last_visit
-                FROM analytics
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL $days DAY)
-                GROUP BY page_slug
+                    MAX(visit_date) as last_visit,
+                    MAX(last_visit) as last_visit_time
+                FROM analytics_bot_visits
+                WHERE visit_date >= DATE_SUB(CURDATE(), INTERVAL $days DAY)
+                GROUP BY page_slug, bot_type
                 ORDER BY days_with_visits DESC, total_visits DESC";
 
+        return $this->db->fetchAll($sql);
+    }
+    
+    /**
+     * Get bot visit summary
+     */
+    public function getBotVisitSummary($days = 30) {
+        $days = (int)$days;
+        
+        $sql = "SELECT 
+                    bot_type,
+                    COUNT(DISTINCT page_slug) as pages_visited,
+                    SUM(visits) as total_visits,
+                    COUNT(DISTINCT visit_date) as active_days
+                FROM analytics_bot_visits
+                WHERE visit_date >= DATE_SUB(CURDATE(), INTERVAL $days DAY)
+                GROUP BY bot_type
+                ORDER BY total_visits DESC";
+        
         return $this->db->fetchAll($sql);
     }
 

@@ -5,7 +5,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
 <div class="page-header">
-    <h1>Crawl Frequency Analysis</h1>
+    <h1><i data-feather="activity"></i> Search Engine Crawl Analysis</h1>
     <div class="header-actions">
         <select onchange="window.location='?days='+this.value" class="btn">
             <option value="7" <?= $days == 7 ? 'selected' : '' ?>>Last 7 Days</option>
@@ -17,9 +17,26 @@ require BASE_PATH . '/views/admin/layout/header.php';
 </div>
 
 <div class="info-banner">
-    <strong><i data-feather="zap"></i> Understanding Crawl Frequency:</strong> This shows how often search engines visit your pages. 
-    Higher frequency means Google considers your content important. Pages with low frequency may need more internal links or fresher content.
+    <strong><i data-feather="info"></i> About This Report:</strong> This shows search engine bot/crawler visits only. 
+    Regular user visits are tracked separately and NOT included here. Higher bot frequency means search engines 
+    consider your content important and crawl it more frequently.
 </div>
+
+<!-- Bot Summary -->
+<?php if (!empty($bot_summary)): ?>
+<div class="crawl-summary-cards" style="margin-bottom: 30px;">
+    <?php foreach ($bot_summary as $bot): ?>
+    <div class="summary-card bot-<?= strtolower($bot['bot_type']) ?>">
+        <div class="card-icon"><i data-feather="activity"></i></div>
+        <div class="card-content">
+            <div class="card-number"><?= number_format($bot['total_visits']) ?></div>
+            <div class="card-label"><?= ucfirst(e($bot['bot_type'])) ?></div>
+            <div class="card-desc"><?= $bot['pages_visited'] ?> pages • <?= $bot['active_days'] ?> active days</div>
+        </div>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
 
 <?php if (empty($crawl_frequency)): ?>
     <div class="empty-state">
@@ -90,6 +107,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <thead>
             <tr>
                 <th>Page</th>
+                <th>Bot Type</th>
                 <th>Days with Visits</th>
                 <th>Total Visits</th>
                 <th>Avg/Day</th>
@@ -122,6 +140,11 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <tr>
                 <td>
                     <strong><?= e($page['page_slug']) ?></strong>
+                </td>
+                <td>
+                    <span class="badge badge-<?= strtolower($page['bot_type']) ?>">
+                        <?= ucfirst(e($page['bot_type'])) ?>
+                    </span>
                 </td>
                 <td><?= $page['days_with_visits'] ?> / <?= $days ?></td>
                 <td><?= number_format($page['total_visits']) ?></td>

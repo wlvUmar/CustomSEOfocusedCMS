@@ -10,6 +10,25 @@ SET time_zone = "+00:00";
 CREATE DATABASE IF NOT EXISTS `kuplyuta_db` DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
 USE `kuplyuta_db`;
 
+CREATE TABLE IF NOT EXISTS `analytics_bot_visits` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `page_slug` VARCHAR(255) NOT NULL,
+  `language` VARCHAR(5) NOT NULL,
+  `bot_type` VARCHAR(50) NOT NULL DEFAULT 'unknown',
+  `user_agent` VARCHAR(255) DEFAULT NULL,
+  `visit_date` DATE NOT NULL,
+  `visits` INT(11) UNSIGNED NOT NULL DEFAULT 1,
+  `last_visit` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_bot_visit` (`page_slug`, `language`, `bot_type`, `visit_date`),
+  KEY `idx_page_date` (`page_slug`, `visit_date`),
+  KEY `idx_bot_type` (`bot_type`),
+  KEY `idx_visit_date` (`visit_date`),
+  KEY `idx_bot_crawl_frequency` (`page_slug`, `visit_date`, `bot_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 CREATE TABLE `analytics` (
   `id` int(11) NOT NULL,
   `page_slug` varchar(100) DEFAULT NULL,

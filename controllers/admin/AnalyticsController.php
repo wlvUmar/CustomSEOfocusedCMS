@@ -68,6 +68,7 @@ class AnalyticsController extends Controller {
         
         $data = [
             'crawl_frequency' => $this->analyticsModel->getCrawlFrequency($days),
+            'bot_summary' => $this->analyticsModel->getBotVisitSummary($days),
             'days' => $days
         ];
         

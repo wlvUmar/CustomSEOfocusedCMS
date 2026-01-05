@@ -15,6 +15,46 @@ function setLanguage($lang) {
     }
 }
 
+/**
+ * Check if the current request is from a search engine bot/crawler
+ */
+function isBot() {
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    
+    // Common bot identifiers
+    $bots = [
+        'googlebot',
+        'bingbot',
+        'slurp',           // Yahoo
+        'duckduckbot',
+        'baiduspider',
+        'yandexbot',
+        'sogou',
+        'exabot',
+        'facebot',
+        'ia_archiver',
+        'alexa',
+        'msnbot',
+        'teoma',
+        'seekbot',
+        'spider',
+        'crawler',
+        'bot',
+        'archive',
+        'scraper'
+    ];
+    
+    $userAgentLower = strtolower($userAgent);
+    
+    foreach ($bots as $bot) {
+        if (strpos($userAgentLower, $bot) !== false) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 function showError(int $code = 500) {
     // Check if $router exists in this scope
     global $router;
@@ -148,6 +188,12 @@ function replacePlaceholders($text, $page, $seo) {
 }
 
 function trackVisit($slug, $language) {
+    // Skip tracking bot visits in regular analytics
+    if (isBot()) {
+        trackBotVisit($slug, $language);
+        return;
+    }
+    
     try {
         $db = Database::getInstance();
         $date = date('Y-m-d');
@@ -162,6 +208,38 @@ function trackVisit($slug, $language) {
         updateMonthlySummary($slug, $language);
     } catch (Exception $e) {
         error_log("Analytics error: " . $e->getMessage());
+    }
+}
+
+/**
+ * Track bot/crawler visits separately for crawl analysis
+ */
+function trackBotVisit($slug, $language) {
+    try {
+        $db = Database::getInstance();
+        $date = date('Y-m-d');
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+        
+        // Determine bot type
+        $botType = 'unknown';
+        $userAgentLower = strtolower($userAgent);
+        
+        if (strpos($userAgentLower, 'googlebot') !== false) $botType = 'googlebot';
+        elseif (strpos($userAgentLower, 'bingbot') !== false) $botType = 'bingbot';
+        elseif (strpos($userAgentLower, 'yandexbot') !== false) $botType = 'yandexbot';
+        elseif (strpos($userAgentLower, 'baiduspider') !== false) $botType = 'baiduspider';
+        elseif (strpos($userAgentLower, 'slurp') !== false) $botType = 'yahoo';
+        elseif (strpos($userAgentLower, 'duckduckbot') !== false) $botType = 'duckduckgo';
+        else $botType = 'other';
+        
+        $sql = "INSERT INTO analytics_bot_visits 
+                (page_slug, language, bot_type, user_agent, visit_date, visits) 
+                VALUES (?, ?, ?, ?, ?, 1) 
+                ON DUPLICATE KEY UPDATE visits = visits + 1, last_visit = NOW()";
+        
+        $db->query($sql, [$slug, $language, $botType, substr($userAgent, 0, 255), $date]);
+    } catch (Exception $e) {
+        error_log("Bot tracking error: " . $e->getMessage());
     }
 }
 
