@@ -1,3 +1,7 @@
+@import url('admin/_modals.css');
+@import url('admin/_badges.css');
+@import url('admin/_utilities.css');
+
 * {
     margin: 0;
     padding: 0;
