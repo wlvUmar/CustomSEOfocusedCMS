@@ -1,7 +1,6 @@
 ---
 deployment:
   tasks:
-    # Set deployment path
     - export DEPLOYPATH=/home/kuplyuta/appliances/
     - /bin/cp -R public $DEPLOYPATH
     - /bin/cp -R config $DEPLOYPATH
