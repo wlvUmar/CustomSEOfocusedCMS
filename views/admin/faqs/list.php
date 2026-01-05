@@ -59,30 +59,31 @@ require BASE_PATH . '/views/admin/layout/header.php';
 </table>
 
 <!-- Upload Modal -->
-<div id="upload-modal" class="modal" style="display: none;">
+<div id="upload-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
             <h2><i data-feather="upload"></i> Bulk Upload FAQs</h2>
             <button onclick="closeUploadModal()" class="close-btn"><i data-feather="x"></i></button>
         </div>
         
-        <form method="POST" action="<?= BASE_URL ?>/admin/faqs/bulk-upload" enctype="multipart/form-data">
-            <div class="help-text" style="margin-bottom: 20px;">
-                <strong>Supported formats:</strong> CSV, JSON<br>
-                <strong>Required fields:</strong> page_slug, question_ru, answer_ru<br>
-                <strong>Optional fields:</strong> question_uz, answer_uz, sort_order, is_active
-            </div>
-            
-            <div class="form-group">
-                <label>Select File (CSV or JSON):</label>
-                <input type="file" name="file" accept=".csv,.json" required>
-            </div>
-            
-            <details style="margin: 20px 0;">
-                <summary style="cursor: pointer; font-weight: 600; margin-bottom: 10px;">
-                    JSON Format Example
-                </summary>
-                <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 12px;">[
+        <div class="modal-body">
+            <form method="POST" action="<?= BASE_URL ?>/admin/faqs/bulk-upload" enctype="multipart/form-data">
+                <div class="help-text" style="margin-bottom: 20px; padding: 12px; background: #eff6ff; border-radius: 6px; border-left: 3px solid #3b82f6;">
+                    <strong>Supported formats:</strong> CSV, JSON<br>
+                    <strong>Required fields:</strong> page_slug, question_ru, answer_ru<br>
+                    <strong>Optional fields:</strong> question_uz, answer_uz, sort_order, is_active
+                </div>
+                
+                <div class="form-group">
+                    <label>Select File (CSV or JSON):</label>
+                    <input type="file" name="file" accept=".csv,.json" required>
+                </div>
+                
+                <details style="margin: 20px 0;">
+                    <summary style="cursor: pointer; font-weight: 600; margin-bottom: 10px;">
+                        JSON Format Example
+                    </summary>
+                    <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 12px;">[
   {
     "page_slug": "home",
     "question_ru": "Какой вопрос?",
@@ -93,29 +94,39 @@ require BASE_PATH . '/views/admin/layout/header.php';
     "is_active": 1
   }
 ]</pre>
-            </details>
-            
-            <div class="modal-actions">
-                <button type="submit" class="btn btn-primary">
-                    <i data-feather="upload"></i> Upload
-                </button>
-                <button type="button" onclick="closeUploadModal()" class="btn btn-secondary">
-                    <i data-feather="x-circle"></i> Cancel
-                </button>
-            </div>
-        </form>
+                </details>
+                
+                <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-feather="upload"></i> Upload
+                    </button>
+                    <button type="button" onclick="closeUploadModal()" class="btn btn-secondary">
+                        <i data-feather="x-circle"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 <script>
 function showUploadModal() {
-    document.getElementById('upload-modal').style.display = 'flex';
+    document.getElementById('upload-modal').classList.add('active');
     feather.replace();
 }
 
 function closeUploadModal() {
-    document.getElementById('upload-modal').style.display = 'none';
+    document.getElementById('upload-modal').classList.remove('active');
 }
+
+// Close modal on outside click
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('upload-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeUploadModal();
+        }
+    });
+});
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
