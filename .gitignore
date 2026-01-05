@@ -1,12 +1,7 @@
-# Environment files
 
-.env.local
-.env.production
-# Logs
 /logs/*.log
 /public/logs/*.log
 
-# Uploads (optional - depends on strategy)
 /public/uploads/*
 !/public/uploads/.gitkeep
 /database/schema.sql
@@ -23,4 +18,4 @@ desktop.ini
 *.tmp
 *.bak
 *.cache
-.env
+*.env
