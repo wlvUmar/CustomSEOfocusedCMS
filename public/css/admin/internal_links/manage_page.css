@@ -171,13 +171,88 @@
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+/* Mobile responsive */
 @media (max-width: 1024px) {
     .two-column-layout {
         grid-template-columns: 1fr;
+        gap: 30px;
     }
     
     .links-stats-bar {
         flex-direction: column;
         gap: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .links-stats-bar {
+        padding: 16px;
+        gap: 12px;
+    }
+    
+    .stat-label {
+        font-size: 13px;
+    }
+    
+    .stat-value {
+        font-size: 16px;
+    }
+    
+    .column h2 {
+        font-size: 16px;
+    }
+    
+    .link-item {
+        padding: 10px 12px;
+        gap: 10px;
+    }
+    
+    .link-info strong {
+        font-size: 13px;
+    }
+    
+    .link-info small {
+        font-size: 11px;
+    }
+    
+    .drag-handle {
+        display: none; /* Hide drag handle on mobile */
+    }
+    
+    .empty-state {
+        padding: 40px 16px;
+    }
+    
+    .empty-state i {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .empty-state p {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .links-stats-bar {
+        padding: 12px;
+    }
+    
+    .two-column-layout {
+        gap: 24px;
+    }
+    
+    .link-item {
+        flex-wrap: wrap;
+    }
+    
+    .link-item form {
+        width: 100%;
+        margin-top: 8px;
+    }
+    
+    .link-item .btn {
+        width: 100%;
+        min-height: 44px;
     }
 }
