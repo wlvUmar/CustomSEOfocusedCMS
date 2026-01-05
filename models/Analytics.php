@@ -83,11 +83,13 @@ class Analytics {
         $sql = "SELECT 
                     ar.page_slug,
                     ar.rotation_month,
+                    ar.year,
                     ar.times_shown,
                     ar.unique_days,
                     am.total_visits,
                     am.total_clicks,
-                    p.title_ru
+                    p.title_ru,
+                    p.id as page_id
                 FROM analytics_rotations ar
                 LEFT JOIN analytics_monthly am ON 
                     ar.page_slug = am.page_slug AND 

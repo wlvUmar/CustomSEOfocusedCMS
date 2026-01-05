@@ -62,7 +62,10 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <div class="rotation-timeline">
             <?php foreach ($data['rotations'] as $rotation): 
                 $monthName = date('F', mktime(0, 0, 0, $rotation['rotation_month'], 1));
-                $isCurrentMonth = $rotation['rotation_month'] == date('n');
+                $year = $rotation['year'];
+                $currentMonth = date('n');
+                $currentYear = date('Y');
+                $isCurrentMonth = ($rotation['rotation_month'] == $currentMonth && $year == $currentYear);
                 $total_visits = $rotation['total_visits'] ?? 0;
                 $total_clicks = $rotation['total_clicks'] ?? 0;
                 $ctr = $total_visits > 0 ? round(($total_clicks / $total_visits) * 100, 2) : 0;
@@ -70,9 +73,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
             
             <div class="rotation-item <?= $isCurrentMonth ? 'current' : '' ?>">
                 <div class="rotation-month">
-                    <?= $monthName ?>
+                    <?= $monthName ?> <?= $year ?>
                     <?php if ($isCurrentMonth): ?>
-                    <span class="current-badge"></i> now</span>
+                    <span class="current-badge">now</span>
                     <?php endif; ?>
                 </div>
                 
