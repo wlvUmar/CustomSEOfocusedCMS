@@ -977,12 +977,16 @@ main a:hover img {
 
 .link-widget-content {
     flex: 1;
+    min-width: 0;
 }
 
 .link-widget-content h3 {
     margin: 0;
     font-size: 1.05em;
     font-weight: 600;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ---------- Arrow ---------- */
@@ -1000,7 +1004,102 @@ main a:hover img {
 /* ---------- Responsive ---------- */
 
 @media (max-width: 768px) {
+    .link-widget-section {
+        margin: 40px 0 30px;
+        padding-top: 30px;
+    }
+    
+    .link-widget-section h2 {
+        font-size: 1.3em;
+        margin-bottom: 20px;
+    }
+    
     .link-widget-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .link-widget-card {
+        padding: 14px 16px;
+        gap: 12px;
+    }
+    
+    .link-widget-icon {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .link-widget-icon svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .link-widget-content h3 {
+        font-size: 0.9em;
+        font-weight: 600;
+    }
+    
+    .link-widget-arrow svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .link-widget-section {
+        margin: 32px 0 24px;
+        padding-top: 24px;
+    }
+    
+    .link-widget-section h2 {
+        font-size: 1.15em;
+        margin-bottom: 16px;
+    }
+    
+    .link-widget-grid {
+        gap: 10px;
+    }
+    
+    .link-widget-card {
+        padding: 12px 14px;
+        gap: 10px;
+        border-radius: 6px;
+    }
+    
+    .link-widget-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+    }
+    
+    .link-widget-icon svg {
+        width: 14px;
+        height: 14px;
+    }
+    
+    .link-widget-content h3 {
+        font-size: 0.85em;
+        font-weight: 600;
+    }
+    
+    .link-widget-arrow svg {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+@media (max-width: 360px) {
+    .link-widget-card {
+        padding: 10px 12px;
+        gap: 8px;
+    }
+    
+    .link-widget-icon {
+        width: 26px;
+        height: 26px;
+    }
+    
+    .link-widget-content h3 {
+        font-size: 0.8em;
     }
 }
