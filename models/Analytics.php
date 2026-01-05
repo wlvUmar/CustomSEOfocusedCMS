@@ -84,20 +84,22 @@ class Analytics {
                     ar.page_slug,
                     ar.rotation_month,
                     ar.year,
-                    ar.times_shown,
-                    ar.unique_days,
-                    am.total_visits,
-                    am.total_clicks,
+                    SUM(ar.times_shown) as times_shown,
+                    MAX(ar.unique_days) as unique_days,
+                    SUM(am.total_visits) as total_visits,
+                    SUM(am.total_clicks) as total_clicks,
                     p.title_ru,
                     p.id as page_id
                 FROM analytics_rotations ar
                 LEFT JOIN analytics_monthly am ON 
                     ar.page_slug = am.page_slug AND 
                     ar.year = am.year AND 
-                    ar.rotation_month = am.month
+                    ar.rotation_month = am.month AND
+                    ar.language = am.language
                 LEFT JOIN pages p ON ar.page_slug = p.slug
                 WHERE DATE(CONCAT(ar.year, '-', ar.rotation_month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
-                ORDER BY ar.year DESC, ar.rotation_month DESC, ar.times_shown DESC";
+                GROUP BY ar.page_slug, ar.year, ar.rotation_month, p.title_ru, p.id
+                ORDER BY ar.year DESC, ar.rotation_month DESC, SUM(ar.times_shown) DESC";
 
         return $this->db->fetchAll($sql);
     }
