@@ -28,10 +28,8 @@ class SEO {
                 opening_hours = ?, price_range = ?,
                 social_facebook = ?, social_instagram = ?,
                 social_twitter = ?, social_youtube = ?,
-                service_type = ?, service_name_ru = ?, service_name_uz = ?,
-                service_desc_ru = ?, service_desc_uz = ?,
-                area_served = ?, service_price = ?,
-                organization_schema = ?, website_schema = ?, service_schema = ?
+                service_type = ?, area_served = ?,
+                organization_schema = ?, website_schema = ?
                 WHERE id = 1";
         
         return $this->db->query($sql, [
@@ -61,16 +59,10 @@ class SEO {
             $data['social_instagram'] ?? '',
             $data['social_twitter'] ?? '',
             $data['social_youtube'] ?? '',
-            $data['service_type'] ?? '',
-            $data['service_name_ru'] ?? '',
-            $data['service_name_uz'] ?? '',
-            $data['service_desc_ru'] ?? '',
-            $data['service_desc_uz'] ?? '',
+            $data['service_type'] ?? 'Service',
             $data['area_served'] ?? '',
-            $data['service_price'] ?? '',
             $data['organization_schema'] ?? '',
-            $data['website_schema'] ?? '',
-            $data['service_schema'] ?? ''
+            $data['website_schema'] ?? ''
         ]);
     }
 }

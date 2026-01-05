@@ -15,7 +15,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <button type="button" class="tab-btn" onclick="switchTab('meta')">Default Meta</button>
         <button type="button" class="tab-btn" onclick="switchTab('organization')">Organization Schema</button>
         <button type="button" class="tab-btn" onclick="switchTab('website')">Website Schema</button>
-        <button type="button" class="tab-btn" onclick="switchTab('service')">Service Schema</button>
     </div>
     
     <!-- GENERAL TAB -->
@@ -92,6 +91,27 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <div class="form-group">
                     <label>Working Hours (UZ)</label>
                     <input type="text" name="working_hours_uz" value="<?= e($settings['working_hours_uz'] ?? '') ?>">
+                </div>
+            </div>
+            
+            <h3 style="margin-top: 30px;">Global Service Settings (for auto-generated schemas)</h3>
+            <p class="help-text">
+                These settings are used to automatically generate Service schemas on each page using the page title and description.
+            </p>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Default Service Type</label>
+                    <input type="text" name="service_type" value="<?= e($settings['service_type'] ?? 'Service') ?>" 
+                           placeholder="e.g., Repair, Recycling, Buyback">
+                    <small style="color: #666;">Used for all auto-generated Service schemas</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Area Served</label>
+                    <input type="text" name="area_served" value="<?= e($settings['area_served'] ?? '') ?>" 
+                           placeholder="Tashkent, Uzbekistan">
+                    <small style="color: #666;">Geographic area your services cover</small>
                 </div>
             </div>
         </div>
@@ -236,62 +256,6 @@ Sa 10:00-15:00"><?= e($settings['opening_hours'] ?? '') ?></textarea>
   "url": "<?= BASE_URL ?>",
   "description": "<?= e($settings['meta_description_ru'] ?? '') ?>"
 }</pre>
-            </div>
-        </div>
-    </div>
-    
-    <!-- SERVICE SCHEMA TAB -->
-    <div id="tab-service" class="tab-content">
-        <div class="form-section">
-            <h3>Service Schema</h3>
-            <p class="help-text">
-                Define your main service for search engines. This helps when users search for specific services.
-            </p>
-            
-            <div class="form-group">
-                <label>Service Type</label>
-                <input type="text" name="service_type" value="<?= e($settings['service_type'] ?? '') ?>" 
-                       placeholder="e.g., Electronics Recycling, Appliance Buyback">
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Service Name (RU)</label>
-                    <input type="text" name="service_name_ru" value="<?= e($settings['service_name_ru'] ?? '') ?>" 
-                           placeholder="Выкуп бытовой техники">
-                </div>
-                
-                <div class="form-group">
-                    <label>Service Name (UZ)</label>
-                    <input type="text" name="service_name_uz" value="<?= e($settings['service_name_uz'] ?? '') ?>" 
-                           placeholder="Maishiy texnikani sotib olish">
-                </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Service Description (RU)</label>
-                    <textarea name="service_desc_ru" rows="3"><?= e($settings['service_desc_ru'] ?? '') ?></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label>Service Description (UZ)</label>
-                    <textarea name="service_desc_uz" rows="3"><?= e($settings['service_desc_uz'] ?? '') ?></textarea>
-                </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Area Served</label>
-                    <input type="text" name="area_served" value="<?= e($settings['area_served'] ?? '') ?>" 
-                           placeholder="Tashkent, Uzbekistan">
-                </div>
-                
-                <div class="form-group">
-                    <label>Price Range / Starting Price</label>
-                    <input type="text" name="service_price" value="<?= e($settings['service_price'] ?? '') ?>" 
-                           placeholder="Free consultation">
-                </div>
             </div>
         </div>
     </div>

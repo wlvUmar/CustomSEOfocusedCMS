@@ -38,9 +38,7 @@ if (!empty($page["title_$lang"])) {
         'provider' => [
             '@id' => BASE_URL . '#organization'
         ],
-        'area_served' => $seo['area_served'] ?? '',
-        'price' => $seo['service_price'] ?? '',
-        'currency' => 'UZS'
+        'area_served' => $seo['area_served'] ?? ''
     ]);
 }
 // Check if user is logged in as admin

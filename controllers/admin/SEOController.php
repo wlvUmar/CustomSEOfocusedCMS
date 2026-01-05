@@ -57,23 +57,16 @@ class SEOController extends Controller {
             'social_twitter' => trim($_POST['social_twitter'] ?? ''),
             'social_youtube' => trim($_POST['social_youtube'] ?? ''),
             
-            // Service
-            'service_type' => trim($_POST['service_type'] ?? ''),
-            'service_name_ru' => trim($_POST['service_name_ru'] ?? ''),
-            'service_name_uz' => trim($_POST['service_name_uz'] ?? ''),
-            'service_desc_ru' => trim($_POST['service_desc_ru'] ?? ''),
-            'service_desc_uz' => trim($_POST['service_desc_uz'] ?? ''),
-            'area_served' => trim($_POST['area_served'] ?? ''),
-            'service_price' => trim($_POST['service_price'] ?? '')
+            // Service (global settings for auto-generation)
+            'service_type' => trim($_POST['service_type'] ?? 'Service'),
+            'area_served' => trim($_POST['area_served'] ?? '')
         ];
         
         // Generate JSON-LD schemas
         $data['organization_schema'] = $this->generateOrganizationSchema($data);
         $data['website_schema'] = $this->generateWebsiteSchema($data);
         
-        if (!empty($data['service_type'])) {
-            $data['service_schema'] = $this->generateServiceSchema($data);
-        }
+        // No longer generating static service_schema - it's now dynamic per page
         
         $this->seoModel->updateSettings($data);
         $_SESSION['success'] = 'SEO settings updated successfully';
@@ -115,18 +108,6 @@ class SEOController extends Controller {
             'name' => $data['site_name_ru'],
             'url' => BASE_URL,
             'description' => $data['meta_description_ru']
-        ]);
-    }
-    
-    private function generateServiceSchema($data) {
-        return JsonLdGenerator::generateService([
-            'service_type' => $data['service_type'],
-            'name' => $data['service_name_ru'],
-            'description' => $data['service_desc_ru'],
-            'provider' => $data['site_name_ru'],
-            'area_served' => $data['area_served'],
-            'price' => $data['service_price'],
-            'currency' => 'UZS'
         ]);
     }
 }
