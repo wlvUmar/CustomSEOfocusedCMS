@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS `analytics_bot_visits` (
   KEY `idx_visit_date` (`visit_date`),
   KEY `idx_bot_crawl_frequency` (`page_slug`, `visit_date`, `bot_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
+ 
 
 CREATE TABLE `analytics` (
   `id` int(11) NOT NULL,
