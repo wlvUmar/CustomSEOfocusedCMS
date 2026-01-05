@@ -8,4 +8,4 @@ deployment:
     - /bin/cp -R includes $DEPLOYPATH
     - /bin/cp index.php $DEPLOYPATH
     - /bin/chmod -R 755 $DEPLOYPATH/public
-```
+``` 
