@@ -63,7 +63,7 @@ class JsonLdGenerator {
     }
     
     /**
-     * Generate Service schema
+     * Generate Service schema with provider reference
      */
     public static function generateService($data) {
         $schema = [
@@ -74,12 +74,16 @@ class JsonLdGenerator {
             "description" => $data['description']
         ];
         
-        // Provider
+        // Provider - can be either a reference or a full object
         if (!empty($data['provider'])) {
-            $schema['provider'] = [
-                "@type" => "Organization",
-                "name" => $data['provider']
-            ];
+            if (is_array($data['provider'])) {
+                $schema['provider'] = $data['provider'];
+            } else {
+                $schema['provider'] = [
+                    "@type" => "Organization",
+                    "name" => $data['provider']
+                ];
+            }
         }
         
         // Area served

@@ -22,16 +22,26 @@ $metaDescription = renderTemplate($metaDescription, $templateData);
 $ogTitle = renderTemplate($ogTitle, $templateData);
 $ogDescription = renderTemplate($ogDescription, $templateData);
 
-// Process JSON-LD
-$jsonld = $page["jsonld_$lang"] ?? '';
-if ($jsonld) {
-    $jsonld = renderTemplate($jsonld, $templateData);
-}
-
 // Generate FAQ Schema if FAQs exist
 $faqSchema = '';
 if (!empty($faqs)) {
     $faqSchema = generateFAQSchema($faqs, $lang);
+}
+
+// Generate dynamic Service schema for this page
+$pageServiceSchema = '';
+if (!empty($page["title_$lang"])) {
+    $pageServiceSchema = JsonLdGenerator::generateService([
+        'service_type' => $seo['service_type'] ?? 'Service',
+        'name' => $page["title_$lang"],
+        'description' => $page["meta_description_$lang"] ?? '',
+        'provider' => [
+            '@id' => BASE_URL . '#organization'
+        ],
+        'area_served' => $seo['area_served'] ?? '',
+        'price' => $seo['service_price'] ?? '',
+        'currency' => 'UZS'
+    ]);
 }
 // Check if user is logged in as admin
 $isAdmin = isset($_SESSION['user_id']);
@@ -81,47 +91,49 @@ $isAdmin = isset($_SESSION['user_id']);
     
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.css">
     
-    <?php if ($jsonld): ?>
-        <script type="application/ld+json">
-            <?= $jsonld ?>
-        </script>
-    <?php endif; ?>
-    
-    <?php if ($faqSchema): ?>
-        <script type="application/ld+json">
-            <?= $faqSchema ?>
-        </script>
-    <?php endif; ?>
     <?php
-        if (!empty($seo['organization_schema'])) {
-            echo '<script type="application/ld+json">' . "\n";
-            echo $seo['organization_schema'] . "\n";
-            echo '</script>' . "\n";
-        }
+    // Global Organization/LocalBusiness Schema (appears on all pages)
+    if (!empty($seo['organization_schema'])) {
+        $orgSchema = json_decode($seo['organization_schema'], true);
+        $orgSchema['@id'] = BASE_URL . '#organization';
+        echo '<script type="application/ld+json">' . "\n";
+        echo json_encode($orgSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n";
+        echo '</script>' . "\n";
+    }
 
-        if (!empty($seo['website_schema'])) {
-            echo '<script type="application/ld+json">' . "\n";
-            echo $seo['website_schema'] . "\n";
-            echo '</script>' . "\n";
-        }
+    // Website Schema (homepage only)
+    if ($page['slug'] === 'home' && !empty($seo['website_schema'])) {
+        echo '<script type="application/ld+json">' . "\n";
+        echo $seo['website_schema'] . "\n";
+        echo '</script>' . "\n";
+    }
 
-        if (!empty($seo['service_schema'])) {
-            echo '<script type="application/ld+json">' . "\n";
-            echo $seo['service_schema'] . "\n";
-            echo '</script>' . "\n";
-        }
+    // Dynamic Page-Specific Service Schema (using page title)
+    if (!empty($pageServiceSchema)) {
+        echo '<script type="application/ld+json">' . "\n";
+        echo $pageServiceSchema . "\n";
+        echo '</script>' . "\n";
+    }
 
-        if ($page['slug'] !== 'home') {
-            $breadcrumbs = [
-                ['name' => $seo["site_name_$lang"], 'url' => '/'],
-                ['name' => $page["title_$lang"], 'url' => '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '')]
-            ];
-            
-            echo '<script type="application/ld+json">' . "\n";
-            echo JsonLdGenerator::generateBreadcrumbs($breadcrumbs, BASE_URL) . "\n";
-            echo '</script>' . "\n";
-        }
-        ?>
+    // FAQ Schema (if FAQs exist for this page)
+    if ($faqSchema) {
+        echo '<script type="application/ld+json">' . "\n";
+        echo $faqSchema . "\n";
+        echo '</script>' . "\n";
+    }
+
+    // Breadcrumb Schema (non-homepage pages)
+    if ($page['slug'] !== 'home') {
+        $breadcrumbs = [
+            ['name' => $seo["site_name_$lang"], 'url' => '/'],
+            ['name' => $page["title_$lang"], 'url' => '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '')]
+        ];
+        
+        echo '<script type="application/ld+json">' . "\n";
+        echo JsonLdGenerator::generateBreadcrumbs($breadcrumbs, BASE_URL) . "\n";
+        echo '</script>' . "\n";
+    }
+    ?>
     
     <?php if ($isAdmin): ?>
     <!-- Admin Toolbar Styles -->
