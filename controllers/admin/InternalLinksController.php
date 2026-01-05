@@ -6,13 +6,11 @@ require_once BASE_PATH . '/models/Page.php';
 class InternalLinksController extends Controller {
     private $widgetModel;
     private $pageModel;
-    private $db;
 
     public function __construct() {
         parent::__construct();
         $this->widgetModel = new LinkWidget();
         $this->pageModel = new Page();
-        $this->db = Database::getInstance();
     }
 
     /**
