@@ -3,7 +3,7 @@
 /public/logs/*.log
 
 /public/uploads/*
-!/public/uploads/.gitkeep
+/public/uploads/.gitkeep
 /database/schema.sql
 .DS_Store
 Thumbs.db
