@@ -276,70 +276,7 @@ define('IS_PRODUCTION', true);
 
 5. Verify robots.txt allows crawling
 
-### Git Deployment
 
-The project includes a webhook-ready deploy script at `/deploy.php` for automated Git deployments.
-
-## 🐛 Troubleshooting
-
-### Pages Return 404
-- Check Apache mod_rewrite is enabled
-- Verify `.htaccess` is being read
-- Check BASE_URL in config
-
-### Images Not Displaying
-- Verify uploads folder permissions (755)
-- Check UPLOAD_PATH and UPLOAD_URL in config
-- Ensure file upload size limits are sufficient
-
-### Analytics Not Tracking
-- Check JavaScript is enabled
-- Verify tracking endpoints are accessible
-- Check browser console for errors
-
-### Content Not Rotating
-- Ensure "Enable Rotation" is checked on page
-- Verify rotation content exists for current month
-- Check rotation is marked as "Active"
-
-## 📚 Template Reference
-
-### Available Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `{{page.title}}` | Page title | "Home Page" |
-| `{{page.slug}}` | Page slug | "home" |
-| `{{global.phone}}` | Contact phone | "+998 99 123 4567" |
-| `{{global.email}}` | Contact email | "info@example.com" |
-| `{{date.year}}` | Current year | "2026" |
-| `{{date.month}}` | Month number | "1" |
-| `{{date.month_name}}` | Month name | "January" |
-| `{{rotation.active}}` | Is rotation active | true/false |
-| `{{rotation.month}}` | Active month | "3" |
-
-### Control Structures
-
-**Loops:**
-```html
-{% for faq in faqs %}
-  <h3>{{faq.question}}</h3>
-  <p>{{faq.answer}}</p>
-{% endfor %}
-```
-
-**Conditionals:**
-```html
-{% if rotation.active %}
-  <div class="seasonal">
-    This is {{date.month_name}} content!
-  </div>
-{% else %}
-  <div class="standard">
-    Standard content
-  </div>
-{% endif %}
-```
 
 ## 🤝 Contributing
 

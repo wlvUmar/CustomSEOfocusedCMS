@@ -70,7 +70,15 @@ $router->group('/admin/faqs', function($router) {
     $router->get('/download-template', function() { requireFAQAdmin('downloadTemplate'); });
 });
 
-// Admin Link Widget
+// Admin Internal Links Management
+$router->group('/admin/internal-links', function($router) {
+    $router->get('/', function() { requireInternalLinks('index'); });
+    $router->get('/manage/{pageId}', function($pageId) { requireInternalLinks('managePage', $pageId); });
+    $router->post('/auto-connect', function() { requireInternalLinks('autoConnect'); });
+    $router->post('/bulk-action', function() { requireInternalLinks('bulkAction'); });
+});
+
+// Admin Link Widget (legacy - kept for backward compatibility)
 $router->group('/admin/link-widget', function($router) {
     $router->get('/manage/{pageId}', function($pageId) {
         require_once BASE_PATH . '/controllers/admin/LinkWidgetController.php';
@@ -213,6 +221,12 @@ function requireFAQAdmin($method, $id = null) {
     require_once BASE_PATH . '/controllers/admin/FAQAdminController.php';
     $c = new FAQAdminController();
     $id !== null ? $c->$method($id) : $c->$method();
+}
+
+function requireInternalLinks($method, $arg = null) {
+    require_once BASE_PATH . '/controllers/admin/InternalLinksController.php';
+    $c = new InternalLinksController();
+    $arg !== null ? $c->$method($arg) : $c->$method();
 }
 
 function requireMediaAdmin($method) {

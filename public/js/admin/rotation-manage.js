@@ -15,7 +15,9 @@ function openPreview() {
     const month = document.getElementById('preview-month').value;
     const lang = document.getElementById('preview-lang').value;
     const pageId = document.querySelector('[name="page_id"]').value;
-    const baseUrl = document.querySelector('input[name="page_id"]').closest('form').action.split('/admin/')[0];
+    
+    // Get base URL from current location
+    const baseUrl = window.location.origin + window.location.pathname.split('/admin/')[0];
     
     const url = baseUrl + '/admin/preview/' + pageId + '?month=' + month + '&lang=' + lang;
     window.open(url, '_blank', 'width=1200,height=800');

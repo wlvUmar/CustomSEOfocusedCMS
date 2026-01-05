@@ -40,6 +40,9 @@
                     <a href="<?= BASE_URL ?>/admin/rotations/overview" class="<?= strpos($_SERVER['REQUEST_URI'], '/rotations') !== false ? 'active' : '' ?>">
                         <i data-feather="repeat"></i> Content Rotation
                     </a>
+                    <a href="<?= BASE_URL ?>/admin/internal-links" class="<?= strpos($_SERVER['REQUEST_URI'], '/internal-links') !== false ? 'active' : '' ?>">
+                        <i data-feather="link"></i> Internal Links
+                    </a>
                     <a href="<?= BASE_URL ?>/admin/faqs" class="<?= strpos($_SERVER['REQUEST_URI'], '/faqs') !== false ? 'active' : '' ?>">
                         <i data-feather="help-circle"></i> FAQs
                     </a>

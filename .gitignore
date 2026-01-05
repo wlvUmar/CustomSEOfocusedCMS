@@ -10,7 +10,7 @@
 # Uploads (optional - depends on strategy)
 /public/uploads/*
 !/public/uploads/.gitkeep
-
+/database/schema.sql
 .DS_Store
 Thumbs.db
 desktop.ini

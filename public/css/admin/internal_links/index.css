@@ -1,0 +1,126 @@
+/* FILE: public/css/admin/internal_links/index.css */
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.stat-icon i {
+    width: 24px;
+    height: 24px;
+}
+
+.stat-info h3 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    color: #111827;
+}
+
+.stat-info p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.info-banner {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 30px;
+}
+
+.info-banner i {
+    color: #0284c7;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.info-banner div {
+    color: #0c4a6e;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.text-success {
+    color: #10b981 !important;
+}
+
+.text-danger {
+    color: #ef4444 !important;
+}
+
+/* Modal specific styles */
+.modal form select,
+.modal form input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.modal form select:focus,
+.modal form input[type="number"]:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.modal .alert-warning {
+    background: #fef3c7;
+    border: 1px solid #fbbf24;
+    color: #78350f;
+    padding: 12px;
+    border-radius: 6px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.modal .alert-warning i {
+    color: #f59e0b;
+    flex-shrink: 0;
+}
+
+#selected-count {
+    font-weight: 700;
+    color: #3b82f6;
+}
