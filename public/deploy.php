@@ -78,7 +78,7 @@ function runDeploy($caller = 'manual') {
     }
 }
 
-// Handle GitHub Webhook (no auth required)
+// Handle GitHub Webhook (NO AUTH - DEV FEATURE)
 $isWebhook = ($_SERVER['REQUEST_METHOD'] === 'POST'
     && isset($_SERVER['HTTP_X_GITHUB_EVENT'])
 );
@@ -91,27 +91,23 @@ if ($isWebhook) {
     webhookLog("User Agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'none'));
     webhookLog("Remote IP: " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
     
-    // Verify webhook signature
-    if (!verifyGitHubSignature()) {
-        http_response_code(401);
-        webhookLog("Webhook rejected: Invalid signature", 'WARNING');
-        echo json_encode(['status' => 'error', 'message' => 'Invalid signature']);
-        exit;
-    }
+    // DEV MODE: Skip signature verification - accept any request
+    webhookLog("DEV MODE: Skipping signature verification");
     
-    // Execute deployment
-    webhookLog("Webhook authenticated, executing deployment");
+    // Execute deployment automatically
+    webhookLog("Executing auto-deployment from webhook");
     $deployOutput = runDeploy('github-webhook');
     
     http_response_code(200);
     header('Content-Type: application/json');
     
-    webhookLog("Webhook response sent successfully");
+    webhookLog("Webhook processed successfully");
     
     echo json_encode([
         'status' => 'ok',
         'message' => 'Deploy triggered by GitHub webhook',
-        'timestamp' => date('Y-m-d H:i:s')
+        'timestamp' => date('Y-m-d H:i:s'),
+        'output' => $deployOutput
     ]);
     
     exit;
@@ -226,6 +222,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <div style="background: white; padding: 20px; margin-bottom: 20px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         <h2 style="margin-bottom: 15px; color: #303034;">GitHub Webhook Configuration</h2>
         
+        <div style="padding: 15px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px; margin-bottom: 15px;">
+            <strong style="color: #92400e;"><i data-feather="alert-triangle"></i> DEV MODE:</strong> 
+            Webhook authentication is DISABLED. Any POST request with <code>X-GitHub-Event</code> header will trigger auto-deploy. 
+            <strong>Remove this feature in production!</strong>
+        </div>
+        
         <div style="padding: 15px; background: #eff6ff; border-left: 3px solid #3b82f6; border-radius: 4px; margin-bottom: 15px;">
             <strong style="color: #1e40af;">Webhook URL:</strong>
             <code style="display: block; margin-top: 8px; padding: 8px; background: white; border-radius: 3px; color: #303034; word-break: break-all;">
@@ -234,20 +236,20 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </div>
         
         <div style="margin-bottom: 15px;">
-            <strong style="color: #303034;">Setup Instructions:</strong>
+            <strong style="color: #303034;">Simple Setup (No Secret Required):</strong>
             <ol style="margin: 10px 0 0 20px; color: #6b7280; font-size: 13px; line-height: 1.6;">
                 <li>Go to GitHub repository Settings → Webhooks</li>
                 <li>Click "Add webhook"</li>
                 <li>Paste the Webhook URL above</li>
                 <li>Set Content type to <code>application/json</code></li>
-                <li>Select events: <code>Push events</code></li>
-                <li>Set Secret to: <code><?= htmlspecialchars(GITHUB_WEBHOOK_SECRET) ?></code></li>
+                <li>Select events: <code>Just the push event</code></li>
+                <li><strong>Secret:</strong> Leave empty (not required in dev mode)</li>
                 <li>Click "Add webhook"</li>
             </ol>
         </div>
         
-        <div style="padding: 10px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 13px; color: #92400e;">
-            <strong><i data-feather="alert-triangle"></i> Security Note:</strong> Set the webhook secret as an environment variable <code>GITHUB_WEBHOOK_SECRET</code>. Update <code>.env</code> file with a strong secret key.
+        <div style="padding: 10px; background: #d1f4e0; border-left: 3px solid #059669; border-radius: 4px; font-size: 13px; color: #166534;">
+            <strong><i data-feather="check"></i> Auto-Deploy Enabled:</strong> Every push to GitHub will automatically pull latest changes to the server.
         </div>
     </div>
     
