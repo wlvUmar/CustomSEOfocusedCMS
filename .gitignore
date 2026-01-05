@@ -1,4 +1,4 @@
-
+parse.py
 /logs/*.log
 /public/logs/*.log
 
@@ -19,5 +19,4 @@ desktop.ini
 *.bak
 *.cache
 *.env
-*.yml
-*.yml
+

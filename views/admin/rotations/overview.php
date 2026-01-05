@@ -14,8 +14,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
 </div>
 <?php endif; ?>
 
+<h2>Pages with Content Rotation</h2>    
 <div class="rotation-summary">
-    <h2>Pages with Content Rotation</h2>
     
     <?php if (empty($rotationStatus)): ?>
         <p>No pages have content rotation enabled.</p>

@@ -1,5 +1,9 @@
 .rotation-summary {
     margin-top: 30px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    direction: ltr
 }
 
 .rotation-card {
