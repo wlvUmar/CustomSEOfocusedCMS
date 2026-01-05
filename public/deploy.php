@@ -2,16 +2,35 @@
 
 require_once __DIR__ . '/../config/init.php';
 
-define('REPO_PATH', '/home/kuplyuta/appliances');
+// Detect OS
+define('IS_WINDOWS', strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
+
+// Path configuration - Update these for your environment
+if (IS_WINDOWS) {
+    // Windows (XAMPP) paths
+    define('REPO_PATH', 'C:\\xampp\\htdocs\\appliances');
+    define('WEBHOOK_LOG', 'C:\\xampp\\htdocs\\appliances\\logs\\webhook.log');
+} else {
+    // Linux/Unix paths
+    define('REPO_PATH', '/home/kuplyuta/appliances');
+    define('WEBHOOK_LOG', '/tmp/github_webhook.log');
+}
+
 define('GITHUB_REPO_NAME', 'seowebsite');
 define('GITHUB_WEBHOOK_SECRET', getenv('GITHUB_WEBHOOK_SECRET') ?: 'your-webhook-secret');
-define('WEBHOOK_LOG', '/tmp/github_webhook.log');
 
 // Enhanced logging function
 function webhookLog($message, $level = 'INFO') {
     $timestamp = date('Y-m-d H:i:s');
     $logMessage = "[$timestamp] [$level] $message\n";
-    file_put_contents(WEBHOOK_LOG, $logMessage, FILE_APPEND);
+    
+    // Ensure log directory exists
+    $logDir = dirname(WEBHOOK_LOG);
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0755, true);
+    }
+    
+    @file_put_contents(WEBHOOK_LOG, $logMessage, FILE_APPEND);
     
     // Also log to security log
     if (function_exists('securityLog')) {
@@ -45,23 +64,107 @@ function runDeploy($caller = 'manual') {
     $output = '';
     
     try {
-        $commands = [
-            "cd " . escapeshellarg(REPO_PATH) . " && pwd",
-            "cd " . escapeshellarg(REPO_PATH) . " && git fetch origin main 2>&1",
-            "cd " . escapeshellarg(REPO_PATH) . " && git reset --hard origin/main 2>&1",
-            "cd " . escapeshellarg(REPO_PATH) . " && git log -1 --oneline 2>&1"
-        ];
-        
         $output .= "=== Deployment Started (" . date('Y-m-d H:i:s') . ") ===\n";
-        $output .= "Caller: " . $caller . "\n\n";
+        $output .= "Caller: " . $caller . "\n";
+        $output .= "Repository Path: " . REPO_PATH . "\n\n";
         
         webhookLog("Deployment started by: $caller");
         
-        foreach ($commands as $cmd) {
-            $output .= "$ " . str_replace(escapeshellarg(REPO_PATH), '[REPO]', $cmd) . "\n";
-            $result = shell_exec($cmd);
-            $output .= $result . "\n";
-            webhookLog("Command executed: " . substr($cmd, 0, 100));
+        // Check if directory exists
+        if (!is_dir(REPO_PATH)) {
+            $error = "ERROR: Repository directory does not exist: " . REPO_PATH;
+            $output .= $error . "\n";
+            webhookLog($error, 'ERROR');
+            return $output;
+        }
+        
+        // Check if it's a git repository
+        $gitDir = REPO_PATH . (IS_WINDOWS ? '\\.git' : '/.git');
+        if (!is_dir($gitDir)) {
+            $error = "ERROR: Not a git repository: " . REPO_PATH;
+            $output .= $error . "\n";
+            webhookLog($error, 'ERROR');
+            return $output;
+        }
+        
+        // Build commands based on OS
+        if (IS_WINDOWS) {
+            // Windows commands - use && or & for command chaining
+            $cdCmd = "cd /d " . escapeshellarg(REPO_PATH);
+            $commands = [
+                [
+                    'cmd' => $cdCmd . " && cd 2>&1",
+                    'desc' => 'Checking directory'
+                ],
+                [
+                    'cmd' => $cdCmd . " && git --version 2>&1",
+                    'desc' => 'Checking git installation'
+                ],
+                [
+                    'cmd' => $cdCmd . " && git remote -v 2>&1",
+                    'desc' => 'Checking git remote'
+                ],
+                [
+                    'cmd' => $cdCmd . " && git fetch origin main 2>&1",
+                    'desc' => 'Fetching latest changes'
+                ],
+                [
+                    'cmd' => $cdCmd . " && git reset --hard origin/main 2>&1",
+                    'desc' => 'Hard resetting to origin/main'
+                ],
+                [
+                    'cmd' => $cdCmd . " && git status 2>&1",
+                    'desc' => 'Checking status'
+                ],
+                [
+                    'cmd' => $cdCmd . " && git log -1 --oneline 2>&1",
+                    'desc' => 'Latest commit'
+                ]
+            ];
+        } else {
+            // Linux/Unix commands
+            $commands = [
+                [
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && pwd 2>&1",
+                    'desc' => 'Checking directory'
+                ],
+                [
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git remote -v 2>&1",
+                    'desc' => 'Checking git remote'
+                ],
+                [
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git fetch origin main 2>&1",
+                    'desc' => 'Fetching latest changes'
+                ],
+                [
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git reset --hard origin/main 2>&1",
+                    'desc' => 'Hard resetting to origin/main'
+                ],
+                [
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git status 2>&1",
+                    'desc' => 'Checking status'
+                ],
+                [
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git log -1 --oneline 2>&1",
+                    'desc' => 'Latest commit'
+                ]
+            ];
+        }
+        
+        foreach ($commands as $command) {
+            $output .= "\n--- " . $command['desc'] . " ---\n";
+            $output .= "$ " . str_replace(escapeshellarg(REPO_PATH), '[REPO]', $command['cmd']) . "\n";
+            
+            $result = shell_exec($command['cmd']);
+            $exitCode = $result !== null ? 0 : 1;
+            
+            if ($result === null || $result === false) {
+                $output .= "ERROR: Command failed or returned no output\n";
+                webhookLog("Command failed: " . $command['desc'], 'ERROR');
+            } else {
+                $output .= $result;
+                webhookLog("Command executed: " . $command['desc']);
+            }
         }
         
         $output .= "\n=== Deployment Completed Successfully ===\n";

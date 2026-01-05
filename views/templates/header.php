@@ -123,26 +123,6 @@ $isAdmin = isset($_SESSION['user_id']);
         }
         ?>
     
-    <?php if ($seo['phone'] || $seo['email']): ?>
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "LocalBusiness",
-        "name": "<?= e($seo["site_name_$lang"]) ?>",
-        <?php if ($seo['phone']): ?>"telephone": "<?= e($seo['phone']) ?>",<?php endif; ?>
-        <?php if ($seo['email']): ?>"email": "<?= e($seo['email']) ?>",<?php endif; ?>
-        <?php if ($seo["address_$lang"]): ?>"address": {
-            "@type": "PostalAddress",
-            "streetAddress": "<?= e($seo["address_$lang"]) ?>",
-            "addressLocality": "Tashkent",
-            "addressCountry": "UZ"
-        },<?php endif; ?>
-        "url": "<?= BASE_URL ?>",
-        "priceRange": "$$"
-    }
-    </script>
-    <?php endif; ?>
-    
     <?php if ($isAdmin): ?>
     <!-- Admin Toolbar Styles -->
     <style>
