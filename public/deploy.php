@@ -5,18 +5,39 @@ require_once __DIR__ . '/../config/init.php';
 define('REPO_PATH', '/home/kuplyuta/appliances');
 define('GITHUB_REPO_NAME', 'seowebsite');
 define('GITHUB_WEBHOOK_SECRET', getenv('GITHUB_WEBHOOK_SECRET') ?: 'your-webhook-secret');
+define('WEBHOOK_LOG', '/tmp/github_webhook.log');
 
+// Enhanced logging function
+function webhookLog($message, $level = 'INFO') {
+    $timestamp = date('Y-m-d H:i:s');
+    $logMessage = "[$timestamp] [$level] $message\n";
+    file_put_contents(WEBHOOK_LOG, $logMessage, FILE_APPEND);
+    
+    // Also log to security log
+    if (function_exists('securityLog')) {
+        securityLog($message, $level);
+    }
+}
 
 function verifyGitHubSignature() {
     $payload = file_get_contents('php://input');
     $signature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
     
+    webhookLog("Received webhook request");
+    webhookLog("Signature header: " . ($signature ? 'present' : 'missing'));
+    webhookLog("Payload size: " . strlen($payload) . " bytes");
+    
     if (empty($signature)) {
+        webhookLog("No signature provided", 'WARNING');
         return false;
     }
     
     $hash = 'sha256=' . hash_hmac('sha256', $payload, GITHUB_WEBHOOK_SECRET);
-    return hash_equals($hash, $signature);
+    $isValid = hash_equals($hash, $signature);
+    
+    webhookLog("Signature validation: " . ($isValid ? 'SUCCESS' : 'FAILED'), $isValid ? 'INFO' : 'WARNING');
+    
+    return $isValid;
 }
 
 
@@ -34,19 +55,24 @@ function runDeploy($caller = 'manual') {
         $output .= "=== Deployment Started (" . date('Y-m-d H:i:s') . ") ===\n";
         $output .= "Caller: " . $caller . "\n\n";
         
+        webhookLog("Deployment started by: $caller");
+        
         foreach ($commands as $cmd) {
             $output .= "$ " . str_replace(escapeshellarg(REPO_PATH), '[REPO]', $cmd) . "\n";
             $result = shell_exec($cmd);
             $output .= $result . "\n";
+            webhookLog("Command executed: " . substr($cmd, 0, 100));
         }
         
         $output .= "\n=== Deployment Completed Successfully ===\n";
+        webhookLog("Deployment completed successfully");
         securityLog("Deploy executed by: $caller", 'INFO');
         
         return $output;
     } catch (Exception $e) {
         $error = "Error: " . $e->getMessage();
         $output .= $error . "\n";
+        webhookLog("Deploy failed: " . $e->getMessage(), 'ERROR');
         securityLog("Deploy failed ($caller): " . $e->getMessage(), 'ERROR');
         return $output;
     }
@@ -58,19 +84,29 @@ $isWebhook = ($_SERVER['REQUEST_METHOD'] === 'POST'
 );
 
 if ($isWebhook) {
+    // Log all incoming webhook details for debugging
+    webhookLog("=== Webhook Request Received ===");
+    webhookLog("GitHub Event: " . ($_SERVER['HTTP_X_GITHUB_EVENT'] ?? 'none'));
+    webhookLog("GitHub Delivery: " . ($_SERVER['HTTP_X_GITHUB_DELIVERY'] ?? 'none'));
+    webhookLog("User Agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'none'));
+    webhookLog("Remote IP: " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+    
     // Verify webhook signature
     if (!verifyGitHubSignature()) {
         http_response_code(401);
+        webhookLog("Webhook rejected: Invalid signature", 'WARNING');
         echo json_encode(['status' => 'error', 'message' => 'Invalid signature']);
-        securityLog("Invalid GitHub webhook signature attempt", 'WARNING');
         exit;
     }
     
     // Execute deployment
+    webhookLog("Webhook authenticated, executing deployment");
     $deployOutput = runDeploy('github-webhook');
     
     http_response_code(200);
     header('Content-Type: application/json');
+    
+    webhookLog("Webhook response sent successfully");
     
     echo json_encode([
         'status' => 'ok',
@@ -112,6 +148,13 @@ $deploymentStatus = trim(shell_exec(
 $currentBranch = trim(shell_exec(
     "cd " . escapeshellarg(REPO_PATH) . " && git rev-parse --abbrev-ref HEAD 2>&1"
 ));
+
+// Check if webhook log exists and get last entries
+$webhookLogEntries = '';
+if (file_exists(WEBHOOK_LOG)) {
+    $logLines = file(WEBHOOK_LOG);
+    $webhookLogEntries = implode('', array_slice($logLines, -20)); // Last 20 lines
+}
 
 $pageName = 'deploy';
 require BASE_PATH . '/views/admin/layout/header.php';
@@ -165,6 +208,19 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <i data-feather="info"></i> Manual deployment will pull latest changes from origin/main branch.
         </p>
     </div>
+    
+    <!-- Webhook Log -->
+    <?php if (!empty($webhookLogEntries)): ?>
+    <div style="background: white; padding: 20px; margin-bottom: 20px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <h2 style="margin-bottom: 15px; color: #303034;">Recent Webhook Activity</h2>
+        <div style="background: #111827; color: #10b981; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
+            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"><?= htmlspecialchars($webhookLogEntries) ?></pre>
+        </div>
+        <p style="font-size: 12px; color: #6b7280; margin-top: 10px;">
+            Log file: <code>/tmp/github_webhook.log</code>
+        </p>
+    </div>
+    <?php endif; ?>
     
     <!-- Webhook Configuration -->
     <div style="background: white; padding: 20px; margin-bottom: 20px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
