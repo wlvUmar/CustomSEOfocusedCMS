@@ -61,7 +61,12 @@ class SEOController extends Controller {
             
             // Service (global settings for auto-generation)
             'service_type' => trim($_POST['service_type'] ?? 'Service'),
-            'area_served' => trim($_POST['area_served'] ?? '')
+            'area_served' => trim($_POST['area_served'] ?? ''),
+            // Organization extras
+            'org_latitude' => trim($_POST['org_latitude'] ?? ''),
+            'org_longitude' => trim($_POST['org_longitude'] ?? ''),
+            'org_schema_custom' => isset($_POST['org_schema_custom']) ? 1 : 0,
+            'organization_schema_raw' => trim($_POST['organization_schema_raw'] ?? '')
         ];
         
         // Generate JSON-LD schemas
@@ -77,6 +82,16 @@ class SEOController extends Controller {
     }
     
     private function generateOrganizationSchema($data) {
+        // If admin provided a custom JSON-LD and enabled the toggle, validate and use it as-is (but enforce @id)
+        if (!empty($data['org_schema_custom']) && !empty($data['organization_schema_raw'])) {
+            $decoded = json_decode($data['organization_schema_raw'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $decoded['@id'] = BASE_URL . '#organization';
+                return json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+            }
+            // If invalid JSON was provided, fall back to auto-generation so site remains valid
+        }
+        
         $socialMedia = array_filter([
             $data['social_facebook'],
             $data['social_instagram'],
@@ -87,6 +102,7 @@ class SEOController extends Controller {
         $openingHours = array_filter(explode("\n", $data['opening_hours']));
         
         return JsonLdGenerator::generateOrganization([
+            'id' => BASE_URL . '#organization',
             'type' => $data['org_type'],
             'name' => !empty($data['org_name_ru']) ? $data['org_name_ru'] : $data['site_name_ru'],
             'url' => BASE_URL,
@@ -101,7 +117,9 @@ class SEOController extends Controller {
             'country' => $data['country'],
             'opening_hours' => $openingHours,
             'price_range' => $data['price_range'],
-            'social_media' => $socialMedia
+            'social_media' => $socialMedia,
+            'latitude' => $data['org_latitude'] ?? null,
+            'longitude' => $data['org_longitude'] ?? null
         ]);
     }
     

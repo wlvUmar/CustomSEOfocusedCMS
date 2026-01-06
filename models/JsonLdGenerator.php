@@ -14,8 +14,17 @@ class JsonLdGenerator {
             "url" => $data['url'],
         ];
         
+        // Optional @id to reference the organization from other schemas
+        if (!empty($data['id'])) {
+            $schema['@id'] = $data['id'];
+        }
+        
         if (!empty($data['logo'])) {
             $schema['logo'] = $data['logo'];
+        }
+        
+        if (!empty($data['image'])) {
+            $schema['image'] = $data['image'];
         }
         
         if (!empty($data['description'])) {
@@ -39,6 +48,15 @@ class JsonLdGenerator {
                 "addressRegion" => $data['region'] ?? '',
                 "postalCode" => $data['postal'] ?? '',
                 "addressCountry" => $data['country'] ?? 'UZ'
+            ];
+        }
+        
+        // Geo coordinates
+        if (!empty($data['latitude']) && !empty($data['longitude'])) {
+            $schema['geo'] = [
+                '@type' => 'GeoCoordinates',
+                'latitude' => (float)$data['latitude'],
+                'longitude' => (float)$data['longitude']
             ];
         }
         
@@ -86,9 +104,27 @@ class JsonLdGenerator {
             }
         }
         
-        // Area served
+        // Area served - prefer structured City object when a simple name is provided
         if (!empty($data['area_served'])) {
-            $schema['areaServed'] = $data['area_served'];
+            if (is_array($data['area_served'])) {
+                $schema['areaServed'] = $data['area_served'];
+            } else {
+                $schema['areaServed'] = [
+                    '@type' => 'City',
+                    'name' => $data['area_served']
+                ];
+            }
+        }
+        
+        // Available channel (phone)
+        if (!empty($data['service_phone'])) {
+            $schema['availableChannel'] = [
+                '@type' => 'ServiceChannel',
+                'servicePhone' => [
+                    '@type' => 'ContactPoint',
+                    'telephone' => $data['service_phone']
+                ]
+            ];
         }
         
         // Price

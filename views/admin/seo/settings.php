@@ -236,6 +236,30 @@ Sa 10:00-15:00"><?= e($settings['opening_hours'] ?? '') ?></textarea>
                 </div>
             </div>
             
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Latitude</label>
+                    <input type="text" name="org_latitude" value="<?= e($settings['org_latitude'] ?? '') ?>" placeholder="41.2995">
+                </div>
+                <div class="form-group">
+                    <label>Longitude</label>
+                    <input type="text" name="org_longitude" value="<?= e($settings['org_longitude'] ?? '') ?>" placeholder="69.2401">
+                </div>
+                <div class="form-group">
+                    <label>Area Served</label>
+                    <input type="text" name="area_served" value="<?= e($settings['area_served'] ?? '') ?>" placeholder="Tashkent">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Custom Organization JSON-LD</label>
+                <div style="margin-bottom:8px;">
+                    <label style="font-weight:normal;"><input type="checkbox" name="org_schema_custom" value="1" <?= !empty($settings['organization_schema']) ? 'checked' : '' ?>> Use custom JSON-LD (overrides auto-generated schema)</label>
+                </div>
+                <textarea name="organization_schema_raw" rows="6" placeholder='Paste custom JSON-LD here'><?= e($settings['organization_schema'] ?? '') ?></textarea>
+                <small class="help-text">If enabled, the JSON you provide will be validated and used as the Organization schema. Otherwise it will be generated from the fields above.</small>
+            </div>
+            
             <button type="button" onclick="generateOrgSchema()" class="btn">
                 <i data-feather="code"></i> Preview Generated Schema
             </button>
