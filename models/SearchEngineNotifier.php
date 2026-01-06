@@ -165,13 +165,39 @@ class SearchEngineNotifier {
     private function pingGoogleSitemap() {
         // Google no longer has a ping endpoint
         // They discover updates through the sitemap automatically
-        // We just ensure sitemap is fresh
+        // We just ensure sitemap is fresh (it's dynamically generated)
+        
+        // Log sitemap activity
+        $this->logSitemapPing('page_update');
         
         return [
             'status' => 'success',
             'code' => 200,
             'message' => 'Sitemap updated for Google to discover'
         ];
+    }
+    
+    /**
+     * Log sitemap ping/generation for tracking
+     */
+    private function logSitemapPing($triggeredBy = 'page_update') {
+        try {
+            // Count published pages
+            $countSql = "SELECT COUNT(*) as count FROM pages WHERE is_published = 1";
+            $result = $this->db->fetchOne($countSql);
+            $pageCount = $result['count'] ?? 0;
+            
+            // Log to sitemap_history table
+            $sql = "INSERT INTO sitemap_history 
+                    (page_count, triggered_by, pinged_engines) 
+                    VALUES (?, ?, ?)";
+            
+            $engines = implode(',', array_keys($this->config));
+            $this->db->query($sql, [$pageCount, $triggeredBy, $engines]);
+        } catch (Exception $e) {
+            // Silent fail - not critical
+            error_log("Sitemap history logging failed: " . $e->getMessage());
+        }
     }
     
     /**
