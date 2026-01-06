@@ -126,6 +126,9 @@ class PageController extends Controller {
         
         $page["content_$currentLang"] = renderTemplate($page["content_$currentLang"], $templateData);
         
+        // Process media placeholders
+        $page["content_$currentLang"] = processMediaPlaceholders($page["content_$currentLang"], $page['id']);
+        
         $data = [
             'page' => $page,
             'seo' => $seoSettings,

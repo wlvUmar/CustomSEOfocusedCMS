@@ -1,18 +1,59 @@
 <?php
 require_once BASE_PATH . '/models/Media.php';
+require_once BASE_PATH . '/models/PageMedia.php';
+require_once BASE_PATH . '/models/Page.php';
 
 class MediaController extends Controller {
     private $mediaModel;
+    private $pageMediaModel;
 
     public function __construct() {
         parent::__construct();
         $this->mediaModel = new Media();
+        $this->pageMediaModel = new PageMedia();
     }
 
     public function index() {
         $this->requireAuth();
-        $media = $this->mediaModel->getAll();
-        $this->view('admin/media/manager', ['media' => $media]);
+        
+        // Get filter parameters
+        $filter = $_GET['filter'] ?? 'all';
+        $pageId = $_GET['page_id'] ?? null;
+        
+        if ($pageId) {
+            $media = $this->pageMediaModel->getPageMedia($pageId);
+            $pageModel = new Page();
+            $page = $pageModel->getById($pageId);
+        } else {
+            if ($filter === 'unused') {
+                $media = $this->pageMediaModel->getUnusedMedia();
+            } else {
+                $media = $this->mediaModel->getAll();
+                // Add usage count
+                foreach ($media as &$item) {
+                    $sql = "SELECT COUNT(*) as count FROM page_media WHERE media_id = ?";
+                    $result = Database::getInstance()->fetchOne($sql, [$item['id']]);
+                    $item['usage_count'] = $result['count'] ?? 0;
+                }
+                
+                if ($filter === 'used') {
+                    $media = array_filter($media, function($item) {
+                        return $item['usage_count'] > 0;
+                    });
+                }
+            }
+            $page = null;
+        }
+        
+        $pageModel = new Page();
+        $allPages = $pageModel->getAll(true);
+        
+        $this->view('admin/media/manager', [
+            'media' => $media,
+            'allPages' => $allPages,
+            'currentPage' => $page,
+            'filter' => $filter
+        ]);
     }
 
     public function upload() {
@@ -53,107 +94,224 @@ class MediaController extends Controller {
                 'mime_type' => $file['type']
             ];
             
-            $id = $this->mediaModel->create($data);
+            $mediaId = $this->mediaModel->create($data);
+            
+            // If page_id is provided, attach immediately
+            if (!empty($_POST['page_id'])) {
+                $this->pageMediaModel->attachMedia($_POST['page_id'], $mediaId, [
+                    'section' => $_POST['section'] ?? 'content',
+                    'position' => $_POST['position'] ?? 0
+                ]);
+            }
             
             $this->json([
                 'success' => true,
-                'id' => $id,
+                'media_id' => $mediaId,
                 'filename' => $filename,
                 'url' => UPLOAD_URL . $filename
             ]);
         } else {
-            $this->json(['success' => false, 'message' => 'Upload failed'], 500);
+            $this->json(['success' => false, 'message' => 'Failed to save file'], 500);
         }
     }
 
     public function delete() {
         $this->requireAuth();
         
-        $id = $_POST['id'] ?? null;
-        if ($id && $this->mediaModel->delete($id)) {
+        if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+        }
+        
+        $id = $_POST['id'] ?? 0;
+        
+        // Check if media is in use
+        if ($this->pageMediaModel->isMediaUsed($id) && empty($_POST['force'])) {
+            $pages = $this->pageMediaModel->getMediaPages($id);
+            $this->json([
+                'success' => false,
+                'message' => 'Media is used on ' . count($pages) . ' page(s)',
+                'usage_count' => count($pages)
+            ], 400);
+        }
+        
+        if ($this->mediaModel->delete($id)) {
+            $_SESSION['success'] = 'Media deleted successfully';
             $this->json(['success' => true]);
         } else {
-            $this->json(['success' => false, 'message' => 'Delete failed'], 400);
+            $this->json(['success' => false, 'message' => 'Failed to delete'], 500);
         }
     }
+
+    public function attachToPage() {
+        $this->requireAuth();
+        
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+        }
+        
+        $pageId = $_POST['page_id'] ?? 0;
+        $mediaId = $_POST['media_id'] ?? 0;
+        
+        if (!$pageId || !$mediaId) {
+            $this->json(['success' => false, 'message' => 'Missing parameters'], 400);
+        }
+        
+        $data = [
+            'section' => $_POST['section'] ?? 'content',
+            'position' => $_POST['position'] ?? 0,
+            'alt_text_ru' => $_POST['alt_text_ru'] ?? '',
+            'alt_text_uz' => $_POST['alt_text_uz'] ?? '',
+            'caption_ru' => $_POST['caption_ru'] ?? '',
+            'caption_uz' => $_POST['caption_uz'] ?? '',
+            'width' => $_POST['width'] ?? null,
+            'alignment' => $_POST['alignment'] ?? 'center',
+            'css_class' => $_POST['css_class'] ?? '',
+            'lazy_load' => $_POST['lazy_load'] ?? 1
+        ];
+        
+        $this->pageMediaModel->attachMedia($pageId, $mediaId, $data);
+        
+        $_SESSION['success'] = 'Media attached to page successfully';
+        $this->json(['success' => true]);
+    }
+
+    public function detachFromPage() {
+        $this->requireAuth();
+        
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+        }
+        
+        $pageId = $_POST['page_id'] ?? 0;
+        $mediaId = $_POST['media_id'] ?? 0;
+        $section = $_POST['section'] ?? null;
+        
+        $this->pageMediaModel->detachMedia($pageId, $mediaId, $section);
+        
+        $_SESSION['success'] = 'Media detached from page';
+        $this->json(['success' => true]);
+    }
+
+    public function getMediaInfo() {
+        $this->requireAuth();
+        
+        $mediaId = $_GET['id'] ?? 0;
+        $media = Database::getInstance()->fetchOne("SELECT * FROM media WHERE id = ?", [$mediaId]);
+        
+        if (!$media) {
+            $this->json(['success' => false, 'message' => 'Media not found'], 404);
+        }
+        
+        $stats = $this->pageMediaModel->getUsageStats($mediaId);
+        $pages = $this->pageMediaModel->getMediaPages($mediaId);
+        
+        $this->json([
+            'success' => true,
+            'media' => $media,
+            'stats' => $stats,
+            'pages' => $pages
+        ]);
+    }
+
     public function bulkUpload() {
         $this->requireAuth();
         
         if (!isset($_FILES['files'])) {
-            $this->json(['success' => false, 'message' => 'No files uploaded'], 400);
+            $_SESSION['error'] = 'No files uploaded';
+            $this->redirect('/admin/media');
         }
         
-        $files = $_FILES['files'];
         $uploaded = 0;
-        $errors = [];
+        $failed = 0;
+        $pageId = $_POST['page_id'] ?? null;
+        $section = $_POST['section'] ?? 'content';
         
-        // Allowed types
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        
-        // Create upload directory if not exists
-        if (!is_dir(UPLOAD_PATH)) {
-            mkdir(UPLOAD_PATH, 0755, true);
-        }
-        
-        // Handle multiple files
-        $fileCount = count($files['name']);
-        
-        for ($i = 0; $i < $fileCount; $i++) {
-            $fileName = $files['name'][$i];
-            $fileTmpName = $files['tmp_name'][$i];
-            $fileSize = $files['size'][$i];
-            $fileType = $files['type'][$i];
-            $fileError = $files['error'][$i];
-            
-            // Skip if upload error
-            if ($fileError !== UPLOAD_ERR_OK) {
-                $errors[] = "$fileName: Upload error";
+        foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
+            if ($_FILES['files']['error'][$key] !== UPLOAD_ERR_OK) {
+                $failed++;
                 continue;
             }
             
-            // Validate file type
-            if (!in_array($fileType, $allowedTypes)) {
-                $errors[] = "$fileName: Invalid file type";
+            $file = [
+                'name' => $_FILES['files']['name'][$key],
+                'type' => $_FILES['files']['type'][$key],
+                'size' => $_FILES['files']['size'][$key]
+            ];
+            
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!in_array($file['type'], $allowedTypes) || $file['size'] > MAX_UPLOAD_SIZE) {
+                $failed++;
                 continue;
             }
             
-            // Validate file size
-            if ($fileSize > MAX_UPLOAD_SIZE) {
-                $errors[] = "$fileName: File too large";
-                continue;
-            }
+            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $filename = uniqid() . '_' . time() . '_' . $key . '.' . $ext;
+            $filepath = UPLOAD_PATH . $filename;
             
-            // Generate unique filename
-            $ext = pathinfo($fileName, PATHINFO_EXTENSION);
-            $newFileName = uniqid() . '_' . time() . '_' . $i . '.' . $ext;
-            $filepath = UPLOAD_PATH . $newFileName;
-            
-            // Move file
-            if (move_uploaded_file($fileTmpName, $filepath)) {
-                $data = [
-                    'filename' => $newFileName,
-                    'original_name' => $fileName,
-                    'file_size' => $fileSize,
-                    'mime_type' => $fileType
-                ];
+            if (move_uploaded_file($tmpName, $filepath)) {
+                $mediaId = $this->mediaModel->create([
+                    'filename' => $filename,
+                    'original_name' => $file['name'],
+                    'file_size' => $file['size'],
+                    'mime_type' => $file['type']
+                ]);
                 
-                if ($this->mediaModel->create($data)) {
-                    $uploaded++;
-                } else {
-                    $errors[] = "$fileName: Database insert failed";
+                if ($pageId) {
+                    $this->pageMediaModel->attachMedia($pageId, $mediaId, [
+                        'section' => $section,
+                        'position' => $uploaded
+                    ]);
                 }
+                
+                $uploaded++;
             } else {
-                $errors[] = "$fileName: Failed to move file";
+                $failed++;
             }
         }
         
-        $message = "Uploaded $uploaded file(s)";
-        if (!empty($errors)) {
-            $message .= ". Errors: " . implode(', ', array_slice($errors, 0, 5));
+        $_SESSION['success'] = "Uploaded {$uploaded} files" . ($failed ? ", {$failed} failed" : '');
+        $this->redirect('/admin/media' . ($pageId ? '?page_id=' . $pageId : ''));
+    }
+
+    public function bulkAction() {
+        $this->requireAuth();
+        
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
         }
         
-        $_SESSION['success'] = $message;
-        header('Location: ' . BASE_URL . '/admin/media');
-        exit;
+        $action = $_POST['action'] ?? '';
+        $mediaIds = $_POST['media_ids'] ?? [];
+        
+        if (empty($mediaIds)) {
+            $this->json(['success' => false, 'message' => 'No media selected'], 400);
+        }
+        
+        switch ($action) {
+            case 'attach':
+                $pageId = $_POST['page_id'] ?? 0;
+                if (!$pageId) {
+                    $this->json(['success' => false, 'message' => 'No page selected'], 400);
+                }
+                
+                $section = $_POST['section'] ?? 'content';
+                foreach ($mediaIds as $mediaId) {
+                    $this->pageMediaModel->attachMedia($pageId, $mediaId, ['section' => $section]);
+                }
+                $_SESSION['success'] = count($mediaIds) . ' media items attached';
+                break;
+                
+            case 'delete':
+                foreach ($mediaIds as $mediaId) {
+                    $this->mediaModel->delete($mediaId);
+                }
+                $_SESSION['success'] = count($mediaIds) . ' media items deleted';
+                break;
+                
+            default:
+                $this->json(['success' => false, 'message' => 'Invalid action'], 400);
+        }
+        
+        $this->json(['success' => true]);
     }
 }

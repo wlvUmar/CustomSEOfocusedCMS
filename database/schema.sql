@@ -1,33 +1,25 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: localhost:3306
+-- Generation Time: Jan 06, 2026 at 07:30 PM
+-- Server version: 10.3.39-MariaDB-log-cll-lve
+-- PHP Version: 8.1.30
+
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
+--
+-- Database: `kuplyuta_db`
+--
 
-CREATE DATABASE IF NOT EXISTS `kuplyuta_db` DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-USE `kuplyuta_db`;
+-- --------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `analytics_bot_visits` (
-  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `page_slug` VARCHAR(255) NOT NULL,
-  `language` VARCHAR(5) NOT NULL,
-  `bot_type` VARCHAR(50) NOT NULL DEFAULT 'unknown',
-  `user_agent` VARCHAR(255) DEFAULT NULL,
-  `visit_date` DATE NOT NULL,
-  `visits` INT(11) UNSIGNED NOT NULL DEFAULT 1,
-  `last_visit` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `unique_bot_visit` (`page_slug`, `language`, `bot_type`, `visit_date`),
-  KEY `idx_page_date` (`page_slug`, `visit_date`),
-  KEY `idx_bot_type` (`bot_type`),
-  KEY `idx_visit_date` (`visit_date`),
-  KEY `idx_bot_crawl_frequency` (`page_slug`, `visit_date`, `bot_type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
- 
+--
+-- Table structure for table `analytics`
+--
 
 CREATE TABLE `analytics` (
   `id` int(11) NOT NULL,
@@ -43,6 +35,30 @@ CREATE TABLE `analytics` (
   `month` int(11) GENERATED ALWAYS AS (month(`date`)) STORED
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics_bot_visits`
+--
+
+CREATE TABLE `analytics_bot_visits` (
+  `id` int(11) UNSIGNED NOT NULL,
+  `page_slug` varchar(255) NOT NULL,
+  `language` varchar(5) NOT NULL,
+  `bot_type` varchar(50) NOT NULL DEFAULT 'unknown',
+  `user_agent` varchar(255) DEFAULT NULL,
+  `visit_date` date NOT NULL,
+  `visits` int(11) UNSIGNED NOT NULL DEFAULT 1,
+  `last_visit` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics_internal_links`
+--
+
 CREATE TABLE `analytics_internal_links` (
   `id` int(11) NOT NULL,
   `from_slug` varchar(100) NOT NULL,
@@ -53,6 +69,12 @@ CREATE TABLE `analytics_internal_links` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics_internal_links_monthly`
+--
 
 CREATE TABLE `analytics_internal_links_monthly` (
   `id` int(11) NOT NULL,
@@ -65,6 +87,12 @@ CREATE TABLE `analytics_internal_links_monthly` (
   `unique_days` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics_link_clicks`
+--
+
 CREATE TABLE `analytics_link_clicks` (
   `id` int(11) NOT NULL,
   `from_slug` varchar(100) DEFAULT NULL,
@@ -75,6 +103,12 @@ CREATE TABLE `analytics_link_clicks` (
   `date` date DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics_monthly`
+--
 
 CREATE TABLE `analytics_monthly` (
   `id` int(11) NOT NULL,
@@ -88,6 +122,12 @@ CREATE TABLE `analytics_monthly` (
   `unique_days` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `analytics_rotations`
+--
+
 CREATE TABLE `analytics_rotations` (
   `id` int(11) NOT NULL,
   `page_slug` varchar(100) NOT NULL,
@@ -100,6 +140,12 @@ CREATE TABLE `analytics_rotations` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `content_rotations`
+--
 
 CREATE TABLE `content_rotations` (
   `id` int(11) NOT NULL,
@@ -129,6 +175,12 @@ CREATE TABLE `content_rotations` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `faqs`
+--
+
 CREATE TABLE `faqs` (
   `id` int(11) NOT NULL,
   `page_slug` varchar(100) NOT NULL,
@@ -142,14 +194,28 @@ CREATE TABLE `faqs` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `media`
+--
+
 CREATE TABLE `media` (
   `id` int(11) NOT NULL,
   `filename` varchar(255) NOT NULL,
   `original_name` varchar(255) NOT NULL,
   `file_size` int(11) NOT NULL,
   `mime_type` varchar(100) NOT NULL,
-  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `usage_count` int(11) DEFAULT 0 COMMENT 'How many pages use this media',
+  `last_used` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `pages`
+--
 
 CREATE TABLE `pages` (
   `id` int(11) NOT NULL,
@@ -182,6 +248,12 @@ CREATE TABLE `pages` (
   `widget_title_uz` varchar(100) DEFAULT 'Foydali sahifalar'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `page_link_widgets`
+--
+
 CREATE TABLE `page_link_widgets` (
   `id` int(11) NOT NULL,
   `page_id` int(11) NOT NULL,
@@ -190,6 +262,36 @@ CREATE TABLE `page_link_widgets` (
   `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `page_media`
+--
+
+CREATE TABLE `page_media` (
+  `id` int(11) NOT NULL,
+  `page_id` int(11) NOT NULL,
+  `media_id` int(11) NOT NULL,
+  `section` varchar(50) DEFAULT 'content' COMMENT 'hero, content, gallery, banner',
+  `position` int(11) DEFAULT 0 COMMENT 'Order within section',
+  `alt_text_ru` varchar(255) DEFAULT NULL,
+  `alt_text_uz` varchar(255) DEFAULT NULL,
+  `caption_ru` text DEFAULT NULL,
+  `caption_uz` text DEFAULT NULL,
+  `width` int(11) DEFAULT NULL COMMENT 'Display width in pixels',
+  `alignment` enum('left','center','right','full') DEFAULT 'center',
+  `css_class` varchar(100) DEFAULT NULL,
+  `lazy_load` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `seo_settings`
+--
 
 CREATE TABLE `seo_settings` (
   `id` int(11) NOT NULL,
@@ -212,6 +314,8 @@ CREATE TABLE `seo_settings` (
   `article_schema` text DEFAULT NULL,
   `image_schema` text DEFAULT NULL,
   `org_type` varchar(50) DEFAULT 'LocalBusiness',
+  `org_name_ru` varchar(255) DEFAULT NULL,
+  `org_name_uz` varchar(255) DEFAULT NULL,
   `org_logo` varchar(500) DEFAULT NULL,
   `org_description_ru` text DEFAULT NULL,
   `org_description_uz` text DEFAULT NULL,
@@ -225,8 +329,18 @@ CREATE TABLE `seo_settings` (
   `social_instagram` varchar(500) DEFAULT NULL,
   `social_twitter` varchar(500) DEFAULT NULL,
   `social_youtube` varchar(500) DEFAULT NULL,
+  `service_type` varchar(100) DEFAULT 'Service',
+  `area_served` varchar(100) DEFAULT NULL,
+  `org_latitude` varchar(50) DEFAULT NULL,
+  `org_longitude` varchar(50) DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
 
 CREATE TABLE `users` (
   `id` int(11) NOT NULL,
@@ -235,6 +349,13 @@ CREATE TABLE `users` (
   `email` varchar(100) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_crawl_frequency`
+-- (See below for the actual view)
+--
 CREATE TABLE `v_crawl_frequency` (
 `page_slug` varchar(100)
 ,`total_days_tracked` bigint(21)
@@ -244,6 +365,33 @@ CREATE TABLE `v_crawl_frequency` (
 ,`days_since_last_crawl` int(7)
 ,`crawl_frequency_category` varchar(7)
 );
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_media_usage`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_media_usage` (
+`id` int(11)
+,`filename` varchar(255)
+,`original_name` varchar(255)
+,`file_size` int(11)
+,`mime_type` varchar(100)
+,`uploaded_at` timestamp
+,`usage_count` int(11)
+,`pages_count` bigint(21)
+,`used_in_pages` mediumtext
+,`page_titles_ru` mediumtext
+,`last_used_on_page` timestamp
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_navigation_flow`
+-- (See below for the actual view)
+--
 CREATE TABLE `v_navigation_flow` (
 `from_slug` varchar(100)
 ,`to_slug` varchar(100)
@@ -253,12 +401,26 @@ CREATE TABLE `v_navigation_flow` (
 ,`last_click_date` date
 ,`days_since_last_click` int(7)
 );
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_popular_paths`
+-- (See below for the actual view)
+--
 CREATE TABLE `v_popular_paths` (
 `from_slug` varchar(100)
 ,`to_slug` varchar(100)
 ,`clicks` decimal(32,0)
 ,`active_months` bigint(21)
 );
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_rotation_effectiveness`
+-- (See below for the actual view)
+--
 CREATE TABLE `v_rotation_effectiveness` (
 `slug` varchar(100)
 ,`title_ru` varchar(200)
@@ -268,26 +430,79 @@ CREATE TABLE `v_rotation_effectiveness` (
 ,`total_times_shown` decimal(32,0)
 ,`last_rotation_shown` date
 );
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_crawl_frequency`
+--
 DROP TABLE IF EXISTS `v_crawl_frequency`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_crawl_frequency`  AS SELECT `analytics`.`page_slug` AS `page_slug`, count(distinct `analytics`.`date`) AS `total_days_tracked`, sum(`analytics`.`visits`) AS `total_visits`, avg(`analytics`.`visits`) AS `avg_daily_visits`, max(`analytics`.`date`) AS `last_crawl_date`, to_days(curdate()) - to_days(max(`analytics`.`date`)) AS `days_since_last_crawl`, CASE WHEN to_days(curdate()) - to_days(max(`analytics`.`date`)) <= 1 THEN 'Daily' WHEN to_days(curdate()) - to_days(max(`analytics`.`date`)) <= 7 THEN 'Weekly' WHEN to_days(curdate()) - to_days(max(`analytics`.`date`)) <= 30 THEN 'Monthly' ELSE 'Rare' END AS `crawl_frequency_category` FROM `analytics` WHERE `analytics`.`date` >= curdate() - interval 90 day GROUP BY `analytics`.`page_slug` ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_media_usage`
+--
+DROP TABLE IF EXISTS `v_media_usage`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_media_usage`  AS SELECT `m`.`id` AS `id`, `m`.`filename` AS `filename`, `m`.`original_name` AS `original_name`, `m`.`file_size` AS `file_size`, `m`.`mime_type` AS `mime_type`, `m`.`uploaded_at` AS `uploaded_at`, `m`.`usage_count` AS `usage_count`, count(distinct `pm`.`page_id`) AS `pages_count`, group_concat(distinct `p`.`slug` order by `p`.`slug` ASC separator ', ') AS `used_in_pages`, group_concat(distinct `p`.`title_ru` order by `p`.`title_ru` ASC separator ' | ') AS `page_titles_ru`, max(`pm`.`updated_at`) AS `last_used_on_page` FROM ((`media` `m` left join `page_media` `pm` on(`m`.`id` = `pm`.`media_id`)) left join `pages` `p` on(`pm`.`page_id` = `p`.`id`)) GROUP BY `m`.`id` ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_navigation_flow`
+--
 DROP TABLE IF EXISTS `v_navigation_flow`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_navigation_flow`  AS SELECT `analytics_internal_links`.`from_slug` AS `from_slug`, `analytics_internal_links`.`to_slug` AS `to_slug`, `analytics_internal_links`.`language` AS `language`, sum(`analytics_internal_links`.`clicks`) AS `total_clicks`, count(distinct `analytics_internal_links`.`date`) AS `active_days`, max(`analytics_internal_links`.`date`) AS `last_click_date`, to_days(curdate()) - to_days(max(`analytics_internal_links`.`date`)) AS `days_since_last_click` FROM `analytics_internal_links` WHERE `analytics_internal_links`.`date` >= curdate() - interval 90 day GROUP BY `analytics_internal_links`.`from_slug`, `analytics_internal_links`.`to_slug`, `analytics_internal_links`.`language` ORDER BY sum(`analytics_internal_links`.`clicks`) DESC ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_popular_paths`
+--
 DROP TABLE IF EXISTS `v_popular_paths`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_popular_paths`  AS SELECT `analytics_internal_links_monthly`.`from_slug` AS `from_slug`, `analytics_internal_links_monthly`.`to_slug` AS `to_slug`, sum(`analytics_internal_links_monthly`.`total_clicks`) AS `clicks`, count(distinct concat(`analytics_internal_links_monthly`.`year`,'-',`analytics_internal_links_monthly`.`month`)) AS `active_months` FROM `analytics_internal_links_monthly` WHERE cast(concat(`analytics_internal_links_monthly`.`year`,'-',`analytics_internal_links_monthly`.`month`,'-01') as date) >= curdate() - interval 6 month GROUP BY `analytics_internal_links_monthly`.`from_slug`, `analytics_internal_links_monthly`.`to_slug` HAVING `clicks` > 5 ORDER BY sum(`analytics_internal_links_monthly`.`total_clicks`) DESC LIMIT 0, 50 ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_rotation_effectiveness`
+--
 DROP TABLE IF EXISTS `v_rotation_effectiveness`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_rotation_effectiveness`  AS SELECT `p`.`slug` AS `slug`, `p`.`title_ru` AS `title_ru`, `p`.`enable_rotation` AS `enable_rotation`, count(distinct `cr`.`active_month`) AS `months_with_content`, sum(case when `cr`.`is_active` = 1 then 1 else 0 end) AS `active_rotations`, coalesce(sum(`ar`.`times_shown`),0) AS `total_times_shown`, max(`ar`.`last_shown`) AS `last_rotation_shown` FROM ((`pages` `p` left join `content_rotations` `cr` on(`p`.`id` = `cr`.`page_id`)) left join `analytics_rotations` `ar` on(`p`.`slug` = `ar`.`page_slug`)) WHERE `p`.`enable_rotation` = 1 GROUP BY `p`.`id`, `p`.`slug`, `p`.`title_ru`, `p`.`enable_rotation` ;
 
+--
+-- Indexes for dumped tables
+--
 
+--
+-- Indexes for table `analytics`
+--
 ALTER TABLE `analytics`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_daily` (`page_slug`,`language`,`date`),
   ADD KEY `idx_analytics_date_slug` (`date`,`page_slug`),
   ADD KEY `idx_year_month` (`year`,`month`);
 
+--
+-- Indexes for table `analytics_bot_visits`
+--
+ALTER TABLE `analytics_bot_visits`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_bot_visit` (`page_slug`,`language`,`bot_type`,`visit_date`),
+  ADD KEY `idx_page_date` (`page_slug`,`visit_date`),
+  ADD KEY `idx_bot_type` (`bot_type`),
+  ADD KEY `idx_visit_date` (`visit_date`),
+  ADD KEY `idx_bot_crawl_frequency` (`page_slug`,`visit_date`,`bot_type`);
+
+--
+-- Indexes for table `analytics_internal_links`
+--
 ALTER TABLE `analytics_internal_links`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_daily_link` (`from_slug`,`to_slug`,`language`,`date`),
@@ -295,108 +510,218 @@ ALTER TABLE `analytics_internal_links`
   ADD KEY `idx_to_slug` (`to_slug`),
   ADD KEY `idx_date` (`date`);
 
+--
+-- Indexes for table `analytics_internal_links_monthly`
+--
 ALTER TABLE `analytics_internal_links_monthly`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_monthly_link` (`from_slug`,`to_slug`,`language`,`year`,`month`),
   ADD KEY `idx_year_month` (`year`,`month`);
 
+--
+-- Indexes for table `analytics_link_clicks`
+--
 ALTER TABLE `analytics_link_clicks`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_link_click` (`from_slug`,`to_slug`,`link_text`,`language`,`date`);
 
+--
+-- Indexes for table `analytics_monthly`
+--
 ALTER TABLE `analytics_monthly`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_monthly` (`page_slug`,`language`,`year`,`month`),
   ADD KEY `idx_year_month` (`year`,`month`),
   ADD KEY `idx_analytics_monthly_date` (`year`,`month`);
 
+--
+-- Indexes for table `analytics_rotations`
+--
 ALTER TABLE `analytics_rotations`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_rotation_tracking` (`page_slug`,`year`,`rotation_month`,`language`),
   ADD KEY `idx_page_date` (`page_slug`,`year`,`rotation_month`),
   ADD KEY `idx_last_shown` (`last_shown`);
 
+--
+-- Indexes for table `content_rotations`
+--
 ALTER TABLE `content_rotations`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_page_month` (`page_id`,`active_month`),
   ADD KEY `idx_active` (`is_active`);
 
+--
+-- Indexes for table `faqs`
+--
 ALTER TABLE `faqs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_slug` (`page_slug`),
   ADD KEY `idx_active` (`is_active`);
 
+--
+-- Indexes for table `media`
+--
 ALTER TABLE `media`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_filename` (`filename`);
+  ADD KEY `idx_filename` (`filename`),
+  ADD KEY `idx_usage` (`usage_count`);
 
+--
+-- Indexes for table `pages`
+--
 ALTER TABLE `pages`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_slug` (`slug`),
   ADD KEY `idx_published` (`is_published`);
 
+--
+-- Indexes for table `page_link_widgets`
+--
 ALTER TABLE `page_link_widgets`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_page_link` (`page_id`,`link_to_page_id`),
   ADD KEY `link_to_page_id` (`link_to_page_id`);
 
+--
+-- Indexes for table `page_media`
+--
+ALTER TABLE `page_media`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_page_media_section` (`page_id`,`media_id`,`section`),
+  ADD KEY `idx_page_id` (`page_id`),
+  ADD KEY `idx_media_id` (`media_id`),
+  ADD KEY `idx_section` (`section`);
+
+--
+-- Indexes for table `seo_settings`
+--
 ALTER TABLE `seo_settings`
   ADD PRIMARY KEY (`id`);
 
+--
+-- Indexes for table `users`
+--
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `username` (`username`),
   ADD UNIQUE KEY `email` (`email`);
 
+--
+-- AUTO_INCREMENT for dumped tables
+--
 
+--
+-- AUTO_INCREMENT for table `analytics`
+--
 ALTER TABLE `analytics`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `analytics_bot_visits`
+--
+ALTER TABLE `analytics_bot_visits`
+  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `analytics_internal_links`
+--
 ALTER TABLE `analytics_internal_links`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `analytics_internal_links_monthly`
+--
 ALTER TABLE `analytics_internal_links_monthly`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `analytics_link_clicks`
+--
 ALTER TABLE `analytics_link_clicks`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `analytics_monthly`
+--
 ALTER TABLE `analytics_monthly`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `analytics_rotations`
+--
 ALTER TABLE `analytics_rotations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `content_rotations`
+--
 ALTER TABLE `content_rotations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `faqs`
+--
 ALTER TABLE `faqs`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `media`
+--
 ALTER TABLE `media`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `pages`
+--
 ALTER TABLE `pages`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `page_link_widgets`
+--
 ALTER TABLE `page_link_widgets`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `page_media`
+--
+ALTER TABLE `page_media`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `seo_settings`
+--
 ALTER TABLE `seo_settings`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- AUTO_INCREMENT for table `users`
+--
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+--
+-- Constraints for dumped tables
+--
 
+--
+-- Constraints for table `content_rotations`
+--
 ALTER TABLE `content_rotations`
   ADD CONSTRAINT `content_rotations_ibfk_1` FOREIGN KEY (`page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE;
 
+--
+-- Constraints for table `page_link_widgets`
+--
 ALTER TABLE `page_link_widgets`
   ADD CONSTRAINT `page_link_widgets_ibfk_1` FOREIGN KEY (`page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `page_link_widgets_ibfk_2` FOREIGN KEY (`link_to_page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE;
-COMMIT;
 
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+--
+-- Constraints for table `page_media`
+--
+ALTER TABLE `page_media`
+  ADD CONSTRAINT `fk_page_media_media` FOREIGN KEY (`media_id`) REFERENCES `media` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_page_media_page` FOREIGN KEY (`page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE;
+COMMIT;

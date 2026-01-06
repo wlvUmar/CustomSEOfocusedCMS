@@ -1103,3 +1103,133 @@ main a:hover img {
         font-size: 0.8em;
     }
 }
+
+.page-media {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1rem auto;
+}
+
+.page-media.align-left {
+    float: left;
+    margin: 0 1.5rem 1rem 0;
+}
+
+.page-media.align-right {
+    float: right;
+    margin: 0 0 1rem 1.5rem;
+}
+
+.page-media.align-center {
+    margin: 1.5rem auto;
+}
+
+.page-media.align-full {
+    width: 100%;
+    max-width: none;
+}
+
+/* Media Figure with Caption */
+.media-figure {
+    margin: 1.5rem 0;
+}
+
+.media-figure.align-left {
+    float: left;
+    max-width: 50%;
+    margin-right: 1.5rem;
+}
+
+.media-figure.align-right {
+    float: right;
+    max-width: 50%;
+    margin-left: 1.5rem;
+}
+
+.media-figure figcaption {
+    font-size: 0.9em;
+    color: #666;
+    font-style: italic;
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+/* Hero Section */
+.hero-media {
+    position: relative;
+    width: 100%;
+    margin-bottom: 2rem;
+}
+
+.hero-image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.hero-caption {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 1rem;
+    font-size: 1.2em;
+}
+
+/* Gallery Section */
+.media-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.gallery-item {
+    margin: 0;
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.gallery-item figcaption {
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+/* Banner Section */
+.media-banner {
+    width: 100%;
+    margin: 2rem 0;
+}
+
+.banner-image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .media-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+    
+    .gallery-item img {
+        height: 150px;
+    }
+    
+    .media-figure.align-left,
+    .media-figure.align-right {
+        float: none;
+        max-width: 100%;
+        margin: 1rem 0;
+    }
+}

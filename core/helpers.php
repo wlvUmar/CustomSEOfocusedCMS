@@ -435,3 +435,202 @@ function enhanceContentSEO($content, $pageTitle = '', $applianceName = '') {
     
     return trim($html);
 }
+
+/**
+ * Process media placeholders in content
+ * Supports: {{media:123}}, {{media:123:center:500}}, {{media-section:gallery}}
+ */
+function processMediaPlaceholders($content, $pageId) {
+    if (empty($content)) return $content;
+    
+    $db = Database::getInstance();
+    $lang = getCurrentLanguage();
+    
+    // Process single media placeholders: {{media:123}} or {{media:123:center:500}}
+    $content = preg_replace_callback(
+        '/\{\{media:(\d+)(?::(\w+))?(?::(\d+))?\}\}/',
+        function($matches) use ($db, $pageId, $lang) {
+            $mediaId = $matches[1];
+            $alignment = $matches[2] ?? 'center';
+            $width = $matches[3] ?? null;
+            
+            // Get media details
+            $sql = "SELECT m.*, pm.alt_text_ru, pm.alt_text_uz, pm.caption_ru, pm.caption_uz, 
+                           pm.width, pm.alignment, pm.css_class, pm.lazy_load
+                    FROM media m
+                    LEFT JOIN page_media pm ON m.id = pm.media_id AND pm.page_id = ?
+                    WHERE m.id = ?
+                    LIMIT 1";
+            
+            $media = $db->fetchOne($sql, [$pageId, $mediaId]);
+            
+            if (!$media) return '';
+            
+            // Use page_media settings or defaults
+            $alt = $media["alt_text_$lang"] ?? $media['original_name'];
+            $caption = $media["caption_$lang"] ?? '';
+            $displayWidth = $width ?? $media['width'] ?? null;
+            $displayAlign = $media['alignment'] ?? $alignment;
+            $cssClass = $media['css_class'] ?? '';
+            $lazyLoad = $media['lazy_load'] ?? 1;
+            
+            // Build image tag
+            $imgTag = '<img src="/uploads/' . htmlspecialchars($media['filename']) . '" ';
+            $imgTag .= 'alt="' . htmlspecialchars($alt) . '" ';
+            
+            if ($displayWidth) {
+                $imgTag .= 'width="' . $displayWidth . '" ';
+            }
+            
+            if ($lazyLoad) {
+                $imgTag .= 'loading="lazy" ';
+            }
+            
+            $classes = ['page-media', 'align-' . $displayAlign];
+            if ($cssClass) $classes[] = $cssClass;
+            $imgTag .= 'class="' . implode(' ', $classes) . '">';
+            
+            // Wrap with figure if caption exists
+            if ($caption) {
+                return '<figure class="media-figure align-' . $displayAlign . '">' . 
+                       $imgTag . 
+                       '<figcaption>' . htmlspecialchars($caption) . '</figcaption>' .
+                       '</figure>';
+            }
+            
+            return $imgTag;
+        },
+        $content
+    );
+    
+    // Process section placeholders: {{media-section:gallery}}
+    $content = preg_replace_callback(
+        '/\{\{media-section:(\w+)\}\}/',
+        function($matches) use ($db, $pageId, $lang) {
+            $section = $matches[1];
+            
+            // Get all media for this section
+            $sql = "SELECT m.*, pm.alt_text_ru, pm.alt_text_uz, pm.caption_ru, pm.caption_uz,
+                           pm.width, pm.alignment, pm.css_class, pm.lazy_load, pm.position
+                    FROM page_media pm
+                    JOIN media m ON pm.media_id = m.id
+                    WHERE pm.page_id = ? AND pm.section = ?
+                    ORDER BY pm.position ASC, pm.id ASC";
+            
+            $mediaItems = $db->fetchAll($sql, [$pageId, $section]);
+            
+            if (empty($mediaItems)) return '';
+            
+            // Render based on section type
+            switch ($section) {
+                case 'hero':
+                    return renderHeroSection($mediaItems, $lang);
+                case 'gallery':
+                    return renderGallerySection($mediaItems, $lang);
+                case 'banner':
+                    return renderBannerSection($mediaItems, $lang);
+                default:
+                    return renderContentSection($mediaItems, $lang);
+            }
+        },
+        $content
+    );
+    
+    return $content;
+}
+
+/**
+ * Render hero section (single large banner)
+ */
+function renderHeroSection($mediaItems, $lang) {
+    if (empty($mediaItems)) return '';
+    
+    $media = $mediaItems[0]; // Only use first image
+    $alt = $media["alt_text_$lang"] ?? $media['original_name'];
+    $caption = $media["caption_$lang"] ?? '';
+    
+    $html = '<div class="hero-media">';
+    $html .= '<img src="/uploads/' . htmlspecialchars($media['filename']) . '" ';
+    $html .= 'alt="' . htmlspecialchars($alt) . '" ';
+    $html .= 'class="hero-image" loading="eager">';
+    
+    if ($caption) {
+        $html .= '<div class="hero-caption">' . htmlspecialchars($caption) . '</div>';
+    }
+    
+    $html .= '</div>';
+    return $html;
+}
+
+/**
+ * Render gallery section (grid of images)
+ */
+function renderGallerySection($mediaItems, $lang) {
+    if (empty($mediaItems)) return '';
+    
+    $html = '<div class="media-gallery">';
+    
+    foreach ($mediaItems as $media) {
+        $alt = $media["alt_text_$lang"] ?? $media['original_name'];
+        $caption = $media["caption_$lang"] ?? '';
+        
+        $html .= '<figure class="gallery-item">';
+        $html .= '<img src="/uploads/' . htmlspecialchars($media['filename']) . '" ';
+        $html .= 'alt="' . htmlspecialchars($alt) . '" loading="lazy">';
+        
+        if ($caption) {
+            $html .= '<figcaption>' . htmlspecialchars($caption) . '</figcaption>';
+        }
+        
+        $html .= '</figure>';
+    }
+    
+    $html .= '</div>';
+    return $html;
+}
+
+/**
+ * Render banner section
+ */
+function renderBannerSection($mediaItems, $lang) {
+    if (empty($mediaItems)) return '';
+    
+    $media = $mediaItems[0];
+    $alt = $media["alt_text_$lang"] ?? $media['original_name'];
+    
+    $html = '<div class="media-banner">';
+    $html .= '<img src="/uploads/' . htmlspecialchars($media['filename']) . '" ';
+    $html .= 'alt="' . htmlspecialchars($alt) . '" class="banner-image" loading="lazy">';
+    $html .= '</div>';
+    
+    return $html;
+}
+
+/**
+ * Render content section (inline media)
+ */
+function renderContentSection($mediaItems, $lang) {
+    if (empty($mediaItems)) return '';
+    
+    $html = '';
+    foreach ($mediaItems as $media) {
+        $alt = $media["alt_text_$lang"] ?? $media['original_name'];
+        $caption = $media["caption_$lang"] ?? '';
+        $alignment = $media['alignment'] ?? 'center';
+        
+        if ($caption) {
+            $html .= '<figure class="media-figure align-' . $alignment . '">';
+        }
+        
+        $html .= '<img src="/uploads/' . htmlspecialchars($media['filename']) . '" ';
+        $html .= 'alt="' . htmlspecialchars($alt) . '" ';
+        $html .= 'class="page-media align-' . $alignment . '" loading="lazy">';
+        
+        if ($caption) {
+            $html .= '<figcaption>' . htmlspecialchars($caption) . '</figcaption>';
+            $html .= '</figure>';
+        }
+    }
+    
+    return $html;
+}
