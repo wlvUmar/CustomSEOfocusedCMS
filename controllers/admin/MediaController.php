@@ -48,7 +48,7 @@ class MediaController extends Controller {
         $pageModel = new Page();
         $allPages = $pageModel->getAll(true);
         
-        $this->view('admin/media/manager', [
+        $this->view('admin/media/index', [
             'media' => $media,
             'allPages' => $allPages,
             'currentPage' => $page,
