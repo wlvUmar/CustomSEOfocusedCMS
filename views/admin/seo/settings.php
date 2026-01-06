@@ -94,6 +94,13 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </div>
             </div>
             
+            <div class="form-group">
+                <label>Google Business Review URL</label>
+                <input type="url" name="google_review_url" value="<?= e($settings['google_review_url'] ?? '') ?>" 
+                       placeholder="https://g.page/r/YOUR_PLACE_ID/review">
+                <small style="color: #666;">Link to your Google Business Profile review page. Will be shown on all pages.</small>
+            </div>
+            
             <h3 style="margin-top: 30px;">Global Service Settings (for auto-generated schemas)</h3>
             <p class="help-text">
                 These settings are used to automatically generate Service schemas on each page using the page title and description.

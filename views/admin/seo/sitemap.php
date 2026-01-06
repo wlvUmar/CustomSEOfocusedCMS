@@ -74,7 +74,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </ul>
     
     <div style="background: #f9fafb; padding: 15px; border-radius: 6px; border-left: 3px solid #3b82f6;">
-        <strong>📋 Submit to Search Engines:</strong>
+        <strong><i data-feather="book"></i> Submit to Search Engines:</strong>
         <ul style="margin-top: 10px; padding-left: 20px;">
             <li><a href="https://search.google.com/search-console" target="_blank">Google Search Console</a></li>
             <li><a href="https://www.bing.com/webmasters" target="_blank">Bing Webmaster Tools</a></li>

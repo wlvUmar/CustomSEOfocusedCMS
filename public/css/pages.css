@@ -281,6 +281,39 @@ footer a:hover {
     height: 26px;
 }
 
+.floating-review {
+    position: fixed;
+    bottom: 88px;
+    right: 20px;
+    background: #fbbc04;
+    color: #fff;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(251, 188, 4, 0.4);
+    text-decoration: none;
+    transition: all 0.3s;
+    z-index: 998;
+}
+
+.floating-review:hover {
+    transform: scale(1.1);
+    background: #ea9c00;
+    box-shadow: 0 6px 20px rgba(251, 188, 4, 0.6);
+}
+
+.floating-review:active {
+    transform: scale(0.95);
+}
+
+.floating-review svg {
+    width: 26px;
+    height: 26px;
+}
+
 @keyframes pulse {
     0%, 100% { 
         box-shadow: 0 4px 16px rgba(5, 150, 105, 0.4);
@@ -343,6 +376,18 @@ footer a:hover {
     }
     
     .floating-call svg {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .floating-review {
+        width: 60px;
+        height: 60px;
+        bottom: 96px;
+        right: 24px;
+    }
+    
+    .floating-review svg {
         width: 28px;
         height: 28px;
     }
@@ -416,6 +461,18 @@ footer a:hover {
         width: 30px;
         height: 30px;
     }
+    
+    .floating-review {
+        width: 64px;
+        height: 64px;
+        bottom: 106px;
+        right: 30px;
+    }
+    
+    .floating-review svg {
+        width: 30px;
+        height: 30px;
+    }
 }
 
 /* Extra small phones (max 360px) */
@@ -445,6 +502,18 @@ footer a:hover {
         height: 52px;
         bottom: 16px;
         right: 16px;
+    }
+    
+    .floating-review {
+        width: 52px;
+        height: 52px;
+        bottom: 78px;
+        right: 16px;
+    }
+    
+    .floating-review svg {
+        width: 22px;
+        height: 22px;
     }
 }
 
