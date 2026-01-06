@@ -6,7 +6,7 @@ function generateOrgSchema() {
     
     const data = {
         type: document.querySelector('[name="org_type"]').value,
-        name: document.querySelector('[name="site_name_ru"]').value,
+        name: (document.querySelector('[name="org_name_ru"]') ? document.querySelector('[name="org_name_ru"]').value : document.querySelector('[name="site_name_ru"]').value),
         url: window.location.origin,
         logo: document.querySelector('[name="org_logo"]').value,
         description: document.querySelector('[name="org_description_ru"]').value,

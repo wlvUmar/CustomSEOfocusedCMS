@@ -143,6 +143,9 @@ $router->group('/admin/seo', function($router) {
     });
 });
 
+// Backwards-compatible route: handle POSTs accidentally sent to /seo/save (without /admin)
+$router->post('/seo/save', function() { requireSEO('save'); });
+
 // Admin Preview
 $router->group('/admin/preview', function($router) {
     $router->get('/{id}', function($id) { requireAdminController('PreviewController', 'show', $id); });

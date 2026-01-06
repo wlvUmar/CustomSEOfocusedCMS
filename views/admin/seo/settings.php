@@ -168,6 +168,16 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </div>
                 
                 <div class="form-group">
+                    <label>Organization Name (RU)</label>
+                    <input type="text" name="org_name_ru" value="<?= e($settings['org_name_ru'] ?? $settings['site_name_ru'] ?? '') ?>" placeholder="Company name in Russian">
+                </div>
+                
+                <div class="form-group">
+                    <label>Organization Name (UZ)</label>
+                    <input type="text" name="org_name_uz" value="<?= e($settings['org_name_uz'] ?? $settings['site_name_uz'] ?? '') ?>" placeholder="Company name in Uzbek">
+                </div>
+                
+                <div class="form-group">
                     <label>Logo URL</label>
                     <input type="text" name="org_logo" value="<?= e($settings['org_logo'] ?? '') ?>" 
                            placeholder="https://example.com/logo.png">

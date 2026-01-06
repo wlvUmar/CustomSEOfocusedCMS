@@ -45,6 +45,8 @@ class SEOController extends Controller {
             
             // Organization
             'org_type' => trim($_POST['org_type'] ?? 'LocalBusiness'),
+            'org_name_ru' => trim($_POST['org_name_ru'] ?? ''),
+            'org_name_uz' => trim($_POST['org_name_uz'] ?? ''),
             'org_logo' => trim($_POST['org_logo'] ?? ''),
             'org_description_ru' => trim($_POST['org_description_ru'] ?? ''),
             'org_description_uz' => trim($_POST['org_description_uz'] ?? ''),
@@ -86,7 +88,7 @@ class SEOController extends Controller {
         
         return JsonLdGenerator::generateOrganization([
             'type' => $data['org_type'],
-            'name' => $data['site_name_ru'],
+            'name' => !empty($data['org_name_ru']) ? $data['org_name_ru'] : $data['site_name_ru'],
             'url' => BASE_URL,
             'logo' => $data['org_logo'],
             'description' => $data['org_description_ru'],
