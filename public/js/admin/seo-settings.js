@@ -57,3 +57,41 @@ function generateOrgSchema() {
     preview.textContent = JSON.stringify(schema, null, 2);
     preview.style.display = 'block';
 }
+
+// Intercept form submit to save via AJAX and show inline alert instead of navigating away
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form.admin-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) { submitBtn.disabled = true; }
+
+        const fd = new FormData(form);
+        try {
+            const res = await fetch(form.action, { method: 'POST', body: fd, credentials: 'same-origin' });
+            if (res.ok) {
+                showAlert('SEO settings saved successfully', 'success');
+            } else {
+                showAlert('Failed to save SEO settings', 'error');
+            }
+        } catch (err) {
+            showAlert('Network error saving settings', 'error');
+        } finally {
+            if (submitBtn) { submitBtn.disabled = false; }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    });
+});
+
+function showAlert(message, type) {
+    const existing = document.querySelector('.alert');
+    if (existing) existing.remove();
+    const div = document.createElement('div');
+    div.className = 'alert ' + (type === 'success' ? 'alert-success' : 'alert-error');
+    div.textContent = message;
+    const container = document.querySelector('.admin-wrapper') || document.body;
+    container.insertBefore(div, container.firstChild);
+    setTimeout(() => { div.style.transition = 'opacity 0.3s ease'; div.style.opacity = '0'; setTimeout(()=>div.remove(),300); }, 4000);
+}

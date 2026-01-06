@@ -15,6 +15,17 @@ $ogImage = $page['og_image'] ?? (BASE_URL . '/css/logo.png');
 // Canonical URL
 $canonicalUrl = $page['canonical_url'] ?? (BASE_URL . '/' . e($page['slug']) . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : ''));
 
+// Build template data used for meta/template replacements
+$templateData = [
+    'page' => $page,
+    'global' => [
+        'phone' => $seo['phone'] ?? '',
+        'site_name' => $seo["site_name_$lang"] ?? ''
+    ],
+    'seo' => $seo,
+    'lang' => $lang
+];
+
 // Process placeholders in all meta content
 $metaTitle = renderTemplate($metaTitle, $templateData);
 $metaKeywords = renderTemplate($metaKeywords, $templateData);
@@ -33,8 +44,8 @@ $pageServiceSchema = '';
 if (!empty($page["title_$lang"])) {
     $pageServiceSchema = JsonLdGenerator::generateService([
         'service_type' => $seo['service_type'] ?? 'Service',
-        'name' => $page["title_$lang"],
-        'description' => $page["meta_description_$lang"] ?? '',
+        'name' => replacePlaceholders($page["title_$lang"], $page, $seo),
+        'description' => replacePlaceholders($page["meta_description_$lang"] ?? '', $page, $seo),
         'provider' => [
             '@id' => BASE_URL . '#organization'
         ],
@@ -93,9 +104,33 @@ $isAdmin = isset($_SESSION['user_id']);
     // Global Organization/LocalBusiness Schema (appears on all pages)
     if (!empty($seo['organization_schema'])) {
         $orgSchema = json_decode($seo['organization_schema'], true);
-        $orgSchema['@id'] = BASE_URL . '#organization';
+        if (is_array($orgSchema)) {
+            $orgSchema['@id'] = BASE_URL . '#organization';
+            echo '<script type="application/ld+json">' . "\n";
+            echo json_encode($orgSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n";
+            echo '</script>' . "\n";
+        }
+    } elseif (!empty($seo['site_name_ru']) || !empty($seo['site_name_uz'])) {
+        // Fallback: generate organization schema from individual fields if full schema absent
+        $orgData = [
+            'type' => $seo['org_type'] ?? 'LocalBusiness',
+            'name' => $seo['org_name_ru'] ?? $seo['site_name_ru'] ?? $seo['site_name_uz'] ?? '',
+            'url' => BASE_URL,
+            'logo' => $seo['org_logo'] ?? '',
+            'description' => $seo['org_description_ru'] ?? $seo['org_description_uz'] ?? '',
+            'telephone' => $seo['phone'] ?? '',
+            'email' => $seo['email'] ?? '',
+            'address' => $seo['address_ru'] ?? $seo['address_uz'] ?? '',
+            'city' => $seo['city'] ?? '',
+            'region' => $seo['region'] ?? '',
+            'postal' => $seo['postal_code'] ?? '',
+            'country' => $seo['country'] ?? 'UZ',
+            'opening_hours' => !empty($seo['opening_hours']) ? explode("\n", $seo['opening_hours']) : [],
+            'price_range' => $seo['price_range'] ?? '',
+            'social_media' => array_filter([$seo['social_facebook'] ?? '', $seo['social_instagram'] ?? '', $seo['social_twitter'] ?? '', $seo['social_youtube'] ?? ''])
+        ];
         echo '<script type="application/ld+json">' . "\n";
-        echo json_encode($orgSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n";
+        echo JsonLdGenerator::generateOrganization($orgData) . "\n";
         echo '</script>' . "\n";
     }
 

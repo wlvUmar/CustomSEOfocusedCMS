@@ -365,5 +365,5 @@ function generateFAQSchema($faqs, $lang) {
         'mainEntity' => $faqItems
     ];
     
-    return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 }
