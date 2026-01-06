@@ -106,7 +106,10 @@ $isAdmin = isset($_SESSION['user_id']);
     if (!empty($seo['organization_schema'])) {
         $orgSchema = json_decode($seo['organization_schema'], true);
         if (is_array($orgSchema)) {
-            $orgSchema['@id'] = BASE_URL . '#organization';
+            // Always enforce @id if not present
+            if (empty($orgSchema['@id'])) {
+                $orgSchema['@id'] = BASE_URL . '#organization';
+            }
             echo '<script type="application/ld+json">' . "\n";
             echo json_encode($orgSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n";
             echo '</script>' . "\n";
@@ -114,18 +117,22 @@ $isAdmin = isset($_SESSION['user_id']);
     } elseif (!empty($seo['site_name_ru']) || !empty($seo['site_name_uz'])) {
         // Fallback: generate organization schema from individual fields if full schema absent
         $orgData = [
+            'id' => BASE_URL . '#organization',
             'type' => $seo['org_type'] ?? 'LocalBusiness',
             'name' => $seo['org_name_ru'] ?? $seo['site_name_ru'] ?? $seo['site_name_uz'] ?? '',
             'url' => BASE_URL,
-            'logo' => $seo['org_logo'] ?? '',
+            'logo' => $seo['org_logo'] ?? (BASE_URL . '/css/logo.png'),
+            'image' => $seo['org_logo'] ?? (BASE_URL . '/css/logo.png'),
             'description' => $seo['org_description_ru'] ?? $seo['org_description_uz'] ?? '',
             'telephone' => $seo['phone'] ?? '',
             'email' => $seo['email'] ?? '',
             'address' => $seo['address_ru'] ?? $seo['address_uz'] ?? '',
-            'city' => $seo['city'] ?? '',
-            'region' => $seo['region'] ?? '',
+            'city' => $seo['city'] ?? 'Tashkent',
+            'region' => $seo['region'] ?? 'Tashkent',
             'postal' => $seo['postal_code'] ?? '',
             'country' => $seo['country'] ?? 'UZ',
+            'latitude' => $seo['org_latitude'] ?? null,
+            'longitude' => $seo['org_longitude'] ?? null,
             'opening_hours' => !empty($seo['opening_hours']) ? explode("\n", $seo['opening_hours']) : [],
             'price_range' => $seo['price_range'] ?? '',
             'social_media' => array_filter([$seo['social_facebook'] ?? '', $seo['social_instagram'] ?? '', $seo['social_twitter'] ?? '', $seo['social_youtube'] ?? ''])

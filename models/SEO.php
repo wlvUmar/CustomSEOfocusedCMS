@@ -23,12 +23,13 @@ class SEO {
                 address_ru = ?, address_uz = ?,
                 working_hours_ru = ?, working_hours_uz = ?,
                 city = ?, region = ?, postal_code = ?, country = ?,
-                org_type = ?, org_logo = ?,
+                org_type = ?, org_name_ru = ?, org_name_uz = ?, org_logo = ?,
                 org_description_ru = ?, org_description_uz = ?,
                 opening_hours = ?, price_range = ?,
                 social_facebook = ?, social_instagram = ?,
                 social_twitter = ?, social_youtube = ?,
                 service_type = ?, area_served = ?,
+                org_latitude = ?, org_longitude = ?,
                 organization_schema = ?, website_schema = ?
                 WHERE id = 1";
         
@@ -50,6 +51,8 @@ class SEO {
             $data['postal_code'] ?? '',
             $data['country'] ?? 'UZ',
             $data['org_type'] ?? 'LocalBusiness',
+            $data['org_name_ru'] ?? '',
+            $data['org_name_uz'] ?? '',
             $data['org_logo'] ?? '',
             $data['org_description_ru'] ?? '',
             $data['org_description_uz'] ?? '',
@@ -61,6 +64,8 @@ class SEO {
             $data['social_youtube'] ?? '',
             $data['service_type'] ?? 'Service',
             $data['area_served'] ?? '',
+            $data['org_latitude'] ?? '',
+            $data['org_longitude'] ?? '',
             $data['organization_schema'] ?? '',
             $data['website_schema'] ?? ''
         ]);
