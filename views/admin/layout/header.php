@@ -65,13 +65,20 @@
                 </div>
                 
                 <div class="nav-section">
-                    <div class="nav-section-title">Settings</div>
+                    <div class="nav-section-title">SEO & Indexing</div>
                     <a href="<?= BASE_URL ?>/admin/seo" class="<?= strpos($_SERVER['REQUEST_URI'], '/seo') !== false && strpos($_SERVER['REQUEST_URI'], '/sitemap') === false ? 'active' : '' ?>">
                         <i data-feather="search"></i> SEO Settings
+                    </a>
+                    <a href="<?= BASE_URL ?>/admin/search-engine" class="<?= strpos($_SERVER['REQUEST_URI'], '/search-engine') !== false ? 'active' : '' ?>">
+                        <i data-feather="send"></i> Search Engines
                     </a>
                     <a href="<?= BASE_URL ?>/admin/seo/sitemap" class="<?= strpos($_SERVER['REQUEST_URI'], '/seo/sitemap') !== false ? 'active' : '' ?>">
                         <i data-feather="map"></i> Sitemap & Robots
                     </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Settings</div>
                     <a href="<?= BASE_URL ?>/admin/media" class="<?= strpos($_SERVER['REQUEST_URI'], '/media') !== false ? 'active' : '' ?>">
                         <i data-feather="image"></i> Media
                     </a>
