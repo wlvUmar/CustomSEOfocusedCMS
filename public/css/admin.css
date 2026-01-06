@@ -303,16 +303,49 @@ body {
     position: relative;
 }
 
-/* Alerts */
+/* Alerts - Floating Toast Style */
 .alert {
-    padding: 12px 20px;
-    margin-bottom: 20px;
-    border-radius: 4px;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 16px 24px;
+    border-radius: 8px;
     border-left: 4px solid;
-    position: relative;
-    display: block;
-    width: 100%;
-    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 300px;
+    max-width: 500px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    animation: slideInRight 0.3s ease-out;
+    font-weight: 500;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.alert.fade-out {
+    animation: slideOutRight 0.3s ease-out forwards;
 }
 
 .alert-success {
@@ -1390,8 +1423,13 @@ body {
     
     /* Compact alerts */
     .alert {
-        padding: 10px 12px;
-        font-size: 13px;
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+        max-width: none;
+        padding: 12px 16px;
+        font-size: 14px;
     }
     
     /* Badge sizes */

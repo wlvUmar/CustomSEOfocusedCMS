@@ -115,10 +115,30 @@ document.addEventListener('DOMContentLoaded', function() {
 function showAlert(message, type) {
     const existing = document.querySelector('.alert');
     if (existing) existing.remove();
+    
     const div = document.createElement('div');
     div.className = 'alert ' + (type === 'success' ? 'alert-success' : 'alert-error');
-    div.textContent = message;
-    const container = document.querySelector('.admin-wrapper') || document.body;
-    container.insertBefore(div, container.firstChild);
-    setTimeout(() => { div.style.transition = 'opacity 0.3s ease'; div.style.opacity = '0'; setTimeout(()=>div.remove(),300); }, 4000);
+    
+    // Create icon
+    const icon = document.createElement('i');
+    icon.setAttribute('data-feather', type === 'success' ? 'check-circle' : 'alert-circle');
+    
+    // Create text node
+    const text = document.createTextNode(message);
+    
+    div.appendChild(icon);
+    div.appendChild(text);
+    
+    document.body.appendChild(div);
+    
+    // Replace feather icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => { 
+        div.classList.add('fade-out');
+        setTimeout(() => div.remove(), 300);
+    }, 5000);
 }

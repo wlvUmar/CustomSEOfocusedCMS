@@ -16,8 +16,7 @@ function switchTab(tab, event) {
 function setupAlertDismissal() {
     document.querySelectorAll('.alert').forEach(alert => {
         setTimeout(() => {
-            alert.style.transition = 'opacity 0.3s ease';
-            alert.style.opacity = '0';
+            alert.classList.add('fade-out');
             setTimeout(() => {
                 alert.remove();
             }, 300);
