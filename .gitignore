@@ -21,3 +21,4 @@ desktop.ini
 *.env
 
 add_seo_fields_migration.sql
+/beta
