@@ -1,6 +1,6 @@
 <?php
 
-define('IS_PRODUCTION', !in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1', 'test.kuplyu-tashkent.uz']));
+define('IS_PRODUCTION', true);
 
 // --------------------
 // Security Headers
