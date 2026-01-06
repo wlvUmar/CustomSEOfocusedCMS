@@ -117,10 +117,10 @@ $router->group('/admin/media', function($router) {
     $router->post('/upload', function() { requireMediaAdmin('upload'); });
     $router->post('/delete', function() { requireMediaAdmin('delete'); });
     $router->post('/bulk-upload', function() { requireMediaAdmin('bulkUpload'); });
-    $router->post('/admin/media/attach', [MediaController::class, 'attachToPage']);
-    $router->post('/admin/media/detach', [MediaController::class, 'detachFromPage']);
-    $router->get('/admin/media/info', [MediaController::class, 'getMediaInfo']);
-    $router->post('/admin/media/bulk-action', [MediaController::class, 'bulkAction']);
+    $router->post('/attach', function() { requireMediaAdmin('attachToPage'); });
+    $router->post('/detach', function() { requireMediaAdmin('detachFromPage'); });
+    $router->get('/info', function() { requireMediaAdmin('getMediaInfo'); });
+    $router->post('/bulk-action', function() { requireMediaAdmin('bulkAction'); });
 });
 
 // $router->group('/admin/media', function($router) {
