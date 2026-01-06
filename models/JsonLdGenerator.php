@@ -33,12 +33,28 @@ class JsonLdGenerator {
         
         if (!empty($data['description'])) {
             // Clean description: remove \r\n, extra spaces, limit to ~300 chars
-            $description = preg_replace('/\s+/', ' ', trim($data['description']));
-            $description = preg_replace('/\r\n|\r|\n/', ' ', $description);
+            $description = $data['description'];
+            
+            // Remove \r\n line breaks
+            $description = str_replace(["\r\n", "\r", "\n"], ' ', $description);
+            
+            // Remove phone numbers
+            $description = preg_replace('/\+?\d[\d\s\-\(\)]{7,}\d/', '', $description);
+            
+            // Remove orphaned call-to-action phrases after phone removal
+            $description = preg_replace('/(?:звоните|позвоните|call us?|телефон)[\s:!\.—\-]*(?:\s|$)/ui', '', $description);
+            
+            // Clean multiple spaces
+            $description = preg_replace('/\s{2,}/', ' ', trim($description));
+            
+            // Trim to 300 chars
             if (mb_strlen($description) > 300) {
                 $description = mb_substr($description, 0, 297) . '...';
             }
-            $schema['description'] = $description;
+            
+            if (!empty(trim($description))) {
+                $schema['description'] = $description;
+            }
         }
         
         if (!empty($data['telephone'])) {
@@ -104,10 +120,19 @@ class JsonLdGenerator {
         // Description: clean and avoid phone numbers (use availableChannel instead)
         if (!empty($data['description'])) {
             $description = $data['description'];
-            // Remove phone numbers from description
+            
+            // Remove \r\n line breaks
+            $description = str_replace(["\r\n", "\r", "\n"], ' ', $description);
+            
+            // Remove phone numbers
             $description = preg_replace('/\+?\d[\d\s\-\(\)]{7,}\d/', '', $description);
+            
+            // Remove orphaned call-to-action phrases
+            $description = preg_replace('/(?:звоните|позвоните|call us?|телефон)[\s:!\.—\-]*(?:\s|$)/ui', '', $description);
+            
             // Clean whitespace
-            $description = preg_replace('/\s+/', ' ', trim($description));
+            $description = preg_replace('/\s{2,}/', ' ', trim($description));
+            
             if (!empty($description)) {
                 $schema['description'] = $description;
             }
