@@ -198,7 +198,7 @@ $router->post('/track-internal-link', function() {
 $router->get('/', function() {
     require_once BASE_PATH . '/controllers/PageController.php';
     setLanguage(DEFAULT_LANGUAGE);
-    (new PageController())->show('home');
+    (new PageController())->show('main');
 });
 
 // Catch-all public pages (always at the end)
