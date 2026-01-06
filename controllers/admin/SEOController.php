@@ -48,8 +48,9 @@ class SEOController extends Controller {
             'org_name_ru' => trim($_POST['org_name_ru'] ?? ''),
             'org_name_uz' => trim($_POST['org_name_uz'] ?? ''),
             'org_logo' => trim($_POST['org_logo'] ?? ''),
-            'org_description_ru' => trim($_POST['org_description_ru'] ?? ''),
-            'org_description_uz' => trim($_POST['org_description_uz'] ?? ''),
+            // Clean descriptions: remove line breaks at input time
+            'org_description_ru' => $this->cleanDescription($_POST['org_description_ru'] ?? ''),
+            'org_description_uz' => $this->cleanDescription($_POST['org_description_uz'] ?? ''),
             'opening_hours' => trim($_POST['opening_hours'] ?? ''),
             'price_range' => trim($_POST['price_range'] ?? ''),
             
@@ -79,6 +80,13 @@ class SEOController extends Controller {
         $_SESSION['success'] = 'SEO settings updated successfully';
         
         $this->redirect('/admin/seo');
+    }
+    
+    private function cleanDescription($text) {
+        // Remove line breaks and normalize whitespace
+        $text = str_replace(["\r\n", "\r", "\n"], ' ', $text);
+        $text = preg_replace('/\s{2,}/', ' ', $text);
+        return trim($text);
     }
     
     private function generateOrganizationSchema($data) {

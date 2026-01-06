@@ -142,6 +142,10 @@ $isAdmin = isset($_SESSION['user_id']);
     if (!empty($seo['organization_schema'])) {
         $orgSchema = json_decode($seo['organization_schema'], true);
         if (is_array($orgSchema)) {
+            // Safety: Clean description if it contains line breaks (for old data)
+            if (!empty($orgSchema['description']) && (strpos($orgSchema['description'], "\r\n") !== false || strpos($orgSchema['description'], "\n") !== false)) {
+                $orgSchema['description'] = preg_replace('/\s{2,}/', ' ', str_replace(["\r\n", "\r", "\n"], ' ', $orgSchema['description']));
+            }
             if (empty($orgSchema['@id'])) {
                 $orgSchema['@id'] = BASE_URL . '#organization';
             }
