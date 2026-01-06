@@ -20,7 +20,11 @@ class JsonLdGenerator {
         }
         
         if (!empty($data['logo'])) {
-            $schema['logo'] = $data['logo'];
+            $logoData = ['@type' => 'ImageObject', 'url' => $data['logo']];
+            // Add width/height if provided for richer snippets
+            if (!empty($data['logo_width'])) $logoData['width'] = $data['logo_width'];
+            if (!empty($data['logo_height'])) $logoData['height'] = $data['logo_height'];
+            $schema['logo'] = $logoData;
         }
         
         if (!empty($data['image'])) {
@@ -28,7 +32,13 @@ class JsonLdGenerator {
         }
         
         if (!empty($data['description'])) {
-            $schema['description'] = $data['description'];
+            // Clean description: remove \r\n, extra spaces, limit to ~300 chars
+            $description = preg_replace('/\s+/', ' ', trim($data['description']));
+            $description = preg_replace('/\r\n|\r|\n/', ' ', $description);
+            if (mb_strlen($description) > 300) {
+                $description = mb_substr($description, 0, 297) . '...';
+            }
+            $schema['description'] = $description;
         }
         
         if (!empty($data['telephone'])) {
@@ -88,9 +98,20 @@ class JsonLdGenerator {
             "@context" => "https://schema.org",
             "@type" => "Service",
             "serviceType" => $data['service_type'],
-            "name" => $data['name'],
-            "description" => $data['description']
+            "name" => $data['name']
         ];
+        
+        // Description: clean and avoid phone numbers (use availableChannel instead)
+        if (!empty($data['description'])) {
+            $description = $data['description'];
+            // Remove phone numbers from description
+            $description = preg_replace('/\+?\d[\d\s\-\(\)]{7,}\d/', '', $description);
+            // Clean whitespace
+            $description = preg_replace('/\s+/', ' ', trim($description));
+            if (!empty($description)) {
+                $schema['description'] = $description;
+            }
+        }
         
         // Provider - can be either a reference or a full object
         if (!empty($data['provider'])) {
@@ -104,7 +125,7 @@ class JsonLdGenerator {
             }
         }
         
-        // Image for the service
+        // Image for the service (prefer product image over logo)
         if (!empty($data['image'])) {
             $schema['image'] = $data['image'];
         }
@@ -121,7 +142,7 @@ class JsonLdGenerator {
             }
         }
         
-        // Available channel (phone)
+        // Available channel (phone) - preferred over putting phone in description
         if (!empty($data['service_phone'])) {
             $schema['availableChannel'] = [
                 '@type' => 'ServiceChannel',
@@ -139,6 +160,11 @@ class JsonLdGenerator {
                 "price" => $data['price'],
                 "priceCurrency" => $data['currency'] ?? 'UZS'
             ];
+        }
+        
+        // Optional: sameAs for social profiles
+        if (!empty($data['social_media'])) {
+            $schema['sameAs'] = array_values(array_filter($data['social_media']));
         }
         
         return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
@@ -294,9 +320,21 @@ class JsonLdGenerator {
             // Remove @context from individual schemas (will be in root)
             unset($decoded['@context']);
             
-            // Track @ids
+            // Track @ids and ensure uniqueness
             if (!empty($decoded['@id'])) {
+                // Check for duplicate @ids
+                if (in_array($decoded['@id'], $ids)) {
+                    // Skip duplicate @id (log warning in production)
+                    error_log("Duplicate @id found: " . $decoded['@id']);
+                    continue;
+                }
                 $ids[] = $decoded['@id'];
+            }
+            
+            // Validate that provider references exist
+            if (!empty($decoded['provider']['@id']) && !in_array($decoded['provider']['@id'], $ids)) {
+                // Provider @id will be in array after LocalBusiness is added
+                // For now, just track it
             }
             
             $graph[] = $decoded;

@@ -69,7 +69,13 @@ if (!empty($page["title_$lang"])) {
             '@id' => BASE_URL . '#organization'
         ],
         'area_served' => $seo['area_served'] ?? '',
-        'service_phone' => $seo['phone'] ?? ''
+        'service_phone' => $seo['phone'] ?? '',
+        'social_media' => array_filter([
+            $seo['social_facebook'] ?? '',
+            $seo['social_instagram'] ?? '',
+            $seo['social_twitter'] ?? '',
+            $seo['social_youtube'] ?? ''
+        ])
     ];
     
     // Add image property to Service schema
