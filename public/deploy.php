@@ -66,7 +66,9 @@ function runDeploy($caller = 'manual') {
     try {
         $output .= "=== Deployment Started (" . date('Y-m-d H:i:s') . ") ===\n";
         $output .= "Caller: " . $caller . "\n";
-        $output .= "Repository Path: " . REPO_PATH . "\n\n";
+        $output .= "Repository Path: " . REPO_PATH . "\n";
+        $output .= "OS: " . PHP_OS . "\n";
+        $output .= "PHP User: " . get_current_user() . "\n\n";
         
         webhookLog("Deployment started by: $caller");
         
@@ -79,13 +81,23 @@ function runDeploy($caller = 'manual') {
         }
         
         // Check if it's a git repository
-        $gitDir = REPO_PATH . (IS_WINDOWS ? '\\.git' : '/.git');
+        $gitDir = REPO_PATH . '/.git';
         if (!is_dir($gitDir)) {
             $error = "ERROR: Not a git repository: " . REPO_PATH;
             $output .= $error . "\n";
             webhookLog($error, 'ERROR');
             return $output;
         }
+        
+        // Check directory permissions
+        $isWritable = is_writable(REPO_PATH);
+        $output .= "Directory writable: " . ($isWritable ? 'YES' : 'NO') . "\n";
+        
+        if (!$isWritable) {
+            $output .= "WARNING: Directory may not be writable for git operations\n";
+        }
+        
+        $output .= "\n";
         
         // Build commands based on OS
         if (IS_WINDOWS) {
@@ -122,31 +134,55 @@ function runDeploy($caller = 'manual') {
                 ]
             ];
         } else {
-            // Linux/Unix commands
+            // Linux/Unix commands - cPanel server
             $commands = [
                 [
+                    'cmd' => "whoami 2>&1",
+                    'desc' => 'Current user'
+                ],
+                [
                     'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && pwd 2>&1",
-                    'desc' => 'Checking directory'
+                    'desc' => 'Current directory'
+                ],
+                [
+                    'cmd' => "which git 2>&1",
+                    'desc' => 'Locating git binary'
+                ],
+                [
+                    'cmd' => "git --version 2>&1",
+                    'desc' => 'Git version'
+                ],
+                [
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git config --list | grep -E '(user|remote)' 2>&1",
+                    'desc' => 'Git configuration'
                 ],
                 [
                     'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git remote -v 2>&1",
-                    'desc' => 'Checking git remote'
+                    'desc' => 'Git remotes'
                 ],
                 [
-                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git fetch origin main 2>&1",
-                    'desc' => 'Fetching latest changes'
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git rev-parse --abbrev-ref HEAD 2>&1",
+                    'desc' => 'Current branch'
                 ],
                 [
-                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git reset --hard origin/main 2>&1",
-                    'desc' => 'Hard resetting to origin/main'
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git fetch --all --prune 2>&1",
+                    'desc' => 'Fetching from all remotes'
                 ],
                 [
                     'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git status 2>&1",
-                    'desc' => 'Checking status'
+                    'desc' => 'Status before pull'
                 ],
                 [
-                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git log -1 --oneline 2>&1",
-                    'desc' => 'Latest commit'
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git pull origin main --no-rebase 2>&1",
+                    'desc' => 'Pulling latest from origin/main'
+                ],
+                [
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git status 2>&1",
+                    'desc' => 'Status after pull'
+                ],
+                [
+                    'cmd' => "cd " . escapeshellarg(REPO_PATH) . " && git log -3 --oneline --decorate 2>&1",
+                    'desc' => 'Recent commits'
                 ]
             ];
         }
@@ -155,14 +191,20 @@ function runDeploy($caller = 'manual') {
             $output .= "\n--- " . $command['desc'] . " ---\n";
             $output .= "$ " . str_replace(escapeshellarg(REPO_PATH), '[REPO]', $command['cmd']) . "\n";
             
-            $result = shell_exec($command['cmd']);
-            $exitCode = $result !== null ? 0 : 1;
+            // Execute command and capture exit code
+            $result = null;
+            $exitCode = 0;
+            exec($command['cmd'], $result, $exitCode);
             
-            if ($result === null || $result === false) {
-                $output .= "ERROR: Command failed or returned no output\n";
-                webhookLog("Command failed: " . $command['desc'], 'ERROR');
+            if ($exitCode !== 0) {
+                $output .= "ERROR: Command failed with exit code $exitCode\n";
+                webhookLog("Command failed: " . $command['desc'] . " (exit code: $exitCode)", 'ERROR');
+            }
+            
+            if (empty($result)) {
+                $output .= "(No output)\n";
             } else {
-                $output .= $result;
+                $output .= implode("\n", $result) . "\n";
                 webhookLog("Command executed: " . $command['desc']);
             }
         }
@@ -236,17 +278,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Get last commit info
-$lastCommit = trim(shell_exec(
-    "cd " . escapeshellarg(REPO_PATH) . " && git log -1 --pretty=format:'%h - %s (%ci)' 2>&1"
-));
+$lastCommit = '';
+$lastCommitOutput = [];
+exec("cd " . escapeshellarg(REPO_PATH) . " && git log -1 --pretty=format:'%h - %s (%ci)' 2>&1", $lastCommitOutput);
+$lastCommit = implode("\n", $lastCommitOutput);
 
-$deploymentStatus = trim(shell_exec(
-    "cd " . escapeshellarg(REPO_PATH) . " && git status --short 2>&1"
-));
+$deploymentStatus = '';
+$statusOutput = [];
+exec("cd " . escapeshellarg(REPO_PATH) . " && git status --short 2>&1", $statusOutput);
+$deploymentStatus = implode("\n", $statusOutput);
 
-$currentBranch = trim(shell_exec(
-    "cd " . escapeshellarg(REPO_PATH) . " && git rev-parse --abbrev-ref HEAD 2>&1"
-));
+$currentBranch = '';
+$branchOutput = [];
+exec("cd " . escapeshellarg(REPO_PATH) . " && git rev-parse --abbrev-ref HEAD 2>&1", $branchOutput);
+$currentBranch = implode("\n", $branchOutput);
 
 // Check if webhook log exists and get last entries
 $webhookLogEntries = '';
