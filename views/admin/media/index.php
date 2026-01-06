@@ -12,6 +12,21 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
 </div>
 
+<!-- How to Use Info -->
+<div class="info-banner">
+    <div class="info-icon">✨</div>
+    <div class="info-content">
+        <strong>Automatic Image Display:</strong>
+        <ul style="margin: 5px 0 0 20px; padding: 0;">
+            <li><strong>Hero:</strong> Attached images appear at top of page automatically</li>
+            <li><strong>Gallery:</strong> Creates automatic gallery section at bottom</li>
+            <li><strong>Banner:</strong> Wide promotional image</li>
+            <li><strong>Content:</strong> Can use <code>{{media:ID}}</code> in page editor for custom placement</li>
+        </ul>
+        <p style="margin-top: 8px; color: #666;">💡 Just click "Attach" → Select page & section → Done! No editing needed.</p>
+    </div>
+</div>
+
 <!-- Filters -->
 <div class="media-toolbar">
     <div class="filter-tabs">
@@ -199,6 +214,36 @@ require BASE_PATH . '/views/admin/layout/header.php';
 .filter-tab.active {
     background: #007bff;
     color: white;
+}
+
+.info-banner {
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin: 15px 0;
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+}
+
+.info-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.info-content {
+    flex: 1;
+    line-height: 1.6;
+}
+
+.info-content code {
+    background: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: monospace;
+    color: #d32f2f;
+    font-size: 13px;
 }
 
 .search-box input {
@@ -489,8 +534,14 @@ function attachMedia() {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('Media attached successfully!');
             closeAttachModal();
+            const sectionMessages = {
+                'hero': '✅ Media attached to HERO section!\n\nIt will automatically appear at the top of the page.',
+                'gallery': '✅ Media attached to GALLERY section!\n\nIt will automatically appear in the gallery grid.',
+                'banner': '✅ Media attached to BANNER section!\n\nIt will automatically appear as a banner.',
+                'content': '✅ Media attached to CONTENT section!\n\nYou can now use:\n{{media:' + mediaId + '}}\n\nOr it will appear with other content media.'
+            };
+            alert(sectionMessages[section] || 'Media attached successfully!');
             location.reload();
         } else {
             alert('Error: ' + data.message);

@@ -194,6 +194,13 @@ $router->post('/track-internal-link', function() {
     (new PageController())->trackInternalLink();
 });
 
+// Root route - show home page
+$router->get('/', function() {
+    require_once BASE_PATH . '/controllers/PageController.php';
+    setLanguage(DEFAULT_LANGUAGE);
+    (new PageController())->show('home');
+});
+
 // Catch-all public pages (always at the end)
 $router->get('/{slug}/{lang}', function($slug, $lang) {
     require_once BASE_PATH . '/controllers/PageController.php';

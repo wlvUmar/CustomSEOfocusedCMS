@@ -1233,3 +1233,18 @@ main a:hover img {
         margin: 1rem 0;
     }
 }
+/* Auto-injected Media Sections */
+.auto-hero-section {
+    margin: -20px 0 30px 0;
+}
+
+.auto-gallery-section {
+    margin: 40px 0;
+}
+
+.auto-gallery-section h2 {
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+    color: var(--text-dark);
+}
+

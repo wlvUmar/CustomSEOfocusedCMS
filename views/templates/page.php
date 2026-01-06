@@ -10,6 +10,19 @@ $applianceNameForSEO = $applianceName ?? '';
     <div class="container">
 
         <?php
+        // Auto-inject hero section if media exists
+        require_once BASE_PATH . '/models/PageMedia.php';
+        $pageMediaModel = new PageMedia();
+        $heroMedia = $pageMediaModel->getPageMedia($page['id'], 'hero');
+        
+        if (!empty($heroMedia)) {
+            echo '<div class="auto-hero-section">';
+            echo processMediaPlaceholders('{{media-section:hero}}', $page['id']);
+            echo '</div>';
+        }
+        ?>
+
+        <?php
         $content = $page["content_$lang"];
         $content = renderTemplate($content, $templateData);
         
@@ -19,6 +32,18 @@ $applianceNameForSEO = $applianceName ?? '';
         }
         
         echo $content;
+        ?>
+
+        <?php
+        // Auto-inject gallery section if media exists
+        $galleryMedia = $pageMediaModel->getPageMedia($page['id'], 'gallery');
+        
+        if (!empty($galleryMedia)) {
+            echo '<div class="auto-gallery-section">';
+            echo '<h2>' . ($lang === 'ru' ? 'Галерея' : 'Galereya') . '</h2>';
+            echo processMediaPlaceholders('{{media-section:gallery}}', $page['id']);
+            echo '</div>';
+        }
         ?>
 
         <?php
