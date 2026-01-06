@@ -23,3 +23,4 @@ desktop.ini
 add_seo_fields_migration.sql
 /beta
 *.sql
+EXTERNAL_SETUP_GUIDE.md

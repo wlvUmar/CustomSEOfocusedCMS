@@ -2,13 +2,16 @@
 // path: ./controllers/admin/PageAdminController.php
 
 require_once BASE_PATH . '/models/Page.php';
+require_once BASE_PATH . '/models/SearchEngineNotifier.php';
 
 class PageAdminController extends Controller {
     private $pageModel;
+    private $notifier;
 
     public function __construct() {
         parent::__construct();
         $this->pageModel = new Page();
+        $this->notifier = new SearchEngineNotifier();
     }
 
     public function index() {
@@ -69,9 +72,29 @@ class PageAdminController extends Controller {
         if ($id) {
             $this->pageModel->update($id, $data);
             $_SESSION['success'] = 'Page updated successfully';
+            
+            // Notify search engines of update (non-blocking)
+            try {
+                if ($data['is_published']) {
+                    $this->notifier->notifyPageChange($data['slug'], 'update', null, $_SESSION['user_id'] ?? null);
+                }
+            } catch (Exception $e) {
+                // Silently fail - don't disrupt page save
+                error_log("Search engine notification failed: " . $e->getMessage());
+            }
         } else {
             $this->pageModel->create($data);
             $_SESSION['success'] = 'Page created successfully';
+            
+            // Notify search engines of new page (non-blocking)
+            try {
+                if ($data['is_published']) {
+                    $this->notifier->notifyPageChange($data['slug'], 'create', null, $_SESSION['user_id'] ?? null);
+                }
+            } catch (Exception $e) {
+                // Silently fail - don't disrupt page save
+                error_log("Search engine notification failed: " . $e->getMessage());
+            }
         }
         
         $this->redirect('/admin/pages');

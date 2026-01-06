@@ -164,6 +164,21 @@ $router->group('/admin/seo', function($router) {
 // Backwards-compatible route: handle POSTs accidentally sent to /seo/save (without /admin)
 $router->post('/seo/save', function() { requireSEO('save'); });
 
+// Admin Search Engine Notification & Indexing
+$router->group('/admin/search-engine', function($router) {
+    $router->get('/', function() { requireSearchEngine('index'); });
+    $router->get('/submit', function() { requireSearchEngine('submitForm'); });
+    $router->post('/submit-page', function() { requireSearchEngine('submitPage'); });
+    $router->post('/batch-submit', function() { requireSearchEngine('batchSubmit'); });
+    $router->post('/submit-unsubmitted', function() { requireSearchEngine('submitUnsubmitted'); });
+    $router->get('/page/{slug}', function($slug) { requireSearchEngine('pageHistory', $slug); });
+    $router->get('/config', function() { requireSearchEngine('config'); });
+    $router->post('/save-config', function() { requireSearchEngine('saveConfig'); });
+    $router->get('/recent', function() { requireSearchEngine('recentSubmissions'); });
+    $router->get('/export', function() { requireSearchEngine('exportHistory'); });
+    $router->post('/test-connection', function() { requireSearchEngine('testConnection'); });
+});
+
 // Admin Preview
 $router->group('/admin/preview', function($router) {
     $router->get('/{id}', function($id) { requireAdminController('PreviewController', 'show', $id); });
@@ -272,4 +287,11 @@ function requireSEO($method) {
     require_once BASE_PATH . '/controllers/admin/SEOController.php';
     (new SEOController())->$method();
 }
+
+function requireSearchEngine($method, $arg = null) {
+    require_once BASE_PATH . '/controllers/admin/SearchEngineController.php';
+    $c = new SearchEngineController();
+    $arg !== null ? $c->$method($arg) : $c->$method();
+}
+
 ob_end_flush();
