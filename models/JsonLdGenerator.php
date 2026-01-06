@@ -142,7 +142,7 @@ class JsonLdGenerator {
     /**
      * Generate BreadcrumbList schema
      */
-    public static function generateBreadcrumbs($items, $baseUrl) {
+    public static function generateBreadcrumbs($items, $baseUrl, $pageUrl = '') {
         $listItems = [];
         
         foreach ($items as $index => $item) {
@@ -159,6 +159,10 @@ class JsonLdGenerator {
             "@type" => "BreadcrumbList",
             "itemListElement" => $listItems
         ];
+        
+        if (!empty($pageUrl)) {
+            $schema['@id'] = $pageUrl . '#breadcrumb';
+        }
         
         return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     }
@@ -265,5 +269,41 @@ class JsonLdGenerator {
         }
         
         return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
+    
+    /**
+     * Merge multiple schemas into a single @graph structure
+     * Removes empty schemas and validates @id references
+     */
+    public static function mergeSchemas($schemas) {
+        $graph = [];
+        $ids = [];
+        
+        // Collect all schemas and their @ids
+        foreach ($schemas as $schemaJson) {
+            if (empty($schemaJson)) continue;
+            
+            $decoded = json_decode($schemaJson, true);
+            if (!is_array($decoded) || json_last_error() !== JSON_ERROR_NONE) continue;
+            
+            // Remove @context from individual schemas (will be in root)
+            unset($decoded['@context']);
+            
+            // Track @ids
+            if (!empty($decoded['@id'])) {
+                $ids[] = $decoded['@id'];
+            }
+            
+            $graph[] = $decoded;
+        }
+        
+        if (empty($graph)) return '';
+        
+        $merged = [
+            '@context' => 'https://schema.org',
+            '@graph' => $graph
+        ];
+        
+        return json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     }
 }

@@ -344,7 +344,7 @@ function getCurrentMonthContent($pageId, $lang) {
     return $rotation ? $rotation["content_$lang"] : null;
 }
 
-function generateFAQSchema($faqs, $lang) {
+function generateFAQSchema($faqs, $lang, $pageUrl = '') {
     if (empty($faqs)) return '';
     
     $faqItems = [];
@@ -364,6 +364,10 @@ function generateFAQSchema($faqs, $lang) {
         '@type' => 'FAQPage',
         'mainEntity' => $faqItems
     ];
+    
+    if (!empty($pageUrl)) {
+        $schema['@id'] = $pageUrl . '#faq';
+    }
     
     return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 }

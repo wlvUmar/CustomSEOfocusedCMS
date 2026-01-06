@@ -36,14 +36,29 @@ $ogDescription = renderTemplate($ogDescription, $templateData);
 // Generate FAQ Schema if FAQs exist
 $faqSchema = '';
 if (!empty($faqs)) {
-    $faqSchema = generateFAQSchema($faqs, $lang);
+    $faqSchema = generateFAQSchema($faqs, $lang, $canonicalUrl);
+}
+
+// Extract appliance name from page title for dynamic Service schema
+$applianceName = '';
+if (!empty($page["title_$lang"])) {
+    // Try to extract appliance from title (e.g., "Продать холодильник быстро" -> "холодильник")
+    $titleProcessed = replacePlaceholders($page["title_$lang"], $page, $seo);
+    if (preg_match('/(?:продать|скупка|выкуп)\s+([а-яёa-z\s]+?)(?:\s+быстро|$)/ui', $titleProcessed, $matches)) {
+        $applianceName = trim($matches[1]);
+    }
 }
 
 // Generate dynamic Service schema for this page
 $pageServiceSchema = '';
 if (!empty($page["title_$lang"])) {
+    $serviceType = $seo['service_type'] ?? 'Service';
+    if (!empty($applianceName) && $serviceType === 'Service') {
+        $serviceType = $lang === 'ru' ? "Покупка и выкуп $applianceName" : "Sotib olish va sotib olish $applianceName";
+    }
+    
     $pageServiceSchema = JsonLdGenerator::generateService([
-        'service_type' => $seo['service_type'] ?? 'Service',
+        'service_type' => $serviceType,
         'name' => replacePlaceholders($page["title_$lang"], $page, $seo),
         'description' => replacePlaceholders($page["meta_description_$lang"] ?? '', $page, $seo),
         'provider' => [
@@ -102,20 +117,20 @@ $isAdmin = isset($_SESSION['user_id']);
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.css">
     
     <?php
-    // Global Organization/LocalBusiness Schema (appears on all pages)
+    // Collect all JSON-LD schemas and merge into single @graph
+    $allSchemas = [];
+    
+    // 1. Organization/LocalBusiness Schema
+    $orgSchemaJson = '';
     if (!empty($seo['organization_schema'])) {
         $orgSchema = json_decode($seo['organization_schema'], true);
         if (is_array($orgSchema)) {
-            // Always enforce @id if not present
             if (empty($orgSchema['@id'])) {
                 $orgSchema['@id'] = BASE_URL . '#organization';
             }
-            echo '<script type="application/ld+json">' . "\n";
-            echo json_encode($orgSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n";
-            echo '</script>' . "\n";
+            $orgSchemaJson = json_encode($orgSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
     } elseif (!empty($seo['site_name_ru']) || !empty($seo['site_name_uz'])) {
-        // Fallback: generate organization schema from individual fields if full schema absent
         $orgData = [
             'id' => BASE_URL . '#organization',
             'type' => $seo['org_type'] ?? 'LocalBusiness',
@@ -137,42 +152,43 @@ $isAdmin = isset($_SESSION['user_id']);
             'price_range' => $seo['price_range'] ?? '',
             'social_media' => array_filter([$seo['social_facebook'] ?? '', $seo['social_instagram'] ?? '', $seo['social_twitter'] ?? '', $seo['social_youtube'] ?? ''])
         ];
-        echo '<script type="application/ld+json">' . "\n";
-        echo JsonLdGenerator::generateOrganization($orgData) . "\n";
-        echo '</script>' . "\n";
+        $orgSchemaJson = JsonLdGenerator::generateOrganization($orgData);
     }
+    if (!empty($orgSchemaJson)) $allSchemas[] = $orgSchemaJson;
 
-    // Website Schema (homepage only)
+    // 2. Website Schema (homepage only)
     if ($page['slug'] === 'home' && !empty($seo['website_schema'])) {
-        echo '<script type="application/ld+json">' . "\n";
-        echo $seo['website_schema'] . "\n";
-        echo '</script>' . "\n";
+        $allSchemas[] = $seo['website_schema'];
     }
 
-    // Dynamic Page-Specific Service Schema (using page title)
+    // 3. Service Schema
     if (!empty($pageServiceSchema)) {
-        echo '<script type="application/ld+json">' . "\n";
-        echo $pageServiceSchema . "\n";
-        echo '</script>' . "\n";
+        $allSchemas[] = $pageServiceSchema;
     }
 
-    // FAQ Schema (if FAQs exist for this page)
-    if ($faqSchema) {
-        echo '<script type="application/ld+json">' . "\n";
-        echo $faqSchema . "\n";
-        echo '</script>' . "\n";
+    // 4. FAQ Schema
+    if (!empty($faqSchema)) {
+        $allSchemas[] = $faqSchema;
     }
 
-    // Breadcrumb Schema (non-homepage pages)
+    // 5. Breadcrumb Schema (non-homepage)
     if ($page['slug'] !== 'home') {
         $breadcrumbs = [
             ['name' => $seo["site_name_$lang"], 'url' => '/'],
-            ['name' => $page["title_$lang"], 'url' => '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '')]
+            ['name' => replacePlaceholders($page["title_$lang"], $page, $seo), 'url' => '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '')]
         ];
-        
-        echo '<script type="application/ld+json">' . "\n";
-        echo JsonLdGenerator::generateBreadcrumbs($breadcrumbs, BASE_URL) . "\n";
-        echo '</script>' . "\n";
+        $breadcrumbSchema = JsonLdGenerator::generateBreadcrumbs($breadcrumbs, BASE_URL, $canonicalUrl);
+        if (!empty($breadcrumbSchema)) $allSchemas[] = $breadcrumbSchema;
+    }
+    
+    // Merge all schemas into a single @graph and output
+    if (!empty($allSchemas)) {
+        $mergedSchema = JsonLdGenerator::mergeSchemas($allSchemas);
+        if (!empty($mergedSchema)) {
+            echo '<script type="application/ld+json">' . "\n";
+            echo $mergedSchema . "\n";
+            echo '</script>' . "\n";
+        }
     }
     ?>
     
