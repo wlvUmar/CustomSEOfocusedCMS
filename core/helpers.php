@@ -381,8 +381,8 @@ function enhanceContentSEO($content, $pageTitle = '', $applianceName = '') {
     $dom = new DOMDocument('1.0', 'UTF-8');
     libxml_use_internal_errors(true);
     
-    // Load HTML with UTF-8 encoding
-    $dom->loadHTML('<?xml encoding="UTF-8">' . mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    // Load HTML with UTF-8 encoding (PHP 8.2+ compatible)
+    $dom->loadHTML('<?xml encoding="UTF-8">' . $content, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
     libxml_clear_errors();
     
     // Enhance image alt text
