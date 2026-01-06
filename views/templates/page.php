@@ -1,6 +1,9 @@
 <?php
 // path: ./views/templates/page.php
 require 'header.php';
+
+// Extract appliance name for SEO enhancement (defined in header.php)
+$applianceNameForSEO = $applianceName ?? '';
 ?>
 
 <main>
@@ -9,6 +12,12 @@ require 'header.php';
         <?php
         $content = $page["content_$lang"];
         $content = renderTemplate($content, $templateData);
+        
+        // Enhance content for SEO (fix images, headings, links)
+        if (!empty($applianceNameForSEO)) {
+            $content = enhanceContentSEO($content, $page["title_$lang"], $applianceNameForSEO);
+        }
+        
         echo $content;
         ?>
 

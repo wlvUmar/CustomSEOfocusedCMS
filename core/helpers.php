@@ -371,3 +371,67 @@ function generateFAQSchema($faqs, $lang, $pageUrl = '') {
     
     return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 }
+
+/**
+ * Enhance content for SEO: fix images alt text, ensure proper heading hierarchy
+ */
+function enhanceContentSEO($content, $pageTitle = '', $applianceName = '') {
+    if (empty($content)) return $content;
+    
+    $dom = new DOMDocument('1.0', 'UTF-8');
+    libxml_use_internal_errors(true);
+    
+    // Load HTML with UTF-8 encoding
+    $dom->loadHTML('<?xml encoding="UTF-8">' . mb_convert_encoding($content, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    libxml_clear_errors();
+    
+    // Enhance image alt text
+    $images = $dom->getElementsByTagName('img');
+    foreach ($images as $img) {
+        $alt = $img->getAttribute('alt');
+        if (empty($alt) && !empty($applianceName)) {
+            $img->setAttribute('alt', ucfirst($applianceName) . ' - ' . $pageTitle);
+        }
+        
+        // Add loading="lazy" for performance
+        if (!$img->hasAttribute('loading')) {
+            $img->setAttribute('loading', 'lazy');
+        }
+    }
+    
+    // Ensure heading hierarchy (no h1 in content as it's in template)
+    $headings = $dom->getElementsByTagName('h1');
+    foreach ($headings as $h1) {
+        $h2 = $dom->createElement('h2');
+        foreach ($h1->childNodes as $child) {
+            $h2->appendChild($child->cloneNode(true));
+        }
+        foreach ($h1->attributes as $attr) {
+            $h2->setAttribute($attr->nodeName, $attr->nodeValue);
+        }
+        $h1->parentNode->replaceChild($h2, $h1);
+    }
+    
+    // Enhance internal links with keyword-rich anchor text
+    $links = $dom->getElementsByTagName('a');
+    foreach ($links as $link) {
+        $href = $link->getAttribute('href');
+        $text = trim($link->textContent);
+        
+        // If link text is generic, enhance it
+        if (in_array(strtolower($text), ['here', 'click', 'link', 'read more', 'узнать больше', 'здесь', 'подробнее'])) {
+            // Try to extract context or use appliance name
+            if (!empty($applianceName)) {
+                $link->textContent = 'Продать ' . $applianceName;
+            }
+        }
+    }
+    
+    $html = $dom->saveHTML();
+    
+    // Remove XML declaration added by DOMDocument
+    $html = preg_replace('/^<!DOCTYPE.+?>/', '', $html);
+    $html = str_replace(['<html>', '</html>', '<body>', '</body>'], '', $html);
+    
+    return trim($html);
+}

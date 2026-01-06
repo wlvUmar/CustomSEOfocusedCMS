@@ -104,6 +104,11 @@ class JsonLdGenerator {
             }
         }
         
+        // Image for the service
+        if (!empty($data['image'])) {
+            $schema['image'] = $data['image'];
+        }
+        
         // Area served - prefer structured City object when a simple name is provided
         if (!empty($data['area_served'])) {
             if (is_array($data['area_served'])) {

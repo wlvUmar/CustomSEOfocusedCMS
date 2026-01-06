@@ -41,12 +41,16 @@ if (!empty($faqs)) {
 
 // Extract appliance name from page title for dynamic Service schema
 $applianceName = '';
+$productImage = '';
 if (!empty($page["title_$lang"])) {
     // Try to extract appliance from title (e.g., "Продать холодильник быстро" -> "холодильник")
     $titleProcessed = replacePlaceholders($page["title_$lang"], $page, $seo);
     if (preg_match('/(?:продать|скупка|выкуп)\s+([а-яёa-z\s]+?)(?:\s+быстро|$)/ui', $titleProcessed, $matches)) {
         $applianceName = trim($matches[1]);
     }
+    
+    // Use OG image if available, otherwise fallback to logo
+    $productImage = !empty($page['og_image']) ? $page['og_image'] : ($seo['org_logo'] ?? (BASE_URL . '/css/logo.png'));
 }
 
 // Generate dynamic Service schema for this page
@@ -57,7 +61,7 @@ if (!empty($page["title_$lang"])) {
         $serviceType = $lang === 'ru' ? "Покупка и выкуп $applianceName" : "Sotib olish va sotib olish $applianceName";
     }
     
-    $pageServiceSchema = JsonLdGenerator::generateService([
+    $serviceData = [
         'service_type' => $serviceType,
         'name' => replacePlaceholders($page["title_$lang"], $page, $seo),
         'description' => replacePlaceholders($page["meta_description_$lang"] ?? '', $page, $seo),
@@ -66,7 +70,14 @@ if (!empty($page["title_$lang"])) {
         ],
         'area_served' => $seo['area_served'] ?? '',
         'service_phone' => $seo['phone'] ?? ''
-    ]);
+    ];
+    
+    // Add image property to Service schema
+    if (!empty($productImage)) {
+        $serviceData['image'] = $productImage;
+    }
+    
+    $pageServiceSchema = JsonLdGenerator::generateService($serviceData);
 }
 // Check if user is logged in as admin
 $isAdmin = isset($_SESSION['user_id']);
