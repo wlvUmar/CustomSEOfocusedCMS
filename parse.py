@@ -93,6 +93,14 @@ FEATURES = {
         "views": ["preview.php", "templates/"],
         "js": ["preview.js"],
     },
+    "search_engine": {
+        "keywords": ["indexnow", "bing", "yandex", "search engine", "indexnow", "sitemap", "search_submissions", "search_engine_config"],
+        "models": ["SearchEngineNotifier.php"],
+        "controllers": ["SearchEngineController.php", "SitemapController.php"],
+        "views": ["admin/search-engine/", "admin/seo/", "admin/seo/"],
+        "css": ["admin/search-engine.css"],
+        "js": ["admin/search-engine.js"],
+    },
 }
 
 def is_relevant_file(filepath, feature_config):
@@ -194,7 +202,7 @@ def main():
         print(f"\nAvailable features: {', '.join(FEATURES.keys())}")
         sys.exit(1)
     
-    feature = sys.argv[1].lower()
+    feature = sys.argv[1].lower().replace('-', '_')
     
     if feature == "all":
         # Generate complete codebase (original behavior)

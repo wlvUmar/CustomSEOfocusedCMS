@@ -8,6 +8,19 @@ class PageAdminController extends Controller {
     private $pageModel;
     private $notifier;
 
+    private function sanitizeSlug($slug) {
+        $slug = strtolower(trim($slug));
+        $slug = preg_replace('/[^a-z0-9-]/', '-', $slug);
+        $slug = preg_replace('/-+/', '-', $slug);
+        $slug = trim($slug, '-');
+
+        if (empty($slug)) {
+            throw new Exception('Invalid slug: cannot be empty');
+        }
+
+        return $slug;
+    }
+
     public function __construct() {
         parent::__construct();
         $this->pageModel = new Page();
@@ -45,7 +58,7 @@ class PageAdminController extends Controller {
         
         $id = $_POST['id'] ?? null;
         $data = [
-            'slug' => trim($_POST['slug']),
+            'slug' => $this->sanitizeSlug($_POST['slug']),
             'title_ru' => trim($_POST['title_ru']),
             'title_uz' => trim($_POST['title_uz']),
             'content_ru' => $_POST['content_ru'] ?? '',
@@ -76,11 +89,34 @@ class PageAdminController extends Controller {
             // Notify search engines of update (non-blocking)
             try {
                 if ($data['is_published']) {
-                    $this->notifier->notifyPageChange($data['slug'], 'update', null, $_SESSION['user_id'] ?? null);
+                    $result = $this->notifier->notifyPageChange(
+                        $data['slug'], 
+                        $id ? 'update' : 'create', 
+                        null, 
+                        $_SESSION['user_id'] ?? null
+                    );
+
+                    // Log detailed results and provide admin feedback
+                    $successCount = 0;
+                    $failCount = 0;
+                    foreach ($result as $engine => $res) {
+                        if (isset($res['status']) && $res['status'] === 'success') {
+                            $successCount++;
+                            error_log("✓ Search engine notification SUCCESS: $engine for {$data['slug']}");
+                        } else {
+                            $failCount++;
+                            error_log("✗ Search engine notification FAILED: $engine for {$data['slug']} - " . ($res['message'] ?? 'unknown error'));
+                        }
+                    }
+
+                    if ($successCount > 0) {
+                        $_SESSION['success'] .= " (Notified $successCount search engines)";
+                    }
                 }
             } catch (Exception $e) {
-                // Silently fail - don't disrupt page save
-                error_log("Search engine notification failed: " . $e->getMessage());
+                error_log("CRITICAL: Search engine notification exception: " . $e->getMessage());
+                error_log("Stack trace: " . $e->getTraceAsString());
+                // Don't throw - page save still succeeded
             }
         } else {
             $this->pageModel->create($data);
@@ -89,11 +125,34 @@ class PageAdminController extends Controller {
             // Notify search engines of new page (non-blocking)
             try {
                 if ($data['is_published']) {
-                    $this->notifier->notifyPageChange($data['slug'], 'create', null, $_SESSION['user_id'] ?? null);
+                    $result = $this->notifier->notifyPageChange(
+                        $data['slug'], 
+                        $id ? 'update' : 'create', 
+                        null, 
+                        $_SESSION['user_id'] ?? null
+                    );
+
+                    // Log detailed results and provide admin feedback
+                    $successCount = 0;
+                    $failCount = 0;
+                    foreach ($result as $engine => $res) {
+                        if (isset($res['status']) && $res['status'] === 'success') {
+                            $successCount++;
+                            error_log("✓ Search engine notification SUCCESS: $engine for {$data['slug']}");
+                        } else {
+                            $failCount++;
+                            error_log("✗ Search engine notification FAILED: $engine for {$data['slug']} - " . ($res['message'] ?? 'unknown error'));
+                        }
+                    }
+
+                    if ($successCount > 0) {
+                        $_SESSION['success'] .= " (Notified $successCount search engines)";
+                    }
                 }
             } catch (Exception $e) {
-                // Silently fail - don't disrupt page save
-                error_log("Search engine notification failed: " . $e->getMessage());
+                error_log("CRITICAL: Search engine notification exception: " . $e->getMessage());
+                error_log("Stack trace: " . $e->getTraceAsString());
+                // Don't throw - page save still succeeded
             }
         }
         

@@ -27,8 +27,17 @@ class AuthController extends Controller {
         $user = $this->userModel->authenticate($username, $password);
 
         if ($user) {
+            // Regenerate session ID to prevent fixation
+            session_regenerate_id(true);
+
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
+            $_SESSION['email'] = $user['email'] ?? null;
+            $_SESSION['login_time'] = time();
+            $_SESSION['last_activity'] = time();
+
+            // Log successful login
+            error_log("User logged in successfully: {$user['username']} (ID: {$user['id']})");
             
             // Redirect to intended page or dashboard
             $redirectUrl = $_SESSION['redirect_after_login'] ?? '/admin/dashboard';

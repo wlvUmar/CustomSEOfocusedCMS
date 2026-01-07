@@ -129,6 +129,11 @@ class SearchEngineNotifier {
             $this->logSubmission($slug, $url, $engine, $type, 
                 $result['status'], $result['code'], $result['message'], 
                 $rotationMonth, $userId);
+
+            // Increment rate limit ONLY on successful submission
+            if ($result['status'] === 'success') {
+                $this->incrementRateLimit($engine);
+            }
             
             // Update status
             $this->updateSubmissionStatus($slug, $engine, $result['status'], $result['message']);
@@ -361,6 +366,7 @@ class SearchEngineNotifier {
      */
     private function checkRateLimit($engine) {
         if (!isset($this->config[$engine])) {
+            error_log("Rate limit check: Engine $engine not configured");
             return false;
         }
         
@@ -368,17 +374,24 @@ class SearchEngineNotifier {
         $limit = $config['rate_limit_per_day'];
         $current = $config['submissions_today'];
         
-        if ($current >= $limit) {
-            return false;
-        }
+        error_log("Rate limit check for $engine: $current / $limit");
         
-        // Increment counter
+        // Only check, don't increment yet
+        return $current < $limit;
+    }
+
+    // Add this NEW method after checkRateLimit():
+    private function incrementRateLimit($engine) {
         $sql = "UPDATE search_engine_config 
                 SET submissions_today = submissions_today + 1 
                 WHERE engine = ?";
-        $this->db->query($sql, [$engine]);
         
-        return true;
+        try {
+            $this->db->query($sql, [$engine]);
+            error_log("Incremented rate limit for $engine");
+        } catch (Exception $e) {
+            error_log("Failed to increment rate limit for $engine: " . $e->getMessage());
+        }
     }
     
     /**
