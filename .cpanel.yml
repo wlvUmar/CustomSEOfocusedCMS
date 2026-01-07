@@ -2,14 +2,17 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/kuplyuta
-    - /bin/cp -R /home/kuplyuta/appliances/config $DEPLOYPATH
-    - /bin/cp -R /home/kuplyuta/appliances/controllers $DEPLOYPATH
-    - /bin/cp -R /home/kuplyuta/appliances/core $DEPLOYPATH
-    - /bin/cp -R /home/kuplyuta/appliances/models $DEPLOYPATH
-    - /bin/cp -R /home/kuplyuta/appliances/views $DEPLOYPATH
-    - /bin/cp /home/kuplyuta/appliances/.htaccess $DEPLOYPATH
-    - /bin/cp /home/kuplyuta/appliances/parse.py $DEPLOYPATH
-    - /bin/cp /home/kuplyuta/appliances/add_seo_fields_migration.sql $DEPLOYPATH
     - export PUBLICPATH=/home/kuplyuta/public_html
-    - /bin/cp -R /home/kuplyuta/appliances_/public/. /home/kuplyuta/public_html/
-
+    # Root folders
+    - /bin/cp -R /home/kuplyuta/appliances_/config $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp -R /home/kuplyuta/appliances_/controllers $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp -R /home/kuplyuta/appliances_/core $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp -R /home/kuplyuta/appliances_/models $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp -R /home/kuplyuta/appliances_/views $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp /home/kuplyuta/appliances_/.htaccess $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp /home/kuplyuta/appliances_/parse.py $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp /home/kuplyuta/appliances_/add_seo_fields_migration.sql $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
+    # Public folder
+    - /bin/cp -R /home/kuplyuta/appliances_/public/. $PUBLICPATH >> /home/kuplyuta/deploy.log 2>&1
+    # Debug task: write success message
+    - echo "Deployment finished at $(date)" >> /home/kuplyuta/deploy.log
