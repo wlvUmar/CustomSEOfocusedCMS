@@ -302,28 +302,37 @@ body {
     position: relative;
 }
 
-/* Alerts - Floating Toast Style */
-.alert {
+/* Floating alerts container */
+#floating-alerts.floating-alerts {
     position: fixed;
     top: 20px;
     right: 20px;
-    padding: 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 10000;
+    pointer-events: none; /* allow clicks through when needed; alerts can override */
+}
+
+#floating-alerts .alert {
+    pointer-events: auto;
+    position: relative;
+    padding: 12px 18px;
     border-radius: 8px;
     border-left: 4px solid;
     display: flex;
     align-items: center;
     gap: 12px;
-    min-width: 300px;
-    max-width: 500px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    z-index: 10000;
-    animation: slideInRight 0.3s ease-out;
+    min-width: 260px;
+    max-width: 420px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    animation: slideInRight 0.28s ease-out;
     font-weight: 500;
 }
 
 @keyframes slideInRight {
     from {
-        transform: translateX(100%);
+        transform: translateX(16px);
         opacity: 0;
     }
     to {
@@ -331,6 +340,14 @@ body {
         opacity: 1;
     }
 }
+
+/* Slide out animation class */
+.alert.fade-out {
+    transform: translateX(16px);
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
 
 @keyframes slideOutRight {
     from {
