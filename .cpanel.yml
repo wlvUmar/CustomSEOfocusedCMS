@@ -2,11 +2,13 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/kuplyuta
-    - /bin/cp -R config $DEPLOYPATH
-    - /bin/cp -R controllers $DEPLOYPATH
-    - /bin/cp -R core $DEPLOYPATH
-    - /bin/cp -R models $DEPLOYPATH
-    - /bin/cp -R views $DEPLOYPATH
-    - /bin/cp -R .htaccess
+    - /bin/cp -R /home/kuplyuta/appliances/config $DEPLOYPATH
+    - /bin/cp -R /home/kuplyuta/appliances/controllers $DEPLOYPATH
+    - /bin/cp -R /home/kuplyuta/appliances/core $DEPLOYPATH
+    - /bin/cp -R /home/kuplyuta/appliances/models $DEPLOYPATH
+    - /bin/cp -R /home/kuplyuta/appliances/views $DEPLOYPATH
+    - /bin/cp /home/kuplyuta/appliances/.htaccess $DEPLOYPATH
+    - /bin/cp /home/kuplyuta/appliances/parse.py $DEPLOYPATH
+    - /bin/cp /home/kuplyuta/appliances/add_seo_fields_migration.sql $DEPLOYPATH
     - export PUBLICPATH=/home/kuplyuta/public_html
-    - /bin/cp -R public/* $PUBLICPATH
+    - /bin/cp -R /home/kuplyuta/appliances/public/. $PUBLICPATH
