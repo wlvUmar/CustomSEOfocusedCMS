@@ -305,12 +305,24 @@ class SearchEngine {
         
         // 2. Production location: DOCUMENT_ROOT (cPanel public_html)
         // This ensures the file exists in the serving directory even if app code is outside webroot
+        $targets = [];
+        
+        // A. Try DOCUMENT_ROOT
         if (isset($_SERVER['DOCUMENT_ROOT']) && is_dir($_SERVER['DOCUMENT_ROOT'])) {
-            $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
-            
-            // Avoid duplicate write if paths are identical
-            if (realpath($docRoot) !== realpath($publicDir)) {
-                $docFile = $docRoot . '/' . $key . '.txt';
+            $targets[] = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
+        }
+        
+        // B. Try sibling public_html (Explicit cPanel structure check)
+        // If BASE_PATH is /home/user/appliances, check /home/user/public_html
+        $siblingPublicHtml = dirname(BASE_PATH) . '/public_html';
+        if (is_dir($siblingPublicHtml)) {
+            $targets[] = $siblingPublicHtml;
+        }
+
+        foreach ($targets as $targetDir) {
+            // Avoid duplicate write if paths are identical to primary publicDir
+            if (realpath($targetDir) !== realpath($publicDir)) {
+                $docFile = $targetDir . '/' . $key . '.txt';
                 if (@file_put_contents($docFile, $key) !== false) {
                     @chmod($docFile, 0644);
                     $filesCreated++;

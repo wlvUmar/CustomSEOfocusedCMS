@@ -161,6 +161,14 @@ $router->group('/admin/seo', function($router) {
     });
 });
 
+// Admin Schemas
+$router->group('/admin/schemas', function($router) {
+    $router->get('/', function() { requireSchemaAdmin('index'); });
+    $router->post('/save', function() { requireSchemaAdmin('save'); });
+    $router->post('/delete', function() { requireSchemaAdmin('delete'); });
+    $router->post('/bulk-import', function() { requireSchemaAdmin('bulkImport'); });
+});
+
 // Backwards-compatible route: handle POSTs accidentally sent to /seo/save (without /admin)
 $router->post('/seo/save', function() { requireSEO('save'); });
 
@@ -294,6 +302,11 @@ function requireSearchEngine($method, $arg = null) {
     require_once BASE_PATH . '/controllers/admin/SearchEngineController.php';
     $c = new SearchEngineController();
     $arg !== null ? $c->$method($arg) : $c->$method();
+}
+
+function requireSchemaAdmin($method) {
+    require_once BASE_PATH . '/controllers/admin/SchemaController.php';
+    (new SchemaController())->$method();
 }
 
 ob_end_flush();

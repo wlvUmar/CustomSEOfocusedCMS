@@ -202,6 +202,15 @@ $isAdmin = isset($_SESSION['user_id']);
         if (!empty($breadcrumbSchema)) $allSchemas[] = $breadcrumbSchema;
     }
     
+    // 6. Custom Blog/Page Schema (from JSON file)
+    if (!empty($blogSchema)) {
+        if (is_array($blogSchema)) {
+             $allSchemas[] = json_encode($blogSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        } else {
+             $allSchemas[] = $blogSchema;
+        }
+    }
+    
     // Merge all schemas into a single @graph and output
     if (!empty($allSchemas)) {
         $mergedSchema = JsonLdGenerator::mergeSchemas($allSchemas);

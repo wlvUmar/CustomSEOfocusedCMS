@@ -112,6 +112,9 @@
                     <a href="<?= BASE_URL ?>/admin/seo" class="<?= strpos($_SERVER['REQUEST_URI'], '/seo') !== false && strpos($_SERVER['REQUEST_URI'], '/sitemap') === false ? 'active' : '' ?>">
                         <i data-feather="search"></i> SEO Settings
                     </a>
+                    <a href="<?= BASE_URL ?>/admin/schemas" class="<?= strpos($_SERVER['REQUEST_URI'], '/schemas') !== false ? 'active' : '' ?>">
+                        <i data-feather="code"></i> Schema Manager
+                    </a>
                     <a href="<?= BASE_URL ?>/admin/search-engine" class="<?= strpos($_SERVER['REQUEST_URI'], '/search-engine') !== false ? 'active' : '' ?>">
                         <i data-feather="send"></i> Search Engines
                     </a>

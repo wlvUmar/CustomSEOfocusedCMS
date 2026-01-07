@@ -7,7 +7,8 @@ require_once BASE_PATH . '/models/SEO.php';
 require_once BASE_PATH . '/models/FAQ.php';
 require_once BASE_PATH . '/models/ContentRotation.php';
 require_once BASE_PATH . '/models/Analytics.php';
-require_once BASE_PATH . '/models/JsonLdGenerator.php'; // ADD THIS LINE
+require_once BASE_PATH . '/models/JsonLdGenerator.php'; 
+require_once BASE_PATH . '/models/BlogSchema.php';
 
 class PageController extends Controller {
     private $pageModel;
@@ -15,6 +16,7 @@ class PageController extends Controller {
     private $faqModel;
     private $rotationModel;
     private $analyticsModel;
+    private $blogSchemaModel;
 
     public function __construct() {
         parent::__construct();
@@ -23,6 +25,7 @@ class PageController extends Controller {
         $this->faqModel = new FAQ();
         $this->rotationModel = new ContentRotation();
         $this->analyticsModel = new Analytics();
+        $this->blogSchemaModel = new BlogSchema();
     }
 
     public function show($slug = 'home', $lang = null) {
@@ -89,6 +92,10 @@ class PageController extends Controller {
         
         // Get FAQs for this page
         $faqs = $this->faqModel->getBySlug($slug);
+
+        // Get Blog/Custom Schema
+        $blogSchema = $this->blogSchemaModel->get($slug);
+
         
         // Track visit
         trackVisit($slug, $currentLang);
@@ -133,6 +140,7 @@ class PageController extends Controller {
             'page' => $page,
             'seo' => $seoSettings,
             'faqs' => $faqs,
+            'blogSchema' => $blogSchema,
             'lang' => $currentLang,
             'templateData' => $templateData
         ];
