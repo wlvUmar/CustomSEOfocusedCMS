@@ -37,7 +37,7 @@
             <?php unset($_SESSION['success']); ?>
         <?php endif; ?>
 
-        <?php endif; ?>
+
 
         <?php if (isset($_SESSION['warning'])): ?>
             <div class="alert alert-warning">
