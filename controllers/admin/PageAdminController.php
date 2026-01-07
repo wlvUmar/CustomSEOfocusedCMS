@@ -2,11 +2,11 @@
 // path: ./controllers/admin/PageAdminController.php
 
 require_once BASE_PATH . '/models/Page.php';
-require_once BASE_PATH . '/models/SearchEngineNotifier.php';
+require_once BASE_PATH . '/models/SearchEngine.php';
 
 class PageAdminController extends Controller {
     private $pageModel;
-    private $notifier;
+    private $engine;
 
     private function sanitizeSlug($slug) {
         $slug = strtolower(trim($slug));
@@ -24,7 +24,7 @@ class PageAdminController extends Controller {
     public function __construct() {
         parent::__construct();
         $this->pageModel = new Page();
-        $this->notifier = new SearchEngineNotifier();
+        $this->engine = new SearchEngine();
     }
 
     public function index() {
@@ -89,7 +89,7 @@ class PageAdminController extends Controller {
             // Notify search engines of update (non-blocking)
             try {
                 if ($data['is_published']) {
-                    $result = $this->notifier->notifyPageChange(
+                    $result = $this->engine->notifyPageChange(
                         $data['slug'], 
                         $id ? 'update' : 'create', 
                         null, 
@@ -112,11 +112,13 @@ class PageAdminController extends Controller {
                     if ($successCount > 0) {
                         $_SESSION['success'] .= " (Notified $successCount search engines)";
                     }
+                    if ($failCount > 0) {
+                        $_SESSION['warning'] = "Warning: Failed to notify $failCount search engines. Check logs for details.";
+                    }
                 }
             } catch (Exception $e) {
-                error_log("CRITICAL: Search engine notification exception: " . $e->getMessage());
-                error_log("Stack trace: " . $e->getTraceAsString());
-                // Don't throw - page save still succeeded
+                error_log("Search engine notification exception: " . $e->getMessage());
+                $_SESSION['warning'] = "Page saved, but search engine notification failed: " . $e->getMessage();
             }
         } else {
             $this->pageModel->create($data);
@@ -125,7 +127,7 @@ class PageAdminController extends Controller {
             // Notify search engines of new page (non-blocking)
             try {
                 if ($data['is_published']) {
-                    $result = $this->notifier->notifyPageChange(
+                    $result = $this->engine->notifyPageChange(
                         $data['slug'], 
                         $id ? 'update' : 'create', 
                         null, 
@@ -148,11 +150,13 @@ class PageAdminController extends Controller {
                     if ($successCount > 0) {
                         $_SESSION['success'] .= " (Notified $successCount search engines)";
                     }
+                    if ($failCount > 0) {
+                        $_SESSION['warning'] = "Warning: Failed to notify $failCount search engines. Check logs for details.";
+                    }
                 }
             } catch (Exception $e) {
-                error_log("CRITICAL: Search engine notification exception: " . $e->getMessage());
-                error_log("Stack trace: " . $e->getTraceAsString());
-                // Don't throw - page save still succeeded
+                error_log("Search engine notification exception: " . $e->getMessage());
+                $_SESSION['warning'] = "Page created, but search engine notification failed: " . $e->getMessage();
             }
         }
         

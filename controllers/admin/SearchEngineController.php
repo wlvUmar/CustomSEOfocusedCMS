@@ -1,17 +1,20 @@
 <?php
 // path: ./controllers/admin/SearchEngineController.php
 
-require_once BASE_PATH . '/models/SearchEngineNotifier.php';
+require_once BASE_PATH . '/models/SearchEngine.php';
 require_once BASE_PATH . '/models/Page.php';
+require_once BASE_PATH . '/models/SearchEngineConfig.php';
 
 class SearchEngineController extends Controller {
-    private $notifier;
+    private $engine;
     private $pageModel;
+    private $configModel;
 
     public function __construct() {
         parent::__construct();
-        $this->notifier = new SearchEngineNotifier();
+        $this->engine = new SearchEngine();
         $this->pageModel = new Page();
+        $this->configModel = new SearchEngineConfig();
     }
 
     /**
@@ -20,7 +23,7 @@ class SearchEngineController extends Controller {
     public function index() {
         $this->requireAuth();
         
-        $stats = $this->notifier->getStatistics();
+        $stats = $this->engine->getStatistics();
         
         $this->view('admin/search-engine/index', [
             'stats' => $stats
@@ -34,7 +37,7 @@ class SearchEngineController extends Controller {
         $this->requireAuth();
         
         $pages = $this->pageModel->getAll(false); // Only published pages
-        $stats = $this->notifier->getStatistics();
+        $stats = $this->engine->getStatistics();
         
         $this->view('admin/search-engine/submit', [
             'pages' => $pages,
@@ -62,13 +65,9 @@ class SearchEngineController extends Controller {
         }
 
         $userId = $_SESSION['user_id'] ?? null;
-        $results = [];
         
         try {
-            foreach ($engines as $engine) {
-                $result = $this->notifier->manualSubmit($slug, [$engine], $userId);
-                $results = array_merge($results, $result);
-            }
+            $results = $this->engine->manualSubmit($slug, $engines, $userId);
 
             // Check if any succeeded
             $hasSuccess = false;
@@ -89,11 +88,10 @@ class SearchEngineController extends Controller {
             } else {
                 $errorDetail = !empty($error_messages) ? implode('; ', $error_messages) : 'Check rate limits or configuration.';
                 $_SESSION['error'] = 'Failed to submit page. ' . $errorDetail;
-                error_log("Search engine submission failed: " . $errorDetail);
             }
         } catch (Exception $e) {
             $_SESSION['error'] = 'Error during submission: ' . $e->getMessage();
-            error_log("Search engine submission exception: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            error_log("Search engine submission exception: " . $e->getMessage());
         }
 
         $this->redirect('/admin/search-engine');
@@ -119,20 +117,28 @@ class SearchEngineController extends Controller {
         }
 
         $userId = $_SESSION['user_id'] ?? null;
-        $successCount = 0;
-        $failCount = 0;
-
-        foreach ($slugs as $slug) {
-            $result = $this->notifier->manualSubmit($slug, [$engine], $userId);
-            
-            if (isset($result[$engine]) && $result[$engine]['status'] === 'success') {
-                $successCount++;
-            } else {
-                $failCount++;
+        
+        try {
+             // Reconstruct URLs for batch submit
+            $urls = [];
+            foreach($slugs as $slug) {
+                $urls[] = BASE_URL . '/' . $slug; // A bit naive, but Service handles slug extraction from URL anyway
             }
-        }
 
-        $_SESSION['success'] = "Batch submission complete: $successCount succeeded, $failCount failed";
+            $results = $this->engine->batchSubmit($urls, $engine, 'manual', $userId);
+            
+            $successCount = 0;
+            $failCount = 0;
+            foreach ($results as $res) {
+                if ($res['status'] === 'success') $successCount++;
+                else $failCount++;
+            }
+
+            $_SESSION['success'] = "Batch submission complete: $successCount succeeded, $failCount failed";
+        } catch(Exception $e) {
+             $_SESSION['error'] = "Batch submission error: " . $e->getMessage();
+        }
+        
         $this->redirect('/admin/search-engine');
     }
 
@@ -148,7 +154,7 @@ class SearchEngineController extends Controller {
         }
 
         $engine = $_POST['engine'] ?? 'bing';
-        $stats = $this->notifier->getStatistics();
+        $stats = $this->engine->getStatistics();
         $unsubmitted = $stats['unsubmitted'];
 
         if (empty($unsubmitted)) {
@@ -160,17 +166,22 @@ class SearchEngineController extends Controller {
         $successCount = 0;
         $failCount = 0;
 
-        foreach ($unsubmitted as $page) {
-            $result = $this->notifier->manualSubmit($page['slug'], [$engine], $userId);
-            
-            if (isset($result[$engine]) && $result[$engine]['status'] === 'success') {
-                $successCount++;
-            } else {
-                $failCount++;
+        try {
+            foreach ($unsubmitted as $page) {
+                $result = $this->engine->manualSubmit($page['slug'], [$engine], $userId);
+                
+                if (isset($result[$engine]) && $result[$engine]['status'] === 'success') {
+                    $successCount++;
+                } else {
+                    $failCount++;
+                }
+                
+                // Small delay
+                usleep(100000); 
             }
-            
-            // Small delay to avoid overwhelming API
-            usleep(100000); // 0.1 second
+        } catch (Exception $e) {
+            error_log("Bulk submission error: " . $e->getMessage());
+            $_SESSION['warning'] = "Process interrupted: " . $e->getMessage();
         }
 
         $_SESSION['success'] = "Submitted $successCount pages successfully ($failCount failed or rate limited)";
@@ -189,8 +200,8 @@ class SearchEngineController extends Controller {
             $this->redirect('/admin/search-engine');
         }
 
-        $history = $this->notifier->getPageHistory($slug, 50);
-        $status = $this->notifier->getPageStatus($slug);
+        $history = $this->engine->getPageHistory($slug, 50);
+        $status = $this->engine->getPageStatus($slug);
 
         $this->view('admin/search-engine/page-history', [
             'page' => $page,
@@ -205,8 +216,7 @@ class SearchEngineController extends Controller {
     public function config() {
         $this->requireAuth();
         
-        $db = Database::getInstance();
-        $configs = $db->fetchAll("SELECT * FROM search_engine_config ORDER BY FIELD(engine, 'bing', 'yandex', 'naver', 'seznam', 'yep', 'google')");
+        $configs = $this->configModel->getAll();
         
         $this->view('admin/search-engine/config', [
             'configs' => $configs
@@ -224,33 +234,20 @@ class SearchEngineController extends Controller {
             $this->redirect('/admin/search-engine/config');
         }
 
-        $db = Database::getInstance();
         $engines = ['bing', 'yandex', 'google', 'naver', 'seznam', 'yep'];
 
         foreach ($engines as $engine) {
-            $enabled = isset($_POST[$engine . '_enabled']) ? 1 : 0;
-            $apiKey = $_POST[$engine . '_api_key'] ?? null;
-            $rateLimit = intval($_POST[$engine . '_rate_limit'] ?? 10000);
-            $autoCreate = isset($_POST[$engine . '_auto_create']) ? 1 : 0;
-            $autoUpdate = isset($_POST[$engine . '_auto_update']) ? 1 : 0;
-            $autoRotation = isset($_POST[$engine . '_auto_rotation']) ? 1 : 0;
-            $pingSitemap = isset($_POST[$engine . '_ping_sitemap']) ? 1 : 0;
-
-            $sql = "UPDATE search_engine_config 
-                    SET enabled = ?, 
-                        api_key = ?, 
-                        rate_limit_per_day = ?,
-                        auto_submit_on_create = ?,
-                        auto_submit_on_update = ?,
-                        auto_submit_on_rotation = ?,
-                        ping_sitemap = ?
-                    WHERE engine = ?";
+            $data = [
+                'enabled' => isset($_POST[$engine . '_enabled']) ? 1 : 0,
+                'api_key' => $_POST[$engine . '_api_key'] ?? null,
+                'rate_limit_per_day' => intval($_POST[$engine . '_rate_limit'] ?? 10000),
+                'auto_submit_on_create' => isset($_POST[$engine . '_auto_create']) ? 1 : 0,
+                'auto_submit_on_update' => isset($_POST[$engine . '_auto_update']) ? 1 : 0,
+                'auto_submit_on_rotation' => isset($_POST[$engine . '_auto_rotation']) ? 1 : 0,
+                'ping_sitemap' => isset($_POST[$engine . '_ping_sitemap']) ? 1 : 0
+            ];
             
-            $db->query($sql, [
-                $enabled, $apiKey, $rateLimit, 
-                $autoCreate, $autoUpdate, $autoRotation, $pingSitemap,
-                $engine
-            ]);
+            $this->configModel->update($engine, $data);
         }
 
         $_SESSION['success'] = 'Configuration saved successfully';
@@ -263,11 +260,10 @@ class SearchEngineController extends Controller {
     public function recentSubmissions() {
         $this->requireAuth();
         
-        $db = Database::getInstance();
-        $recent = $db->fetchAll("SELECT * FROM v_recent_submissions LIMIT 100");
+        $stats = $this->engine->getStatistics();
         
         $this->view('admin/search-engine/recent', [
-            'submissions' => $recent
+            'submissions' => $stats['recent']
         ]);
     }
 
@@ -276,6 +272,12 @@ class SearchEngineController extends Controller {
      */
     public function exportHistory() {
         $this->requireAuth();
+        
+        // Direct DB access for large export to avoid memory limit issues in Service if strictly modeled
+        // Ideally should be in Service, but for streaming CSV, Controller direct access is sometimes pragmatic.
+        // Let's stick to Service pattern effectively:
+        // We'll use the service but maybe need a streaming method. 
+        // For now, let's just use the logic from before but via the model we have.
         
         $db = Database::getInstance();
         $submissions = $db->fetchAll("SELECT * FROM search_submissions ORDER BY submitted_at DESC LIMIT 1000");
@@ -320,9 +322,7 @@ class SearchEngineController extends Controller {
             exit;
         }
 
-        // Simple test - just try to verify the configuration
-        $db = Database::getInstance();
-        $config = $db->fetchOne("SELECT * FROM search_engine_config WHERE engine = ?", [$engine]);
+        $config = $this->configModel->get($engine);
 
         if (!$config || !$config['enabled']) {
             echo json_encode(['success' => false, 'message' => 'Engine not configured or disabled']);
@@ -345,7 +345,7 @@ class SearchEngineController extends Controller {
         }
         
         try {
-            $newKey = $this->notifier->regenerateApiKey();
+            $newKey = $this->engine->generateApiKey();
             $_SESSION['success'] = 'API key regenerated successfully: ' . $newKey;
         } catch (Exception $e) {
             $_SESSION['error'] = 'Failed to regenerate API key: ' . $e->getMessage();
@@ -361,7 +361,7 @@ class SearchEngineController extends Controller {
         $this->requireAuth();
         header('Content-Type: application/json');
         
-        $keyUrl = $this->notifier->getApiKeyFileUrl();
+        $keyUrl = $this->engine->getApiKeyFileUrl();
         
         if (!$keyUrl) {
             echo json_encode(['success' => false, 'message' => 'No API key configured']);

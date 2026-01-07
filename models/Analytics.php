@@ -494,9 +494,7 @@ class Analytics {
         ];
     }
 
-    /**
-     * Get page load speed stats (if tracking)
-     */
+
     public function getPageSpeed($months = 1) {
         $months = (int)$months;
         
@@ -514,9 +512,6 @@ class Analytics {
         return $this->db->fetchAll($sql, [$months]);
     }
 
-    /**
-     * Get bounce rate by page
-     */
     public function getBounceRates($months = 3) {
         $months = (int)$months;
         
@@ -535,9 +530,7 @@ class Analytics {
         return $this->db->fetchAll($sql, [$months]);
     }
 
-    /**
-     * Get growth trends (month over month)
-     */
+
     public function getGrowthTrends($months = 6) {
         $months = (int)$months;
         

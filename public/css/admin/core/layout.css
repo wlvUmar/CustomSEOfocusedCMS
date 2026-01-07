@@ -1,6 +1,6 @@
-@import url('admin/_modals.css');
-@import url('admin/_badges.css');
-@import url('admin/_utilities.css');
+@import url('../components/modals.css');
+@import url('../components/badges.css');
+@import url('../components/utilities.css');
 
 * {
     margin: 0;
@@ -55,8 +55,10 @@ body {
 
 .summary-card .card-icon .feather-icon,
 .recommendation .rec-icon .feather-icon {
-    display: block;        /* block to allow centering */
-    margin: 0 auto 10px;   /* center horizontally and add bottom spacing */
+    display: block;
+    /* block to allow centering */
+    margin: 0 auto 10px;
+    /* center horizontally and add bottom spacing */
     width: 36px;
     height: 36px;
     stroke-width: 2.5;
@@ -65,7 +67,7 @@ body {
 .action-buttons .feather-icon,
 .data-table .feather-icon,
 .bulk-actions-bar .feather-icon {
-    margin:auto;
+    margin: auto;
     width: 16px;
     height: 16px;
     vertical-align: text-bottom;
@@ -88,8 +90,8 @@ body {
 }
 
 
-.badge + .feather-icon,
-.feather-icon + .badge {
+.badge+.feather-icon,
+.feather-icon+.badge {
     margin-left: 4px;
 }
 
@@ -110,7 +112,7 @@ body {
     background: white;
     padding: 40px;
     border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     width: 100%;
     max-width: 400px;
 }
@@ -143,7 +145,7 @@ body {
     overflow-x: visible;
     transform: translateX(0);
     transition: transform 0.3s ease;
-    z-index: 1000; 
+    z-index: 1000;
     display: flex;
     flex-direction: column;
 }
@@ -176,20 +178,21 @@ body {
 .sidebar-toggle {
     position: fixed;
     top: 80vh;
-    right: calc(-1 * var(--sidebar-width) + 100vw - 20px); 
+    right: calc(-1 * var(--sidebar-width) + 100vw - 20px);
     width: 20px;
     height: 48px;
     background: var(--primary-dark);
     color: var(--primary-light);
     border: none;
-    border-radius: 0 6px 6px 0; /* Only round right side */
+    border-radius: 0 6px 6px 0;
+    /* Only round right side */
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     z-index: 1001;
     transition: left 0.3s ease, transform 0.3s ease;
-    box-shadow: 2px 2px 8px rgba(0,0,0,0.15);
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Remove hover/active styles as requested */
@@ -230,9 +233,12 @@ body {
 
 /* Subtle pulse animation only when collapsed */
 @keyframes subtle-pulse {
-    0%, 100% {
-        box-shadow: 2px 2px 8px rgba(0,0,0,0.15);
+
+    0%,
+    100% {
+        box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.15);
     }
+
     50% {
         box-shadow: 2px 2px 12px rgba(237, 235, 215, 0.2);
     }
@@ -258,7 +264,7 @@ body {
     width: 2px;
     background: #303034;
 }
-  
+
 
 .logo {
     padding: 20px;
@@ -311,7 +317,8 @@ body {
     flex-direction: column;
     gap: 12px;
     z-index: 10000;
-    pointer-events: none; /* allow clicks through when needed; alerts can override */
+    pointer-events: none;
+    /* allow clicks through when needed; alerts can override */
 }
 
 #floating-alerts .alert {
@@ -335,6 +342,7 @@ body {
         transform: translateX(16px);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -354,6 +362,7 @@ body {
         transform: translateX(0);
         opacity: 1;
     }
+
     to {
         transform: translateX(100%);
         opacity: 0;
@@ -374,6 +383,18 @@ body {
     background: #f8d7da;
     border-color: var(--danger);
     color: #721c24;
+}
+
+.alert-info {
+    background: #e0f2fe;
+    border-color: var(--info);
+    color: #0369a1;
+}
+
+.alert-warning {
+    background: #fffbeb;
+    border-color: var(--warning);
+    color: #92400e;
 }
 
 .form-group {
@@ -435,7 +456,7 @@ body {
     padding: 20px;
     margin-bottom: 20px;
     border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .form-section h3 {
@@ -639,7 +660,7 @@ body {
     width: 100%;
     background: white;
     border-collapse: collapse;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -760,7 +781,7 @@ body {
     background: white;
     padding: 30px;
     border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Stats */
@@ -775,7 +796,7 @@ body {
     background: white;
     padding: 30px;
     border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .stat-card h3 {
@@ -801,7 +822,7 @@ body {
     background: white;
     border-radius: 4px;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .media-item img {
@@ -833,6 +854,7 @@ body {
     gap: 5px;
     margin-top: 10px;
 }
+
 .nav-section {
     margin: 15px 0;
 }
@@ -850,6 +872,7 @@ body {
     background: var(--accent-dark);
     border-left: 3px solid var(--primary-light);
 }
+
 /* ADD TO END OF admin.css - Mobile Responsive Improvements */
 
 /* ===========================================
@@ -861,39 +884,39 @@ body {
     :root {
         --sidebar-width: 240px;
     }
-    
+
     .admin-main {
         padding: 20px 15px;
         margin-left: var(--sidebar-width);
     }
-    
+
     /* Make tables scrollable */
     .data-table {
         display: block;
         overflow-x: auto;
         white-space: nowrap;
     }
-    
+
     /* Stack form rows */
     .form-row {
         grid-template-columns: 1fr;
     }
-    
+
     /* Adjust stat cards */
     .stats-grid {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
-    
+
     /* Button sizing for smaller screens */
     .btn {
         padding: 8px 16px;
         font-size: 13px;
     }
-    
+
     .page-header {
         gap: 10px;
     }
-    
+
     .page-header h1 {
         font-size: 1.8em;
     }
@@ -926,7 +949,7 @@ body {
     background: white;
     padding: 35px;
     border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .section-title {
@@ -949,13 +972,13 @@ body {
     padding: 30px;
     border-radius: 8px;
     border-left: 4px solid var(--primary-dark);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition: all 0.3s ease;
 }
 
 .stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .stat-card.accent-success {
@@ -1021,7 +1044,7 @@ body {
     background: white;
     padding: 35px;
     border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .dashboard-footer h2 {
@@ -1038,51 +1061,51 @@ body {
     .dashboard-header h1 {
         font-size: 24px;
     }
-    
+
     .dashboard-section {
         padding: 25px;
         margin-bottom: 30px;
     }
-    
+
     .dashboard-grid {
         gap: 35px;
         margin-bottom: 35px;
     }
-    
+
     .stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .stat-card {
         padding: 25px;
     }
-    
+
     .stat-number {
         font-size: 32px;
     }
-    
+
     .quick-links {
         flex-direction: column;
         gap: 10px;
         margin-top: 20px;
         padding-top: 20px;
     }
-    
+
     .quick-links .btn {
         width: 100%;
         justify-content: center;
         margin-top: 0;
     }
-    
+
     .dashboard-footer {
         padding: 25px;
     }
-    
+
     .dashboard-footer .btn-group {
         flex-direction: column;
         gap: 10px;
     }
-    
+
     .dashboard-footer .btn {
         width: 100%;
         justify-content: center;
@@ -1096,42 +1119,43 @@ body {
         --sidebar-width: 280px;
         font-size: 14px;
     }
+
     .sidebar-toggle {
-        right:calc(-1 * var(--sidebar-width) + 100vw - 36px);
+        right: calc(-1 * var(--sidebar-width) + 100vw - 36px);
     }
-    
+
     /* Header adjustments */
     .page-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
     }
-    
+
     .page-header h1 {
         font-size: 1.5em;
         flex-shrink: 1;
         width: 100%;
         word-break: break-word;
     }
-    
+
     .page-header .btn-group {
         width: 100%;
         margin-left: 0;
     }
-    
+
     .btn-group,
     .header-actions {
         width: 100%;
         flex-direction: column;
     }
-    
+
     .btn-group .btn,
     .header-actions .btn,
     .btn-group select {
         width: 100%;
         justify-content: center;
     }
-    
+
     /* Tabs */
     .tabs {
         overflow-x: auto;
@@ -1139,26 +1163,28 @@ body {
         -webkit-overflow-scrolling: touch;
         flex-wrap: nowrap;
     }
-    
+
     .tab-btn {
         flex-shrink: 0;
         padding: 10px 15px;
         font-size: 13px;
     }
-    
+
     /* Form improvements */
     .form-group input,
     .form-group textarea,
     .form-group select {
-        font-size: 16px; /* Prevent zoom on iOS */
-        min-height: 44px; /* iOS touch target */
+        font-size: 16px;
+        /* Prevent zoom on iOS */
+        min-height: 44px;
+        /* iOS touch target */
     }
-    
+
     .form-group label {
         font-size: 14px;
         margin-bottom: 6px;
     }
-    
+
     /* Tables - make scrollable */
     .data-table-wrapper {
         overflow-x: auto;
@@ -1166,89 +1192,90 @@ body {
         margin: 0 -16px;
         padding: 0 16px;
     }
-    
+
     .data-table {
-        min-width: 600px; /* Force horizontal scroll for complex tables */
+        min-width: 600px;
+        /* Force horizontal scroll for complex tables */
     }
-    
+
     .data-table th,
     .data-table td {
         padding: 12px 8px;
         font-size: 13px;
     }
-    
+
     /* Checkbox touch targets */
     .data-table input[type="checkbox"] {
         width: 20px;
         height: 20px;
         cursor: pointer;
     }
-    
+
     /* Action buttons stack */
     .action-buttons {
         flex-direction: column;
         width: 100%;
         gap: 8px;
     }
-    
+
     .action-buttons .btn {
         width: 100%;
         min-height: 44px;
     }
-    
+
     /* Stats cards single column */
     .stats-grid,
     .trend-cards,
     .crawl-summary-cards {
         grid-template-columns: 1fr;
     }
-    
+
     /* Analytics specific */
     .chart-container {
         grid-template-columns: 1fr;
     }
-    
+
     .performers-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .lang-cards {
         flex-direction: column;
     }
-    
+
     /* Rotation specific */
     .rotation-timeline {
         grid-template-columns: 1fr;
     }
-    
+
     .rotation-stats-bar {
         flex-direction: column;
         gap: 15px;
     }
-    
+
     .bulk-actions-bar {
         flex-direction: column;
         align-items: stretch;
         gap: 12px;
     }
-    
+
     .bulk-buttons {
         flex-direction: column;
         width: 100%;
         gap: 8px;
     }
-    
+
     .bulk-buttons button {
         width: 100%;
         min-height: 44px;
     }
-    
+
     /* Media manager */
     .media-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         gap: 12px;
     }
-    
+
     /* Modals */
     .modal-content {
         width: 95%;
@@ -1257,347 +1284,352 @@ body {
         max-height: calc(100vh - 20px);
         overflow-y: auto;
     }
-    
+
     .modal form {
         padding: 16px;
     }
-    
+
     .modal-actions {
         flex-direction: column;
         gap: 10px;
     }
-    
+
     .modal-actions .btn {
         width: 100%;
         min-height: 44px;
     }
-    
+
     /* Navigation improvements */
     .admin-nav a {
         padding: 14px 20px;
         font-size: 15px;
         min-height: 48px;
     }
-    
+
     .nav-section-title {
         padding: 10px 20px;
     }
-    
+
     /* Login page */
     .login-box {
         margin: 20px;
         padding: 30px 20px;
     }
-    
+
     /* Alerts */
     .alert {
         margin: 0 0 20px 0;
         padding: 12px 16px;
         font-size: 14px;
     }
-    
+
     /* Form rows to column */
     .form-row {
         flex-direction: column;
         gap: 0;
     }
-    
+
     .form-row .form-group {
         width: 100%;
     }
-    
+
     /* Better touch targets */
     .btn {
         min-height: 44px;
         padding: 12px 20px;
     }
-    
+
     .btn-sm {
         min-height: 38px;
         padding: 8px 14px;
     }
 
-/* Small phones */
-@media (max-width: 480px) {
-    :root {
-        font-size: 13px;
+    /* Small phones */
+    @media (max-width: 480px) {
+        :root {
+            font-size: 13px;
+        }
+
+        .admin-main {
+            padding: 12px;
+        }
+
+        .admin-content {
+            padding: 0;
+        }
+
+        .page-header {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+        }
+
+        .page-header h1 {
+            font-size: 1.3em;
+            line-height: 1.3;
+        }
+
+        /* Even more compact buttons */
+        .btn {
+            padding: 10px 16px;
+            font-size: 13px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+            min-height: 36px;
+        }
+
+        /* Compact forms */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            padding: 10px 12px;
+            font-size: 16px;
+        }
+
+        /* Very compact tables */
+        .data-table {
+            font-size: 12px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px 6px;
+        }
+
+        /* Hide even more columns */
+        .data-table th:nth-child(4),
+        .data-table td:nth-child(4) {
+            display: none;
+        }
+
+        /* Smaller stat cards */
+        .stat-card {
+            padding: 14px;
+        }
+
+        .stat-number {
+            font-size: 24px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+        }
+
+        /* Compact sidebar */
+        :root {
+            --sidebar-width: 260px;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+        }
+
+        .admin-nav a {
+            padding: 12px 16px;
+            font-size: 14px;
+        }
+
+        /* Smaller media grid */
+        .media-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        /* Modal adjustments */
+        .modal-content {
+            width: 100%;
+            margin: 0;
+            border-radius: 0;
+            max-height: 100vh;
+        }
+
+        .modal-header,
+        .modal form,
+        .modal-body {
+            padding: 14px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.1em;
+        }
+
+        /* Compact alerts */
+        .alert {
+            top: 10px;
+            right: 10px;
+            left: 10px;
+            min-width: auto;
+            max-width: none;
+            padding: 12px 16px;
+            font-size: 14px;
+        }
+
+        /* Badge sizes */
+        .badge {
+            font-size: 11px;
+            padding: 3px 8px;
+        }
+
+        /* Tighter spacing */
+        .stats-grid,
+        .info-grid {
+            gap: 12px;
+        }
     }
-    
-    .admin-main {
-        padding: 12px;
+
+    /* Extra small phones */
+    @media (max-width: 360px) {
+        :root {
+            font-size: 12px;
+            --sidebar-width: 240px;
+        }
+
+        .page-header h1 {
+            font-size: 1.2em;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 6px 4px;
+            font-size: 11px;
+        }
+
+        .media-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stat-card {
+            padding: 12px;
+        }
+
+        .stat-number {
+            font-size: 20px;
+        }
     }
-    
-    .admin-content {
-        padding: 0;
+
+    /* Landscape phones */
+    @media (max-height: 500px) and (orientation: landscape) {
+        .page-header {
+            padding: 8px 0;
+            margin-bottom: 12px;
+        }
+
+        .page-header h1 {
+            font-size: 1.2em;
+        }
+
+        .admin-main {
+            padding: 12px;
+        }
+
+        .stat-card {
+            padding: 12px;
+        }
+
+        .modal-content {
+            max-height: 95vh;
+            overflow-y: auto;
+        }
     }
-    
-    .page-header {
-        margin-bottom: 16px;
-        padding-bottom: 12px;
+
+    /* Touch-friendly global improvements */
+    @media (hover: none) and (pointer: coarse) {
+
+        /* Larger touch targets for touch devices */
+        a,
+        button,
+        input,
+        select,
+        textarea {
+            min-height: 44px;
+        }
+
+        .btn {
+            min-height: 44px;
+            padding: 12px 20px;
+        }
+
+        .btn-sm {
+            min-height: 38px;
+        }
+
+        /* Better spacing for touch */
+        .action-buttons {
+            gap: 10px;
+        }
+
+        /* Prevent double-tap zoom */
+        * {
+            touch-action: manipulation;
+        }
     }
-    
+
+
+
     .page-header h1 {
         font-size: 1.3em;
-        line-height: 1.3;
     }
-    
-    /* Even more compact buttons */
-    .btn {
-        padding: 10px 16px;
-        font-size: 13px;
-    }
-    
-    .btn-sm {
-        padding: 6px 12px;
-        font-size: 12px;
-        min-height: 36px;
-    }
-    
-    /* Compact forms */
-    .form-group {
-        margin-bottom: 16px;
-    }
-    
-    .form-group label {
-        font-size: 13px;
-        margin-bottom: 5px;
-    }
-    
-    .form-group input,
-    .form-group textarea,
-    .form-group select {
-        padding: 10px 12px;
-        font-size: 16px;
-    }
-    
-    /* Very compact tables */
-    .data-table {
-        font-size: 12px;
-    }
-    
-    .data-table th,
-    .data-table td {
-        padding: 8px 6px;
-    }
-    
-    /* Hide even more columns */
-    .data-table th:nth-child(4),
-    .data-table td:nth-child(4) {
-        display: none;
-    }
-    
-    /* Smaller stat cards */
-    .stat-card {
-        padding: 14px;
-    }
-    
-    .stat-number {
-        font-size: 24px;
-    }
-    
-    .stat-label {
-        font-size: 11px;
-    }
-    
-    /* Compact sidebar */
-    :root {
-        --sidebar-width: 260px;
-    }
-    
-    .sidebar {
-        width: var(--sidebar-width);
-    }
-    
-    .admin-nav a {
-        padding: 12px 16px;
-        font-size: 14px;
-    }
-    
-    /* Smaller media grid */
-    .media-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-    }
-    
-    /* Modal adjustments */
-    .modal-content {
-        width: 100%;
-        margin: 0;
-        border-radius: 0;
-        max-height: 100vh;
-    }
-    
-    .modal-header,
-    .modal form,
-    .modal-body {
-        padding: 14px;
-    }
-    
-    .modal-header h2 {
-        font-size: 1.1em;
-    }
-    
-    /* Compact alerts */
-    .alert {
-        top: 10px;
-        right: 10px;
-        left: 10px;
-        min-width: auto;
-        max-width: none;
-        padding: 12px 16px;
-        font-size: 14px;
-    }
-    
-    /* Badge sizes */
-    .badge {
-        font-size: 11px;
-        padding: 3px 8px;
-    }
-    
-    /* Tighter spacing */
-    .stats-grid,
-    .info-grid {
-        gap: 12px;
-    }
-}
 
-/* Extra small phones */
-@media (max-width: 360px) {
-    :root {
-        font-size: 12px;
-        --sidebar-width: 240px;
-    }
-    
-    .page-header h1 {
-        font-size: 1.2em;
-    }
-    
-    .btn {
-        padding: 8px 12px;
-        font-size: 12px;
-    }
-    
-    .data-table th,
-    .data-table td {
-        padding: 6px 4px;
-        font-size: 11px;
-    }
-    
-    .media-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .stat-card {
-        padding: 12px;
-    }
-    
-    .stat-number {
-        font-size: 20px;
-    }
-}
-
-/* Landscape phones */
-@media (max-height: 500px) and (orientation: landscape) {
-    .page-header {
-        padding: 8px 0;
-        margin-bottom: 12px;
-    }
-    
-    .page-header h1 {
-        font-size: 1.2em;
-    }
-    
-    .admin-main {
-        padding: 12px;
-    }
-    
-    .stat-card {
-        padding: 12px;
-    }
-    
-    .modal-content {
-        max-height: 95vh;
-        overflow-y: auto;
-    }
-}
-
-/* Touch-friendly global improvements */
-@media (hover: none) and (pointer: coarse) {
-    /* Larger touch targets for touch devices */
-    a, button, input, select, textarea {
-        min-height: 44px;
-    }
-    
-    .btn {
-        min-height: 44px;
-        padding: 12px 20px;
-    }
-    
-    .btn-sm {
-        min-height: 38px;
-    }
-    
-    /* Better spacing for touch */
-    .action-buttons {
-        gap: 10px;
-    }
-    
-    /* Prevent double-tap zoom */
-    * {
-        touch-action: manipulation;
-    }
-}
-        padding: 15px 10px;
-    }
-    
-    .page-header h1 {
-        font-size: 1.3em;
-    }
-    
     /* Make buttons more touch-friendly */
     .btn {
         padding: 12px 16px;
         font-size: 14px;
     }
-    
+
     .btn-sm {
         padding: 8px 12px;
         font-size: 13px;
     }
-    
+
     /* Data table compact mode */
     .data-table th,
     .data-table td {
         padding: 8px 6px;
         font-size: 12px;
     }
-    
+
     /* Hide more columns */
     .data-table th:nth-child(4),
     .data-table td:nth-child(4) {
         display: none;
     }
-    
+
     /* Form spacing */
     .form-group {
         margin-bottom: 15px;
     }
-    
+
     /* Stat cards more compact */
     .stat-card {
         padding: 20px 15px;
     }
-    
+
     .stat-number {
         font-size: 28px;
     }
-    
+
     /* Media grid smaller */
     .media-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 10px;
     }
-    
+
     .media-item img {
         height: 120px;
     }
@@ -1605,6 +1637,7 @@ body {
 
 /* Touch improvements */
 @media (hover: none) and (pointer: coarse) {
+
     /* Increase tap targets */
     .btn,
     a {
@@ -1612,16 +1645,16 @@ body {
         display: inline-flex;
         align-items: center;
     }
-    
+
     /* Remove hover effects on touch */
     .admin-nav a:hover {
         background: transparent;
     }
-    
+
     .admin-nav a:active {
         background: var(--accent-dark);
     }
-    
+
     /* Better checkbox/radio tap targets */
     input[type="checkbox"],
     input[type="radio"] {
@@ -1634,21 +1667,22 @@ body {
     .sidebar {
         overflow-y: auto;
     }
-    
+
     .logo {
         padding: 12px;
     }
-    
+
     .admin-nav {
         padding: 10px 0;
     }
-    
+
     .admin-nav a {
         padding: 10px 20px;
     }
 }
 
 @media print {
+
     .sidebar,
     .sidebar-toggle,
     .btn-group,
@@ -1657,16 +1691,17 @@ body {
     .floating-call {
         display: none !important;
     }
-    
+
     .admin-main {
         margin-left: 0;
         padding: 0;
     }
-    
+
     .data-table {
         page-break-inside: avoid;
     }
 }
+
 /*
 @media (prefers-reduced-motion: reduce) {
     * {

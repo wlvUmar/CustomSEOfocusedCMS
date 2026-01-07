@@ -13,6 +13,5 @@ deployment:
     - /bin/cp /home/kuplyuta/appliances/parse.py $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
     # Public folder
     - /bin/cp -R /home/kuplyuta/appliances/public/. $PUBLICPATH >> /home/kuplyuta/deploy.log 2>&1
-    # Debug task: write success message
     - echo "Deployment finished at $(date)" >> /home/kuplyuta/deploy.log
     

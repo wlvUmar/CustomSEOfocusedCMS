@@ -8,14 +8,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css">
     <?php
     if (!empty($pageName)) {
-        $cssFile = "admin/{$pageName}.css";
-        $cssPath = BASE_PATH . "/public/css/{$cssFile}";
+        // Check for feature-specific CSS in new structure
+        $featureCss = "admin/features/{$pageName}.css";
+        if (file_exists(BASE_PATH . "/public/css/{$featureCss}")) {
+             echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$featureCss}" . '">';
+        }
 
-        if (file_exists($cssPath)) {
-            echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$cssFile}" . '">';
+        // Keep support for legacy/other paths if needed, or remove 
+        // fallback to old location
+        $oldCss = "admin/{$pageName}.css";
+        if (file_exists(BASE_PATH . "/public/css/{$oldCss}")) {
+            echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$oldCss}" . '">';
         }
     }
     ?>
@@ -29,6 +35,24 @@
                 <?= e($_SESSION['success']) ?>
             </div>
             <?php unset($_SESSION['success']); ?>
+        <?php endif; ?>
+
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['warning'])): ?>
+            <div class="alert alert-warning">
+                <i data-feather="alert-triangle"></i>
+                <?= e($_SESSION['warning']) ?>
+            </div>
+            <?php unset($_SESSION['warning']); ?>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['info'])): ?>
+            <div class="alert alert-info">
+                <i data-feather="info"></i>
+                <?= e($_SESSION['info']) ?>
+            </div>
+            <?php unset($_SESSION['info']); ?>
         <?php endif; ?>
 
         <?php if (isset($_SESSION['error'])): ?>

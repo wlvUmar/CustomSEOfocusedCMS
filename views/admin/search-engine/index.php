@@ -1,6 +1,6 @@
 <?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
-<link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/search-engine.css">
+<link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/features/search-engine.css">
 
 <div class="page-header">
     <h1>
@@ -22,11 +22,17 @@
 
 <!-- Statistics Cards -->
 <div class="stats-grid">
-    <?php foreach ($stats['by_engine'] ?? [] as $engine): ?>
+    <?php foreach ($stats['by_engine'] ?? [] as $engine): 
+        $engineName = $engine['engine'] ?? 'unknown';
+        $icon = 'globe';
+        if ($engineName === 'yandex') $icon = 'compass';
+        elseif ($engineName === 'google') $icon = 'chrome';
+        elseif ($engineName === 'bing') $icon = 'globe'; // redundancy for clarity
+    ?>
     <div class="stat-card">
         <div class="card-header">
-            <h3><?= ucfirst($engine['engine'] ?? 'unknown') ?></h3>
-            <i data-feather="<?= (($engine['engine'] ?? '') === 'bing') ? 'globe' : (((($engine['engine'] ?? '') === 'yandex') ? 'compass' : 'chrome')) ?>"></i>
+            <h3><?= ucfirst($engineName) ?></h3>
+            <i data-feather="<?= $icon ?>"></i>
         </div>
         <div class="stat-number"><?= $engine['total_all_time'] ?? 0 ?></div>
         <div class="stat-details">
@@ -161,6 +167,6 @@
     <?php endif; ?>
 </div>
 
-<script src="<?= BASE_URL ?>/js/admin/search-engine.js"></script>
+<script src="<?= BASE_URL ?>/js/admin/features/search-engine.js"></script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

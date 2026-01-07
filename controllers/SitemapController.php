@@ -1,6 +1,5 @@
 <?php
 // path: ./controllers/SitemapController.php
-// IMPLEMENTATION: Place in controllers/SitemapController.php
 
 require_once BASE_PATH . '/models/Page.php';
 
@@ -12,14 +11,10 @@ class SitemapController extends Controller {
         $this->pageModel = new Page();
     }
 
-    /**
-     * Generate sitemap.xml
-     * URL: /sitemap.xml
-     */
     public function generateXML() {
         header('Content-Type: application/xml; charset=utf-8');
         
-        $pages = $this->pageModel->getAll(false); // Only published
+        $pages = $this->pageModel->getAll(false); 
         
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
@@ -29,26 +24,21 @@ class SitemapController extends Controller {
             $slug = $page['slug'];
             $updated = $page['updated_at'];
             
-            // Priority based on slug
             $priority = $slug === 'home' ? '1.0' : '0.8';
             
-            // Change frequency based on rotation
             $changefreq = $page['enable_rotation'] ? 'monthly' : 'yearly';
             
-            // Russian version (default)
             echo '  <url>' . "\n";
             echo '    <loc>' . BASE_URL . '/' . htmlspecialchars($slug) . '</loc>' . "\n";
             echo '    <lastmod>' . date('Y-m-d', strtotime($updated)) . '</lastmod>' . "\n";
             echo '    <changefreq>' . $changefreq . '</changefreq>' . "\n";
             echo '    <priority>' . $priority . '</priority>' . "\n";
             
-            // Alternate language links
             echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . BASE_URL . '/' . htmlspecialchars($slug) . '" />' . "\n";
             echo '    <xhtml:link rel="alternate" hreflang="uz" href="' . BASE_URL . '/' . htmlspecialchars($slug) . '/uz" />' . "\n";
             
             echo '  </url>' . "\n";
             
-            // Uzbek version
             echo '  <url>' . "\n";
             echo '    <loc>' . BASE_URL . '/' . htmlspecialchars($slug) . '/uz</loc>' . "\n";
             echo '    <lastmod>' . date('Y-m-d', strtotime($updated)) . '</lastmod>' . "\n";
@@ -65,33 +55,26 @@ class SitemapController extends Controller {
         exit;
     }
 
-    /**
-     * Generate robots.txt
-     * URL: /robots.txt
-     */
+
     public function generateRobotsTxt() {
         header('Content-Type: text/plain; charset=utf-8');
         
         $isProduction = IS_PRODUCTION;
         
         if ($isProduction) {
-            // Production: Allow all bots
             echo "User-agent: *\n";
             echo "Allow: /\n";
             echo "\n";
             
-            // Block admin area
             echo "Disallow: /admin/\n";
             echo "Disallow: /config/\n";
             echo "Disallow: /logs/\n";
             echo "Disallow: /database/\n";
             echo "\n";
             
-            // Sitemap location
             echo "Sitemap: " . BASE_URL . "/sitemap.xml\n";
             
         } else {
-            // Development/Test: Block all bots
             echo "User-agent: *\n";
             echo "Disallow: /\n";
         }
@@ -99,14 +82,11 @@ class SitemapController extends Controller {
         exit;
     }
 
-    /**
-     * Admin interface for sitemap management
-     */
     public function adminPanel() {
         $this->requireAuth();
         
         $pages = $this->pageModel->getAll(false);
-        $totalUrls = count($pages) * 2; // Each page has 2 language versions
+        $totalUrls = count($pages) * 2;
         
         $data = [
             'totalPages' => count($pages),

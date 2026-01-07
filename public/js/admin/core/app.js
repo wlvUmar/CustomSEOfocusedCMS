@@ -15,13 +15,57 @@ function switchTab(tab, event) {
 // Auto-dismiss alerts after 5 seconds
 function setupAlertDismissal() {
     document.querySelectorAll('.alert').forEach(alert => {
-        setTimeout(() => {
-            alert.classList.add('fade-out');
-            setTimeout(() => {
-                alert.remove();
-            }, 300);
-        }, 5000);
+        scheduleDismissal(alert);
     });
+}
+
+function scheduleDismissal(alert) {
+    setTimeout(() => {
+        alert.classList.add('fade-out');
+        setTimeout(() => {
+            alert.remove();
+        }, 300);
+    }, 5000);
+}
+
+// Global alert function for AJAX/Dynamic use
+window.showAlert = function(message, type = 'info') {
+    // defined types: success, error, warning, info
+    // remove existing to prevent stacking too many
+    const existing = document.querySelector('.floating-alerts .alert');
+    if (existing && document.querySelectorAll('.alert').length > 2) {
+        document.querySelector('.floating-alerts').firstChild.remove();
+    }
+
+    const container = document.getElementById('floating-alerts') || createAlertContainer();
+    
+    const div = document.createElement('div');
+    div.className = `alert alert-${type}`;
+    
+    // Icon mapping
+    let iconName = 'info';
+    if (type === 'success') iconName = 'check-circle';
+    if (type === 'error') iconName = 'alert-circle';
+    if (type === 'warning') iconName = 'alert-triangle';
+    
+    div.innerHTML = `<i data-feather="${iconName}"></i> ${message}`;
+    
+    container.appendChild(div);
+    
+    // Initialize icons
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    scheduleDismissal(div);
+};
+
+function createAlertContainer() {
+    const div = document.createElement('div');
+    div.id = 'floating-alerts';
+    div.className = 'floating-alerts';
+    document.body.appendChild(div);
+    return div;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
