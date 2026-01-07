@@ -14,20 +14,6 @@
     </div>
 </div>
 
-<div class="alert alert-info" style="margin-bottom: 20px; max-width: 100%;">
-    <div>
-        <strong>ℹ️ IndexNow Protocol:</strong> Bing, Yandex, Naver, Seznam, and Yep all use IndexNow.<br>
-        <strong>Submitting to one automatically notifies ALL IndexNow-enabled search engines.</strong><br>
-        You only need to enable one IndexNow engine (Bing recommended) for all to receive notifications.
-    </div>
-</div>
-<?php if ($isIndexNow): ?>
-        <div class="alert alert-warning" style="margin: 15px 0 20px 0;">
-            <div>
-                <strong>🔗 Shared Submission:</strong> This engine uses IndexNow. Submissions are automatically shared with all IndexNow engines.
-            </div>
-        </div>
-        <?php endif; ?>
 <form method="POST" action="<?= BASE_URL ?>/admin/search-engine/save-config">
     <?= csrfField() ?>
     
