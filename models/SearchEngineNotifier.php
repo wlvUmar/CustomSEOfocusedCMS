@@ -41,7 +41,7 @@ class SearchEngineNotifier {
         foreach ($this->config as $engine => $config) {
             // Check if this type of submission is enabled
             $autoSubmitKey = "auto_submit_on_{$type}";
-            if (!$config[$autoSubmitKey]) {
+            if (!isset($config[$autoSubmitKey]) || !$config[$autoSubmitKey]) {
                 continue;
             }
             
