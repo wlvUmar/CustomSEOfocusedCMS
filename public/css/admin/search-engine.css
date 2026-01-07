@@ -72,6 +72,37 @@
     color: white;
 }
 
+/* Container for each engine config */
+.config-section {
+    margin-bottom: 24px;
+    padding: 14px;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #eef2f7;
+    box-shadow: 0 1px 3px rgba(2,6,23,0.03);
+    position: relative;
+    overflow: visible;
+}
+
+.config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+/* Ensure alerts stack and don't overlap */
+.alert {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.alert + .alert {
+    margin-top: 10px;
+}
+
 /* Stats Grid */
 .stats-grid {
     display: grid;
