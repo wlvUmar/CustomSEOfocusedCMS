@@ -1,7 +1,7 @@
 <?php
 /**
  * Search Engine Diagnostic Script
- * Run this from command line: php diagnose_search_engines.php
+ * Run this from command line: php  .php
  * Or access via browser (place in public folder)
  */
 
