@@ -22,27 +22,27 @@
 
 <!-- Statistics Cards -->
 <div class="stats-grid">
-    <?php foreach ($stats['by_engine'] as $engine): ?>
+    <?php foreach ($stats['by_engine'] ?? [] as $engine): ?>
     <div class="stat-card">
         <div class="card-header">
-            <h3><?= ucfirst($engine['engine']) ?></h3>
-            <i data-feather="<?= $engine['engine'] === 'bing' ? 'globe' : ($engine['engine'] === 'yandex' ? 'compass' : 'chrome') ?>"></i>
+            <h3><?= ucfirst($engine['engine'] ?? 'unknown') ?></h3>
+            <i data-feather="<?= (($engine['engine'] ?? '') === 'bing') ? 'globe' : (((($engine['engine'] ?? '') === 'yandex') ? 'compass' : 'chrome')) ?>"></i>
         </div>
-        <div class="stat-number"><?= $engine['total_all_time'] ?></div>
+        <div class="stat-number"><?= $engine['total_all_time'] ?? 0 ?></div>
         <div class="stat-details">
-            <span class="success"><?= $engine['total_success'] ?> success</span>
-            <span class="failed"><?= $engine['total_failed'] ?> failed</span>
+            <span class="success"><?= $engine['total_success'] ?? 0 ?> success</span>
+            <span class="failed"><?= $engine['total_failed'] ?? 0 ?> failed</span>
         </div>
-        <?php if ($engine['total_all_time'] > 0): ?>
+        <?php if (($engine['total_all_time'] ?? 0) > 0): ?>
         <div class="stat-progress">
             <div class="progress-bar">
-                <div class="progress-fill success" style="width: <?= $engine['success_rate_percent'] ?>%"></div>
+                <div class="progress-fill success" style="width: <?= $engine['success_rate_percent'] ?? 0 ?>%"></div>
             </div>
-            <span><?= $engine['success_rate_percent'] ?>% success rate</span>
+            <span><?= $engine['success_rate_percent'] ?? 0 ?>% success rate</span>
         </div>
         <?php endif; ?>
         <span class="stat-meta">
-            Today: <?= $engine['submissions_today'] ?> / <?= $engine['rate_limit_per_day'] ?>
+            Today: <?= $engine['submissions_today'] ?? 0 ?> / <?= $engine['rate_limit_per_day'] ?? 0 ?>
         </span>
     </div>
     <?php endforeach; ?>
@@ -144,7 +144,7 @@
                     </td>
                     <td>
                         <?= date('M d, H:i', strtotime($sub['submitted_at'])) ?>
-                        <?php if ($sub['duration_seconds']): ?>
+                        <?php if (!empty($sub['duration_seconds'])): ?>
                         <br><small class="text-muted">(<?= $sub['duration_seconds'] ?>s)</small>
                         <?php endif; ?>
                     </td>
