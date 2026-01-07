@@ -11,8 +11,8 @@ deployment:
     - /bin/cp -R /home/kuplyuta/appliances/views $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
     - /bin/cp /home/kuplyuta/appliances/.htaccess $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
     - /bin/cp /home/kuplyuta/appliances/parse.py $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
-    - /bin/cp /home/kuplyuta/appliances/add_seo_fields_migration.sql $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
     # Public folder
     - /bin/cp -R /home/kuplyuta/appliances/public/. $PUBLICPATH >> /home/kuplyuta/deploy.log 2>&1
     # Debug task: write success message
     - echo "Deployment finished at $(date)" >> /home/kuplyuta/deploy.log
+    
