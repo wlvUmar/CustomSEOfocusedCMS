@@ -2,6 +2,12 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/kuplyuta
+    - /bin/cp -R beta $DEPLOYPATH
+    - /bin/cp -R config $DEPLOYPATH
+    - /bin/cp -R controllers $DEPLOYPATH
+    - /bin/cp -R core $DEPLOYPATH
+    - /bin/cp -R database $DEPLOYPATH
+    - /bin/cp -R models $DEPLOYPATH
+    - /bin/cp -R views $DEPLOYPATH
     - export PUBLICPATH=/home/kuplyuta/public_html
-    - /bin/rsync -av --exclude='public' --exclude='.git' --exclude='.cpanel.yml' . $DEPLOYPATH
-    - /bin/rsync -av public/ $PUBLICPATH
+    - /bin/cp -R public/* $PUBLICPATH
