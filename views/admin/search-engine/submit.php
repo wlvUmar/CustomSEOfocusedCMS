@@ -153,9 +153,11 @@
                                 <i data-feather="send"></i> Submit to Bing
                             </button>
                         </form>
+                        <?php if (isset($page['id'])): ?>
                         <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>" class="btn btn-sm btn-secondary">
                             <i data-feather="edit"></i> Edit
                         </a>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>

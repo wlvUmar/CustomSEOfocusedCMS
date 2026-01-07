@@ -20,12 +20,10 @@ if (!file_exists($errorLogFile)) {
     chmod($errorLogFile, 0640);
 }
 
-// Set PHP error logging
 ini_set('log_errors', 1);
 ini_set('error_log', $errorLogFile);
 ini_set('display_errors', IS_PRODUCTION ? 0 : 1);
 
-// Custom error handler for better logging
 set_error_handler(function($errno, $errstr, $errfile, $errline) use ($errorLogFile) {
     $errorTypes = [
         E_ERROR => 'ERROR',
@@ -44,7 +42,6 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) use ($errorLogFi
     
     error_log($message, 3, $errorLogFile);
     
-    // Don't execute PHP internal error handler
     return false;
 });
 

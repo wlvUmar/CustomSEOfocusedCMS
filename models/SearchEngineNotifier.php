@@ -449,11 +449,79 @@ class SearchEngineNotifier {
      * Get overall statistics
      */
     public function getStatistics() {
+        // Try to use views, fallback to direct queries if views don't exist
+        try {
+            $byEngine = $this->db->fetchAll("SELECT * FROM v_submission_stats");
+        } catch (Exception $e) {
+            // Fallback if view doesn't exist
+            $byEngine = $this->db->fetchAll("
+                SELECT 
+                    c.engine,
+                    c.enabled,
+                    c.submissions_today,
+                    c.rate_limit_per_day,
+                    COALESCE(COUNT(s.id), 0) as total_all_time,
+                    COALESCE(SUM(CASE WHEN s.status = 'success' THEN 1 ELSE 0 END), 0) as total_success,
+                    COALESCE(SUM(CASE WHEN s.status = 'failed' THEN 1 ELSE 0 END), 0) as total_failed
+                FROM search_engine_config c
+                LEFT JOIN search_submissions s ON s.search_engine = c.engine
+                GROUP BY c.engine, c.enabled, c.submissions_today, c.rate_limit_per_day
+            ");
+        }
+        
+        try {
+            $recent = $this->db->fetchAll("SELECT * FROM v_recent_submissions LIMIT 50");
+        } catch (Exception $e) {
+            $recent = $this->db->fetchAll("
+                SELECT 
+                    s.id,
+                    s.page_slug,
+                    p.title_ru,
+                    s.search_engine,
+                    s.submission_type,
+                    s.status,
+                    s.submitted_at
+                FROM search_submissions s
+                LEFT JOIN pages p ON p.slug = s.page_slug
+                ORDER BY s.submitted_at DESC
+                LIMIT 50
+            ");
+        }
+        
+        try {
+            $unsubmitted = $this->db->fetchAll("SELECT * FROM v_unsubmitted_pages LIMIT 20");
+        } catch (Exception $e) {
+            $unsubmitted = $this->db->fetchAll("
+                SELECT 
+                    p.id,
+                    p.slug,
+                    p.title_ru,
+                    p.title_uz,
+                    p.published,
+                    p.created_at
+                FROM pages p
+                WHERE p.published = 1
+                AND NOT EXISTS (
+                    SELECT 1 FROM search_submissions s 
+                    WHERE s.page_slug = p.slug 
+                    AND s.status = 'success'
+                )
+                ORDER BY p.created_at DESC
+                LIMIT 20
+            ");
+        }
+        
+        try {
+            $dueResubmit = $this->db->fetchAll("SELECT * FROM v_pages_due_resubmit LIMIT 20");
+        } catch (Exception $e) {
+            $dueResubmit = [];
+        }
+        
         return [
-            'by_engine' => $this->db->fetchAll("SELECT * FROM v_submission_stats"),
-            'recent' => $this->db->fetchAll("SELECT * FROM v_recent_submissions LIMIT 50"),
-            'unsubmitted' => $this->db->fetchAll("SELECT * FROM v_unsubmitted_pages LIMIT 20"),
-            'due_resubmit' => $this->db->fetchAll("SELECT * FROM v_pages_due_resubmit LIMIT 20"),
+            'by_engine' => $byEngine,
+            'recent' => $recent,
+            'unsubmitted' => $unsubmitted,
+            'due_resubmit' => $dueResubmit,
             'config' => $this->config
         ];
     }
