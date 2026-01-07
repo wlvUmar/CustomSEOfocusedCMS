@@ -4,11 +4,11 @@ deployment:
     - export DEPLOYPATH=/home/kuplyuta
     - export PUBLICPATH=/home/kuplyuta/public_html
     # Root folders
-    - /bin/cp -R /home/kuplyuta/appliances/config $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
-    - /bin/cp -R /home/kuplyuta/appliances/controllers $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
-    - /bin/cp -R /home/kuplyuta/appliances/core $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
-    - /bin/cp -R /home/kuplyuta/appliances/models $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
-    - /bin/cp -R /home/kuplyuta/appliances/views $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp -R /home/kuplyuta/appliances/config/. $DEPLOYPATH/config >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp -R /home/kuplyuta/appliances/controllers/. $DEPLOYPATH/controllers >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp -R /home/kuplyuta/appliances/core/. $DEPLOYPATH/core >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp -R /home/kuplyuta/appliances/models/. $DEPLOYPATH/models >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp -R /home/kuplyuta/appliances/views/. $DEPLOYPATH/views >> /home/kuplyuta/deploy.log 2>&1
     - /bin/cp /home/kuplyuta/appliances/.htaccess $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
     - /bin/cp /home/kuplyuta/appliances/parse.py $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
     # Public folder
