@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!wrapper || !sidebar || !toggle) return;
 
     // Setup alert dismissal
-    // setupAlertDismissal();
+    setupAlertDismissal();
 
     document.querySelectorAll('form[action*="delete"]').forEach(form => {
         form.addEventListener('submit', e => {
