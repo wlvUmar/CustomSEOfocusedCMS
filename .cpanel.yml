@@ -11,4 +11,5 @@ deployment:
     - /bin/cp /home/kuplyuta/appliances/parse.py $DEPLOYPATH
     - /bin/cp /home/kuplyuta/appliances/add_seo_fields_migration.sql $DEPLOYPATH
     - export PUBLICPATH=/home/kuplyuta/public_html
-    - /bin/cp -R /home/kuplyuta/appliances/public/. $PUBLICPATH
+    - /bin/cp -R /home/kuplyuta/appliances_/public/. /home/kuplyuta/public_html/
+
