@@ -21,7 +21,13 @@
         You only need to enable one IndexNow engine (Bing recommended) for all to receive notifications.
     </div>
 </div>
-
+<?php if ($isIndexNow): ?>
+        <div class="alert alert-warning" style="margin: 15px 0 20px 0;">
+            <div>
+                <strong>🔗 Shared Submission:</strong> This engine uses IndexNow. Submissions are automatically shared with all IndexNow engines.
+            </div>
+        </div>
+        <?php endif; ?>
 <form method="POST" action="<?= BASE_URL ?>/admin/search-engine/save-config">
     <?= csrfField() ?>
     
@@ -55,13 +61,7 @@
             </label>
         </div>
         
-        <?php if ($isIndexNow): ?>
-        <div class="alert alert-warning" style="margin: 15px 0 20px 0;">
-            <div>
-                <strong>🔗 Shared Submission:</strong> This engine uses IndexNow. Submissions are automatically shared with all IndexNow engines.
-            </div>
-        </div>
-        <?php endif; ?>
+        
         
         <div class="form-group">
             <label>API Key <?php if (in_array($config['engine'], ['bing', 'yandex', 'naver', 'seznam', 'yep'])): ?>(shared IndexNow key)<?php else: ?>(optional)<?php endif; ?></label>
