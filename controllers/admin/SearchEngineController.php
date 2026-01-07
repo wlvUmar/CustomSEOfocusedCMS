@@ -63,26 +63,37 @@ class SearchEngineController extends Controller {
 
         $userId = $_SESSION['user_id'] ?? null;
         $results = [];
-
-        foreach ($engines as $engine) {
-            $result = $this->notifier->manualSubmit($slug, [$engine], $userId);
-            $results = array_merge($results, $result);
-        }
-
-        // Check if any succeeded
-        $hasSuccess = false;
-        $engines_list = [];
-        foreach ($results as $engine => $result) {
-            $engines_list[] = $engine;
-            if ($result['status'] === 'success') {
-                $hasSuccess = true;
+        
+        try {
+            foreach ($engines as $engine) {
+                $result = $this->notifier->manualSubmit($slug, [$engine], $userId);
+                $results = array_merge($results, $result);
             }
-        }
 
-        if ($hasSuccess) {
-            $_SESSION['success'] = 'Page submitted successfully to ' . implode(', ', $engines_list);
-        } else {
-            $_SESSION['error'] = 'Failed to submit page. Check rate limits or configuration.';
+            // Check if any succeeded
+            $hasSuccess = false;
+            $engines_list = [];
+            $error_messages = [];
+            
+            foreach ($results as $engine => $result) {
+                $engines_list[] = $engine;
+                if ($result['status'] === 'success') {
+                    $hasSuccess = true;
+                } else {
+                    $error_messages[] = "$engine: " . ($result['message'] ?? 'Unknown error');
+                }
+            }
+
+            if ($hasSuccess) {
+                $_SESSION['success'] = 'Page submitted successfully to ' . implode(', ', $engines_list);
+            } else {
+                $errorDetail = !empty($error_messages) ? implode('; ', $error_messages) : 'Check rate limits or configuration.';
+                $_SESSION['error'] = 'Failed to submit page. ' . $errorDetail;
+                error_log("Search engine submission failed: " . $errorDetail);
+            }
+        } catch (Exception $e) {
+            $_SESSION['error'] = 'Error during submission: ' . $e->getMessage();
+            error_log("Search engine submission exception: " . $e->getMessage() . "\n" . $e->getTraceAsString());
         }
 
         $this->redirect('/admin/search-engine');

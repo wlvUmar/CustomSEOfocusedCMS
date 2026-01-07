@@ -22,16 +22,27 @@ class SearchEngineNotifier {
      * Load search engine configurations
      */
     private function loadConfig() {
-        $sql = "SELECT * FROM search_engine_config WHERE enabled = 1";
-        $configs = $this->db->fetchAll($sql);
-        
-        foreach ($configs as $config) {
-            $this->config[$config['engine']] = $config;
+        try {
+            $sql = "SELECT * FROM search_engine_config WHERE enabled = 1";
+            $configs = $this->db->fetchAll($sql);
             
-            // Reset daily counter if needed
-            if ($config['last_reset_date'] !== date('Y-m-d')) {
-                $this->resetDailyCounter($config['engine']);
+            error_log("LoadConfig: Found " . count($configs) . " enabled engines");
+            
+            foreach ($configs as $config) {
+                $this->config[$config['engine']] = $config;
+                
+                // Reset daily counter if needed
+                if ($config['last_reset_date'] !== date('Y-m-d')) {
+                    $this->resetDailyCounter($config['engine']);
+                }
             }
+            
+            if (empty($this->config)) {
+                error_log("WARNING: No enabled search engines found in config");
+            }
+        } catch (Exception $e) {
+            error_log("ERROR loading search engine config: " . $e->getMessage());
+            error_log("Stack trace: " . $e->getTraceAsString());
         }
     }
     
@@ -42,48 +53,76 @@ class SearchEngineNotifier {
         $url = $this->buildPageUrl($slug);
         $results = [];
         
+        error_log("NotifyPageChange called - slug: $slug, type: $type, url: $url");
+        error_log("Config loaded engines: " . implode(', ', array_keys($this->config)));
+        
         // Check each enabled engine
         foreach ($this->config as $engine => $config) {
-            // Check if this type of submission is enabled
-            $autoSubmitKey = "auto_submit_on_{$type}";
-            if (!isset($config[$autoSubmitKey]) || !$config[$autoSubmitKey]) {
-                continue;
+            // For manual submissions, skip the auto_submit check
+            if ($type !== 'manual') {
+                // Check if this type of submission is enabled
+                $autoSubmitKey = "auto_submit_on_{$type}";
+                if (!isset($config[$autoSubmitKey]) || !$config[$autoSubmitKey]) {
+                    error_log("Skipping $engine - auto_submit not enabled for $type");
+                    continue;
+                }
             }
             
             // Check rate limit
             if (!$this->checkRateLimit($engine)) {
+                error_log("Rate limit reached for $engine");
                 $this->logSubmission($slug, $url, $engine, $type, 'rate_limited', null, 
                     'Daily rate limit reached', $rotationMonth, $userId);
+                $results[$engine] = [
+                    'status' => 'rate_limited',
+                    'code' => null,
+                    'message' => 'Daily rate limit reached'
+                ];
                 continue;
             }
             
             // Check if recently submitted (avoid spam)
             if ($this->wasRecentlySubmitted($slug, $engine, 3600)) { // 1 hour cooldown
+                error_log("Skipping $engine - recently submitted (cooldown)");
                 continue;
             }
             
+            error_log("Attempting submission to $engine");
+            
             // Submit based on engine
-            switch ($engine) {
-                case 'bing':
-                    $result = $this->submitToBing($url);
-                    break;
-                case 'yandex':
-                    $result = $this->submitToYandex($url);
-                    break;
-                case 'google':
-                    $result = $this->pingGoogleSitemap();
-                    break;
-                case 'naver':
-                    $result = $this->submitToNaver($url);
-                    break;
-                case 'seznam':
-                    $result = $this->submitToSeznam($url);
-                    break;
-                case 'yep':
-                    $result = $this->submitToYep($url);
-                    break;
-                default:
-                    continue 2;
+            try {
+                switch ($engine) {
+                    case 'bing':
+                        $result = $this->submitToBing($url);
+                        break;
+                    case 'yandex':
+                        $result = $this->submitToYandex($url);
+                        break;
+                    case 'google':
+                        $result = $this->pingGoogleSitemap();
+                        break;
+                    case 'naver':
+                        $result = $this->submitToNaver($url);
+                        break;
+                    case 'seznam':
+                        $result = $this->submitToSeznam($url);
+                        break;
+                    case 'yep':
+                        $result = $this->submitToYep($url);
+                        break;
+                    default:
+                        error_log("Unknown engine: $engine");
+                        continue 2;
+                }
+                
+                error_log("Submission result for $engine: " . json_encode($result));
+            } catch (Exception $e) {
+                error_log("Exception submitting to $engine: " . $e->getMessage());
+                $result = [
+                    'status' => 'failed',
+                    'code' => null,
+                    'message' => 'Exception: ' . $e->getMessage()
+                ];
             }
             
             // Log submission
@@ -534,6 +573,11 @@ class SearchEngineNotifier {
         
         foreach ($engines as $engine) {
             if (!isset($this->config[$engine])) {
+                $results[$engine] = [
+                    'status' => 'failed',
+                    'message' => "Engine '$engine' not configured or not enabled"
+                ];
+                error_log("Search engine '$engine' not found in config");
                 continue;
             }
             
@@ -548,8 +592,16 @@ class SearchEngineNotifier {
             }
             
             // Submit
-            $result = $this->notifyPageChange($slug, 'manual', null, $userId);
-            $results[$engine] = $result[$engine] ?? ['status' => 'failed', 'message' => 'Unknown error'];
+            try {
+                $result = $this->notifyPageChange($slug, 'manual', null, $userId);
+                $results[$engine] = $result[$engine] ?? ['status' => 'failed', 'message' => 'No result returned'];
+            } catch (Exception $e) {
+                $results[$engine] = [
+                    'status' => 'failed',
+                    'message' => 'Exception: ' . $e->getMessage()
+                ];
+                error_log("Search engine submission exception for $engine: " . $e->getMessage());
+            }
         }
         
         return $results;
