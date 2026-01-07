@@ -21,6 +21,25 @@
     ?>
 </head>
 <body>
+    <?php /* Floating alerts container - stacked to top-right */ ?>
+    <div id="floating-alerts" class="floating-alerts">
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success">
+                <i data-feather="check-circle"></i>
+                <?= e($_SESSION['success']) ?>
+            </div>
+            <?php unset($_SESSION['success']); ?>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-error">
+                <i data-feather="alert-circle"></i>
+                <?= e($_SESSION['error']) ?>
+            </div>
+            <?php unset($_SESSION['error']); ?>
+        <?php endif; ?>
+    </div>
+
     <div class="admin-wrapper">
         <aside class="sidebar">
            
@@ -98,18 +117,3 @@
         </button>
         <main class="admin-main">
             <div class="admin-content">
-                <?php if (isset($_SESSION['success'])): ?>
-                    <div class="alert alert-success">
-                        <i data-feather="check-circle"></i>
-                        <?= e($_SESSION['success']) ?>
-                    </div>
-                    <?php unset($_SESSION['success']); ?>
-                <?php endif; ?>
-                
-                <?php if (isset($_SESSION['error'])): ?>
-                    <div class="alert alert-error">
-                        <i data-feather="alert-circle"></i>
-                        <?= e($_SESSION['error']) ?>
-                    </div>
-                    <?php unset($_SESSION['error']); ?>
-                <?php endif; ?>
