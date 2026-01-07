@@ -2,12 +2,11 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/kuplyuta
-    - /bin/cp -R beta $DEPLOYPATH
     - /bin/cp -R config $DEPLOYPATH
     - /bin/cp -R controllers $DEPLOYPATH
     - /bin/cp -R core $DEPLOYPATH
-    - /bin/cp -R database $DEPLOYPATH
     - /bin/cp -R models $DEPLOYPATH
     - /bin/cp -R views $DEPLOYPATH
+    - /bin/cp -R .htaccess
     - export PUBLICPATH=/home/kuplyuta/public_html
     - /bin/cp -R public/* $PUBLICPATH
