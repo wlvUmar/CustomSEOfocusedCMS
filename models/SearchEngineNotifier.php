@@ -653,12 +653,15 @@ class SearchEngineNotifier {
         $this->db->query($sql, [$key]);
         
         // Create verification file (Bing requires this)
-        $this->createKeyFile($key);
+        $created = $this->createKeyFile($key);
+        if ($created !== true) {
+            throw new Exception("Failed to create IndexNow key file: " . BASE_PATH . '/public/' . $key . '.txt');
+        }
         
         // Reload config to get the new key
         $this->loadConfig();
         
-        return $key;
+        return $key; 
     }
     
     /**
@@ -678,6 +681,7 @@ class SearchEngineNotifier {
     
     /**
      * Create the API key verification file
+     * Returns true on success, false on failure
      */
     private function createKeyFile($apiKey) {
         $keyFile = BASE_PATH . '/public/' . $apiKey . '.txt';
@@ -685,14 +689,21 @@ class SearchEngineNotifier {
         // Ensure public directory exists
         $publicDir = BASE_PATH . '/public';
         if (!is_dir($publicDir)) {
-            mkdir($publicDir, 0755, true);
+            if (!mkdir($publicDir, 0755, true) && !is_dir($publicDir)) {
+                error_log("Failed to create public directory: $publicDir");
+                return false;
+            }
         }
         
-        // Create the key file
-        if (file_put_contents($keyFile, $apiKey) === false) {
+        // Create the key file (suppress warnings and check result)
+        $bytes = @file_put_contents($keyFile, $apiKey);
+        if ($bytes === false) {
             error_log("Failed to create IndexNow key file: $keyFile");
+            return false;
         } else {
+            @chmod($keyFile, 0644);
             error_log("Created IndexNow key file: $keyFile");
+            return true;
         }
     }
     
@@ -716,7 +727,10 @@ class SearchEngineNotifier {
         $this->db->query($sql, [$key]);
         
         // Create verification file
-        $this->createKeyFile($key);
+        $created = $this->createKeyFile($key);
+        if ($created !== true) {
+            throw new Exception("Failed to create IndexNow key file: " . BASE_PATH . '/public/' . $key . '.txt');
+        }
         
         // Reload config
         $this->loadConfig();
