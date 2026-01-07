@@ -177,6 +177,8 @@ $router->group('/admin/search-engine', function($router) {
     $router->get('/recent', function() { requireSearchEngine('recentSubmissions'); });
     $router->get('/export', function() { requireSearchEngine('exportHistory'); });
     $router->post('/test-connection', function() { requireSearchEngine('testConnection'); });
+    $router->post('/regenerate-api-key', function() { requireSearchEngine('regenerateApiKey'); });
+    $router->get('/verify-api-key-file', function() { requireSearchEngine('verifyApiKeyFile'); });
 });
 
 // Admin Preview

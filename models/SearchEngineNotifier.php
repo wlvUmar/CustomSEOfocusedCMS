@@ -6,11 +6,16 @@ class SearchEngineNotifier {
     private $config = [];
     
     const BING_INDEXNOW_ENDPOINT = 'https://www.bing.com/indexnow';
-    const YANDEX_PING_ENDPOINT = 'https://webmaster.yandex.com/ping?sitemap=';
+    const YANDEX_INDEXNOW_ENDPOINT = 'https://yandex.com/indexnow';
+    const INDEXNOW_API_ENDPOINT = 'https://api.indexnow.org/indexnow';
+    const NAVER_INDEXNOW_ENDPOINT = 'https://searchadvisor.naver.com/indexnow';
+    const SEZNAM_INDEXNOW_ENDPOINT = 'https://search.seznam.cz/indexnow';
+    const YEP_INDEXNOW_ENDPOINT = 'https://indexnow.yep.com/indexnow';
     
     public function __construct() {
         $this->db = Database::getInstance();
         $this->loadConfig();
+        $this->ensureApiKeyFile();
     }
     
     /**
@@ -68,6 +73,15 @@ class SearchEngineNotifier {
                 case 'google':
                     $result = $this->pingGoogleSitemap();
                     break;
+                case 'naver':
+                    $result = $this->submitToNaver($url);
+                    break;
+                case 'seznam':
+                    $result = $this->submitToSeznam($url);
+                    break;
+                case 'yep':
+                    $result = $this->submitToYep($url);
+                    break;
                 default:
                     continue 2;
             }
@@ -88,6 +102,8 @@ class SearchEngineNotifier {
     
     /**
      * Submit URL to Bing IndexNow API
+     * Note: IndexNow submissions are shared across all participating search engines
+     * (Bing, Yandex, Naver, Seznam, Yep, etc.)
      */
     private function submitToBing($url) {
         $apiKey = $this->config['bing']['api_key'] ?? $this->generateApiKey();
@@ -117,7 +133,7 @@ class SearchEngineNotifier {
             return [
                 'status' => 'success',
                 'code' => $httpCode,
-                'message' => 'Successfully submitted to Bing IndexNow'
+                'message' => 'Successfully submitted to IndexNow (shared with all engines)'
             ];
         } else {
             return [
@@ -129,32 +145,44 @@ class SearchEngineNotifier {
     }
     
     /**
-     * Ping Yandex with sitemap
+     * Submit to Yandex using IndexNow API
+     * Note: IndexNow submissions are shared, so this notifies all search engines
      */
     private function submitToYandex($url) {
-        $sitemapUrl = BASE_URL . '/sitemap.xml';
-        $pingUrl = self::YANDEX_PING_ENDPOINT . urlencode($sitemapUrl);
+        $apiKey = $this->config['bing']['api_key'] ?? $this->generateApiKey();
         
-        $ch = curl_init($pingUrl);
+        $data = [
+            'host' => parse_url(BASE_URL, PHP_URL_HOST),
+            'key' => $apiKey,
+            'urlList' => [$url]
+        ];
+        
+        $ch = curl_init(self::YANDEX_INDEXNOW_ENDPOINT);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json; charset=utf-8'
+        ]);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
         curl_close($ch);
         
-        if ($httpCode == 200) {
+        // 200 = success, 202 = accepted, 429 = rate limited
+        if ($httpCode == 200 || $httpCode == 202) {
             return [
                 'status' => 'success',
                 'code' => $httpCode,
-                'message' => 'Successfully pinged Yandex sitemap'
+                'message' => 'Successfully submitted to Yandex IndexNow (shared with all engines)'
             ];
         } else {
             return [
                 'status' => 'failed',
                 'code' => $httpCode,
-                'message' => "Failed to ping Yandex: HTTP $httpCode"
+                'message' => $error ?: "HTTP $httpCode"
             ];
         }
     }
@@ -175,6 +203,68 @@ class SearchEngineNotifier {
             'code' => 200,
             'message' => 'Sitemap updated for Google to discover'
         ];
+    }
+    
+    /**
+     * Submit to Naver using IndexNow API
+     */
+    private function submitToNaver($url) {
+        return $this->submitToIndexNow($url, self::NAVER_INDEXNOW_ENDPOINT, 'Naver');
+    }
+    
+    /**
+     * Submit to Seznam using IndexNow API
+     */
+    private function submitToSeznam($url) {
+        return $this->submitToIndexNow($url, self::SEZNAM_INDEXNOW_ENDPOINT, 'Seznam');
+    }
+    
+    /**
+     * Submit to Yep using IndexNow API
+     */
+    private function submitToYep($url) {
+        return $this->submitToIndexNow($url, self::YEP_INDEXNOW_ENDPOINT, 'Yep');
+    }
+    
+    /**
+     * Generic IndexNow submission (used by all IndexNow-enabled engines)
+     */
+    private function submitToIndexNow($url, $endpoint, $engineName) {
+        $apiKey = $this->config['bing']['api_key'] ?? $this->generateApiKey();
+        
+        $data = [
+            'host' => parse_url(BASE_URL, PHP_URL_HOST),
+            'key' => $apiKey,
+            'urlList' => [$url]
+        ];
+        
+        $ch = curl_init($endpoint);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json; charset=utf-8'
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+        
+        if ($httpCode == 200 || $httpCode == 202) {
+            return [
+                'status' => 'success',
+                'code' => $httpCode,
+                'message' => "Successfully submitted to $engineName IndexNow (shared with all engines)"
+            ];
+        } else {
+            return [
+                'status' => 'failed',
+                'code' => $httpCode,
+                'message' => $error ?: "HTTP $httpCode"
+            ];
+        }
     }
     
     /**
@@ -430,9 +520,85 @@ class SearchEngineNotifier {
         $this->db->query($sql, [$key]);
         
         // Create verification file (Bing requires this)
-        $keyFile = BASE_PATH . '/public/' . $key . '.txt';
-        file_put_contents($keyFile, $key);
+        $this->createKeyFile($key);
+        
+        // Reload config to get the new key
+        $this->loadConfig();
         
         return $key;
+    }
+    
+    /**
+     * Ensure API key file exists for Bing IndexNow
+     */
+    private function ensureApiKeyFile() {
+        if (isset($this->config['bing']['api_key']) && $this->config['bing']['api_key']) {
+            $apiKey = $this->config['bing']['api_key'];
+            $keyFile = BASE_PATH . '/public/' . $apiKey . '.txt';
+            
+            // Create file if it doesn't exist
+            if (!file_exists($keyFile)) {
+                $this->createKeyFile($apiKey);
+            }
+        }
+    }
+    
+    /**
+     * Create the API key verification file
+     */
+    private function createKeyFile($apiKey) {
+        $keyFile = BASE_PATH . '/public/' . $apiKey . '.txt';
+        
+        // Ensure public directory exists
+        $publicDir = BASE_PATH . '/public';
+        if (!is_dir($publicDir)) {
+            mkdir($publicDir, 0755, true);
+        }
+        
+        // Create the key file
+        if (file_put_contents($keyFile, $apiKey) === false) {
+            error_log("Failed to create IndexNow key file: $keyFile");
+        } else {
+            error_log("Created IndexNow key file: $keyFile");
+        }
+    }
+    
+    /**
+     * Regenerate API key (admin action)
+     */
+    public function regenerateApiKey() {
+        // Delete old key file if exists
+        if (isset($this->config['bing']['api_key'])) {
+            $oldKeyFile = BASE_PATH . '/public/' . $this->config['bing']['api_key'] . '.txt';
+            if (file_exists($oldKeyFile)) {
+                unlink($oldKeyFile);
+            }
+        }
+        
+        // Generate new key
+        $key = bin2hex(random_bytes(16));
+        
+        // Save to config
+        $sql = "UPDATE search_engine_config SET api_key = ? WHERE engine = 'bing'";
+        $this->db->query($sql, [$key]);
+        
+        // Create verification file
+        $this->createKeyFile($key);
+        
+        // Reload config
+        $this->loadConfig();
+        
+        return $key;
+    }
+    
+    /**
+     * Get the API key file URL
+     */
+    public function getApiKeyFileUrl() {
+        if (isset($this->config['bing']['api_key']) && $this->config['bing']['api_key']) {
+            $apiKey = $this->config['bing']['api_key'];
+            return rtrim(BASE_URL, '/') . '/' . $apiKey . '.txt';
+        }
+        return null;
     }
 }

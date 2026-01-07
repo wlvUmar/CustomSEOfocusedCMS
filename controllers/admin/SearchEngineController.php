@@ -195,7 +195,7 @@ class SearchEngineController extends Controller {
         $this->requireAuth();
         
         $db = Database::getInstance();
-        $configs = $db->fetchAll("SELECT * FROM search_engine_config ORDER BY FIELD(engine, 'bing', 'yandex', 'google')");
+        $configs = $db->fetchAll("SELECT * FROM search_engine_config ORDER BY FIELD(engine, 'bing', 'yandex', 'naver', 'seznam', 'yep', 'google')");
         
         $this->view('admin/search-engine/config', [
             'configs' => $configs
@@ -214,7 +214,7 @@ class SearchEngineController extends Controller {
         }
 
         $db = Database::getInstance();
-        $engines = ['bing', 'yandex', 'google'];
+        $engines = ['bing', 'yandex', 'google', 'naver', 'seznam', 'yep'];
 
         foreach ($engines as $engine) {
             $enabled = isset($_POST[$engine . '_enabled']) ? 1 : 0;
@@ -319,6 +319,68 @@ class SearchEngineController extends Controller {
         }
 
         echo json_encode(['success' => true, 'message' => 'Configuration valid']);
+        exit;
+    }
+    
+    /**
+     * Regenerate Bing IndexNow API key
+     */
+    public function regenerateApiKey() {
+        $this->requireAuth();
+        
+        if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/search-engine/config');
+        }
+        
+        try {
+            $newKey = $this->notifier->regenerateApiKey();
+            $_SESSION['success'] = 'API key regenerated successfully: ' . $newKey;
+        } catch (Exception $e) {
+            $_SESSION['error'] = 'Failed to regenerate API key: ' . $e->getMessage();
+        }
+        
+        $this->redirect('/admin/search-engine/config');
+    }
+    
+    /**
+     * Verify API key file is accessible
+     */
+    public function verifyApiKeyFile() {
+        $this->requireAuth();
+        header('Content-Type: application/json');
+        
+        $keyUrl = $this->notifier->getApiKeyFileUrl();
+        
+        if (!$keyUrl) {
+            echo json_encode(['success' => false, 'message' => 'No API key configured']);
+            exit;
+        }
+        
+        // Try to fetch the file
+        $ch = curl_init($keyUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode == 200) {
+            echo json_encode([
+                'success' => true, 
+                'message' => 'API key file is accessible',
+                'url' => $keyUrl,
+                'content' => $response
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false, 
+                'message' => "API key file not accessible (HTTP $httpCode)",
+                'url' => $keyUrl
+            ]);
+        }
         exit;
     }
 }

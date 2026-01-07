@@ -14,15 +14,37 @@
     </div>
 </div>
 
+<div class="alert alert-info" style="margin-bottom: 20px;">
+    <strong>ℹ️ IndexNow Protocol:</strong> Bing, Yandex, Naver, Seznam, and Yep all use IndexNow. 
+    <strong>Submitting to one automatically notifies ALL IndexNow-enabled search engines.</strong>
+    You only need to enable one IndexNow engine (Bing recommended) for all to receive notifications.
+</div>
+
 <form method="POST" action="<?= BASE_URL ?>/admin/search-engine/save-config">
     <?= csrfField() ?>
     
-    <?php foreach ($configs as $config): ?>
+    <?php 
+    $indexNowEngines = ['bing', 'yandex', 'naver', 'seznam', 'yep'];
+    foreach ($configs as $config): 
+        $isIndexNow = in_array($config['engine'], $indexNowEngines);
+        $engineIcons = [
+            'bing' => 'globe',
+            'yandex' => 'compass',
+            'google' => 'chrome',
+            'naver' => 'map',
+            'seznam' => 'search',
+            'yep' => 'zap'
+        ];
+        $icon = $engineIcons[$config['engine']] ?? 'globe';
+    ?>
     <div class="config-section">
         <div class="config-header">
             <h2>
-                <i data-feather="<?= $config['engine'] === 'bing' ? 'globe' : ($config['engine'] === 'yandex' ? 'compass' : 'chrome') ?>"></i>
+                <i data-feather="<?= $icon ?>"></i>
                 <?= ucfirst($config['engine']) ?>
+                <?php if ($isIndexNow): ?>
+                    <span class="badge badge-primary" style="font-size: 0.7em; margin-left: 10px;">IndexNow</span>
+                <?php endif; ?>
             </h2>
             <label class="toggle">
                 <input type="checkbox" name="<?= $config['engine'] ?>_enabled" <?= $config['enabled'] ? 'checked' : '' ?>>
@@ -31,16 +53,42 @@
             </label>
         </div>
         
+        <?php if ($isIndexNow): ?>
+        <div class="alert alert-warning" style="margin: 10px 0; font-size: 0.9em;">
+            <strong>Shared Submission:</strong> This engine uses IndexNow. Submissions are automatically shared with all IndexNow engines.
+        </div>
+        <?php endif; ?>
+        
         <div class="form-group">
-            <label>API Key <?= $config['engine'] === 'bing' ? '(auto-generated)' : '(optional)' ?></label>
+            <label>API Key <?php if (in_array($config['engine'], ['bing', 'yandex', 'naver', 'seznam', 'yep'])): ?>(shared IndexNow key)<?php else: ?>(optional)<?php endif; ?></label>
             <input type="text" 
                    name="<?= $config['engine'] ?>_api_key" 
                    class="form-control" 
                    value="<?= e($config['api_key'] ?? '') ?>"
-                   <?= $config['engine'] === 'bing' ? 'readonly' : '' ?>>
-            <?php if ($config['engine'] === 'bing'): ?>
+                   <?= in_array($config['engine'], ['bing', 'yandex', 'naver', 'seznam', 'yep']) ? 'readonly' : '' ?>>
+            <?php if ($config['engine'] === 'bing' && !empty($config['api_key'])): ?>
             <small class="form-text text-muted">
-                Bing API key is auto-generated. A verification file will be created in /public/
+                <strong>Verification file:</strong> 
+                <a href="<?= BASE_URL ?>/<?= $config['api_key'] ?>.txt" target="_blank">
+                    <?= BASE_URL ?>/<?= $config['api_key'] ?>.txt
+                </a>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="verifyKeyFile()">
+                    <i data-feather="check-circle"></i> Verify Accessible
+                </button>
+            </small>
+            <form method="POST" action="<?= BASE_URL ?>/admin/search-engine/regenerate-api-key" style="display: inline-block; margin-top: 5px;">
+                <?= csrfField() ?>
+                <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Are you sure? This will generate a new key and the old one will stop working.')">
+                    <i data-feather="refresh-cw"></i> Regenerate Key
+                </button>
+            </form>
+            <?php elseif ($config['engine'] === 'bing'): ?>
+            <small class="form-text text-muted">
+                Bing API key will be auto-generated on first submission. A verification file will be created in /public/
+            </small>
+            <?php elseif (in_array($config['engine'], ['yandex', 'naver', 'seznam', 'yep'])): ?>
+            <small class="form-text text-muted">
+                This engine uses the same IndexNow API key as Bing. The key is shared across all IndexNow engines.
             </small>
             <?php endif; ?>
         </div>
@@ -104,6 +152,23 @@
         </a>
     </div>
 </form>
+
+<script>
+function verifyKeyFile() {
+    fetch('<?= BASE_URL ?>/admin/search-engine/verify-api-key-file')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✓ ' + data.message + '\n\nURL: ' + data.url + '\nContent: ' + data.content);
+            } else {
+                alert('✗ ' + data.message + '\n\nURL: ' + data.url);
+            }
+        })
+        .catch(error => {
+            alert('Error verifying key file: ' + error);
+        });
+}
+</script>
 
 <script src="<?= BASE_URL ?>/js/admin/search-engine.js"></script>
 
