@@ -1,6 +1,6 @@
 # Python scripts
 parse.py
-
+.htaccess
 # Logs
 /logs/*.log
 /public/logs/*.log
