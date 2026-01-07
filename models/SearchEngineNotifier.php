@@ -510,14 +510,16 @@ class SearchEngineNotifier {
                 SELECT 
                     c.engine,
                     c.enabled,
+                    c.api_key,
                     c.submissions_today,
                     c.rate_limit_per_day,
                     COALESCE(COUNT(s.id), 0) as total_all_time,
                     COALESCE(SUM(CASE WHEN s.status = 'success' THEN 1 ELSE 0 END), 0) as total_success,
-                    COALESCE(SUM(CASE WHEN s.status = 'failed' THEN 1 ELSE 0 END), 0) as total_failed
+                    COALESCE(SUM(CASE WHEN s.status = 'failed' THEN 1 ELSE 0 END), 0) as total_failed,
+                    CASE WHEN COALESCE(COUNT(s.id),0) > 0 THEN ROUND(COALESCE(SUM(CASE WHEN s.status = 'success' THEN 1 ELSE 0 END),0) / COALESCE(COUNT(s.id),0) * 100, 2) ELSE 0 END AS success_rate_percent
                 FROM search_engine_config c
                 LEFT JOIN search_submissions s ON s.search_engine = c.engine
-                GROUP BY c.engine, c.enabled, c.submissions_today, c.rate_limit_per_day
+                GROUP BY c.engine, c.enabled, c.api_key, c.submissions_today, c.rate_limit_per_day
             ");
         }
         
@@ -528,7 +530,7 @@ class SearchEngineNotifier {
                 SELECT 
                     s.id,
                     s.page_slug,
-                    p.title_ru,
+                    COALESCE(p.title_ru, p.title_uz, '') AS page_title,
                     s.search_engine,
                     s.submission_type,
                     s.status,
@@ -655,7 +657,12 @@ class SearchEngineNotifier {
         // Create verification file (Bing requires this)
         $created = $this->createKeyFile($key);
         if ($created !== true) {
-            throw new Exception("Failed to create IndexNow key file: " . BASE_PATH . '/public/' . $key . '.txt');
+            error_log("Warning: Failed to create IndexNow key file: " . BASE_PATH . '/public/' . $key . '.txt');
+            try {
+                $this->db->query("UPDATE search_engine_config SET notes = CONCAT(IFNULL(notes,''), ?) WHERE engine = 'bing'", [" | key_file_creation_failed:" . date('c')]);
+            } catch (Exception $e) {
+                error_log("Failed to update search_engine_config notes: " . $e->getMessage());
+            }
         }
         
         // Reload config to get the new key
@@ -729,7 +736,12 @@ class SearchEngineNotifier {
         // Create verification file
         $created = $this->createKeyFile($key);
         if ($created !== true) {
-            throw new Exception("Failed to create IndexNow key file: " . BASE_PATH . '/public/' . $key . '.txt');
+            error_log("Warning: Failed to create IndexNow key file: " . BASE_PATH . '/public/' . $key . '.txt');
+            try {
+                $this->db->query("UPDATE search_engine_config SET notes = CONCAT(IFNULL(notes,''), ?) WHERE engine = 'bing'", [" | key_file_creation_failed:" . date('c')]);
+            } catch (Exception $e) {
+                error_log("Failed to update search_engine_config notes: " . $e->getMessage());
+            }
         }
         
         // Reload config
