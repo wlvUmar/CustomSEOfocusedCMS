@@ -1,10 +1,20 @@
+# Python scripts
 parse.py
+
+# Logs
 /logs/*.log
 /public/logs/*.log
 
+# Public uploads
 /public/uploads/*
 /public/uploads/.gitkeep
+
+# Database
 /database/schema.sql
+*.sql
+add_seo_fields_migration.sql
+
+# OS / Editor files
 .DS_Store
 Thumbs.db
 desktop.ini
@@ -15,12 +25,12 @@ desktop.ini
 *.swo
 *~
 
+# Temporary / backup files
 *.tmp
 *.bak
 *.cache
 *.env
 
-add_seo_fields_migration.sql
+# Project folders to ignore
 /beta
-*.sql
 EXTERNAL_SETUP_GUIDE.md

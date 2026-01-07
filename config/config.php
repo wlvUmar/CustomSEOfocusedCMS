@@ -1,7 +1,7 @@
 <?php
 // Basic paths and app settings
 define('BASE_PATH', dirname(__DIR__));
-define('BASE_URL', 'https://test.kuplyu-tashkent.uz');
+define('BASE_URL', 'https://kuplyu-tashkent.uz');
 
 define('UPLOAD_PATH', BASE_PATH . '/public/uploads/');
 define('UPLOAD_URL', BASE_URL . '/uploads/');

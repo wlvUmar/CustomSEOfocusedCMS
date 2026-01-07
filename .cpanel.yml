@@ -1,0 +1,12 @@
+---
+deployment:
+  tasks:
+    - export:
+        source: "."
+        target: "/home/username/appliances"   # all non-public files
+        ignore:
+          - public/**                        # exclude public folder
+
+    - export:
+        source: "public"
+        target: "/home/username/public_html" # only public files
