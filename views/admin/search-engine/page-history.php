@@ -1,7 +1,5 @@
 <?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
-<link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/search-engine.css">
-
 <div class="page-header">
     <h1>
         <i data-feather="file-text"></i>
