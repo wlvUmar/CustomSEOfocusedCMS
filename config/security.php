@@ -1,6 +1,6 @@
 <?php
 
-define('IS_PRODUCTION', false);
+define('IS_PRODUCTION', true);
 
 // --------------------
 // Security Headers

@@ -15,9 +15,7 @@ function setLanguage($lang) {
     }
 }
 
-/**
- * Check if the current request is from a search engine bot/crawler
- */
+
 function isBot() {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
