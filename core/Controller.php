@@ -7,7 +7,7 @@ class Controller {
     }
 
     protected function view($file, $data = []) {
-        // Initialize pageName to null if not explicitly passed
+        
         $data['pageName'] = $data['pageName'] ?? null;
 
         foreach ($data as $key => $value) {

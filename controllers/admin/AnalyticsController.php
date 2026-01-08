@@ -39,7 +39,10 @@ class AnalyticsController extends Controller {
             'pageName' => 'analytics/index'
         ];
         
-        $this->view('admin/analytics/index', ['stats' => $stats]);
+        $this->view('admin/analytics/index', [
+            'stats' => $stats,
+            'pageName' => $stats['pageName']
+        ]);
     }
 
     /**
