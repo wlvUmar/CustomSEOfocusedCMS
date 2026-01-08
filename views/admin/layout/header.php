@@ -26,6 +26,8 @@
             echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$oldCss}" . '">';
         }
     }
+    echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$oldCss}" . '">';
+
     ?>
 </head>
 <body>
