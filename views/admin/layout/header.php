@@ -10,22 +10,9 @@
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css">
     <?php
-    // DEBUG
-    echo "<!-- pageName: " . ($pageName ?? 'NOT SET') . " -->";
     if (!empty($pageName)) {
-        $featureCss = "css/admin/features/{$pageName}.css";
-        if (file_exists(BASE_PATH . "/{$featureCss}")) {
-             echo '<link rel="stylesheet" href="' . BASE_URL . "/{$featureCss}" . '">';
-        }
-
-        $oldCss = "css/admin/{$pageName}.css";
-        if (file_exists(BASE_PATH . "/{$oldCss}")) {
-            echo '<link rel="stylesheet" href="' . BASE_URL . "/{$oldCss}" . '">';
-        }
+        echo '<link rel="stylesheet" href="' . BASE_URL . "/css/admin/{$pageName}.css\">\n";
     }
-    echo '<!-- ' . $oldCss . ' -->';
-    echo '<!-- <link rel="stylesheet" href="' . BASE_URL . "/{$oldCss}" . '"> -->';
-
     ?>
 </head>
 <body>

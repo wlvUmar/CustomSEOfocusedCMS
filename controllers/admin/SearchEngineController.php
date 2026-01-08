@@ -26,7 +26,8 @@ class SearchEngineController extends Controller {
         $stats = $this->engine->getStatistics();
         
         $this->view('admin/search-engine/index', [
-            'stats' => $stats
+            'stats' => $stats,
+            'pageName' => 'features/search-engine'
         ]);
     }
 
@@ -41,7 +42,8 @@ class SearchEngineController extends Controller {
         
         $this->view('admin/search-engine/submit', [
             'pages' => $pages,
-            'unsubmitted' => $stats['unsubmitted']
+            'unsubmitted' => $stats['unsubmitted'],
+            'pageName' => 'features/search-engine'
         ]);
     }
 
@@ -206,7 +208,8 @@ class SearchEngineController extends Controller {
         $this->view('admin/search-engine/page-history', [
             'page' => $page,
             'history' => $history,
-            'status' => $status
+            'status' => $status,
+            'pageName' => 'features/search-engine'
         ]);
     }
 
@@ -219,7 +222,8 @@ class SearchEngineController extends Controller {
         $configs = $this->configModel->getAll();
         
         $this->view('admin/search-engine/config', [
-            'configs' => $configs
+            'configs' => $configs,
+            'pageName' => 'features/search-engine'
         ]);
     }
 
@@ -263,7 +267,8 @@ class SearchEngineController extends Controller {
         $stats = $this->engine->getStatistics();
         
         $this->view('admin/search-engine/recent', [
-            'submissions' => $stats['recent']
+            'submissions' => $stats['recent'],
+            'pageName' => 'features/search-engine'
         ]);
     }
 
