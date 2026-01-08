@@ -5,7 +5,9 @@ parse.py
 /logs/*.log
 /public/logs/*.log
 
-# Public uploads
+/data/
+/logs/
+/database/
 /public/uploads/*
 /public/uploads/.gitkeep
 
