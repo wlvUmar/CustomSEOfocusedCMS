@@ -1,3 +1,4 @@
+<?php require 'layout/header.php'; ?>
 <div class="sitemap-container">
     <div class="page-header">
         <h1><i data-feather="map"></i> Sitemap & Robots.txt</h1>
@@ -168,4 +169,4 @@ Disallow: /</div>
         </div>
     </div>
 </div>
-<?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
+<?php require 'layout/footer.php'; ?>

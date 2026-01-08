@@ -10,6 +10,7 @@
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css">
     <?php
+    echo $pageName;
     if (!empty($pageName)) {
         $cssPath = "/css/admin/{$pageName}.css";
         if (file_exists(BASE_PATH . '/public' . $cssPath)) {
