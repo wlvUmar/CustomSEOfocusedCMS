@@ -7,9 +7,6 @@ class Controller {
     }
 
     protected function view($file, $data = []) {
-        if (!isset($data['pageName'])) {
-            $data['pageName'] = str_replace('admin/', '', $file);
-        }
         foreach ($data as $key => $value) {
             $$key = $value;
         }
