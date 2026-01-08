@@ -15,19 +15,16 @@
     if (!empty($pageName)) {
         // Check for feature-specific CSS in new structure
         $featureCss = "admin/features/{$pageName}.css";
-        if (file_exists(BASE_PATH . "/public/css/{$featureCss}")) {
+        if (file_exists(BASE_PATH . "/css/{$featureCss}")) {
              echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$featureCss}" . '">';
         }
 
-        // Keep support for legacy/other paths if needed, or remove 
         // fallback to old location
         $oldCss = "admin/{$pageName}.css";
-        if (file_exists(BASE_PATH . "/public/css/{$oldCss}")) {
+        if (file_exists(BASE_PATH . "/css/{$oldCss}")) {
             echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$oldCss}" . '">';
         }
     }
-    echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$oldCss}" . '">';
-
     ?>
 </head>
 <body>
