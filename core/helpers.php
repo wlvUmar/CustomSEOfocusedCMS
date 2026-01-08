@@ -2,7 +2,7 @@
 // path: ./core/helpers.php
 
 function e($string) {
-    return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars((string)($string ?? ''), ENT_QUOTES, 'UTF-8'); 
 }
 
 function getCurrentLanguage() {
