@@ -128,9 +128,9 @@
                     </a>
                 </div>
             </nav>
-            <button class="sidebar-toggle" aria-label="Toggle sidebar">
-                <i data-feather="chevron-left"></i>
-            </button>
         </aside>
+        <button class="sidebar-toggle" aria-label="Toggle sidebar">
+            <i data-feather="chevron-left"></i>
+        </button>
         <main class="admin-main">
             <div class="admin-content">
