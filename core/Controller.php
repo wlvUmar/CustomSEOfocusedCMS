@@ -7,10 +7,8 @@ class Controller {
     }
 
     protected function view($file, $data = []) {
-        // Auto-detect pageName if not explicitly passed
-        if (!isset($data['pageName'])) {
-            $data['pageName'] = str_replace('admin/', '', $file);
-        }
+        // Initialize pageName to null if not explicitly passed
+        $data['pageName'] = $data['pageName'] ?? null;
 
         foreach ($data as $key => $value) {
             $$key = $value;

@@ -19,7 +19,7 @@ class FAQAdminController extends Controller {
         $faqs = $this->faqModel->getAll();
         $pages = $this->pageModel->getAll(true);
         
-        $this->view('admin/faqs/list', ['faqs' => $faqs, 'pages' => $pages, 'pageName' => 'admin/faqs/list']);
+        $this->view('admin/faqs/list', ['faqs' => $faqs, 'pages' => $pages]);
     }
 
     public function edit($id = null) {
@@ -40,7 +40,6 @@ class FAQAdminController extends Controller {
 
     public function save() {
         $this->requireAuth();
-        
         if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
             $_SESSION['error'] = 'CSRF token validation failed';
             $this->redirect('/admin/faqs');
