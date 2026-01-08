@@ -119,10 +119,6 @@
                         <i data-feather="image"></i> Media
                     </a>
                 
-                    <a href="<?= BASE_URL ?>/deploy.php" class="<?= strpos($_SERVER['REQUEST_URI'], '/deploy.php') !== false ? 'active' : '' ?>">
-                        <i data-feather="upload-cloud"></i> Deploy
-                    </a>
-
                     <a href="<?= BASE_URL ?>/admin/logout" style="margin-top: 20px; color: #dc3545;">
                         <i data-feather="log-out"></i> Logout
                     </a>
