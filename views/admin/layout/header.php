@@ -73,6 +73,9 @@
                     <a href="<?= BASE_URL ?>/admin/rotations/overview" class="<?= strpos($_SERVER['REQUEST_URI'], '/rotations') !== false ? 'active' : '' ?>">
                         <i data-feather="repeat"></i> Content Rotation
                     </a>
+                    <a href="<?= BASE_URL ?>/admin/media" class="<?= strpos($_SERVER['REQUEST_URI'], '/media') !== false ? 'active' : '' ?>">
+                        <i data-feather="image"></i> Media
+                    </a>
                     <a href="<?= BASE_URL ?>/admin/internal-links" class="<?= strpos($_SERVER['REQUEST_URI'], '/internal-links') !== false ? 'active' : '' ?>">
                         <i data-feather="link"></i> Internal Links
                     </a>
@@ -114,11 +117,6 @@
                 </div>
                 
                 <div class="nav-section">
-                    <div class="nav-section-title">Settings</div>
-                    <a href="<?= BASE_URL ?>/admin/media" class="<?= strpos($_SERVER['REQUEST_URI'], '/media') !== false ? 'active' : '' ?>">
-                        <i data-feather="image"></i> Media
-                    </a>
-                
                     <a href="<?= BASE_URL ?>/admin/logout" style="margin-top: 20px; color: #dc3545;">
                         <i data-feather="log-out"></i> Logout
                     </a>
