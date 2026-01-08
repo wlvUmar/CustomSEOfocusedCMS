@@ -13,6 +13,7 @@
     echo $pageName;
     if (!empty($pageName)) {
         $cssPath = "/css/admin/{$pageName}.css";
+        echo $cssPath;
         if (file_exists(BASE_PATH . '/public' . $cssPath)) {
             echo '<link rel="stylesheet" href="' . BASE_URL . $cssPath . "\">\n";
         }
