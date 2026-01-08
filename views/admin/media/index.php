@@ -9,21 +9,6 @@
     </div>
 </div>
 
-<!-- How to Use Info -->
-<div class="info-banner">
-    <div class="info-icon">✨</div>
-    <div class="info-content">
-        <strong>Automatic Image Display:</strong>
-        <ul style="margin: 5px 0 0 20px; padding: 0;">
-            <li><strong>Hero:</strong> Attached images appear at top of page automatically</li>
-            <li><strong>Gallery:</strong> Creates automatic gallery section at bottom</li>
-            <li><strong>Banner:</strong> Wide promotional image</li>
-            <li><strong>Content:</strong> Can use <code>{{media:ID}}</code> in page editor for custom placement</li>
-        </ul>
-        <p style="margin-top: 8px; color: #666;">💡 Just click "Attach" → Select page & section → Done! No editing needed.</p>
-    </div>
-</div>
-
 <!-- Filters -->
 <div class="media-toolbar">
     <div class="filter-tabs">
