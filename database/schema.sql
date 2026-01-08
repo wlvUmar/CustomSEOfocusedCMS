@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 06, 2026 at 07:30 PM
+-- Generation Time: Jan 08, 2026 at 05:47 PM
 -- Server version: 10.3.39-MariaDB-log-cll-lve
 -- PHP Version: 8.1.30
 
@@ -290,6 +290,72 @@ CREATE TABLE `page_media` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `search_engine_config`
+--
+
+CREATE TABLE `search_engine_config` (
+  `id` int(11) NOT NULL,
+  `engine` enum('bing','yandex','google') NOT NULL,
+  `enabled` tinyint(1) DEFAULT 1,
+  `api_key` varchar(255) DEFAULT NULL COMMENT 'For Bing IndexNow',
+  `api_endpoint` varchar(500) DEFAULT NULL,
+  `rate_limit_per_day` int(11) DEFAULT 100,
+  `submissions_today` int(11) DEFAULT 0,
+  `last_reset_date` date DEFAULT NULL,
+  `auto_submit_on_create` tinyint(1) DEFAULT 1,
+  `auto_submit_on_update` tinyint(1) DEFAULT 1,
+  `auto_submit_on_rotation` tinyint(1) DEFAULT 1,
+  `ping_sitemap` tinyint(1) DEFAULT 1,
+  `notes` text DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `search_submissions`
+--
+
+CREATE TABLE `search_submissions` (
+  `id` int(11) NOT NULL,
+  `page_slug` varchar(100) NOT NULL,
+  `url` varchar(500) NOT NULL,
+  `search_engine` enum('google','bing','yandex') NOT NULL,
+  `submission_type` enum('create','update','rotation','manual','sitemap_ping') NOT NULL,
+  `status` enum('pending','success','failed','rate_limited') DEFAULT 'pending',
+  `response_code` int(11) DEFAULT NULL,
+  `response_message` text DEFAULT NULL,
+  `submitted_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `completed_at` timestamp NULL DEFAULT NULL,
+  `language` varchar(5) DEFAULT 'ru',
+  `rotation_month` int(11) DEFAULT NULL COMMENT 'If triggered by rotation',
+  `user_id` int(11) DEFAULT NULL COMMENT 'If manual submission'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `search_submission_status`
+--
+
+CREATE TABLE `search_submission_status` (
+  `id` int(11) NOT NULL,
+  `page_slug` varchar(100) NOT NULL,
+  `search_engine` enum('google','bing','yandex') NOT NULL,
+  `last_submitted_at` timestamp NULL DEFAULT NULL,
+  `last_success_at` timestamp NULL DEFAULT NULL,
+  `total_submissions` int(11) DEFAULT 0,
+  `successful_submissions` int(11) DEFAULT 0,
+  `failed_submissions` int(11) DEFAULT 0,
+  `last_status` enum('success','failed','rate_limited') DEFAULT NULL,
+  `last_response` text DEFAULT NULL,
+  `can_resubmit_at` timestamp NULL DEFAULT NULL COMMENT 'Rate limit cooldown',
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `seo_settings`
 --
 
@@ -307,6 +373,7 @@ CREATE TABLE `seo_settings` (
   `address_uz` text DEFAULT NULL,
   `working_hours_ru` varchar(200) DEFAULT NULL,
   `working_hours_uz` varchar(200) DEFAULT NULL,
+  `google_review_url` varchar(500) DEFAULT NULL,
   `organization_schema` text DEFAULT NULL,
   `website_schema` text DEFAULT NULL,
   `service_schema` text DEFAULT NULL,
@@ -335,6 +402,22 @@ CREATE TABLE `seo_settings` (
   `org_longitude` varchar(50) DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `sitemap_history`
+--
+
+CREATE TABLE `sitemap_history` (
+  `id` int(11) NOT NULL,
+  `generated_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `pages_count` int(11) DEFAULT 0,
+  `file_size` int(11) DEFAULT 0,
+  `generation_time_ms` int(11) DEFAULT NULL,
+  `trigger` enum('auto','manual','cron') DEFAULT 'auto',
+  `user_id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -405,6 +488,20 @@ CREATE TABLE `v_navigation_flow` (
 -- --------------------------------------------------------
 
 --
+-- Stand-in structure for view `v_pages_due_resubmit`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_pages_due_resubmit` (
+`slug` varchar(100)
+,`title_ru` varchar(200)
+,`updated_at` timestamp
+,`last_submitted_at` timestamp
+,`days_since_submission` int(7)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Stand-in structure for view `v_popular_paths`
 -- (See below for the actual view)
 --
@@ -413,6 +510,23 @@ CREATE TABLE `v_popular_paths` (
 ,`to_slug` varchar(100)
 ,`clicks` decimal(32,0)
 ,`active_months` bigint(21)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_recent_submissions`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_recent_submissions` (
+`page_slug` varchar(100)
+,`search_engine` enum('google','bing','yandex')
+,`submission_type` enum('create','update','rotation','manual','sitemap_ping')
+,`status` enum('pending','success','failed','rate_limited')
+,`submitted_at` timestamp
+,`response_code` int(11)
+,`title_ru` varchar(200)
+,`title_uz` varchar(200)
 );
 
 -- --------------------------------------------------------
@@ -429,6 +543,36 @@ CREATE TABLE `v_rotation_effectiveness` (
 ,`active_rotations` decimal(22,0)
 ,`total_times_shown` decimal(32,0)
 ,`last_rotation_shown` date
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_submission_stats`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_submission_stats` (
+`search_engine` enum('google','bing','yandex')
+,`total_submissions` bigint(21)
+,`successful` decimal(22,0)
+,`failed` decimal(22,0)
+,`rate_limited` decimal(22,0)
+,`success_rate` decimal(28,2)
+,`last_submission` timestamp
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_unsubmitted_pages`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_unsubmitted_pages` (
+`slug` varchar(100)
+,`title_ru` varchar(200)
+,`created_at` timestamp
+,`updated_at` timestamp
+,`days_since_update` int(7)
 );
 
 -- --------------------------------------------------------
@@ -461,6 +605,15 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER V
 -- --------------------------------------------------------
 
 --
+-- Structure for view `v_pages_due_resubmit`
+--
+DROP TABLE IF EXISTS `v_pages_due_resubmit`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_pages_due_resubmit`  AS SELECT `p`.`slug` AS `slug`, `p`.`title_ru` AS `title_ru`, `p`.`updated_at` AS `updated_at`, max(`s`.`submitted_at`) AS `last_submitted_at`, to_days(current_timestamp()) - to_days(max(`s`.`submitted_at`)) AS `days_since_submission` FROM (`pages` `p` left join `search_submissions` `s` on(`p`.`slug` = `s`.`page_slug` and `s`.`status` = 'success')) WHERE `p`.`is_published` = 1 GROUP BY `p`.`slug`, `p`.`title_ru`, `p`.`updated_at` HAVING `last_submitted_at` is null OR to_days(current_timestamp()) - to_days(`last_submitted_at`) > 30 ORDER BY to_days(current_timestamp()) - to_days(max(`s`.`submitted_at`)) DESC ;
+
+-- --------------------------------------------------------
+
+--
 -- Structure for view `v_popular_paths`
 --
 DROP TABLE IF EXISTS `v_popular_paths`;
@@ -470,11 +623,38 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER V
 -- --------------------------------------------------------
 
 --
+-- Structure for view `v_recent_submissions`
+--
+DROP TABLE IF EXISTS `v_recent_submissions`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_recent_submissions`  AS SELECT `s`.`page_slug` AS `page_slug`, `s`.`search_engine` AS `search_engine`, `s`.`submission_type` AS `submission_type`, `s`.`status` AS `status`, `s`.`submitted_at` AS `submitted_at`, `s`.`response_code` AS `response_code`, `p`.`title_ru` AS `title_ru`, `p`.`title_uz` AS `title_uz` FROM (`search_submissions` `s` left join `pages` `p` on(`s`.`page_slug` = `p`.`slug`)) ORDER BY `s`.`submitted_at` DESC LIMIT 0, 100 ;
+
+-- --------------------------------------------------------
+
+--
 -- Structure for view `v_rotation_effectiveness`
 --
 DROP TABLE IF EXISTS `v_rotation_effectiveness`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_rotation_effectiveness`  AS SELECT `p`.`slug` AS `slug`, `p`.`title_ru` AS `title_ru`, `p`.`enable_rotation` AS `enable_rotation`, count(distinct `cr`.`active_month`) AS `months_with_content`, sum(case when `cr`.`is_active` = 1 then 1 else 0 end) AS `active_rotations`, coalesce(sum(`ar`.`times_shown`),0) AS `total_times_shown`, max(`ar`.`last_shown`) AS `last_rotation_shown` FROM ((`pages` `p` left join `content_rotations` `cr` on(`p`.`id` = `cr`.`page_id`)) left join `analytics_rotations` `ar` on(`p`.`slug` = `ar`.`page_slug`)) WHERE `p`.`enable_rotation` = 1 GROUP BY `p`.`id`, `p`.`slug`, `p`.`title_ru`, `p`.`enable_rotation` ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_submission_stats`
+--
+DROP TABLE IF EXISTS `v_submission_stats`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_submission_stats`  AS SELECT `search_submissions`.`search_engine` AS `search_engine`, count(0) AS `total_submissions`, sum(case when `search_submissions`.`status` = 'success' then 1 else 0 end) AS `successful`, sum(case when `search_submissions`.`status` = 'failed' then 1 else 0 end) AS `failed`, sum(case when `search_submissions`.`status` = 'rate_limited' then 1 else 0 end) AS `rate_limited`, round(sum(case when `search_submissions`.`status` = 'success' then 1 else 0 end) * 100.0 / count(0),2) AS `success_rate`, max(`search_submissions`.`submitted_at`) AS `last_submission` FROM `search_submissions` GROUP BY `search_submissions`.`search_engine` ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_unsubmitted_pages`
+--
+DROP TABLE IF EXISTS `v_unsubmitted_pages`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_unsubmitted_pages`  AS SELECT `p`.`slug` AS `slug`, `p`.`title_ru` AS `title_ru`, `p`.`created_at` AS `created_at`, `p`.`updated_at` AS `updated_at`, to_days(current_timestamp()) - to_days(`p`.`updated_at`) AS `days_since_update` FROM `pages` AS `p` WHERE `p`.`is_published` = 1 AND !exists(select 1 from `search_submissions` `s` where `s`.`page_slug` = `p`.`slug` AND `s`.`status` = 'success' limit 1) ORDER BY `p`.`updated_at` DESC ;
 
 --
 -- Indexes for dumped tables
@@ -594,10 +774,45 @@ ALTER TABLE `page_media`
   ADD KEY `idx_section` (`section`);
 
 --
+-- Indexes for table `search_engine_config`
+--
+ALTER TABLE `search_engine_config`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_engine` (`engine`);
+
+--
+-- Indexes for table `search_submissions`
+--
+ALTER TABLE `search_submissions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_page_slug` (`page_slug`),
+  ADD KEY `idx_search_engine` (`search_engine`),
+  ADD KEY `idx_submitted_at` (`submitted_at`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_engine_status` (`search_engine`,`status`,`submitted_at`);
+
+--
+-- Indexes for table `search_submission_status`
+--
+ALTER TABLE `search_submission_status`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_page_engine` (`page_slug`,`search_engine`),
+  ADD KEY `idx_last_submitted` (`last_submitted_at`),
+  ADD KEY `idx_can_resubmit` (`can_resubmit_at`),
+  ADD KEY `idx_page_status` (`page_slug`,`last_status`);
+
+--
 -- Indexes for table `seo_settings`
 --
 ALTER TABLE `seo_settings`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `sitemap_history`
+--
+ALTER TABLE `sitemap_history`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_generated_at` (`generated_at`);
 
 --
 -- Indexes for table `users`
@@ -690,9 +905,33 @@ ALTER TABLE `page_media`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `search_engine_config`
+--
+ALTER TABLE `search_engine_config`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `search_submissions`
+--
+ALTER TABLE `search_submissions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `search_submission_status`
+--
+ALTER TABLE `search_submission_status`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `seo_settings`
 --
 ALTER TABLE `seo_settings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `sitemap_history`
+--
+ALTER TABLE `sitemap_history`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --

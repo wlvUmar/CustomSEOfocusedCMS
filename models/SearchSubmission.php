@@ -14,7 +14,7 @@ class SearchSubmission {
     public function log($slug, $url, $engine, $type, $status, $code, $message, $rotationMonth = null, $userId = null) {
         $sql = "INSERT INTO search_submissions 
                 (page_slug, url, search_engine, submission_type, status, 
-                 response_code, response_message, rotation_month, user_id, completed_at) 
+                 response_code, response_message, rotation_month, user_id, submitted_at) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
         
         $this->db->query($sql, [
@@ -176,13 +176,16 @@ class SearchSubmission {
                     c.enabled,
                     c.submissions_today,
                     c.rate_limit_per_day,
-                    COALESCE(COUNT(s.id), 0) as total_all_time,
-                    COALESCE(SUM(CASE WHEN s.status = 'success' THEN 1 ELSE 0 END), 0) as total_success,
-                    COALESCE(SUM(CASE WHEN s.status = 'failed' THEN 1 ELSE 0 END), 0) as total_failed,
-                    CASE WHEN COALESCE(COUNT(s.id),0) > 0 THEN ROUND(COALESCE(SUM(CASE WHEN s.status = 'success' THEN 1 ELSE 0 END),0) / COALESCE(COUNT(s.id),0) * 100, 2) ELSE 0 END AS success_rate_percent
+                    (SELECT COUNT(*) FROM search_submissions s WHERE LOWER(s.search_engine) = LOWER(c.engine)) as total_all_time,
+                    (SELECT COUNT(*) FROM search_submissions s WHERE LOWER(s.search_engine) = LOWER(c.engine) AND s.status = 'success') as total_success,
+                    (SELECT COUNT(*) FROM search_submissions s WHERE LOWER(s.search_engine) = LOWER(c.engine) AND s.status = 'failed') as total_failed,
+                    CASE 
+                        WHEN (SELECT COUNT(*) FROM search_submissions s WHERE LOWER(s.search_engine) = LOWER(c.engine)) > 0 
+                        THEN ROUND((SELECT COUNT(*) FROM search_submissions s WHERE LOWER(s.search_engine) = LOWER(c.engine) AND s.status = 'success') / (SELECT COUNT(*) FROM search_submissions s WHERE LOWER(s.search_engine) = LOWER(c.engine)) * 100, 2) 
+                        ELSE 0 
+                    END AS success_rate_percent
                 FROM search_engine_config c
-                LEFT JOIN search_submissions s ON s.search_engine = c.engine
-                GROUP BY c.engine, c.enabled, c.submissions_today, c.rate_limit_per_day
+                ORDER BY c.enabled DESC, c.engine ASC
             ");
         }
     }

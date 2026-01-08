@@ -175,17 +175,28 @@ class SearchEngine {
      * Batch submit multiple URLs
      */
     public function batchSubmit($urls, $engine = 'bing', $type = 'manual', $userId = null) {
-        if (!isset($this->config[$engine])) {
-            return ['status' => 'failed', 'message' => 'Engine not configured'];
-        }
-        
         $results = [];
+        
+        // If engine config not loaded (disabled), try to load it specifically
+        if (!isset($this->config[$engine])) {
+            $engineConfig = $this->configModel->get($engine);
+            if ($engineConfig) {
+                $this->config[$engine] = $engineConfig;
+            } else {
+                // Return failed status for all URLs to keep controller happy
+                foreach ($urls as $url) {
+                    $results[$url] = ['status' => 'failed', 'message' => 'Engine not configured'];
+                }
+                return $results;
+            }
+        }
         
         foreach ($urls as $url) {
             $slug = $this->extractSlugFromUrl($url);
             
             if (!$this->checkRateLimit($engine)) {
-                break;
+                $results[$url] = ['status' => 'rate_limited', 'message' => 'Daily rate limit reached'];
+                continue; // Don't break, just skip this one (though rate limit likely applies to all)
             }
             
             $batchResult = $this->notifyPageChange($slug, $type, null, $userId);
@@ -271,10 +282,19 @@ class SearchEngine {
     }
     
     /**
-     * Helper: Extract slug
+     * Helper: Extract slug from URL, handling subfolder installations
      */
     private function extractSlugFromUrl($url) {
         $path = parse_url($url, PHP_URL_PATH);
+        $baseUrlPath = parse_url(BASE_URL, PHP_URL_PATH) ?: '';
+        
+        // Remove trailing slash from base path for matching
+        $baseUrlPath = rtrim($baseUrlPath, '/');
+        
+        if (!empty($baseUrlPath) && strpos($path, $baseUrlPath) === 0) {
+            $path = substr($path, strlen($baseUrlPath));
+        }
+        
         return trim($path, '/');
     }
 

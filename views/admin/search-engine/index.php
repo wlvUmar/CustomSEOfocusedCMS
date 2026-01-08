@@ -23,7 +23,7 @@
 <!-- Statistics Cards -->
 <div class="stats-grid">
     <?php foreach ($stats['by_engine'] ?? [] as $engine): 
-        $engineName = $engine['engine'] ?? 'unknown';
+        $engineName = $engine['engine'] ?? $engine['search_engine'] ?? 'unknown';
         $icon = 'globe';
         if ($engineName === 'yandex') $icon = 'compass';
         elseif ($engineName === 'google') $icon = 'chrome';
@@ -149,7 +149,7 @@
                         </span>
                     </td>
                     <td>
-                        <?= date('M d, H:i', strtotime($sub['submitted_at'])) ?>
+                        <?= date('M d, H:i', strtotime($sub['submitted_at'] ?? $sub['completed_at'] ?? $sub['created_at'])) ?>
                         <?php if (!empty($sub['duration_seconds'])): ?>
                         <br><small class="text-muted">(<?= $sub['duration_seconds'] ?>s)</small>
                         <?php endif; ?>
