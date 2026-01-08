@@ -13,18 +13,18 @@
     // DEBUG
     echo "<!-- pageName: " . ($pageName ?? 'NOT SET') . " -->";
     if (!empty($pageName)) {
-        // Check for feature-specific CSS in new structure
-        $featureCss = "admin/features/{$pageName}.css";
-        if (file_exists(BASE_PATH . "/css/{$featureCss}")) {
-             echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$featureCss}" . '">';
+        $featureCss = "css/admin/features/{$pageName}.css";
+        if (file_exists(BASE_PATH . "/{$featureCss}")) {
+             echo '<link rel="stylesheet" href="' . BASE_URL . "/{$featureCss}" . '">';
         }
 
-        // fallback to old location
-        $oldCss = "admin/{$pageName}.css";
-        if (file_exists(BASE_PATH . "/css/{$oldCss}")) {
-            echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$oldCss}" . '">';
+        $oldCss = "css/admin/{$pageName}.css";
+        if (file_exists(BASE_PATH . "/{$oldCss}")) {
+            echo '<link rel="stylesheet" href="' . BASE_URL . "/{$oldCss}" . '">';
         }
     }
+    echo '<!-- <link rel="stylesheet" href="' . BASE_URL . "/{$oldCss}" . '"> -->';
+
     ?>
 </head>
 <body>
