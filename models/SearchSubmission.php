@@ -137,10 +137,10 @@ class SearchSubmission {
                     p.slug,
                     p.title_ru,
                     p.title_uz,
-                    p.published,
+                    p.is_published,
                     p.created_at
                 FROM pages p
-                WHERE p.published = 1
+                WHERE p.is_published = 1
                 AND NOT EXISTS (
                     SELECT 1 FROM search_submissions s 
                     WHERE s.page_slug = p.slug 

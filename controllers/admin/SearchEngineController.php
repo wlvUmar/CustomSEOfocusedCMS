@@ -39,10 +39,14 @@ class SearchEngineController extends Controller {
         
         $pages = $this->pageModel->getAll(false); // Only published pages
         $stats = $this->engine->getStatistics();
+        $enabledEngines = $this->engine->getEnabledEngines();
+        $allEngineConfigs = $this->engine->getAllEngineConfigs();
         
         $this->view('admin/search-engine/submit', [
             'pages' => $pages,
             'unsubmitted' => $stats['unsubmitted'],
+            'enabledEngines' => $enabledEngines,
+            'allEngineConfigs' => $allEngineConfigs,
             'pageName' => 'features/search-engine'
         ]);
     }

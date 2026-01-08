@@ -207,7 +207,10 @@ class SearchEngine {
         
         foreach ($engines as $engine) {
             if (!isset($this->config[$engine])) {
-                $results[$engine] = ['status' => 'failed', 'message' => "Engine '$engine' not active"];
+                $results[$engine] = [
+                    'status' => 'failed', 
+                    'message' => "Engine '$engine' is not enabled. Go to Search Engine Config and enable it first."
+                ];
                 continue;
             }
 
@@ -237,6 +240,27 @@ class SearchEngine {
         $current = $this->config[$engine]['submissions_today'];
         
         return $current < $limit;
+    }
+    
+    /**
+     * Check if a specific engine is enabled
+     */
+    public function isEngineEnabled($engine) {
+        return isset($this->config[$engine]);
+    }
+    
+    /**
+     * Get list of enabled engines
+     */
+    public function getEnabledEngines() {
+        return array_keys($this->config);
+    }
+    
+    /**
+     * Get engine config for all engines (enabled and disabled)
+     */
+    public function getAllEngineConfigs() {
+        return $this->configModel->getAll();
     }
 
     /**

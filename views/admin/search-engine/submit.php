@@ -37,18 +37,36 @@
             
             <div class="form-group">
                 <label>Select Search Engines</label>
+                <?php if (empty($enabledEngines)): ?>
+                    <div class="alert alert-warning">
+                        <i data-feather="alert-triangle"></i>
+                        No search engines are enabled! <a href="<?= BASE_URL ?>/admin/search-engine/config">Enable engines in config</a> first.
+                    </div>
+                <?php endif; ?>
                 <div class="checkbox-group">
-                    <label>
-                        <input type="checkbox" name="engines[]" value="bing" checked>
+                    <label class="<?= in_array('bing', $enabledEngines) ? '' : 'disabled-engine' ?>">
+                        <input type="checkbox" name="engines[]" value="bing" 
+                               <?= in_array('bing', $enabledEngines) ? 'checked' : 'disabled' ?>>
                         <i data-feather="globe"></i> Bing (Recommended)
+                        <?php if (!in_array('bing', $enabledEngines)): ?>
+                            <small class="text-muted">(not enabled)</small>
+                        <?php endif; ?>
                     </label>
-                    <label>
-                        <input type="checkbox" name="engines[]" value="yandex">
+                    <label class="<?= in_array('yandex', $enabledEngines) ? '' : 'disabled-engine' ?>">
+                        <input type="checkbox" name="engines[]" value="yandex"
+                               <?= !in_array('yandex', $enabledEngines) ? 'disabled' : '' ?>>
                         <i data-feather="compass"></i> Yandex
+                        <?php if (!in_array('yandex', $enabledEngines)): ?>
+                            <small class="text-muted">(not enabled)</small>
+                        <?php endif; ?>
                     </label>
-                    <label>
-                        <input type="checkbox" name="engines[]" value="google">
+                    <label class="<?= in_array('google', $enabledEngines) ? '' : 'disabled-engine' ?>">
+                        <input type="checkbox" name="engines[]" value="google"
+                               <?= !in_array('google', $enabledEngines) ? 'disabled' : '' ?>>
                         <i data-feather="chrome"></i> Google (Sitemap)
+                        <?php if (!in_array('google', $enabledEngines)): ?>
+                            <small class="text-muted">(not enabled)</small>
+                        <?php endif; ?>
                     </label>
                 </div>
             </div>
@@ -68,10 +86,22 @@
             
             <div class="form-group">
                 <label>Select Engine</label>
-                <select name="engine" class="form-control" required>
-                    <option value="bing">Bing (Recommended)</option>
-                    <option value="yandex">Yandex</option>
-                    <option value="google">Google</option>
+                <?php if (empty($enabledEngines)): ?>
+                    <div class="alert alert-warning">
+                        <i data-feather="alert-triangle"></i>
+                        No engines enabled! <a href="<?= BASE_URL ?>/admin/search-engine/config">Enable in config</a>
+                    </div>
+                <?php endif; ?>
+                <select name="engine" class="form-control" required <?= empty($enabledEngines) ? 'disabled' : '' ?>>
+                    <option value="bing" <?= !in_array('bing', $enabledEngines) ? 'disabled' : '' ?>>
+                        Bing (Recommended) <?= !in_array('bing', $enabledEngines) ? '- NOT ENABLED' : '' ?>
+                    </option>
+                    <option value="yandex" <?= !in_array('yandex', $enabledEngines) ? 'disabled' : '' ?>>
+                        Yandex <?= !in_array('yandex', $enabledEngines) ? '- NOT ENABLED' : '' ?>
+                    </option>
+                    <option value="google" <?= !in_array('google', $enabledEngines) ? 'disabled' : '' ?>>
+                        Google <?= !in_array('google', $enabledEngines) ? '- NOT ENABLED' : '' ?>
+                    </option>
                 </select>
             </div>
             

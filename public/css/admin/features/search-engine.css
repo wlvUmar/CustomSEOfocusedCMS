@@ -355,3 +355,18 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Disabled engine styling */
+.disabled-engine {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.disabled-engine input[disabled] {
+    cursor: not-allowed;
+}
+
+.checkbox-group .disabled-engine small {
+    color: #ef4444;
+    font-style: italic;
+}
