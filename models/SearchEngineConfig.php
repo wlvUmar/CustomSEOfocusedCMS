@@ -68,4 +68,29 @@ class SearchEngineConfig {
             // ignore
         }
     }
+    
+    /**
+     * Ensure default configuration exists for all supported engines
+     */
+    public function ensureDefaults() {
+        $engines = ['bing', 'yandex', 'google', 'naver', 'seznam', 'yep'];
+        
+        foreach ($engines as $engine) {
+            $exists = $this->get($engine);
+            
+            if (!$exists) {
+                $sql = "INSERT INTO search_engine_config 
+                        (engine, enabled, api_key, rate_limit_per_day, submissions_today, 
+                         last_reset_date, auto_submit_on_create, auto_submit_on_update, 
+                         auto_submit_on_rotation, ping_sitemap) 
+                        VALUES (?, 0, NULL, 10000, 0, CURDATE(), 0, 0, 0, 0)";
+                
+                try {
+                    $this->db->query($sql, [$engine]);
+                } catch (Exception $e) {
+                    error_log("Failed to create default config for $engine: " . $e->getMessage());
+                }
+            }
+        }
+    }
 }

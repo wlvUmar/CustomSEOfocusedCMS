@@ -19,6 +19,7 @@ class SearchEngine {
     public function __construct() {
         $this->submissionModel = new SearchSubmission();
         $this->configModel = new SearchEngineConfig();
+        $this->configModel->ensureDefaults(); // Ensure default configs exist
         $this->loadConfig();
         $this->ensureApiKeyFile();
     }

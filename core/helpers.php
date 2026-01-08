@@ -48,6 +48,7 @@ function isBot() {
     
     foreach ($bots as $bot) {
         if (strpos($userAgentLower, $bot) !== false) {
+            error_log("[IS_BOT] Bot detected! Type: $bot, UA: $userAgent");
             return true;
         }
     }
@@ -188,11 +189,18 @@ function replacePlaceholders($text, $page, $seo) {
 }
 
 function trackVisit($slug, $language) {
+    // DEBUG: Log all visits
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+    error_log("[TRACK_VISIT] Slug: $slug, Lang: $language, UA: $userAgent");
+    
     // Skip tracking bot visits in regular analytics
     if (isBot()) {
+        error_log("[TRACK_VISIT] Bot detected, calling trackBotVisit()");
         trackBotVisit($slug, $language);
         return;
     }
+    
+    error_log("[TRACK_VISIT] Regular user, tracking in analytics table");
     
     try {
         $db = Database::getInstance();
@@ -215,6 +223,8 @@ function trackVisit($slug, $language) {
  * Track bot/crawler visits separately for crawl analysis
  */
 function trackBotVisit($slug, $language) {
+    error_log("[TRACK_BOT_VISIT] Called for slug: $slug, language: $language");
+    
     try {
         $db = Database::getInstance();
         $date = date('Y-m-d');
@@ -232,14 +242,18 @@ function trackBotVisit($slug, $language) {
         elseif (strpos($userAgentLower, 'duckduckbot') !== false) $botType = 'duckduckgo';
         else $botType = 'other';
         
+        error_log("[TRACK_BOT_VISIT] Bot type: $botType, Date: $date");
+        
         $sql = "INSERT INTO analytics_bot_visits 
                 (page_slug, language, bot_type, user_agent, visit_date, visits) 
                 VALUES (?, ?, ?, ?, ?, 1) 
                 ON DUPLICATE KEY UPDATE visits = visits + 1, last_visit = NOW()";
         
         $db->query($sql, [$slug, $language, $botType, substr($userAgent, 0, 255), $date]);
+        
+        error_log("[TRACK_BOT_VISIT] Successfully inserted/updated bot visit record");
     } catch (Exception $e) {
-        error_log("Bot tracking error: " . $e->getMessage());
+        error_log("[TRACK_BOT_VISIT] ERROR: " . $e->getMessage());
     }
 }
 
