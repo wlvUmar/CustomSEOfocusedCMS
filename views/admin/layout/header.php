@@ -11,17 +11,24 @@
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css">
     <?php
     if (!empty($pageName)) {
-        // Check for feature-specific CSS in new structure
-        $featureCss = "admin/features/{$pageName}.css";
-        if (file_exists(BASE_PATH . "/public/css/{$featureCss}")) {
-             echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$featureCss}" . '">';
+        $cssPaths = [
+            "admin/{$pageName}.css",
+            "admin/features/{$pageName}.css"
+        ];
+        
+        // If it's a nested path like 'analytics/index', also try 'analytics.css'
+        if (strpos($pageName, '/') !== false) {
+            $parts = explode('/', $pageName);
+            $category = $parts[0];
+            $cssPaths[] = "admin/{$category}/style.css"; // Optional convention
+            $cssPaths[] = "admin/features/{$category}.css";
+            $cssPaths[] = "admin/{$category}.css";
         }
 
-        // Keep support for legacy/other paths if needed, or remove 
-        // fallback to old location
-        $oldCss = "admin/{$pageName}.css";
-        if (file_exists(BASE_PATH . "/public/css/{$oldCss}")) {
-            echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$oldCss}" . '">';
+        foreach ($cssPaths as $cssPath) {
+            if (file_exists(BASE_PATH . "/public/css/{$cssPath}")) {
+                echo '<link rel="stylesheet" href="' . BASE_URL . "/css/{$cssPath}\">\n";
+            }
         }
     }
     ?>
