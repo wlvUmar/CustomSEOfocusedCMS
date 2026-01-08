@@ -1,8 +1,4 @@
-<?php 
-// path: ./views/admin/analytics/crawl.php
-$pageName = 'analytics/crawl';
-require BASE_PATH . '/views/admin/layout/header.php'; 
-?>
+<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
 <div class="page-header">
     <h1><i data-feather="activity"></i> Search Engine Crawl Analysis</h1>

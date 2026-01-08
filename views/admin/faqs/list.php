@@ -1,7 +1,4 @@
-<?php 
-// path: ./views/admin/faqs/list.php
-require BASE_PATH . '/views/admin/layout/header.php'; 
-?>
+<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
 <div class="page-header">
     <h1>FAQs</h1>

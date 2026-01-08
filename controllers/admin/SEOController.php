@@ -16,7 +16,7 @@ class SEOController extends Controller {
     public function index() {
         $this->requireAuth();
         $settings = $this->seoModel->getSettings();
-        $this->view('admin/seo/settings', ['settings' => $settings]);
+        $this->view('admin/seo/settings', ['settings' => $settings, 'pageName' => 'seo/settings']);
     }
 
     public function save() {

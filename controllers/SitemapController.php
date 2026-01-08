@@ -94,7 +94,8 @@ class SitemapController extends Controller {
             'sitemapUrl' => BASE_URL . '/sitemap.xml',
             'robotsUrl' => BASE_URL . '/robots.txt',
             'pages' => $pages,
-            'isProduction' => IS_PRODUCTION
+            'isProduction' => IS_PRODUCTION,
+            'pageName' => 'seo/sitemap'
         ];
         
         $this->view('admin/seo/sitemap', $data);

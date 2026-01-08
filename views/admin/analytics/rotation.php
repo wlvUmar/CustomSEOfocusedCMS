@@ -1,8 +1,4 @@
-<?php 
-// path: ./views/admin/analytics/rotation.php
-$pageName = 'analytics/rotation';
-require BASE_PATH . '/views/admin/layout/header.php'; 
-?>
+<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
 <div class="page-header">
     <h1>Content Rotation Analytics</h1>

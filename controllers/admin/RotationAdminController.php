@@ -41,7 +41,8 @@ class RotationAdminController extends Controller {
         
         $this->view('admin/rotations/overview', [
             'rotationStatus' => $rotationStatus,
-            'incompletePages' => $incompletePages
+            'incompletePages' => $incompletePages,
+            'pageName' => 'rotations/overview'
         ]);
     }
 
@@ -62,7 +63,8 @@ class RotationAdminController extends Controller {
             'page' => $page,
             'rotations' => $rotations,
             'months' => $months,
-            'stats' => $stats
+            'stats' => $stats,
+            'pageName' => 'rotations/manage'
         ]);
     }
 

@@ -1,7 +1,4 @@
-<?php
-$pageName = 'link_widget/manage';
-require BASE_PATH . '/views/admin/layout/header.php';
-?>
+<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
 <div class="page-header">
     <h1><i data-feather="link"></i> Link Widget: <?= e($page['title_ru']) ?></h1>

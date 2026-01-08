@@ -1,6 +1,5 @@
 <?php 
 // path: ./views/admin/rotations/manage.php
-$pageName = 'rotations/manage';
 require BASE_PATH . '/views/admin/layout/header.php'; 
 ?>
 

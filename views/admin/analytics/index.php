@@ -1,7 +1,4 @@
-<?php
-$pageName = 'analytics/index';
-require BASE_PATH . '/views/admin/layout/header.php';
-?>
+<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
 <div class="page-header">
     <h1><i data-feather="trending-up"></i> Analytics Dashboard</h1>

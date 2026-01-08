@@ -1,8 +1,4 @@
-<?php
-// path: ./views/admin/analytics/page_detail.php
-$pageName = 'analytics/page_detail';
-require BASE_PATH . '/views/admin/layout/header.php';
-?>
+<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
 <div class="page-header">
     <h1>Page Analytics: <?= e($page['slug']) ?></h1>

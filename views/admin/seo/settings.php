@@ -1,9 +1,4 @@
 <?php
-// UPDATED: views/admin/seo/settings.php
-// Changes: Moved inline styles to CSS file, inline scripts to JS file
-// Set pageName for automatic CSS loading
-
-$pageName = 'seo/settings';
 require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 

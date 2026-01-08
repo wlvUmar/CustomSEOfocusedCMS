@@ -1,8 +1,4 @@
-<?php 
-// path: ./views/admin/analytics/navigation.php
-$pageName = 'analytics/navigation';
-require BASE_PATH . '/views/admin/layout/header.php'; 
-?>
+<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
 <div class="page-header">
     <h1><i data-feather="git-branch"></i> Internal Navigation Analytics</h1>

@@ -11,7 +11,10 @@
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css">
     <?php
     if (!empty($pageName)) {
-        echo '<link rel="stylesheet" href="' . BASE_URL . "/css/admin/{$pageName}.css\">\n";
+        $cssPath = "/css/admin/{$pageName}.css";
+        if (file_exists(BASE_PATH . '/public' . $cssPath)) {
+            echo '<link rel="stylesheet" href="' . BASE_URL . $cssPath . "\">\n";
+        }
     }
     ?>
 </head>

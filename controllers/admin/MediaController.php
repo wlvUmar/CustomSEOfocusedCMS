@@ -53,7 +53,7 @@ class MediaController extends Controller {
             'allPages' => $allPages,
             'currentPage' => $page,
             'filter' => $filter,
-            'pageName' => 'media/manager'
+            'pageName' => 'media/index'
         ]);
     }
 

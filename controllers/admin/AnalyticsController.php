@@ -35,7 +35,8 @@ class AnalyticsController extends Controller {
             'top_performers' => $this->analyticsModel->getTopPerformers($months),
             'language_stats' => $this->analyticsModel->getLanguageStats($months),
             'months' => $months,
-            'view' => $view
+            'view' => $view,
+            'pageName' => 'analytics/index'
         ];
         
         $this->view('admin/analytics/index', ['stats' => $stats]);
@@ -52,7 +53,8 @@ class AnalyticsController extends Controller {
         
         $data = [
             'effectiveness' => $this->analyticsModel->getRotationEffectiveness($months),
-            'months' => $months
+            'months' => $months,
+            'pageName' => 'analytics/rotation'
         ];
         
         $this->view('admin/analytics/rotation', $data);
@@ -69,7 +71,8 @@ class AnalyticsController extends Controller {
         $data = [
             'crawl_frequency' => $this->analyticsModel->getCrawlFrequency($days),
             'bot_summary' => $this->analyticsModel->getBotVisitSummary($days),
-            'days' => $days
+            'days' => $days,
+            'pageName' => 'analytics/crawl'
         ];
         
         $this->view('admin/analytics/crawl', $data);
@@ -95,7 +98,8 @@ class AnalyticsController extends Controller {
             'trends' => $this->analyticsModel->getPerformanceTrends($slug),
             'rotation_comparison' => $this->analyticsModel->getRotationComparison($slug, $months),
             'daily_activity' => $this->analyticsModel->getDailyActivity($slug, 30),
-            'months' => $months
+            'months' => $months,
+            'pageName' => 'analytics/page_detail'
         ];
         
         $this->view('admin/analytics/page_detail', $data);
@@ -154,7 +158,8 @@ class AnalyticsController extends Controller {
             'popular_paths' => $this->analyticsModel->getPopularPaths($months, 20),
             'link_effectiveness' => $this->analyticsModel->getLinkEffectiveness($months),
             'navigation_funnels' => $this->analyticsModel->getNavigationFunnels($months),
-            'months' => $months
+            'months' => $months,
+            'pageName' => 'analytics/navigation'
         ];
         
         $this->view('admin/analytics/navigation', $data);

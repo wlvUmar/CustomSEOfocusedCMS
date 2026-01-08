@@ -30,7 +30,8 @@ class LinkWidgetController extends Controller {
         $this->view('admin/link_widget/manage', [
             'page' => $page,
             'currentLinks' => $currentLinks,
-            'availablePages' => $availablePages
+            'availablePages' => $availablePages,
+            'pageName' => 'link_widget/manage'
         ]);
     }
 

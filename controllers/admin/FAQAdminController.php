@@ -19,7 +19,7 @@ class FAQAdminController extends Controller {
         $faqs = $this->faqModel->getAll();
         $pages = $this->pageModel->getAll(true);
         
-        $this->view('admin/faqs/list', ['faqs' => $faqs, 'pages' => $pages]);
+        $this->view('admin/faqs/list', ['faqs' => $faqs, 'pages' => $pages, 'pageName' => 'admin/faqs/list']);
     }
 
     public function edit($id = null) {

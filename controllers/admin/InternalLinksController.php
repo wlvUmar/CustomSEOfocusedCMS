@@ -31,7 +31,8 @@ class InternalLinksController extends Controller {
         $this->view('admin/internal_links/index', [
             'pages' => $pages,
             'linkMatrix' => $linkMatrix,
-            'stats' => $stats
+            'stats' => $stats,
+            'pageName' => 'internal_links/index'
         ]);
     }
 
@@ -56,7 +57,8 @@ class InternalLinksController extends Controller {
             'page' => $page,
             'currentLinks' => $currentLinks,
             'availablePages' => $availablePages,
-            'incomingLinks' => $incomingLinks
+            'incomingLinks' => $incomingLinks,
+            'pageName' => 'internal_links/manage_page'
         ]);
     }
 

@@ -1,7 +1,4 @@
-<?php
-$pageName = 'media/index';
-require BASE_PATH . '/views/admin/layout/header.php';
-?>
+<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
 <div class="page-header">
     <h1><i data-feather="image"></i> Media Library</h1>
