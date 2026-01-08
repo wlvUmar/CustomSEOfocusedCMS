@@ -12,11 +12,8 @@
     <?php
     if (!empty($pageName)) {
         $cssPath = "/css/admin/{$pageName}.css";
-        echo "<!-- $cssPath -->";
-        echo BASE_PATH;
-        echo BASE_URL;
         
-        if (file_exists(BASE_PATH . '/public' . $cssPath)) {
+        if (file_exists(BASE_URL . $cssPath)) {
             echo '<link rel="stylesheet" href="' . BASE_URL . $cssPath . "\">\n";
         }
     }
