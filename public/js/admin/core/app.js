@@ -29,7 +29,7 @@ function scheduleDismissal(alert) {
 }
 
 // Global alert function for AJAX/Dynamic use
-window.showAlert = function(message, type = 'info') {
+window.showAlert = function (message, type = 'info') {
     // defined types: success, error, warning, info
     // remove existing to prevent stacking too many
     const existing = document.querySelector('.floating-alerts .alert');
@@ -38,25 +38,25 @@ window.showAlert = function(message, type = 'info') {
     }
 
     const container = document.getElementById('floating-alerts') || createAlertContainer();
-    
+
     const div = document.createElement('div');
     div.className = `alert alert-${type}`;
-    
+
     // Icon mapping
     let iconName = 'info';
     if (type === 'success') iconName = 'check-circle';
     if (type === 'error') iconName = 'alert-circle';
     if (type === 'warning') iconName = 'alert-triangle';
-    
+
     div.innerHTML = `<i data-feather="${iconName}"></i> ${message}`;
-    
+
     container.appendChild(div);
-    
+
     // Initialize icons
     if (typeof feather !== 'undefined') {
         feather.replace();
     }
-    
+
     scheduleDismissal(div);
 };
 
@@ -89,36 +89,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     function updateIcon() {
-        const icon = toggle.querySelector('svg');
-        if (icon) {
-            icon.style.transform = wrapper.classList.contains('sidebar-collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
+        // No manual rotation needed as CSS handles it via .sidebar-collapsed class
     }
-
-    function adjustToggleForScrollbar() {
-        const style = getComputedStyle(toggle);
-        const baseRight = parseFloat(style.right) || 0;
-        const scrollbarWidth =
-            window.innerWidth - document.documentElement.clientWidth;
-        toggle.style.right = `${baseRight - scrollbarWidth}px`;
-    }
-
 
     toggle.addEventListener('click', e => {
         e.stopPropagation();
         wrapper.classList.toggle('sidebar-collapsed');
-        updateIcon();
     });
 
     document.addEventListener('click', e => {
         if (!e.target.closest('.sidebar') && !e.target.closest('.sidebar-toggle')) {
             if (!wrapper.classList.contains('sidebar-collapsed')) {
                 wrapper.classList.add('sidebar-collapsed');
-                updateIcon();
             }
         }
     });
-
-    updateIcon();
-    adjustToggleForScrollbar();
 });
