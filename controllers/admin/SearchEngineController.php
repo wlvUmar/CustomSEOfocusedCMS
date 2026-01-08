@@ -124,16 +124,28 @@ class SearchEngineController extends Controller {
              // Reconstruct URLs for batch submit
             $urls = [];
             foreach($slugs as $slug) {
-                $urls[] = BASE_URL . '/' . $slug; // A bit naive, but Service handles slug extraction from URL anyway
+                $urls[] = BASE_URL . '/' . $slug;
             }
 
             $results = $this->engine->batchSubmit($urls, $engine, 'manual', $userId);
             
             $successCount = 0;
             $failCount = 0;
-            foreach ($results as $res) {
-                if ($res['status'] === 'success') $successCount++;
-                else $failCount++;
+            
+            // Ensure $results is an array
+            if (is_array($results)) {
+                foreach ($results as $res) {
+                    if (is_array($res) && isset($res['status'])) {
+                        if ($res['status'] === 'success') $successCount++;
+                        else $failCount++;
+                    } else {
+                        $failCount++;
+                    }
+                }
+            } else {
+                $_SESSION['error'] = 'Unexpected response from batch submit';
+                $this->redirect('/admin/search-engine');
+                return;
             }
 
             $_SESSION['success'] = "Batch submission complete: $successCount succeeded, $failCount failed";
