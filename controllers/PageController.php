@@ -1,6 +1,5 @@
 <?php
 // path: ./controllers/PageController.php
-// INSTRUCTION: Replace the entire PageController.php file
 
 require_once BASE_PATH . '/models/Page.php';
 require_once BASE_PATH . '/models/SEO.php';

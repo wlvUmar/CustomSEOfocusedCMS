@@ -152,7 +152,11 @@ class JsonLdGenerator {
         
         // Image for the service (prefer product image over logo)
         if (!empty($data['image'])) {
-            $schema['image'] = $data['image'];
+            if (is_array($data['image'])) {
+                $schema['image'] = array_values(array_unique($data['image']));
+            } else {
+                $schema['image'] = $data['image'];
+            }
         }
         
         // Area served - prefer structured City object when a simple name is provided

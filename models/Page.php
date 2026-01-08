@@ -110,4 +110,16 @@ class Page {
         $sql = "DELETE FROM pages WHERE id = ?";
         return $this->db->query($sql, [$id]);
     }
+
+    /**
+     * Get all media attached to this page
+     */
+    public function getMedia($id) {
+        $sql = "SELECT pm.*, m.filename, m.original_name, m.file_size, m.mime_type
+                FROM page_media pm
+                JOIN media m ON pm.media_id = m.id
+                WHERE pm.page_id = ?
+                ORDER BY pm.section ASC, pm.position ASC, pm.id ASC";
+        return $this->db->fetchAll($sql, [$id]);
+    }
 }

@@ -41,7 +41,7 @@ if (!empty($faqs)) {
 
 // Extract appliance name from page title for dynamic Service schema
 $applianceName = '';
-$productImage = '';
+$productImages = []; // Array to hold all relevant images for schema
 if (!empty($page["title_$lang"])) {
     // Try to extract appliance from title (e.g., "Продать холодильник быстро" -> "холодильник")
     $titleProcessed = replacePlaceholders($page["title_$lang"], $page, $seo);
@@ -49,8 +49,15 @@ if (!empty($page["title_$lang"])) {
         $applianceName = trim($matches[1]);
     }
     
-    // Use OG image if available, otherwise fallback to logo
-    $productImage = !empty($page['og_image']) ? $page['og_image'] : ($seo['org_logo'] ?? (BASE_URL . '/css/logo.png'));
+    // Add primary OG image or logo
+    $productImages[] = !empty($page['og_image']) ? $page['og_image'] : ($seo['org_logo'] ?? (BASE_URL . '/css/logo.png'));
+    
+    // Fetch and add all attached media images
+    $pageModel = new Page();
+    $attachedMedia = $pageModel->getMedia($page['id']);
+    foreach ($attachedMedia as $m) {
+        $productImages[] = UPLOAD_URL . $m['filename'];
+    }
 }
 
 // Generate dynamic Service schema for this page
@@ -79,8 +86,8 @@ if (!empty($page["title_$lang"])) {
     ];
     
     // Add image property to Service schema
-    if (!empty($productImage)) {
-        $serviceData['image'] = $productImage;
+    if (!empty($productImages)) {
+        $serviceData['image'] = $productImages;
     }
     
     $pageServiceSchema = JsonLdGenerator::generateService($serviceData);
