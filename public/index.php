@@ -16,7 +16,7 @@ $router = new Router();
 
 // Admin Auth
 $router->get('/admin', function() {
-    header("Location: " . (!empty($_SESSION['user_id']) ? "/admin/dashboard" : "/admin/login"));
+    header("Location: " . BASE_URL . (!empty($_SESSION['user_id']) ? "/admin/dashboard" : "/admin/login"));
     exit;
 });
 

@@ -1,6 +1,6 @@
 <?php
 define('BASE_PATH', dirname(__DIR__));
-define('BASE_URL', 'https://kuplyu-tashkent.uz');
+define('BASE_URL', getenv('BASE_URL') ?: '');
 
 define('UPLOAD_PATH', BASE_PATH . '/public/uploads/');
 define('UPLOAD_URL', BASE_URL . '/uploads/');

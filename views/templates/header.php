@@ -201,10 +201,20 @@ $isAdmin = isset($_SESSION['user_id']);
 
     // 5. Breadcrumb Schema (non-homepage)
     if ($page['slug'] !== 'home') {
+        $pageModel = new Page();
+        $breadcrumbPages = $pageModel->getBreadcrumbs($page['id']);
+        
         $breadcrumbs = [
-            ['name' => $seo["site_name_$lang"], 'url' => '/'],
-            ['name' => replacePlaceholders($page["title_$lang"], $page, $seo), 'url' => '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '')]
+            ['name' => $seo["site_name_$lang"], 'url' => '/']
         ];
+        
+        foreach ($breadcrumbPages as $breadcrumbPage) {
+            $breadcrumbs[] = [
+                'name' => replacePlaceholders($breadcrumbPage["title_$lang"], $breadcrumbPage, $seo),
+                'url' => '/' . $breadcrumbPage['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '')
+            ];
+        }
+        
         $breadcrumbSchema = JsonLdGenerator::generateBreadcrumbs($breadcrumbs, BASE_URL, $canonicalUrl);
         if (!empty($breadcrumbSchema)) $allSchemas[] = $breadcrumbSchema;
     }

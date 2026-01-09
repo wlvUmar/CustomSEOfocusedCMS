@@ -15,6 +15,14 @@ FEATURES = {
         "css": ["admin.css"],
         "js": ["admin.js", "link-tracking.js"],
     },
+    "UI": {
+        "keywords": [],
+        "models": [],
+        "controllers": [],
+        "views": ["layout/", "templates/", "dashboard.php", "login.php"],
+        "css": ["*"],
+        "js": ["admin.js", "link-tracking.js"],
+    },
     "auth": {
         "keywords": [],
         "models": ["User.php"],
@@ -104,11 +112,9 @@ FEATURES = {
 }
 
 def is_relevant_file(filepath, feature_config):
-    """Check if file is relevant to the feature based on patterns"""
     filename = os.path.basename(filepath)
     filepath_lower = filepath.lower().replace("\\", "/")
     
-    # Check specific file lists
     for key in ["models", "controllers", "views", "js", "css"]:
         if key in feature_config:
             for pattern in feature_config[key]:
@@ -133,7 +139,6 @@ def scan_file_for_keywords(filepath, keywords):
     return False
 
 def gather_feature_files(feature_name):
-    """Gather all files relevant to a specific feature"""
     if feature_name not in FEATURES:
         print(f"Error: Feature '{feature_name}' not found.")
         print(f"Available features: {', '.join(FEATURES.keys())}")
@@ -142,7 +147,6 @@ def gather_feature_files(feature_name):
     feature_config = FEATURES[feature_name]
     relevant_files = []
     
-    # Always include core files (Router, Database, Controller, helpers, config, SQL schema)
     core_patterns = [
         "core/Router.php", "core/Database.php", "core/Controller.php", 
         "core/helpers.php", "config/config.php", "config/database.php",
@@ -159,13 +163,10 @@ def gather_feature_files(feature_name):
             if ext in EXTENSIONS or file in SPECIAL_FILES:
                 path = os.path.join(root, file).replace("\\", "/")
                 
-                # Check if it's a core file
                 is_core = any(core_pattern in path for core_pattern in core_patterns)
                 
-                # Check if directly relevant to feature
                 is_feature_file = is_relevant_file(path, feature_config)
                 
-                # Check if contains feature keywords
                 has_keywords = scan_file_for_keywords(path, feature_config["keywords"]) if not is_core and not is_feature_file else False
                 
                 if is_core or is_feature_file or has_keywords:

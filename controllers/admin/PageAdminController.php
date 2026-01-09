@@ -29,8 +29,9 @@ class PageAdminController extends Controller {
 
     public function index() {
         $this->requireAuth();
-        $pages = $this->pageModel->getAll(true);
-        $this->view('admin/pages/list', ['pages' => $pages]);
+        $hierarchy = $this->pageModel->getHierarchy(false);
+        $allPages = $this->pageModel->getAll(true);
+        $this->view('admin/pages/list', ['pages' => $allPages, 'hierarchy' => $hierarchy]);
     }
 
     public function edit($id = null) {
@@ -45,7 +46,22 @@ class PageAdminController extends Controller {
             }
         }
         
-        $this->view('admin/pages/edit', ['page' => $page]);
+        // Get all pages for parent selector, excluding self and descendants
+        $allPages = [];
+        if ($id) {
+            $allPagesRaw = $this->pageModel->getAll(true);
+            $descendants = $this->pageModel->getDescendantIds($id);
+            
+            foreach ($allPagesRaw as $p) {
+                if ($p['id'] != $id && !in_array($p['id'], $descendants)) {
+                    $allPages[] = $p;
+                }
+            }
+        } else {
+            $allPages = $this->pageModel->getAll(true);
+        }
+        
+        $this->view('admin/pages/edit', ['page' => $page, 'allPages' => $allPages]);
     }
 
     public function save() {
@@ -79,7 +95,8 @@ class PageAdminController extends Controller {
             'jsonld_uz' => trim($_POST['jsonld_uz']) ?: null,
             'is_published' => isset($_POST['is_published']) ? 1 : 0,
             'enable_rotation' => isset($_POST['enable_rotation']) ? 1 : 0,
-            'sort_order' => intval($_POST['sort_order'] ?? 0)
+            'sort_order' => intval($_POST['sort_order'] ?? 0),
+            'parent_id' => !empty($_POST['parent_id']) ? intval($_POST['parent_id']) : null
         ];
         
         if ($id) {

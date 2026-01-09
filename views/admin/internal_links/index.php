@@ -45,6 +45,26 @@
     </div>
     
     <div class="stat-card">
+        <div class="stat-icon" style="background: #8b5cf6;">
+            <i data-feather="folder"></i>
+        </div>
+        <div class="stat-info">
+            <h3><?= $stats['total_root_pages'] ?? 0 ?></h3>
+            <p>Root Pages</p>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: #06b6d4;">
+            <i data-feather="layers"></i>
+        </div>
+        <div class="stat-info">
+            <h3><?= $stats['hierarchy_depth'] ?? 0 ?></h3>
+            <p>Max Depth</p>
+        </div>
+    </div>
+    
+    <div class="stat-card <?= ($stats['orphan_pages'] ?? 0) > 0 ? 'stat-warning' : '' ?>">
         <div class="stat-icon" style="background: #ef4444;">
             <i data-feather="alert-circle"></i>
         </div>
@@ -65,6 +85,17 @@
     </div>
 </div>
 
+<!-- Filter Buttons -->
+<div class="section-header">
+    <h2>Pages & Link Status</h2>
+    <div class="filter-buttons">
+        <button class="filter-btn active" onclick="filterPages('all')">All</button>
+        <button class="filter-btn" onclick="filterPages('root')">Root Pages</button>
+        <button class="filter-btn" onclick="filterPages('children')">Sub-Pages</button>
+        <button class="filter-btn" onclick="filterPages('orphan')">Orphans</button>
+    </div>
+</div>
+
 <!-- Pages Table -->
 <table class="data-table">
     <thead>
@@ -73,26 +104,53 @@
                 <input type="checkbox" id="select-all" onchange="toggleAll(this)">
             </th>
             <th>Page</th>
-            <th>Slug</th>
-            <th style="text-align: center;">Outgoing Links</th>
-            <th style="text-align: center;">Incoming Links</th>
-            <th style="text-align: center;">Widget Status</th>
+            <th>Hierarchy</th>
+            <th style="text-align: center;">Outgoing</th>
+            <th style="text-align: center;">Incoming</th>
+            <th style="text-align: center;">Widget</th>
             <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-        <?php foreach ($pages as $page): ?>
-        <tr>
+        <?php foreach ($pages as $page): 
+            $isRoot = empty($page['parent_id']);
+            $hasChildren = !empty($page['children']);
+            $isOrphan = $page['outgoing_links'] == 0 && $page['incoming_links'] == 0;
+        ?>
+        <tr class="page-row" 
+            data-is-root="<?= $isRoot ? '1' : '0' ?>"
+            data-is-child="<?= !$isRoot ? '1' : '0' ?>"
+            data-is-orphan="<?= $isOrphan ? '1' : '0' ?>">
             <td>
                 <input type="checkbox" class="page-checkbox" value="<?= $page['id'] ?>">
             </td>
             <td>
                 <strong><?= e($page['title_ru']) ?></strong>
-                <?php if ($page['outgoing_links'] == 0 && $page['incoming_links'] == 0): ?>
+                <?php if ($isOrphan): ?>
                 <span class="badge badge-danger" style="margin-left: 8px;">Orphan</span>
                 <?php endif; ?>
+                <small><?= e($page['slug']) ?></small>
             </td>
-            <td><code><?= e($page['slug']) ?></code></td>
+            <td>
+                <div class="hierarchy-info">
+                    <?php if ($page['parent']): ?>
+                        <div class="hierarchy-badge">
+                            <i data-feather="corner-down-right"></i>
+                            Sub of: <?= e($page['parent']['title_ru']) ?>
+                        </div>
+                    <?php else: ?>
+                        <span class="hierarchy-badge root">
+                            <i data-feather="folder"></i> Root
+                        </span>
+                    <?php endif; ?>
+                    
+                    <?php if ($hasChildren): ?>
+                        <span class="hierarchy-badge children">
+                            <i data-feather="layers"></i> <?= count($page['children']) ?> sub-pages
+                        </span>
+                    <?php endif; ?>
+                </div>
+            </td>
             <td style="text-align: center;">
                 <span class="badge" style="background: #3b82f6;">
                     <?= $page['outgoing_links'] ?>
@@ -105,9 +163,9 @@
             </td>
             <td style="text-align: center;">
                 <?php if ($page['show_link_widget']): ?>
-                <span class="badge badge-success">Enabled</span>
+                <span class="badge badge-success">ON</span>
                 <?php else: ?>
-                <span class="badge badge-danger">Disabled</span>
+                <span class="badge badge-secondary">OFF</span>
                 <?php endif; ?>
             </td>
             <td>
@@ -139,15 +197,18 @@
             <div class="form-group">
                 <label><strong>Connection Strategy:</strong></label>
                 <select name="strategy" required>
-                    <option value="all-to-all">All-to-All: Connect every page to every other page (dense network)</option>
-                    <option value="popular-to-all">Hub Model: Connect all pages to most popular pages</option>
-                    <option value="related">Smart: Connect related pages based on content similarity</option>
+                    <option value="hierarchy-aware" selected>Hierarchy-Aware (Recommended)</option>
+                    <option value="all-to-all">All-to-All: Connect every page to every other page</option>
+                    <option value="related">Smart: Connect related pages based on content</option>
+                    <option value="popular-to-all">Hub Model: Connect all pages to popular pages</option>
                 </select>
-                <small>Choose how pages should be connected automatically</small>
+                <small>
+                    <strong>Hierarchy-Aware:</strong> Links parent↔children, children↔siblings, and related pages based on your page hierarchy.
+                </small>
             </div>
             
             <div class="form-group">
-                <label><strong>Max Links per Page (for Smart strategy):</strong></label>
+                <label><strong>Max Links per Page:</strong></label>
                 <input type="number" name="max_links" value="5" min="1" max="20">
             </div>
             
@@ -212,6 +273,109 @@
         </form>
     </div>
 </div>
+
+<style>
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    margin-top: 30px;
+}
+
+.filter-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.filter-btn {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.filter-btn:hover {
+    background: #f3f4f6;
+}
+
+.filter-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+}
+
+.hierarchy-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hierarchy-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    background: #e5e7eb;
+    color: #374151;
+    width: fit-content;
+}
+
+.hierarchy-badge.root {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.hierarchy-badge.children {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.hierarchy-badge svg {
+    width: 14px;
+    height: 14px;
+}
+
+.page-row[data-is-orphan="1"] {
+    opacity: 0.7;
+}
+</style>
+
+<script>
+function filterPages(type) {
+    const rows = document.querySelectorAll('.page-row');
+    const buttons = document.querySelectorAll('.filter-btn');
+    
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    rows.forEach(row => {
+        let show = false;
+        
+        switch(type) {
+            case 'all':
+                show = true;
+                break;
+            case 'root':
+                show = row.dataset.isRoot === '1';
+                break;
+            case 'children':
+                show = row.dataset.isChild === '1';
+                break;
+            case 'orphan':
+                show = row.dataset.isOrphan === '1';
+                break;
+        }
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+</script>
 
 <script src="<?= BASE_URL ?>/js/admin/internal-links.js"></script>
 

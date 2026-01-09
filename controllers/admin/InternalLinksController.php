@@ -22,11 +22,22 @@ class InternalLinksController extends Controller {
         // Get all pages with their link counts
         $pages = $this->getAllPagesWithLinkStats();
         
+        // Enrich with hierarchy info
+        foreach ($pages as &$page) {
+            $page['children'] = $this->pageModel->getChildren($page['id'], false);
+            $page['parent'] = $this->pageModel->getParent($page['id']);
+            $page['siblings'] = $this->pageModel->getSiblings($page['id'], false);
+        }
+        
         // Get link matrix (which pages link to which)
         $linkMatrix = $this->getLinkMatrix();
         
         // Get network density stats
         $stats = $this->getNetworkStats();
+        
+        // Add hierarchy stats
+        $hierarchyStats = $this->getHierarchyStats();
+        $stats = array_merge($stats, $hierarchyStats);
         
         $this->view('admin/internal_links/index', [
             'pages' => $pages,
@@ -52,12 +63,21 @@ class InternalLinksController extends Controller {
         $currentLinks = $this->widgetModel->getLinksForPage($pageId);
         $availablePages = $this->widgetModel->getAvailablePages($pageId);
         $incomingLinks = $this->getIncomingLinks($pageId);
+        
+        // Add hierarchy context
+        $hierarchyContext = [
+            'parent' => $this->pageModel->getParent($pageId),
+            'children' => $this->pageModel->getChildren($pageId, false),
+            'siblings' => $this->pageModel->getSiblings($pageId, false),
+            'breadcrumbs' => $this->pageModel->getBreadcrumbs($pageId)
+        ];
 
         $this->view('admin/internal_links/manage_page', [
             'page' => $page,
             'currentLinks' => $currentLinks,
             'availablePages' => $availablePages,
             'incomingLinks' => $incomingLinks,
+            'hierarchyContext' => $hierarchyContext,
             'pageName' => 'internal_links/manage_page'
         ]);
     }
@@ -68,13 +88,56 @@ class InternalLinksController extends Controller {
     public function autoConnect() {
         $this->requireAuth();
         
-        $strategy = $_POST['strategy'] ?? 'all-to-all';
+        $strategy = $_POST['strategy'] ?? 'hierarchy-aware';
         $maxLinks = intval($_POST['max_links'] ?? 5);
         
         $pages = $this->pageModel->getAll();
         $created = 0;
         
         switch ($strategy) {
+            case 'hierarchy-aware':
+                // Connect parent to children, children to siblings, and related pages
+                foreach ($pages as $page) {
+                    $links = [];
+                    
+                    // 1. Link to parent
+                    if ($page['parent_id']) {
+                        $links[] = $page['parent_id'];
+                    }
+                    
+                    // 2. Link to children
+                    $children = $this->pageModel->getChildren($page['id']);
+                    foreach ($children as $child) {
+                        $links[] = $child['id'];
+                    }
+                    
+                    // 3. Link to siblings
+                    $siblings = $this->pageModel->getSiblings($page['id']);
+                    foreach (array_slice($siblings, 0, 3) as $sibling) {
+                        $links[] = $sibling['id'];
+                    }
+                    
+                    // 4. Fill remaining slots with related pages
+                    if (count($links) < $maxLinks) {
+                        $related = $this->findRelatedPages($page['id'], $maxLinks - count($links));
+                        $links = array_merge($links, $related);
+                    }
+                    
+                    // Create links
+                    $links = array_unique($links);
+                    foreach (array_slice($links, 0, $maxLinks) as $targetId) {
+                        if ($targetId != $page['id']) {
+                            try {
+                                $this->widgetModel->addLink($page['id'], $targetId);
+                                $created++;
+                            } catch (Exception $e) {
+                                // Link might already exist
+                            }
+                        }
+                    }
+                }
+                break;
+                
             case 'all-to-all':
                 // Connect every page to every other page
                 foreach ($pages as $page) {
@@ -265,5 +328,29 @@ class InternalLinksController extends Controller {
                 ORDER BY view_count DESC
                 LIMIT ?";
         return $this->db->fetchAll($sql, [$limit]);
+    }
+    
+    /**
+     * Get hierarchy statistics
+     */
+    private function getHierarchyStats() {
+        $totalPages = $this->db->fetchOne("SELECT COUNT(*) as count FROM pages WHERE is_published = 1")['count'];
+        $rootPages = $this->db->fetchOne("SELECT COUNT(*) as count FROM pages WHERE is_published = 1 AND parent_id IS NULL")['count'];
+        $pagesWithChildren = $this->db->fetchOne("SELECT COUNT(DISTINCT parent_id) as count FROM pages WHERE parent_id IS NOT NULL")['count'];
+        
+        return [
+            'total_root_pages' => $rootPages,
+            'total_parent_pages' => $pagesWithChildren,
+            'total_child_pages' => $totalPages - $rootPages,
+            'hierarchy_depth' => $this->getMaxDepth()
+        ];
+    }
+
+    /**
+     * Get maximum hierarchy depth
+     */
+    private function getMaxDepth() {
+        $result = $this->db->fetchOne("SELECT MAX(depth) as max_depth FROM pages");
+        return $result['max_depth'] ?? 0;
     }
 }

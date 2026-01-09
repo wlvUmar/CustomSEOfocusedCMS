@@ -12,7 +12,6 @@ function switchTab(tab, event) {
     if (content) content.classList.add('active');
 }
 
-// Auto-dismiss alerts after 5 seconds
 function setupAlertDismissal() {
     document.querySelectorAll('.alert').forEach(alert => {
         scheduleDismissal(alert);
@@ -28,10 +27,7 @@ function scheduleDismissal(alert) {
     }, 5000);
 }
 
-// Global alert function for AJAX/Dynamic use
 window.showAlert = function (message, type = 'info') {
-    // defined types: success, error, warning, info
-    // remove existing to prevent stacking too many
     const existing = document.querySelector('.floating-alerts .alert');
     if (existing && document.querySelectorAll('.alert').length > 2) {
         document.querySelector('.floating-alerts').firstChild.remove();
@@ -42,7 +38,6 @@ window.showAlert = function (message, type = 'info') {
     const div = document.createElement('div');
     div.className = `alert alert-${type}`;
 
-    // Icon mapping
     let iconName = 'info';
     if (type === 'success') iconName = 'check-circle';
     if (type === 'error') iconName = 'alert-circle';
@@ -52,7 +47,6 @@ window.showAlert = function (message, type = 'info') {
 
     container.appendChild(div);
 
-    // Initialize icons
     if (typeof feather !== 'undefined') {
         feather.replace();
     }
@@ -76,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!wrapper || !sidebar || !toggle) return;
 
-    // Setup alert dismissal
     setupAlertDismissal();
 
     document.querySelectorAll('form[action*="delete"]').forEach(form => {
@@ -89,7 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     function updateIcon() {
-        // No manual rotation needed as CSS handles it via .sidebar-collapsed class
     }
 
     toggle.addEventListener('click', e => {

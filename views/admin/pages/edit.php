@@ -29,6 +29,21 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <input type="text" name="slug" value="<?= $page['slug'] ?? '' ?>" required>
         </div>
         
+        <div class="form-group">
+            <label>Parent Page (Optional - for hierarchy)</label>
+            <select name="parent_id" class="form-control">
+                <option value="">— Root Level (No Parent) —</option>
+                <?php if (!empty($allPages)): ?>
+                    <?php foreach ($allPages as $p): ?>
+                    <option value="<?= $p['id'] ?>" <?= ($page && isset($page['parent_id']) && $page['parent_id'] == $p['id']) ? 'selected' : '' ?>>
+                        <?= e($p['title_ru'] ?? $p['slug']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </select>
+            <small style="display: block; margin-top: 5px; color: #666;">Create a page hierarchy. URLs remain flat, but breadcrumbs will show the path.</small>
+        </div>
+        
         <div class="form-row">
             <div class="form-group">
                 <label>Title (RU)*</label>
