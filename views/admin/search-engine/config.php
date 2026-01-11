@@ -45,12 +45,12 @@
         
         
         <div class="form-group">
-            <label>API Key <?php if (in_array($config['engine'], ['bing', 'yandex'])): ?>(shared IndexNow key)<?php else: ?>(optional)<?php endif; ?></label>
+            <label>API Key <?php if (in_array($config['engine'], ['bing', 'yandex'])): ?>(IndexNow)<?php else: ?>(not used)<?php endif; ?></label>
             <input type="text" 
                    name="<?= $config['engine'] ?>_api_key" 
                    class="form-control" 
                    value="<?= e($config['api_key'] ?? '') ?>"
-                   <?= in_array($config['engine'], ['bing', 'yandex']) ? 'readonly' : '' ?>>
+                   <?= $config['engine'] === 'google' ? 'readonly' : '' ?>>
             <?php if ($config['engine'] === 'bing' && !empty($config['api_key'])): ?>
             <small class="form-text text-muted">
                 <strong>Verification file:</strong> 
@@ -71,9 +71,13 @@
             <small class="form-text text-muted">
                 Bing API key will be auto-generated on first submission. A verification file will be created in /public/
             </small>
-            <?php elseif (in_array($config['engine'], ['yandex'])): ?>
+            <?php elseif ($config['engine'] === 'yandex'): ?>
             <small class="form-text text-muted">
-                This engine uses the same IndexNow API key as Bing. The key is shared across all IndexNow engines.
+                Enter your Yandex.Webmaster API key. Uses IndexNow protocol (same as Bing).
+            </small>
+            <?php elseif ($config['engine'] === 'google'): ?>
+            <small class="form-text text-muted">
+                Google no longer supports direct pinging. Enable "Ping sitemap" option instead, which notifies Google via your sitemap.xml auto-discovery.
             </small>
             <?php endif; ?>
         </div>

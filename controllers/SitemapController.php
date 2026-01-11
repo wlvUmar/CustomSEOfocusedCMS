@@ -12,7 +12,14 @@ class SitemapController extends Controller {
     }
 
     public function generateXML() {
+        // Clear any output buffering to ensure headers can be sent
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+        
         header('Content-Type: application/xml; charset=utf-8');
+        header('Cache-Control: public, max-age=3600');
+        header('Pragma: public');
         
         $pages = $this->pageModel->getAll(false); 
         
@@ -57,7 +64,14 @@ class SitemapController extends Controller {
 
 
     public function generateRobotsTxt() {
+        // Clear any output buffering to ensure headers can be sent
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+        
         header('Content-Type: text/plain; charset=utf-8');
+        header('Cache-Control: public, max-age=3600');
+        header('Pragma: public');
         
         $isProduction = IS_PRODUCTION;
         

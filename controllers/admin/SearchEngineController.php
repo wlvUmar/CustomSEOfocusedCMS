@@ -257,9 +257,15 @@ class SearchEngineController extends Controller {
         $engines = ['bing', 'yandex', 'google'];
 
         foreach ($engines as $engine) {
+            // Don't update if engine field is missing or empty (prevents blank entries)
+            if (empty($_POST[$engine . '_enabled']) && empty($_POST[$engine . '_api_key'])) {
+                // Engine is disabled and has no API key, skip the update to prevent blank entry
+                continue;
+            }
+
             $data = [
                 'enabled' => isset($_POST[$engine . '_enabled']) ? 1 : 0,
-                'api_key' => $_POST[$engine . '_api_key'] ?? null,
+                'api_key' => !empty($_POST[$engine . '_api_key']) ? $_POST[$engine . '_api_key'] : null,
                 'rate_limit_per_day' => intval($_POST[$engine . '_rate_limit'] ?? 10000),
                 'auto_submit_on_create' => isset($_POST[$engine . '_auto_create']) ? 1 : 0,
                 'auto_submit_on_update' => isset($_POST[$engine . '_auto_update']) ? 1 : 0,

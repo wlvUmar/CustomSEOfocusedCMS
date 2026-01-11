@@ -66,7 +66,9 @@ class SearchEngine {
             }
             
             // Check cooldown
-            if ($this->submissionModel->wasRecentlySubmitted($slug, $engine, 3600)) { 
+            if ($this->submissionModel->wasRecentlySubmitted($slug, $engine, 3600)) {
+                $this->submissionModel->log($slug, $url, $engine, $type, 'cooldown_active', null,
+                    'Submission skipped: 1-hour cooldown period active', $rotationMonth, $userId);
                 continue;
             }
             
@@ -109,28 +111,32 @@ class SearchEngine {
     }
 
     private function submitToBing($url) {
-        return $this->submitToIndexNow($url, self::BING_INDEXNOW_ENDPOINT, 'Bing');
+        return $this->submitToIndexNow($url, self::BING_INDEXNOW_ENDPOINT, 'Bing', 'bing');
     }
     
     private function submitToYandex($url) {
-        return $this->submitToIndexNow($url, self::YANDEX_INDEXNOW_ENDPOINT, 'Yandex');
+        return $this->submitToIndexNow($url, self::YANDEX_INDEXNOW_ENDPOINT, 'Yandex', 'yandex');
     }
     
     /**
      * Generic IndexNow submission
      */
-    private function submitToIndexNow($url, $endpoint, $engineName) {
-        // Get API key from loaded config, or load it from DB if not found
-        $apiKey = $this->config['bing']['api_key'] ?? null;
+    private function submitToIndexNow($url, $endpoint, $engineName, $engineKey) {
+        // Get API key for the specific engine
+        $apiKey = $this->config[$engineKey]['api_key'] ?? null;
         
         if (empty($apiKey)) {
             // API key not in memory, fetch from DB directly
-            $bingConfig = $this->configModel->get('bing');
-            if ($bingConfig && !empty($bingConfig['api_key'])) {
-                $apiKey = $bingConfig['api_key'];
+            $engineConfig = $this->configModel->get($engineKey);
+            if ($engineConfig && !empty($engineConfig['api_key'])) {
+                $apiKey = $engineConfig['api_key'];
             } else {
-                // No API key in DB, generate a new one
-                $apiKey = $this->generateApiKey();
+                // No API key configured for this engine
+                return [
+                    'status' => 'failed',
+                    'code' => null,
+                    'message' => "No API key configured for $engineName. Please configure it in Search Engine settings."
+                ];
             }
         }
         
