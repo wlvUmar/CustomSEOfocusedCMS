@@ -9,6 +9,8 @@
     <title>Admin Panel</title>
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/tables.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/mobile-overflow-fixes.css">
     <?php
     if ($pageName){
         $cssPath = "/css/admin/{$pageName}.css";

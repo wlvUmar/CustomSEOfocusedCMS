@@ -296,12 +296,17 @@ body {
     margin-left: var(--sidebar-width);
     padding: 30px;
     transition: margin-left 0.3s ease;
+    width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
 }
-
 
 .admin-content {
     max-width: 1400px;
     position: relative;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Floating alerts container */
@@ -1189,14 +1194,14 @@ body {
 
     .data-table {
         overflow-x: auto;
-        white-space: nowrap;
     }
+    
     .form-row {
         grid-template-columns: 1fr;
     }
 
     .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
 
     .btn {
@@ -1219,7 +1224,24 @@ body {
         font-size: 14px;
     }
 
-        .dashboard-header h1 {
+    * {
+        box-sizing: border-box;
+    }
+
+    .admin-main {
+        padding: 16px 12px;
+        margin-left: var(--sidebar-width);
+        width: 100%;
+        overflow-x: hidden;
+    }
+
+    .admin-content {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    .dashboard-header h1 {
         font-size: 24px;
     }
 
@@ -1233,7 +1255,9 @@ body {
         margin-bottom: 35px;
     }
 
-    .stats-grid {
+    .stats-grid,
+    .trend-cards,
+    .crawl-summary-cards {
         grid-template-columns: 1fr;
     }
 
@@ -1328,14 +1352,16 @@ body {
     .form-group textarea,
     .form-group select {
         font-size: 16px;
-        /* Prevent zoom on iOS */
         min-height: 44px;
-        /* iOS touch target */
     }
 
     .form-group label {
         font-size: 14px;
         margin-bottom: 6px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
     }
 
     /* Tables - make scrollable */
@@ -1348,13 +1374,12 @@ body {
 
     .data-table {
         min-width: 600px;
-        /* Force horizontal scroll for complex tables */
     }
 
     .data-table th,
     .data-table td {
-        padding: 12px 8px;
-        font-size: 13px;
+        padding: 8px 6px;
+        font-size: 12px;
     }
 
     /* Checkbox touch targets */
@@ -1374,13 +1399,6 @@ body {
     .action-buttons .btn {
         width: 100%;
         min-height: 44px;
-    }
-
-    /* Stats cards single column */
-    .stats-grid,
-    .trend-cards,
-    .crawl-summary-cards {
-        grid-template-columns: 1fr;
     }
 
     /* Analytics specific */
@@ -1425,8 +1443,12 @@ body {
 
     /* Media manager */
     .media-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+    }
+
+    .media-item img {
+        height: 120px;
     }
 
     /* Modals */
@@ -1470,84 +1492,16 @@ body {
     }
 
     /* Alerts */
-    .alert {
-        margin: 0 0 20px 0;
-        padding: 12px 16px;
-        font-size: 14px;
+    #floating-alerts.floating-alerts {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        width: auto;
     }
 
-    /* Form rows to column */
-    .form-row {
-        flex-direction: column;
-        gap: 0;
-    }
-
-    .form-row .form-group {
-        width: 100%;
-    }
-
-    /* Better touch targets */
-    .btn {
-        min-height: 44px;
-        padding: 12px 20px;
-    }
-
-    .btn-sm {
-        min-height: 38px;
-        padding: 8px 14px;
-    }
-
-
-    .page-header h1 {
-        font-size: 1.3em;
-    }
-
-    /* Make buttons more touch-friendly */
-    .btn {
-        padding: 12px 16px;
-        font-size: 14px;
-    }
-
-    .btn-sm {
-        padding: 8px 12px;
-        font-size: 13px;
-    }
-
-    /* Data table compact mode */
-    .data-table th,
-    .data-table td {
-        padding: 8px 6px;
-        font-size: 12px;
-    }
-
-    /* Hide more columns */
-    .data-table th:nth-child(4),
-    .data-table td:nth-child(4) {
-        display: none;
-    }
-
-    /* Form spacing */
-    .form-group {
-        margin-bottom: 15px;
-    }
-
-    /* Stat cards more compact */
-    .stat-card {
-        padding: 20px 15px;
-    }
-
-    .stat-number {
-        font-size: 28px;
-    }
-
-    /* Media grid smaller */
-    .media-grid {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 10px;
-    }
-
-    .media-item img {
-        height: 120px;
+    #floating-alerts .alert {
+        min-width: auto;
+        max-width: none;
     }
 }
 
@@ -1578,30 +1532,63 @@ body {
 @media (max-width: 480px) {
     :root {
         font-size: 13px;
+        --sidebar-width: 260px;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    .admin-wrapper {
+        display: flex;
+        width: 100vw;
+        overflow-x: hidden;
     }
 
     .admin-main {
-        padding: 12px;
+        padding: 12px 10px;
+        margin-left: var(--sidebar-width);
+        width: 100%;
+        overflow-x: hidden;
+        box-sizing: border-box;
     }
 
     .admin-content {
         padding: 0;
+        margin: 0;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .page-header {
         margin-bottom: 16px;
         padding-bottom: 12px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
     }
 
     .page-header h1 {
         font-size: 1.3em;
         line-height: 1.3;
+        word-break: break-word;
     }
 
-    /* Even more compact buttons */
+    .page-header .btn-group {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    /* Buttons */
     .btn {
         padding: 10px 16px;
         font-size: 13px;
+        min-height: 44px;
     }
 
     .btn-sm {
@@ -1610,7 +1597,7 @@ body {
         min-height: 36px;
     }
 
-    /* Compact forms */
+    /* Forms */
     .form-group {
         margin-bottom: 16px;
     }
@@ -1625,9 +1612,21 @@ body {
     .form-group select {
         padding: 10px 12px;
         font-size: 16px;
+        min-height: 44px;
+        width: 100%;
     }
 
-    /* Very compact tables */
+    .form-row {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .form-row .form-group {
+        width: 100%;
+    }
+
+    /* Tables */
     .data-table {
         font-size: 12px;
     }
@@ -1637,13 +1636,7 @@ body {
         padding: 8px 6px;
     }
 
-    /* Hide even more columns */
-    .data-table th:nth-child(4),
-    .data-table td:nth-child(4) {
-        display: none;
-    }
-
-    /* Smaller stat cards */
+    /* Stat cards */
     .stat-card {
         padding: 14px;
     }
@@ -1656,11 +1649,7 @@ body {
         font-size: 11px;
     }
 
-    /* Compact sidebar */
-    :root {
-        --sidebar-width: 260px;
-    }
-
+    /* Sidebar */
     .sidebar {
         width: var(--sidebar-width);
     }
@@ -1670,10 +1659,14 @@ body {
         font-size: 14px;
     }
 
-    /* Smaller media grid */
+    /* Media grid */
     .media-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
+    }
+
+    .media-item img {
+        height: 100px;
     }
 
     /* Modal adjustments */
@@ -1694,53 +1687,137 @@ body {
         font-size: 1.1em;
     }
 
-    /* Compact alerts */
-    .alert {
-        top: 10px;
-        right: 10px;
-        left: 10px;
-        min-width: auto;
-        max-width: none;
-        padding: 12px 16px;
-        font-size: 14px;
+    .modal-footer {
+        flex-direction: column;
+        gap: 8px;
     }
 
-    /* Badge sizes */
+    .modal-footer .btn {
+        width: 100%;
+    }
+
+    /* Alerts */
+    #floating-alerts.floating-alerts {
+        top: 8px;
+        right: 8px;
+        left: 8px;
+        width: auto;
+        gap: 8px;
+    }
+
+    #floating-alerts .alert {
+        min-width: auto;
+        max-width: none;
+        padding: 12px 14px;
+        font-size: 12px;
+        gap: 8px;
+    }
+
+    /* Badges */
     .badge {
         font-size: 11px;
         padding: 3px 8px;
     }
 
-    /* Tighter spacing */
+    /* Spacing */
     .stats-grid,
+    .trend-cards,
     .info-grid {
         gap: 12px;
     }
+
+    /* Dashboard */
+    .dashboard-section {
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+
+    .dashboard-grid {
+        gap: 25px;
+        margin-bottom: 25px;
+    }
+
+    .dashboard-header h1 {
+        font-size: 20px;
+    }
+
+    .quick-links {
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 16px;
+    }
+
+    .quick-links .btn {
+        width: 100%;
+    }
 }
 
-@media (max-width: 360px) {
+
+@media (max-width: 375px) {
     :root {
         font-size: 12px;
         --sidebar-width: 240px;
     }
 
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        width: 100%;
+        overflow-x: hidden;
+        margin: 0;
+        padding: 0;
+    }
+
+    .admin-wrapper {
+        width: 100vw;
+        overflow-x: hidden;
+    }
+
+    .admin-main {
+        padding: 10px 8px;
+        margin-left: var(--sidebar-width);
+        width: 100%;
+        overflow-x: hidden;
+        box-sizing: border-box;
+    }
+
+    .admin-content {
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
     .page-header h1 {
         font-size: 1.2em;
+        word-break: break-word;
     }
 
     .btn {
         padding: 8px 12px;
         font-size: 12px;
+        min-height: 40px;
+    }
+
+    .btn-sm {
+        padding: 6px 10px;
+        font-size: 11px;
+        min-height: 36px;
     }
 
     .data-table th,
     .data-table td {
         padding: 6px 4px;
-        font-size: 11px;
+        font-size: 10px;
     }
 
     .media-grid {
         grid-template-columns: 1fr;
+        gap: 8px;
     }
 
     .stat-card {
@@ -1749,6 +1826,65 @@ body {
 
     .stat-number {
         font-size: 20px;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        font-size: 16px;
+        min-height: 40px;
+        padding: 8px 10px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .dashboard-section {
+        padding: 12px;
+        margin-bottom: 16px;
+    }
+
+    .dashboard-header h1 {
+        font-size: 18px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        margin-bottom: 16px;
+    }
+
+    .modal-content {
+        width: 100%;
+        border-radius: 0;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 12px;
+    }
+
+    /* Critical overflow catch - mobile */
+    html,
+    body {
+        overflow-x: hidden;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    .admin-wrapper {
+        width: 100vw;
+        overflow-x: hidden;
+    }
+
+    /* Ensure no element exceeds viewport */
+    * {
+        max-width: 100vw;
+    }
+
+    .admin-main,
+    .admin-content {
+        overflow-x: hidden;
     }
 }
 
@@ -1844,3 +1980,95 @@ body {
         border: 2px solid currentColor;
     }
 }*/
+
+/* CRITICAL: Universal overflow fix for mobile */
+@media (max-width: 768px) {
+    /* Prevent any element from exceeding viewport width */
+    html {
+        overflow-x: hidden;
+        width: 100%;
+    }
+
+    body {
+        overflow-x: hidden;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    .admin-wrapper {
+        width: 100vw;
+        overflow-x: hidden;
+    }
+
+    /* Catch any fixed/absolute elements that might overflow */
+    [style*="width: 100%"] {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    /* Ensure all flex containers wrap */
+    .btn-group,
+    .header-actions,
+    .action-buttons,
+    .bulk-buttons {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    /* Ensure all grids shrink on mobile */
+    .stats-grid,
+    .trend-cards,
+    .chart-container,
+    .performers-grid,
+    .quick-access-cards,
+    .crawl-summary-cards,
+    .rotation-summary,
+    .media-grid {
+        width: 100%;
+        grid-template-columns: 1fr;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    /* Ensure tables can scroll */
+    table,
+    .data-table,
+    .admin-table {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Prevent modals from being wider than viewport */
+    .modal-content,
+    .modal,
+    .modal-overlay {
+        max-width: 100vw;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Ensure cards don't overflow */
+    .card,
+    .stat-card,
+    .action-card,
+    .trend-card,
+    .media-card,
+    .performer-card {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    /* Ensure form sections fit */
+    .form-section,
+    .admin-form,
+    form {
+        width: 100%;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+}

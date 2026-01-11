@@ -12,9 +12,6 @@ class SearchEngine {
     // Constants
     const BING_INDEXNOW_ENDPOINT = 'https://www.bing.com/indexnow';
     const YANDEX_INDEXNOW_ENDPOINT = 'https://yandex.com/indexnow';
-    const NAVER_INDEXNOW_ENDPOINT = 'https://searchadvisor.naver.com/indexnow';
-    const SEZNAM_INDEXNOW_ENDPOINT = 'https://search.seznam.cz/indexnow';
-    const YEP_INDEXNOW_ENDPOINT = 'https://indexnow.yep.com/indexnow';
     
     public function __construct() {
         $this->submissionModel = new SearchSubmission();
@@ -107,9 +104,6 @@ class SearchEngine {
             case 'bing':   return $this->submitToBing($url);
             case 'yandex': return $this->submitToYandex($url);
             case 'google': return $this->pingGoogleSitemap();
-            case 'naver':  return $this->submitToIndexNow($url, self::NAVER_INDEXNOW_ENDPOINT, 'Naver');
-            case 'seznam': return $this->submitToIndexNow($url, self::SEZNAM_INDEXNOW_ENDPOINT, 'Seznam');
-            case 'yep':    return $this->submitToIndexNow($url, self::YEP_INDEXNOW_ENDPOINT, 'Yep');
             default:       return ['status' => 'failed', 'message' => 'Unknown engine'];
         }
     }
@@ -126,7 +120,19 @@ class SearchEngine {
      * Generic IndexNow submission
      */
     private function submitToIndexNow($url, $endpoint, $engineName) {
-        $apiKey = $this->config['bing']['api_key'] ?? $this->generateApiKey();
+        // Get API key from loaded config, or load it from DB if not found
+        $apiKey = $this->config['bing']['api_key'] ?? null;
+        
+        if (empty($apiKey)) {
+            // API key not in memory, fetch from DB directly
+            $bingConfig = $this->configModel->get('bing');
+            if ($bingConfig && !empty($bingConfig['api_key'])) {
+                $apiKey = $bingConfig['api_key'];
+            } else {
+                // No API key in DB, generate a new one
+                $apiKey = $this->generateApiKey();
+            }
+        }
         
         $data = [
             'host' => parse_url(BASE_URL, PHP_URL_HOST),

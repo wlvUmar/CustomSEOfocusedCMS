@@ -254,7 +254,7 @@ class SearchEngineController extends Controller {
             $this->redirect('/admin/search-engine/config');
         }
 
-        $engines = ['bing', 'yandex', 'google', 'naver', 'seznam', 'yep'];
+        $engines = ['bing', 'yandex', 'google'];
 
         foreach ($engines as $engine) {
             $data = [

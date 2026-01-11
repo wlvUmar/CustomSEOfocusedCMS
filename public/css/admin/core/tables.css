@@ -1,0 +1,509 @@
+/* TABLE RESPONSIVE STYLING
+   Ensures tables adapt to mobile devices without horizontal scroll
+   Target: iPhone SE 2020 (375px) and all devices < 768px width
+*/
+
+/* ========================================
+   BASE TABLE STYLES (All Devices)
+   ======================================== */
+
+.data-table,
+.admin-table,
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.data-table th,
+.data-table td,
+.admin-table th,
+.admin-table td,
+table th,
+table td {
+    text-align: left;
+    border-bottom: 1px solid #e0e7ff;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+}
+
+.data-table th,
+.admin-table th,
+table th {
+    background: #f0f4ff;
+    font-weight: 600;
+    color: #1f2937;
+    padding: 12px 8px;
+    font-size: 13px;
+}
+
+.data-table td,
+.admin-table td,
+table td {
+    padding: 10px 8px;
+    font-size: 14px;
+}
+
+/* ========================================
+   LARGE SCREENS (1024px+)
+   ======================================== */
+
+@media (min-width: 1025px) {
+    .data-table th,
+    .admin-table th,
+    table th {
+        padding: 14px 12px;
+        font-size: 14px;
+    }
+
+    .data-table td,
+    .admin-table td,
+    table td {
+        padding: 12px 12px;
+        font-size: 14px;
+    }
+
+    /* Show all columns by default */
+    .hide-on-mobile {
+        display: table-cell !important;
+    }
+}
+
+/* ========================================
+   TABLETS (768px - 1024px)
+   ======================================== */
+
+@media (max-width: 1024px) and (min-width: 769px) {
+    .data-table,
+    .admin-table,
+    table {
+        font-size: 13px;
+    }
+
+    .data-table th,
+    .admin-table th,
+    table th {
+        padding: 12px 10px;
+    }
+
+    .data-table td,
+    .admin-table td,
+    table td {
+        padding: 10px 10px;
+    }
+
+    /* Reduce column visibility for lesser-used columns */
+    .hide-on-tablet {
+        display: none;
+    }
+
+    .hide-on-mobile {
+        display: table-cell !important;
+    }
+}
+
+/* ========================================
+   MOBILE PHONES (< 768px)
+   CRITICAL: Table must not force horizontal scroll
+   Instead, transform into card-like stacked view
+   ======================================== */
+
+@media (max-width: 768px) {
+    /* === FOUNDATION === */
+    .data-table,
+    .admin-table,
+    table {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        font-size: 13px;
+        display: table;
+        white-space: normal;
+        border: none;
+        box-shadow: none;
+    }
+
+    /* === TABLE STRUCTURE === */
+    .data-table thead,
+    .admin-table thead,
+    table thead {
+        display: table-header-group;
+        width: 100%;
+        background: #f0f4ff;
+    }
+
+    .data-table tbody,
+    .admin-table tbody,
+    table tbody {
+        display: table-row-group;
+        width: 100%;
+    }
+
+    .data-table tr,
+    .admin-table tr,
+    table tr {
+        display: table-row;
+        width: 100%;
+        border-bottom: 1px solid #e0e7ff;
+        margin-bottom: 0;
+        box-sizing: border-box;
+    }
+
+    /* === CELL SIZING === */
+    .data-table th,
+    .admin-table th,
+    table th {
+        padding: 8px 6px;
+        font-size: 12px;
+        font-weight: 600;
+        display: table-cell;
+        width: auto;
+        text-align: left;
+        background: #f0f4ff;
+        border-bottom: 1px solid #ccc;
+        border-right: 1px solid #ddd;
+    }
+
+    .data-table td,
+    .admin-table td,
+    table td {
+        padding: 8px 6px;
+        font-size: 13px;
+        display: table-cell;
+        width: auto;
+        text-align: left;
+        border-right: 1px solid #e0e7ff;
+        position: relative;
+        min-height: 30px;
+        box-sizing: border-box;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        word-break: break-word;
+        hyphens: auto;
+    }
+
+    /* Last cell in row - no right border */
+    .data-table tr td:last-child,
+    .admin-table tr td:last-child,
+    table tr td:last-child {
+        border-right: none;
+    }
+
+    /* === HIDE NON-ESSENTIAL COLUMNS === */
+    .hide-on-mobile {
+        display: none;
+    }
+
+    /* === SPECIAL COLUMN HANDLING === */
+    
+    /* ID column - minimal */
+    .col-id {
+        width: auto;
+        padding: 6px;
+        text-align: left;
+        min-width: 50px;
+    }
+
+    /* Slug column - important, use monospace */
+    .col-slug {
+        width: auto;
+        padding: 8px;
+        word-break: break-all;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        background: #f9fafb;
+        min-width: 100px;
+    }
+
+    /* Title columns - full width */
+    .col-title {
+        width: auto;
+        padding: 8px;
+        word-break: break-word;
+        min-width: 120px;
+    }
+
+    /* Status column */
+    .col-status {
+        width: auto;
+        padding: 8px;
+        text-align: left;
+        min-width: 90px;
+    }
+
+    /* Actions column - minimal */
+    .col-actions {
+        width: auto;
+        padding: 6px;
+        text-align: center;
+        white-space: normal;
+    }
+
+    /* === ACTION BUTTONS === */
+    .action-buttons {
+        display: flex;
+        gap: 3px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .action-buttons .btn,
+    .action-buttons a,
+    .action-buttons button {
+        padding: 6px 8px;
+        font-size: 12px;
+        flex: 0 1 auto;
+        min-width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+    }
+
+    .action-buttons svg,
+    .action-buttons i {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* === BADGES AND LABELS === */
+    .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    /* === HIERARCHY STYLING === */
+    .hierarchy-indent {
+        margin-right: 4px;
+        font-size: 10px;
+    }
+
+    .hierarchy-icon {
+        width: 12px;
+        height: 12px;
+        margin-right: 4px;
+    }
+
+    .children-badge {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 2px 6px;
+        background: #0ea5e9;
+        color: white;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+
+    /* === TOGGLE BUTTONS === */
+    .toggle-children,
+    .toggle-placeholder {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        margin-right: 4px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: #4b5563;
+        flex-shrink: 0;
+    }
+
+    .toggle-placeholder {
+        visibility: hidden;
+    }
+
+    /* === ROW STATES === */
+    .data-table tbody tr:hover,
+    .admin-table tbody tr:hover,
+    table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .page-row.hidden {
+        display: none;
+    }
+
+    /* === EMPTY STATE === */
+    .empty-state {
+        padding: 20px;
+        text-align: center;
+        color: #6b7280;
+    }
+
+    /* === ID CELL === */
+    .id-cell {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .page-id {
+        font-weight: 600;
+        color: #1f2937;
+    }
+}
+
+/* ========================================
+   SMALL PHONES (480px - 768px)
+   Further refinements for smaller screens
+   ======================================== */
+
+@media (max-width: 768px) and (min-width: 481px) {
+    .data-table td,
+    .admin-table td,
+    table td {
+        padding: 7px 5px;
+        font-size: 12px;
+    }
+
+    .data-table th,
+    .admin-table th,
+    table th {
+        padding: 7px 5px;
+    }
+
+    .action-buttons .btn,
+    .action-buttons a,
+    .action-buttons button {
+        padding: 5px 7px;
+        font-size: 11px;
+        height: 30px;
+    }
+}
+
+/* ========================================
+   EXTRA SMALL PHONES (< 480px)
+   iPhone SE 2020 and similar (375px)
+   ======================================== */
+
+@media (max-width: 480px) {
+    .data-table,
+    .admin-table,
+    table {
+        font-size: 12px;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .data-table td,
+    .admin-table td,
+    table td {
+        padding: 6px 4px;
+        font-size: 12px;
+        min-height: 28px;
+    }
+
+    .data-table th,
+    .admin-table th,
+    table th {
+        padding: 6px 4px;
+        font-size: 11px;
+    }
+
+    /* Compact action buttons */
+    .action-buttons {
+        gap: 2px;
+    }
+
+    .action-buttons .btn,
+    .action-buttons a,
+    .action-buttons button {
+        padding: 4px 5px;
+        font-size: 10px;
+        min-width: 28px;
+        height: 26px;
+    }
+
+    .action-buttons svg,
+    .action-buttons i {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* Compress cell spacing */
+    .col-id,
+    .col-slug,
+    .col-title,
+    .col-status,
+    .col-actions {
+        padding: 6px 4px;
+    }
+
+    .children-badge {
+        font-size: 9px;
+        padding: 2px 4px;
+    }
+
+    .toggle-children,
+    .toggle-placeholder {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* ========================================
+   ABSOLUTE MINIMUM (< 375px)
+   Edge case for very small phones
+   ======================================== */
+
+@media (max-width: 375px) {
+    .data-table,
+    .admin-table,
+    table {
+        font-size: 11px;
+    }
+
+    .data-table td,
+    .admin-table td,
+    table td {
+        padding: 5px 3px;
+        min-height: 26px;
+    }
+
+    .data-table th,
+    .admin-table th,
+    table th {
+        padding: 5px 3px;
+        font-size: 10px;
+    }
+
+    .action-buttons .btn,
+    .action-buttons a,
+    .action-buttons button {
+        padding: 3px 4px;
+        font-size: 9px;
+        min-width: 24px;
+        height: 24px;
+    }
+
+    .toggle-children,
+    .toggle-placeholder {
+        width: 16px;
+        height: 16px;
+    }
+}

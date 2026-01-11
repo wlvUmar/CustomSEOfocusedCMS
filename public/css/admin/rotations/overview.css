@@ -1,7 +1,7 @@
 .rotation-summary {
     margin-top: 30px;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 16px;
     direction: ltr
 }
@@ -143,4 +143,206 @@
 .btn-sm:hover {
     background: linear-gradient(191deg, #303236d1 0%, #2c2e2e 100% 100%);
         box-shadow: 1px 2px 4px 0px rgb(51 50 42 / 25%);
+}
+
+/* Mobile Responsive Rotations */
+@media (max-width: 768px) {
+    .rotation-summary {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }
+
+    .rotation-card {
+        padding: 16px;
+        margin-top: 8px;
+        margin-bottom: 15px;
+    }
+
+    .rotation-header {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .rotation-header h3 {
+        font-size: 1.05em;
+    }
+
+    .slug {
+        font-size: 0.85em;
+    }
+
+    .rotation-stats {
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .stat-badge {
+        min-width: 70px;
+    }
+
+    .stat-number {
+        font-size: 1.3em;
+    }
+
+    .stat-label {
+        font-size: 0.8em;
+    }
+
+    .progress-bar {
+        height: 6px;
+        margin-bottom: 12px;
+    }
+
+    .rotation-details {
+        margin-bottom: 12px;
+    }
+
+    .detail-row {
+        padding: 6px 0;
+        font-size: 0.9em;
+    }
+
+    .rotation-actions {
+        flex-direction: column;
+        gap: 8px;
+        padding-top: 12px;
+    }
+
+    .rotation-actions .btn {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .rotation-summary {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .rotation-card {
+        padding: 14px;
+        margin-top: 6px;
+        margin-bottom: 12px;
+    }
+
+    .rotation-header h3 {
+        font-size: 0.95em;
+    }
+
+    .rotation-stats {
+        gap: 10px;
+    }
+
+    .stat-number {
+        font-size: 1.2em;
+    }
+
+    .stat-label {
+        font-size: 0.75em;
+    }
+
+    .detail-row {
+        padding: 5px 0;
+        font-size: 0.85em;
+    }
+
+    .detail-row .label {
+        font-weight: 500;
+    }
+
+    .rotation-actions {
+        gap: 6px;
+        padding-top: 10px;
+    }
+
+    .rotation-actions .btn {
+        padding: 8px 10px;
+        font-size: 11px;
+        min-height: 36px;
+    }
+}
+
+@media (max-width: 375px) {
+    .rotation-summary {
+        gap: 8px;
+    }
+
+    .rotation-card {
+        padding: 12px;
+        margin-top: 4px;
+        margin-bottom: 10px;
+        border-radius: 6px;
+    }
+
+    .rotation-header {
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+
+    .rotation-header h3 {
+        font-size: 0.9em;
+    }
+
+    .rotation-header h3 a {
+        word-break: break-word;
+    }
+
+    .slug {
+        font-size: 0.8em;
+    }
+
+    .rotation-stats {
+        gap: 8px;
+    }
+
+    .stat-badge {
+        min-width: 60px;
+    }
+
+    .stat-number {
+        font-size: 1.1em;
+    }
+
+    .stat-label {
+        font-size: 0.7em;
+    }
+
+    .progress-bar {
+        height: 5px;
+        margin-bottom: 10px;
+    }
+
+    .rotation-details {
+        margin-bottom: 10px;
+    }
+
+    .detail-row {
+        padding: 4px 0;
+        font-size: 0.8em;
+        gap: 8px;
+    }
+
+    .detail-row .label,
+    .detail-row .value {
+        flex: 1;
+        word-break: break-word;
+    }
+
+    .rotation-actions {
+        flex-direction: column;
+        gap: 6px;
+        padding-top: 10px;
+        justify-content: flex-start;
+        flex-direction: column;
+    }
+
+    .rotation-actions .btn {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 11px;
+        min-height: 36px;
+    }
 }

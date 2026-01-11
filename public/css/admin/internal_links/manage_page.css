@@ -256,3 +256,62 @@
         min-height: 44px;
     }
 }
+
+@media (max-width: 375px) {
+    .links-stats-bar {
+        padding: 10px;
+        gap: 10px;
+        flex-direction: column;
+    }
+
+    .stat-item {
+        width: 100%;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+
+    .stat-value {
+        font-size: 14px;
+    }
+
+    .two-column-layout {
+        gap: 12px;
+    }
+
+    .column h2 {
+        font-size: 15px;
+        margin-bottom: 12px;
+    }
+
+    .link-item {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .link-info strong {
+        font-size: 12px;
+    }
+
+    .link-info small {
+        font-size: 10px;
+    }
+
+    .empty-state {
+        padding: 20px 12px;
+    }
+
+    .empty-state p {
+        font-size: 13px;
+    }
+
+    .search-box input {
+        padding: 8px 10px 8px 32px;
+        font-size: 14px;
+        min-height: 40px;
+    }
+}

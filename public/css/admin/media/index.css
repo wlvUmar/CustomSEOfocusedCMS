@@ -63,13 +63,14 @@
     padding: 8px 16px;
     border: 1px solid #ddd;
     border-radius: 6px;
-    width: 300px;
+    width: 100%;
+    max-width: 300px;
 }
 
 .media-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
     margin-top: 20px;
 }
 
@@ -288,13 +289,6 @@
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
-}
-
-
-.media-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 20px;
 }
 
 .media-item {
@@ -579,11 +573,294 @@
 
 
 @media (max-width: 768px) {
-    .media-search-sort {
+    .media-toolbar {
+        gap: 12px;
+        flex-direction: column;
+    }
+
+    .filter-tabs {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .search-box input {
+        max-width: 100%;
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    .media-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+    }
+
+    .media-preview {
+        height: 140px;
+    }
+
+    .media-info {
+        padding: 10px;
+    }
+
+    .media-name {
+        font-size: 0.8em;
+    }
+
+    .media-actions {
+        padding: 8px;
+        gap: 4px;
+    }
+
+    .media-actions button {
+        padding: 4px 6px;
+        font-size: 0.75em;
+    }
+
+    .modal-content {
+        width: 95%;
+        max-width: 90vw;
+        max-height: 85vh;
+    }
+
+    .modal-header {
+        padding: 16px;
+    }
+
+    .modal-body {
+        padding: 16px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.1em;
+        gap: 8px;
+    }
+
+    .size-options {
+        gap: 8px;
+    }
+
+    .size-option {
+        padding: 10px;
+        font-size: 0.9em;
+    }
+
+    .bulk-actions {
+        padding: 12px;
+        flex-direction: column;
+    }
+
+    .bulk-actions.active {
+        gap: 8px;
+    }
+
+    .media-controls {
+        gap: 10px;
+    }
+
+    .media-filters {
         width: 100%;
     }
 
-    .media-search {
+    .media-filters button {
         flex: 1;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .media-toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filter-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .filter-tab {
+        padding: 6px 12px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+
+    .media-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 10px;
+    }
+
+    .media-preview {
+        height: 100px;
+    }
+
+    .media-info {
+        padding: 8px;
+    }
+
+    .media-name {
+        font-size: 0.75em;
+        margin-bottom: 4px;
+    }
+
+    .media-meta {
+        font-size: 0.7em;
+        margin-bottom: 6px;
+    }
+
+    .media-actions {
+        padding: 6px;
+        gap: 3px;
+    }
+
+    .media-actions button {
+        padding: 4px 4px;
+        font-size: 0.7em;
+    }
+
+    .media-checkbox {
+        width: 18px;
+        height: 18px;
+        top: 6px;
+        left: 6px;
+    }
+
+    .modal-content {
+        width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .modal-header {
+        padding: 12px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .modal-header h2 {
+        font-size: 1em;
+        width: 100%;
+    }
+
+    .close-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+    }
+
+    .modal-body {
+        padding: 12px;
+    }
+
+    .insert-preview {
+        max-height: 40vh;
+        margin-bottom: 12px;
+    }
+
+    .size-options {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .size-option {
+        padding: 10px;
+        font-size: 0.85em;
+    }
+
+    .copy-field {
+        flex-direction: column;
+    }
+
+    .copy-field input {
+        width: 100%;
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    .insert-confirm {
+        margin-top: 15px;
+    }
+
+    .empty-state {
+        padding: 30px 16px;
+    }
+
+    .empty-state h3 {
+        font-size: 1em;
+    }
+}
+
+@media (max-width: 375px) {
+    .media-toolbar {
+        gap: 8px;
+    }
+
+    .filter-tab {
+        padding: 5px 10px;
+        font-size: 11px;
+    }
+
+    .search-box input {
+        padding: 8px 10px;
+        font-size: 14px;
+        min-height: 36px;
+    }
+
+    .media-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .media-preview {
+        height: 80px;
+    }
+
+    .media-info {
+        padding: 6px;
+    }
+
+    .media-name {
+        font-size: 0.7em;
+    }
+
+    .media-meta {
+        font-size: 0.65em;
+    }
+
+    .media-actions button {
+        font-size: 0.65em;
+        padding: 3px 3px;
+    }
+
+    .modal-header {
+        padding: 10px;
+    }
+
+    .modal-body {
+        padding: 10px;
+    }
+
+    .modal-header h2 {
+        font-size: 0.95em;
+    }
+
+    .insert-preview {
+        max-height: 30vh;
+    }
+
+    .size-option {
+        padding: 8px;
+        font-size: 0.8em;
+    }
+
+    .empty-state {
+        padding: 20px 12px;
     }
 }

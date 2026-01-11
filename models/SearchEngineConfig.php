@@ -9,7 +9,7 @@ class SearchEngineConfig {
     }
 
     public function getAll() {
-        return $this->db->fetchAll("SELECT * FROM search_engine_config ORDER BY FIELD(engine, 'bing', 'yandex', 'naver', 'seznam', 'yep', 'google')");
+        return $this->db->fetchAll("SELECT * FROM search_engine_config ORDER BY FIELD(engine, 'bing', 'yandex', 'google')");
     }
 
     public function get(string $engine) {
@@ -73,7 +73,8 @@ class SearchEngineConfig {
      * Ensure default configuration exists for all supported engines
      */
     public function ensureDefaults() {
-        $engines = ['bing', 'yandex', 'google', 'naver', 'seznam', 'yep'];
+        // Only these 3 engines are supported by the database enum
+        $engines = ['bing', 'yandex', 'google'];
         
         // First, clean up any empty string entries (bad data)
         try {

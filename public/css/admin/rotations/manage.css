@@ -138,3 +138,214 @@
     padding-top: 20px;
     border-top: 1px solid var(--accent-light);
 }
+
+/* Mobile Responsive Rotations Manage */
+@media (max-width: 768px) {
+    .rotation-stats-bar {
+        gap: 20px;
+        padding: 16px;
+        margin-bottom: 16px;
+        flex-direction: column;
+    }
+
+    .stat-item {
+        min-width: auto;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .stat-label {
+        min-width: 100px;
+        margin-bottom: 0;
+    }
+
+    .bulk-actions-bar {
+        padding: 12px;
+        margin-bottom: 12px;
+        gap: 12px;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .bulk-buttons {
+        width: 100%;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .bulk-buttons button {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    .rotation-table {
+        font-size: 12px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .rotation-table thead th,
+    .rotation-table tbody td {
+        padding: 10px 8px;
+    }
+
+    .action-buttons {
+        gap: 4px;
+        flex-direction: column;
+    }
+
+    .action-buttons .btn {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 11px;
+        min-height: 36px;
+    }
+
+    .modal-content {
+        width: 95%;
+    }
+
+    .modal-header {
+        padding: 16px;
+    }
+
+    .modal form {
+        padding: 16px;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .modal-actions button {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .rotation-stats-bar {
+        gap: 16px;
+        padding: 12px;
+    }
+
+    .stat-item {
+        padding: 8px 0;
+        border-bottom: 1px solid var(--primary-light);
+    }
+
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+
+    .stat-value {
+        font-size: 1.1em;
+    }
+
+    .bulk-actions-bar {
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .bulk-buttons button {
+        padding: 8px 10px;
+        font-size: 11px;
+        min-height: 36px;
+    }
+
+    .rotation-table {
+        font-size: 11px;
+        min-width: 100%;
+    }
+
+    .rotation-table thead th,
+    .rotation-table tbody td {
+        padding: 8px 6px;
+    }
+
+    .content-preview {
+        font-size: 0.8em;
+    }
+
+    .action-buttons .btn {
+        padding: 6px 8px;
+        font-size: 10px;
+        min-height: 32px;
+    }
+
+    .modal-content {
+        width: 100%;
+        border-radius: 0;
+    }
+
+    .modal-header h2 {
+        font-size: 1.1em;
+    }
+
+    .modal-actions button {
+        padding: 8px 10px;
+        font-size: 11px;
+        min-height: 36px;
+    }
+}
+
+@media (max-width: 375px) {
+    .rotation-stats-bar {
+        gap: 12px;
+        padding: 10px;
+    }
+
+    .stat-label {
+        font-size: 0.8em;
+        min-width: 80px;
+    }
+
+    .stat-value {
+        font-size: 0.95em;
+    }
+
+    .bulk-actions-bar {
+        padding: 8px;
+    }
+
+    .bulk-buttons button {
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+
+    .rotation-table {
+        font-size: 10px;
+    }
+
+    .rotation-table thead th,
+    .rotation-table tbody td {
+        padding: 6px 4px;
+    }
+
+    .action-buttons .btn {
+        padding: 6px 8px;
+        font-size: 9px;
+        min-height: 32px;
+    }
+
+    .modal-header {
+        padding: 12px;
+    }
+
+    .modal form {
+        padding: 12px;
+    }
+
+    .modal-header h2 {
+        font-size: 1em;
+    }
+
+    .modal-actions button {
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+}

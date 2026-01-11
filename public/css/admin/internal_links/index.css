@@ -2,8 +2,8 @@
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
     margin-bottom: 30px;
 }
 
@@ -217,16 +217,216 @@
 }
 
 @media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .stat-card {
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .stat-icon {
+        width: 44px;
+        height: 44px;
+    }
+
+    .stat-icon i {
+        width: 20px;
+        height: 20px;
+    }
+
+    .stat-info h3 {
+        font-size: 24px;
+    }
+
+    .stat-info p {
+        font-size: 13px;
+    }
+
+    .info-banner {
+        padding: 14px;
+        gap: 10px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .info-banner div {
+        font-size: 13px;
+    }
+
     .modal-content {
         width: 95%;
-        max-width: none;
+        max-height: 85vh;
     }
-    
+
+    .modal-header {
+        padding: 16px;
+    }
+
+    .modal form {
+        padding: 16px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.1em;
+    }
+
+    .modal .form-group {
+        margin-bottom: 15px;
+    }
+
+    .modal form select,
+    .modal form input[type="number"] {
+        padding: 8px 10px;
+        font-size: 14px;
+        min-height: 40px;
+    }
+
     .modal-actions {
         flex-direction: column;
+        gap: 8px;
+        margin-top: 20px;
     }
-    
+
     .modal-actions button {
         width: 100%;
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        gap: 10px;
+    }
+
+    .stat-card {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 14px;
+        gap: 10px;
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .stat-icon i {
+        width: 18px;
+        height: 18px;
+    }
+
+    .stat-info h3 {
+        font-size: 20px;
+    }
+
+    .stat-info p {
+        font-size: 12px;
+    }
+
+    .info-banner {
+        padding: 12px;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .info-banner i {
+        margin-top: 0;
+    }
+
+    .info-banner div {
+        font-size: 12px;
+    }
+
+    .modal-content {
+        width: 100%;
+        border-radius: 0;
+    }
+
+    .modal-header {
+        padding: 12px;
+    }
+
+    .modal form {
+        padding: 12px;
+    }
+
+    .modal-header h2 {
+        font-size: 1em;
+    }
+
+    .close-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 1.2em;
+    }
+
+    .modal form select,
+    .modal form input[type="number"] {
+        padding: 8px 10px;
+        font-size: 14px;
+        min-height: 40px;
+    }
+
+    .modal .form-group {
+        margin-bottom: 12px;
+    }
+
+    .modal .form-group label {
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+
+    .modal .form-group small {
+        font-size: 12px;
+    }
+
+    .modal .alert-warning {
+        padding: 10px;
+        gap: 8px;
+        margin-top: 15px;
+    }
+
+    .modal-actions {
+        gap: 6px;
+        margin-top: 15px;
+    }
+
+    .modal-actions button {
+        padding: 8px 10px;
+        font-size: 11px;
+        min-height: 36px;
+    }
+}
+
+@media (max-width: 375px) {
+    .stat-card {
+        padding: 12px;
+    }
+
+    .stat-info h3 {
+        font-size: 18px;
+    }
+
+    .info-banner {
+        padding: 10px;
+    }
+
+    .modal-header {
+        padding: 10px;
+    }
+
+    .modal form {
+        padding: 10px;
+    }
+
+    .modal form select,
+    .modal form input[type="number"] {
+        padding: 8px 10px;
+        font-size: 14px;
+        min-height: 36px;
     }
 }

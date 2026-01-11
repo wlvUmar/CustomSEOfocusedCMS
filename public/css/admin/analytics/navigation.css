@@ -211,24 +211,239 @@
     .page-header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+
+    .page-header h1 {
+        font-size: 1.3em;
+        width: 100%;
+        word-break: break-word;
     }
     
     .header-actions {
         width: 100%;
         flex-direction: column;
+        gap: 8px;
+        margin-top: 0;
     }
     
     .header-actions .btn,
     .header-actions select {
         width: 100%;
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    .empty-state {
+        padding: 30px 20px;
+    }
+
+    .empty-state h2 {
+        font-size: 1.1em;
+        margin-bottom: 12px;
+    }
+
+    .crawl-table-container {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .crawl-table-container h2 {
+        font-size: 1.05em;
+        margin-bottom: 12px;
+    }
+
+    .data-table {
+        font-size: 12px;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 10px 8px;
+    }
+
+    .badge {
+        padding: 3px 8px;
+        font-size: 0.8em;
+    }
+
+    .recommendations-panel {
+        padding: 20px;
+    }
+
+    .recommendations-panel h2 {
+        font-size: 1.05em;
+        margin-bottom: 15px;
     }
     
     .recommendation {
         flex-direction: column;
-        gap: 15px;
+        gap: 12px;
+        padding: 16px;
+        margin-bottom: 15px;
     }
     
     .rec-icon {
         font-size: 1.5em;
+    }
+
+    .rec-content h3 {
+        font-size: 0.95em;
+        margin-bottom: 6px;
+    }
+
+    .rec-content p,
+    .rec-content li {
+        font-size: 0.85em;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-header h1 {
+        font-size: 1.1em;
+    }
+
+    .header-actions .btn,
+    .header-actions select {
+        padding: 8px 10px;
+        font-size: 11px;
+        min-height: 36px;
+    }
+
+    .empty-state {
+        padding: 20px 16px;
+    }
+
+    .empty-state h2 {
+        font-size: 1em;
+    }
+
+    .crawl-table-container {
+        padding: 12px;
+    }
+
+    .crawl-table-container h2 {
+        font-size: 0.95em;
+        margin-bottom: 10px;
+    }
+
+    .data-table {
+        font-size: 11px;
+        min-width: 100%;
+        overflow-x: auto;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 8px 6px;
+    }
+
+    .recommendations-panel {
+        padding: 16px;
+    }
+
+    .recommendations-panel h2 {
+        font-size: 1em;
+        margin-bottom: 12px;
+    }
+
+    .recommendation {
+        padding: 14px;
+        gap: 10px;
+    }
+
+    .rec-icon {
+        font-size: 1.3em;
+    }
+
+    .rec-icon i {
+        width: 28px;
+        height: 28px;
+    }
+
+    .rec-content h3 {
+        font-size: 0.9em;
+        margin-bottom: 5px;
+    }
+
+    .rec-content p,
+    .rec-content li {
+        font-size: 0.8em;
+        margin-bottom: 5px;
+    }
+
+    .rec-content ul {
+        margin: 6px 0;
+        padding-left: 16px;
+    }
+}
+
+@media (max-width: 375px) {
+    .page-header h1 {
+        font-size: 1em;
+    }
+
+    .header-actions .btn,
+    .header-actions select {
+        padding: 8px 10px;
+        font-size: 10px;
+    }
+
+    .empty-state {
+        padding: 16px 12px;
+    }
+
+    .empty-state h2 {
+        font-size: 0.95em;
+    }
+
+    .crawl-table-container {
+        padding: 10px;
+    }
+
+    .crawl-table-container h2 {
+        font-size: 0.9em;
+    }
+
+    .data-table {
+        font-size: 10px;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 6px 4px;
+    }
+
+    .badge {
+        padding: 2px 6px;
+        font-size: 0.75em;
+    }
+
+    .recommendations-panel {
+        padding: 12px;
+    }
+
+    .recommendations-panel h2 {
+        font-size: 0.9em;
+    }
+
+    .recommendation {
+        padding: 12px;
+        gap: 8px;
+    }
+
+    .rec-icon i {
+        width: 24px;
+        height: 24px;
+    }
+
+    .rec-content h3 {
+        font-size: 0.85em;
+    }
+
+    .rec-content p,
+    .rec-content li {
+        font-size: 0.75em;
     }
 }

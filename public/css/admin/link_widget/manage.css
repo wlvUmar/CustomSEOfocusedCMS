@@ -70,3 +70,107 @@
     color: #6b7280;
     font-size: 0.85em;
 }
+
+/* Mobile Responsive Link Widget */
+@media (max-width: 768px) {
+    .link-widget-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .empty-state {
+        padding: 30px 16px;
+    }
+
+    .empty-state i {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 8px;
+    }
+
+    .link-item {
+        padding: 10px;
+        margin-bottom: 6px;
+        gap: 8px;
+    }
+
+    .link-info small {
+        font-size: 0.8em;
+    }
+
+    .available-page-item {
+        padding: 10px;
+    }
+
+    .available-page-item small {
+        font-size: 0.8em;
+    }
+}
+
+@media (max-width: 480px) {
+    .link-widget-grid {
+        gap: 12px;
+    }
+
+    .empty-state {
+        padding: 20px 12px;
+    }
+
+    .empty-state i {
+        width: 36px;
+        height: 36px;
+    }
+
+    .link-item {
+        padding: 8px;
+        margin-bottom: 5px;
+        flex-wrap: wrap;
+    }
+
+    .link-drag-handle {
+        font-size: 0.9em;
+    }
+
+    .link-info strong {
+        font-size: 0.9em;
+    }
+
+    .link-info small {
+        font-size: 0.75em;
+    }
+
+    .available-page-item {
+        padding: 8px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .available-page-item small {
+        font-size: 0.75em;
+    }
+}
+
+@media (max-width: 375px) {
+    .empty-state {
+        padding: 16px 10px;
+    }
+
+    .empty-state i {
+        width: 32px;
+        height: 32px;
+    }
+
+    .link-item {
+        padding: 6px;
+        gap: 6px;
+    }
+
+    .link-info strong {
+        font-size: 0.85em;
+    }
+
+    .available-page-item {
+        padding: 6px;
+    }
+}

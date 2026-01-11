@@ -63,7 +63,7 @@ function renderPageRow($page, $depth = 0) {
     $hasChildren = !empty($page['children']);
     ?>
     <tr class="page-row depth-<?= $depth ?>" data-page-id="<?= $page['id'] ?>">
-        <td class="col-id">
+        <td class="col-id" data-label="ID">
             <div class="id-cell">
                 <?php if ($depth > 0): ?>
                     <span class="hierarchy-indent"><?= $indent ?></span>
@@ -81,24 +81,24 @@ function renderPageRow($page, $depth = 0) {
                 <span class="page-id"><?= $page['id'] ?></span>
             </div>
         </td>
-        <td class="col-slug">
+        <td class="col-slug" data-label="Slug">
             <?= e($page['slug']) ?>
         </td>
-        <td class="col-title">
+        <td class="col-title" data-label="Title (RU)">
             <?= e($page['title_ru']) ?>
             <?php if ($hasChildren): ?>
                 <span class="children-badge"><?= count($page['children']) ?></span>
             <?php endif; ?>
         </td>
-        <td class="col-title">
+        <td class="col-title" data-label="Title (UZ)">
             <?= e($page['title_uz']) ?>
         </td>
-        <td class="col-status text-center">
+        <td class="col-status text-center" data-label="Status">
             <span class="status-badge status-<?= $page['is_published'] ? 'active' : 'inactive' ?>">
                 <?= $page['is_published'] ? 'Published' : 'Draft' ?>
             </span>
         </td>
-        <td class="col-actions text-center">
+        <td class="col-actions text-center" data-label="Actions">
             <div class="action-buttons">
                 
                 <?php if ($page['is_published']): ?>
@@ -211,7 +211,7 @@ function renderPageRow($page, $depth = 0) {
         if (empty($sortedHierarchy)): 
         ?>
         <tr>
-            <td colspan="6" class="text-center">
+            <td colspan="6" class="text-center" data-label="Empty">
                 <div class="empty-state">
                     <i data-feather="inbox"></i>
                     <p>No pages yet</p>

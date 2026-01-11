@@ -222,3 +222,174 @@
     border-radius: 4px;
     color: #ef4444;
 }
+
+/* Mobile Responsive Sitemap */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .stat-card {
+        padding: 20px;
+    }
+
+    .stat-card h3 {
+        font-size: 0.8rem;
+    }
+
+    .stat-number {
+        font-size: 2.2rem;
+    }
+
+    .info-section {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .info-section h2 {
+        font-size: 1.1rem;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+    }
+
+    .url-box {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+        gap: 10px;
+    }
+
+    .config-preview {
+        padding: 16px;
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+
+    .resource-links {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .resource-links a {
+        padding: 8px 12px;
+        font-size: 0.9em;
+    }
+
+    .feature-list li {
+        padding: 6px 0;
+        font-size: 0.9em;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-container table {
+        font-size: 12px;
+    }
+
+    .table-container th,
+    .table-container td {
+        padding: 10px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        gap: 12px;
+    }
+
+    .stat-card {
+        padding: 16px;
+    }
+
+    .stat-card h3 {
+        font-size: 0.75rem;
+        margin-bottom: 10px;
+    }
+
+    .stat-number {
+        font-size: 1.8rem;
+    }
+
+    .stat-subtext {
+        font-size: 0.8rem;
+    }
+
+    .info-section {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .info-section h2 {
+        font-size: 1rem;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+    }
+
+    .url-box {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .config-preview {
+        padding: 12px;
+        font-size: 0.8rem;
+        line-height: 1.3;
+    }
+
+    .status-banner {
+        padding: 12px 14px;
+        font-size: 0.9em;
+    }
+
+    .resource-links a {
+        padding: 8px 10px;
+        font-size: 0.85em;
+    }
+
+    .feature-list {
+        margin-bottom: 16px;
+    }
+
+    .feature-list li {
+        padding: 5px 0;
+        font-size: 0.85em;
+    }
+
+    .table-container table {
+        font-size: 11px;
+        min-width: 100%;
+    }
+
+    .table-container th,
+    .table-container td {
+        padding: 8px 6px;
+    }
+}
+
+@media (max-width: 375px) {
+    .stat-number {
+        font-size: 1.6rem;
+    }
+
+    .config-preview {
+        font-size: 0.75rem;
+    }
+
+    .url-box {
+        font-size: 0.8rem;
+    }
+
+    .table-container table {
+        font-size: 10px;
+    }
+
+    .table-container th,
+    .table-container td {
+        padding: 6px 4px;
+    }
+}

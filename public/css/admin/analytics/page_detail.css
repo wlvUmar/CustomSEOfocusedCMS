@@ -144,7 +144,236 @@
 
 /* --- Responsive --- */
 @media (max-width: 768px) {
-    .crawl-summary-cards { grid-template-columns: 1fr; }
-    .header-actions { flex-direction: column; gap: 10px; }
-    .recommendation { flex-direction: column; gap: 10px; }
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+
+    .page-header h1 {
+        font-size: 1.3em;
+        width: 100%;
+        word-break: break-word;
+    }
+
+    .crawl-summary-cards {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+
+    .summary-card {
+        gap: 12px;
+        padding: 16px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .card-icon {
+        font-size: 1.6em;
+    }
+
+    .card-number {
+        font-size: 1.6em;
+    }
+
+    .header-actions {
+        width: 100%;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 0;
+    }
+
+    .header-actions .btn {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    .crawl-table-container {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .crawl-table-container h2 {
+        font-size: 1.05em;
+        margin-bottom: 12px;
+    }
+
+    .data-table {
+        font-size: 12px;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 10px 8px;
+    }
+
+    .recommendations-panel {
+        padding: 20px;
+    }
+
+    .recommendation {
+        gap: 15px;
+        padding: 16px;
+        margin-bottom: 15px;
+        flex-direction: column;
+    }
+
+    .rec-icon {
+        font-size: 1.5em;
+    }
+
+    .rec-content h3 {
+        font-size: 1em;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-header h1 {
+        font-size: 1.15em;
+    }
+
+    .crawl-summary-cards {
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .summary-card {
+        padding: 14px;
+        gap: 10px;
+    }
+
+    .card-icon {
+        font-size: 1.4em;
+    }
+
+    .card-number {
+        font-size: 1.4em;
+    }
+
+    .card-label {
+        font-size: 0.9em;
+    }
+
+    .card-desc {
+        font-size: 0.8em;
+    }
+
+    .header-actions .btn {
+        padding: 8px 10px;
+        font-size: 11px;
+        min-height: 36px;
+    }
+
+    .data-table {
+        font-size: 11px;
+        min-width: 100%;
+        overflow-x: auto;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 8px 6px;
+    }
+
+    .status-badge {
+        padding: 3px 8px;
+        font-size: 0.8em;
+    }
+
+    .recommendations-panel {
+        padding: 16px;
+    }
+
+    .recommendations-panel h2 {
+        font-size: 1.05em;
+        margin-bottom: 15px;
+    }
+
+    .recommendation {
+        padding: 14px;
+        gap: 12px;
+    }
+
+    .rec-content h3 {
+        font-size: 0.95em;
+        margin-bottom: 6px;
+    }
+
+    .rec-content p,
+    .rec-content li {
+        font-size: 0.85em;
+        margin-bottom: 6px;
+    }
+
+    .rec-content ul {
+        margin: 8px 0;
+        padding-left: 16px;
+    }
+}
+
+@media (max-width: 375px) {
+    .page-header h1 {
+        font-size: 1.05em;
+    }
+
+    .crawl-summary-cards {
+        gap: 10px;
+    }
+
+    .summary-card {
+        padding: 12px;
+        gap: 8px;
+    }
+
+    .card-icon {
+        font-size: 1.2em;
+    }
+
+    .card-number {
+        font-size: 1.2em;
+    }
+
+    .header-actions {
+        gap: 6px;
+    }
+
+    .header-actions .btn {
+        padding: 8px 10px;
+        font-size: 10px;
+        min-height: 36px;
+    }
+
+    .data-table {
+        font-size: 10px;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 6px 4px;
+    }
+
+    .recommendations-panel {
+        padding: 12px;
+    }
+
+    .recommendations-panel h2 {
+        font-size: 0.95em;
+    }
+
+    .recommendation {
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .rec-content h3 {
+        font-size: 0.9em;
+    }
+
+    .rec-content p,
+    .rec-content li {
+        font-size: 0.8em;
+    }
 }

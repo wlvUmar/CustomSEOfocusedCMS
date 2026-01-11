@@ -16,16 +16,13 @@
     <?= csrfField() ?>
     
     <?php 
-    $indexNowEngines = ['bing', 'yandex', 'naver', 'seznam', 'yep'];
+    $indexNowEngines = ['bing', 'yandex'];
     foreach ($configs as $config): 
         $isIndexNow = in_array($config['engine'], $indexNowEngines);
         $engineIcons = [
             'bing' => 'globe',
             'yandex' => 'compass',
-            'google' => 'chrome',
-            'naver' => 'map',
-            'seznam' => 'search',
-            'yep' => 'zap'
+            'google' => 'chrome'
         ];
         $icon = $engineIcons[$config['engine']] ?? 'globe';
     ?>
@@ -48,12 +45,12 @@
         
         
         <div class="form-group">
-            <label>API Key <?php if (in_array($config['engine'], ['bing', 'yandex', 'naver', 'seznam', 'yep'])): ?>(shared IndexNow key)<?php else: ?>(optional)<?php endif; ?></label>
+            <label>API Key <?php if (in_array($config['engine'], ['bing', 'yandex'])): ?>(shared IndexNow key)<?php else: ?>(optional)<?php endif; ?></label>
             <input type="text" 
                    name="<?= $config['engine'] ?>_api_key" 
                    class="form-control" 
                    value="<?= e($config['api_key'] ?? '') ?>"
-                   <?= in_array($config['engine'], ['bing', 'yandex', 'naver', 'seznam', 'yep']) ? 'readonly' : '' ?>>
+                   <?= in_array($config['engine'], ['bing', 'yandex']) ? 'readonly' : '' ?>>
             <?php if ($config['engine'] === 'bing' && !empty($config['api_key'])): ?>
             <small class="form-text text-muted">
                 <strong>Verification file:</strong> 
@@ -74,7 +71,7 @@
             <small class="form-text text-muted">
                 Bing API key will be auto-generated on first submission. A verification file will be created in /public/
             </small>
-            <?php elseif (in_array($config['engine'], ['yandex', 'naver', 'seznam', 'yep'])): ?>
+            <?php elseif (in_array($config['engine'], ['yandex'])): ?>
             <small class="form-text text-muted">
                 This engine uses the same IndexNow API key as Bing. The key is shared across all IndexNow engines.
             </small>

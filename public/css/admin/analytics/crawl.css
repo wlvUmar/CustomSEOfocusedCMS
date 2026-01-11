@@ -186,14 +186,186 @@
 @media (max-width: 768px) {
     .crawl-summary-cards {
         grid-template-columns: 1fr;
+        gap: 15px;
     }
     
+    .summary-card {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .card-icon {
+        font-size: 1.5em;
+    }
+
+    .card-number {
+        font-size: 1.6em;
+    }
+
+    .crawl-table-container {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .crawl-table-container h2 {
+        font-size: 1.05em;
+        margin-bottom: 15px;
+    }
+
+    .data-table {
+        font-size: 12px;
+        min-width: 500px;
+    }
+
     .action-buttons {
         flex-direction: column;
+        gap: 6px;
     }
-    
+
+    .action-buttons .btn {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 12px;
+        min-height: 36px;
+    }
+
+    .recommendations-panel {
+        padding: 20px;
+    }
+
+    .recommendations-panel h2 {
+        font-size: 1.05em;
+        margin-bottom: 15px;
+    }
+
+    .recommendation {
+        padding: 16px;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+
+    .rec-icon {
+        font-size: 1.5em;
+        flex-shrink: 0;
+    }
+
+    .rec-content h3 {
+        font-size: 0.95em;
+        margin-bottom: 6px;
+    }
+
+    .rec-content p {
+        font-size: 0.85em;
+        margin-bottom: 6px;
+    }
+
+    .rec-content ul {
+        margin: 8px 0;
+        padding-left: 18px;
+    }
+
+    .rec-content li {
+        font-size: 0.85em;
+        margin-bottom: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .crawl-summary-cards {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .summary-card {
+        padding: 16px;
+        gap: 10px;
+    }
+
+    .card-number {
+        font-size: 1.4em;
+    }
+
+    .card-label {
+        font-size: 0.9em;
+    }
+
+    .card-desc {
+        font-size: 0.8em;
+    }
+
+    .data-table {
+        font-size: 11px;
+        min-width: 100%;
+    }
+
+    .action-buttons .btn {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 11px;
+        min-height: 36px;
+    }
+
     .recommendation {
         flex-direction: column;
         gap: 10px;
+        padding: 14px;
+    }
+}
+
+@media (max-width: 375px) {
+    .crawl-summary-cards {
+        gap: 10px;
+    }
+
+    .summary-card {
+        padding: 12px;
+        gap: 8px;
+    }
+
+    .card-icon {
+        font-size: 1.2em;
+    }
+
+    .card-number {
+        font-size: 1.2em;
+    }
+
+    .card-label {
+        font-size: 0.85em;
+    }
+
+    .days-ago {
+        padding: 3px 6px;
+        font-size: 0.75em;
+    }
+
+    .status-badge {
+        padding: 3px 8px;
+        font-size: 0.8em;
+    }
+
+    .action-buttons .btn {
+        padding: 6px 8px;
+        font-size: 10px;
+        min-height: 32px;
+    }
+
+    .recommendations-panel {
+        padding: 12px;
+    }
+
+    .recommendation {
+        padding: 12px;
+        gap: 8px;
+    }
+
+    .rec-content h3 {
+        font-size: 0.9em;
+    }
+
+    .rec-content p,
+    .rec-content li {
+        font-size: 0.8em;
     }
 }

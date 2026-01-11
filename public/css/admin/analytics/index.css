@@ -14,7 +14,7 @@
 
 .trend-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 20px;
     margin-bottom: 30px;
 }
@@ -71,7 +71,7 @@
 
 .quick-access-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 20px;
     margin-bottom: 40px;
 }
@@ -141,7 +141,7 @@
 
 .chart-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 20px;
     margin: 30px 0;
 }
@@ -288,7 +288,7 @@
 
 .performers-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 15px;
     margin-top: 20px;
 }
@@ -402,4 +402,193 @@
 .ctr-badge.low {
     background: #f3f4f6;
     color: #6b7280;
+}
+
+/* Mobile Responsive Analytics */
+@media (max-width: 768px) {
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .header-actions .btn {
+        width: 100%;
+    }
+
+    .trend-cards {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 15px;
+    }
+
+    .trend-card {
+        padding: 16px;
+    }
+
+    .trend-value {
+        font-size: 1.6em;
+    }
+
+    .quick-access-cards {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .quick-card-header {
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+
+    .chart-container {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        margin: 20px 0;
+    }
+
+    .chart-box {
+        padding: 15px;
+    }
+
+    .chart-box h2 {
+        font-size: 0.95em;
+        margin-bottom: 15px;
+    }
+
+    .performers-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+    }
+
+    .performer-card {
+        padding: 12px;
+    }
+
+    .lang-cards {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .lang-card {
+        padding: 16px;
+    }
+
+    .lang-metrics {
+        gap: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .trend-cards {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .trend-card {
+        padding: 14px;
+    }
+
+    .trend-value {
+        font-size: 1.4em;
+    }
+
+    .quick-card {
+        padding: 16px;
+    }
+
+    .quick-card-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .quick-card h3 {
+        font-size: 0.95em;
+    }
+
+    .chart-box {
+        padding: 12px;
+    }
+
+    .performers-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .lang-card {
+        padding: 14px;
+    }
+
+    .metric {
+        text-align: center;
+    }
+
+    .metric-value {
+        font-size: 1.1em;
+    }
+
+    .metric-label {
+        font-size: 0.75em;
+    }
+}
+
+@media (max-width: 375px) {
+    .trend-cards {
+        gap: 10px;
+    }
+
+    .trend-card {
+        padding: 12px;
+    }
+
+    .trend-label {
+        font-size: 0.85em;
+    }
+
+    .trend-value {
+        font-size: 1.2em;
+    }
+
+    .trend-change {
+        padding: 3px 6px;
+        font-size: 0.75em;
+    }
+
+    .performers-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .performer-card {
+        padding: 10px;
+    }
+
+    .performer-name {
+        font-size: 0.9em;
+        margin-bottom: 8px;
+    }
+
+    .stat-value {
+        font-size: 0.95em;
+    }
+
+    .stat-label {
+        font-size: 0.65em;
+    }
+
+    .lang-card {
+        padding: 12px;
+    }
+
+    .lang-name {
+        font-size: 1.1em;
+        margin-bottom: 12px;
+    }
+
+    .chart-box {
+        margin-top: 12px;
+        padding: 10px;
+    }
+
+    .chart-box h2 {
+        font-size: 0.9em;
+        margin-bottom: 12px;
+    }
 }

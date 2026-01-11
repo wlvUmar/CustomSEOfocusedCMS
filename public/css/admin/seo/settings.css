@@ -35,3 +35,88 @@
     margin-right: 6px;
     vertical-align: middle;
 }
+
+/* Mobile Responsive SEO Settings */
+@media (max-width: 768px) {
+    #org-schema-preview {
+        padding: 12px;
+        font-size: 11px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .form-section pre {
+        padding: 12px;
+        font-size: 11px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .info-banner {
+        flex-direction: column;
+    }
+
+    .info-banner strong {
+        display: block;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        font-size: 14px;
+        min-height: 40px;
+        padding: 8px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    #org-schema-preview {
+        padding: 10px;
+        font-size: 10px;
+    }
+
+    .form-section pre {
+        padding: 10px;
+        font-size: 10px;
+    }
+
+    .form-group {
+        margin-bottom: 12px;
+    }
+
+    .form-group label {
+        font-size: 13px;
+        margin-bottom: 5px;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        font-size: 14px;
+        min-height: 40px;
+        padding: 8px 10px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .form-row .form-group {
+        width: 100%;
+    }
+}
+
+@media (max-width: 375px) {
+    #org-schema-preview {
+        font-size: 9px;
+    }
+
+    .form-section pre {
+        font-size: 9px;
+    }
+}
