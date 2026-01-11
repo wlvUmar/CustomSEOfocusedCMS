@@ -54,7 +54,7 @@
         <?php endif; ?>
     </div>
 
-    <div class="admin-wrapper">
+    <div class="admin-wrapper sidebar-collapsed">
         <aside class="sidebar">
            
             <div class="logo">

@@ -1,21 +1,16 @@
 <?php
-// path: ./views/templates/header.php
 $lang = $lang ?? getCurrentLanguage();
 
-// Meta tags
 $metaTitle = $page["meta_title_$lang"] ?? $page["title_$lang"] ?? $seo["site_name_$lang"];
 $metaKeywords = $page["meta_keywords_$lang"] ?? $seo["meta_keywords_$lang"] ?? '';
 $metaDescription = $page["meta_description_$lang"] ?? $seo["meta_description_$lang"] ?? '';
 
-// Open Graph tags
 $ogTitle = $page["og_title_$lang"] ?? $metaTitle;
 $ogDescription = $page["og_description_$lang"] ?? $metaDescription;
 $ogImage = $page['og_image'] ?? (BASE_URL . '/css/logo.png');
 
-// Canonical URL
 $canonicalUrl = $page['canonical_url'] ?? (BASE_URL . '/' . e($page['slug']) . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : ''));
 
-// Build template data used for meta/template replacements
 $templateData = [
     'page' => $page,
     'global' => [
@@ -26,33 +21,27 @@ $templateData = [
     'lang' => $lang
 ];
 
-// Process placeholders in all meta content
 $metaTitle = renderTemplate($metaTitle, $templateData);
 $metaKeywords = renderTemplate($metaKeywords, $templateData);
 $metaDescription = renderTemplate($metaDescription, $templateData);
 $ogTitle = renderTemplate($ogTitle, $templateData);
 $ogDescription = renderTemplate($ogDescription, $templateData);
 
-// Generate FAQ Schema if FAQs exist
 $faqSchema = '';
 if (!empty($faqs)) {
     $faqSchema = generateFAQSchema($faqs, $lang, $canonicalUrl);
 }
 
-// Extract appliance name from page title for dynamic Service schema
 $applianceName = '';
-$productImages = []; // Array to hold all relevant images for schema
+$productImages = []; 
 if (!empty($page["title_$lang"])) {
-    // Try to extract appliance from title (e.g., "Продать холодильник быстро" -> "холодильник")
     $titleProcessed = replacePlaceholders($page["title_$lang"], $page, $seo);
     if (preg_match('/(?:продать|скупка|выкуп)\s+([а-яёa-z\s]+?)(?:\s+быстро|$)/ui', $titleProcessed, $matches)) {
         $applianceName = trim($matches[1]);
     }
     
-    // Add primary OG image or logo
     $productImages[] = !empty($page['og_image']) ? $page['og_image'] : ($seo['org_logo'] ?? (BASE_URL . '/css/logo.png'));
     
-    // Fetch and add all attached media images
     $pageModel = new Page();
     $attachedMedia = $pageModel->getMedia($page['id']);
     foreach ($attachedMedia as $m) {
@@ -60,7 +49,6 @@ if (!empty($page["title_$lang"])) {
     }
 }
 
-// Generate dynamic Service schema for this page
 $pageServiceSchema = '';
 if (!empty($page["title_$lang"])) {
     $serviceType = $seo['service_type'] ?? 'Service';
@@ -85,14 +73,12 @@ if (!empty($page["title_$lang"])) {
         ])
     ];
     
-    // Add image property to Service schema
     if (!empty($productImages)) {
         $serviceData['image'] = $productImages;
     }
     
     $pageServiceSchema = JsonLdGenerator::generateService($serviceData);
 }
-// Check if user is logged in as admin
 $isAdmin = isset($_SESSION['user_id']);
 ?>
 <!DOCTYPE html>
@@ -102,7 +88,6 @@ $isAdmin = isset($_SESSION['user_id']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($metaTitle) ?></title>
     
-    <!-- Basic Meta Tags -->
     <?php if ($metaKeywords): ?>
     <meta name="keywords" content="<?= e($metaKeywords) ?>">
     <?php endif; ?>
@@ -114,13 +99,11 @@ $isAdmin = isset($_SESSION['user_id']);
     <meta name="robots" content="index, follow">
     <meta name="author" content="<?= e($seo["site_name_$lang"]) ?>">
     
-    <!-- Canonical & Alternate URLs -->
     <link rel="canonical" href="<?= $canonicalUrl ?>">
     <link rel="alternate" hreflang="ru" href="<?= BASE_URL ?>/<?= e($page['slug']) ?>">
     <link rel="alternate" hreflang="uz" href="<?= BASE_URL ?>/<?= e($page['slug']) ?>/uz">
     <link rel="alternate" hreflang="x-default" href="<?= BASE_URL ?>/<?= e($page['slug']) ?>">
     
-    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?= $canonicalUrl ?>">
     <meta property="og:title" content="<?= e($ogTitle) ?>">
@@ -129,7 +112,6 @@ $isAdmin = isset($_SESSION['user_id']);
     <meta property="og:locale" content="<?= $lang === 'ru' ? 'ru_RU' : 'uz_UZ' ?>">
     <meta property="og:site_name" content="<?= e($seo["site_name_$lang"]) ?>">
     
-    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="<?= $canonicalUrl ?>">
     <meta name="twitter:title" content="<?= e($ogTitle) ?>">
@@ -141,15 +123,12 @@ $isAdmin = isset($_SESSION['user_id']);
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.css">
     
     <?php
-    // Collect all JSON-LD schemas and merge into single @graph
     $allSchemas = [];
     
-    // 1. Organization/LocalBusiness Schema
     $orgSchemaJson = '';
     if (!empty($seo['organization_schema'])) {
         $orgSchema = json_decode($seo['organization_schema'], true);
         if (is_array($orgSchema)) {
-            // Safety: Clean description if it contains line breaks (for old data)
             if (!empty($orgSchema['description']) && (strpos($orgSchema['description'], "\r\n") !== false || strpos($orgSchema['description'], "\n") !== false)) {
                 $orgSchema['description'] = preg_replace('/\s{2,}/', ' ', str_replace(["\r\n", "\r", "\n"], ' ', $orgSchema['description']));
             }
@@ -184,22 +163,18 @@ $isAdmin = isset($_SESSION['user_id']);
     }
     if (!empty($orgSchemaJson)) $allSchemas[] = $orgSchemaJson;
 
-    // 2. Website Schema (homepage only)
     if ($page['slug'] === 'home' && !empty($seo['website_schema'])) {
         $allSchemas[] = $seo['website_schema'];
     }
 
-    // 3. Service Schema
     if (!empty($pageServiceSchema)) {
         $allSchemas[] = $pageServiceSchema;
     }
 
-    // 4. FAQ Schema
     if (!empty($faqSchema)) {
         $allSchemas[] = $faqSchema;
     }
 
-    // 5. Breadcrumb Schema (non-homepage)
     if ($page['slug'] !== 'home') {
         $pageModel = new Page();
         $breadcrumbPages = $pageModel->getBreadcrumbs($page['id']);
@@ -219,7 +194,6 @@ $isAdmin = isset($_SESSION['user_id']);
         if (!empty($breadcrumbSchema)) $allSchemas[] = $breadcrumbSchema;
     }
     
-    // 6. Custom Blog/Page Schema (from JSON file)
     if (!empty($blogSchema)) {
         if (is_array($blogSchema)) {
              $allSchemas[] = json_encode($blogSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
@@ -228,7 +202,6 @@ $isAdmin = isset($_SESSION['user_id']);
         }
     }
     
-    // Merge all schemas into a single @graph and output
     if (!empty($allSchemas)) {
         $mergedSchema = JsonLdGenerator::mergeSchemas($allSchemas);
         if (!empty($mergedSchema)) {
@@ -240,7 +213,6 @@ $isAdmin = isset($_SESSION['user_id']);
     ?>
     
     <?php if ($isAdmin): ?>
-    <!-- Admin Toolbar Styles -->
     <style>
     .admin-toolbar {
         position: fixed;
@@ -318,7 +290,6 @@ $isAdmin = isset($_SESSION['user_id']);
 <body<?= $isAdmin ? ' class="admin-mode"' : '' ?>>
     
     <?php if ($isAdmin): ?>
-    <!-- Admin Toolbar -->
     <div class="admin-toolbar">
         <div class="admin-toolbar-left">
             <span class="admin-toolbar-badge">
@@ -406,7 +377,6 @@ $isAdmin = isset($_SESSION['user_id']);
     </header>
     
     <?php if ($seo['phone']): ?>
-    <!-- Floating Call Button -->
     <a href="tel:<?= preg_replace('/[^0-9+]/', '', $seo['phone']) ?>" 
        class="floating-call" 
        title="<?= $lang === 'ru' ? 'Позвонить' : 'Qo\'ng\'iroq qilish' ?>" 
@@ -419,7 +389,6 @@ $isAdmin = isset($_SESSION['user_id']);
     <?php endif; ?>
     
     <?php if (!empty($seo['google_review_url'])): ?>
-    <!-- Floating Review Button -->
     <a href="<?= e($seo['google_review_url']) ?>" 
        class="floating-review" 
        target="_blank"
@@ -440,7 +409,6 @@ $isAdmin = isset($_SESSION['user_id']);
             body: 'slug=' + slug + '&lang=' + lang
         });
         
-        // After tracking call, show review prompt after delay
         <?php if (!empty($seo['google_review_url'])): ?>
         setTimeout(function() {
             if (confirm('<?= $lang === 'ru' ? 'Спасибо! Не могли бы вы оставить отзыв о нашем сервисе?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?' ?>')) {

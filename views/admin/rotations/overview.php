@@ -13,7 +13,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 </div>
 <?php endif; ?>
 
-<h2>Pages with Content Rotation</h2>    
+<p class='subtitle'>Pages with Content Rotation</p>    
 <div class="rotation-summary">
     
     <?php if (empty($rotationStatus)): ?>
@@ -32,15 +32,13 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <div>
                     <h3>
                         <a href="<?= BASE_URL ?>/admin/rotations/manage/<?= $page['id'] ?>">
-                            <?= e($page['title_ru']) ?>
+                            <?= mb_strimwidth(e($page['title_ru']), 0, 20) . "..."  ?>
                         </a>
                     </h3>
                     <p class="slug"><?= e($page['slug']) ?></p>
                 </div>
                 <div class="rotation-stats">
                     <div class="stat-badge">
-                        <span class="stat-number"><?= $stats['covered_months'] ?>/12</span>
-                        <span class="stat-label">Months</span>
                     </div>
                 </div>
             </div>

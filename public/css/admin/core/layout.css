@@ -178,7 +178,7 @@ body {
 .sidebar-toggle {
     position: fixed;
     top: 80vh;
-    right: calc(-1 * var(--sidebar-width) + 100vw - 34px);
+    left: var(--sidebar-width);
     width: 20px;
     height: 48px;
     background: var(--primary-dark);
@@ -247,9 +247,7 @@ body {
 }
 
 /* Stop animation on hover */
-.sidebar-toggle:hover {
-    animation: none !important;
-}
+
 
 
 /* Ensure sidebar toggle is above other content */
@@ -1190,7 +1188,6 @@ body {
     }
 
     .data-table {
-        display: block;
         overflow-x: auto;
         white-space: nowrap;
     }

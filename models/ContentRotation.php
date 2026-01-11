@@ -251,26 +251,26 @@ class ContentRotation {
 
     public function getMonths() {
         return [
-            1 => 'Январь / Yanvar',
-            2 => 'Февраль / Fevral',
-            3 => 'Март / Mart',
-            4 => 'Апрель / Aprel',
-            5 => 'Май / May',
-            6 => 'Июнь / Iyun',
-            7 => 'Июль / Iyul',
-            8 => 'Август / Avgust',
-            9 => 'Сентябрь / Sentyabr',
-            10 => 'Октябрь / Oktyabr',
-            11 => 'Ноябрь / Noyabr',
-            12 => 'Декабрь / Dekabr'
+            1 => 'Yan',
+            2 => 'Fev',
+            3 => 'Mar',
+            4 => 'Apr',
+            5 => 'May',
+            6 => 'Iyn',
+            7 => 'Iyl',
+            8 => 'Avg',
+            9 => 'Sen',
+            10 => 'Okt',
+            11 => 'Noy',
+            12 => 'Dek'
         ];
     }
 
     public function getMonthNameRu($monthNum) {
         $months = [
-            1 => 'Январь', 2 => 'Февраль', 3 => 'Март', 4 => 'Апрель',
-            5 => 'Май', 6 => 'Июнь', 7 => 'Июль', 8 => 'Август',
-            9 => 'Сентябрь', 10 => 'Октябрь', 11 => 'Ноябрь', 12 => 'Декабрь'
+            1 => 'Yan', 2 => 'Fev', 3 => 'Mar', 4 => 'Apr',
+            5 => 'May', 6 => 'Iyn', 7 => 'Iyl', 8 => 'Avg',
+            9 => 'Sen', 10 => 'Okt', 11 => 'Noy', 12 => 'Dek'
         ];
         return $months[$monthNum] ?? '';
     }

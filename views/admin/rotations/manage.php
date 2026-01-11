@@ -4,7 +4,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
 <div class="page-header">
-    <h1>Content Rotations: <?= e($page['title_ru']) ?></h1>
+    <h1> <?= e($page['title_ru']) ?></h1>
     <div class="btn-group">
         <button onclick="showPreviewModal()" class="btn btn-primary">
             <i data-feather="eye"></i> Preview Page
@@ -115,19 +115,16 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 
                 <td>
                     <strong><?= $name ?></strong>
-                    <?php if ($isCurrent): ?>
-                    <span class="badge" style="background: #3b82f6; margin-left: 8px;">
-                        <i data-feather="clock"></i> ACTIVE NOW
-                    </span>
-                    <?php endif; ?>
                 </td>
                 
                 <td>
                     <?php if ($rotation && $rotation['title_ru']): ?>
-                        <strong><?= e(substr($rotation['title_ru'], 0, 50)) ?><?php if (strlen($rotation['title_ru']) > 50): ?>...<?php endif; ?></strong>
-                        <?php if ($rotation['description_ru']): ?>
-                            <br><small style="color: #6b7280;"><?= e(substr($rotation['description_ru'], 0, 60)) ?></small>
-                        <?php endif; ?>
+                        <?= e(str_replace('—', '', substr($rotation['title_ru'], 0, 50)))?>
+
+                    <?php if ($rotation['description_ru']): ?>
+                        <br><small style="color: #6b7280;"><?= e(substr($rotation['description_ru'], 0, 60)) ?></small>
+                    <?php endif; ?>
+                    
                     <?php else: ?>
                         <em class="no-content">No title</em>
                     <?php endif; ?>
@@ -136,8 +133,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <td>
                     <?php if ($rotation): ?>
                         <div class="content-preview">
-                                <?= e(substr(strip_tags($rotation['content_ru']), 0, 100)) ?>
-                            <?php if (strlen(strip_tags($rotation['content_ru'])) > 100): ?>...<?php endif; ?>
+                                <?= e(substr(strip_tags($rotation['content_ru']), 18, 68))?>
                         </div>
                     <?php else: ?>
                         <em class="no-content">No content</em>
@@ -310,5 +306,5 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </div>
     </div>
 </div>
-<script src="<?= BASE_URL ?>/js/admin/rotation-manage.js"></script>
+<script src="<?= BASE_URL ?>/js/admin/features/rotation-manage.js"></script>
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

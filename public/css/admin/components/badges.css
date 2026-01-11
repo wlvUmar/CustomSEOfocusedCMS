@@ -6,7 +6,7 @@
     border-radius: 4px;
     font-size: 0.75em;
     font-weight: 600;
-    text-transform: uppercase;
+    text-transform: lowercase;
     letter-spacing: 0.5px;
     white-space: nowrap;
 }

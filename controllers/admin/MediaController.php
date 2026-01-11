@@ -226,7 +226,6 @@ class MediaController extends Controller {
         $failed = 0;
         $pageId = $_POST['page_id'] ?? null;
         $section = $_POST['section'] ?? 'content';
-        
         foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
             if ($_FILES['files']['error'][$key] !== UPLOAD_ERR_OK) {
                 $failed++;
@@ -256,7 +255,6 @@ class MediaController extends Controller {
                     'file_size' => $file['size'],
                     'mime_type' => $file['type']
                 ]);
-                
                 if ($pageId) {
                     $this->pageMediaModel->attachMedia($pageId, $mediaId, [
                         'section' => $section,

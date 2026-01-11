@@ -2,7 +2,19 @@
 // path: ./core/helpers.php
 
 function e($string) {
-    return htmlspecialchars((string)($string ?? ''), ENT_QUOTES, 'UTF-8'); 
+    $string = (string)($string ?? '');
+
+    $decoded = html_entity_decode($string, ENT_QUOTES, 'UTF-8');
+
+    $current_sub = ini_get('mbstring.substitute_character');
+    ini_set('mbstring.substitute_character', 'none');
+    
+    $result = mb_convert_encoding($decoded, 'UTF-8', 'UTF-8');
+    $result = str_replace("\xEF\xBF\xBD", '', $result); 
+    
+    ini_set('mbstring.substitute_character', $current_sub); 
+
+    return ($result === '' && $string !== '') ? $string : $result;
 }
 
 function getCurrentLanguage() {
@@ -10,7 +22,7 @@ function getCurrentLanguage() {
 }
 
 function setLanguage($lang) {
-    if (in_array($lang, SUPPORTED_LANGUAGES)) {
+    if (in_array($lang, SUPPORTED_LANGUAGES)){
         $_SESSION['language'] = $lang;
     }
 }
@@ -19,7 +31,6 @@ function setLanguage($lang) {
 function isBot() {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
-    // Common bot identifiers
     $bots = [
         'googlebot',
         'bingbot',
@@ -98,7 +109,6 @@ function renderTemplate($text, $data = []) {
         $text
     );
     
-    // Process conditionals: {% if condition %}...{% endif %}
     $text = preg_replace_callback(
         '/\{%\s*if\s+([\w\.]+)\s*%\}(.*?)(?:\{%\s*else\s*%\}(.*?))?\{%\s*endif\s*%\}/s',
         function($matches) use ($data) {
