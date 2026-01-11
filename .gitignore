@@ -7,6 +7,7 @@ parse.py
 
 /data/
 /logs/
+/tests/
 /database/
 /public/uploads/*
 /public/uploads/.gitkeep
@@ -32,7 +33,6 @@ desktop.ini
 *.bak
 *.cache
 *.env
-
 # Project folders to ignore
 /beta
 EXTERNAL_SETUP_GUIDE.md

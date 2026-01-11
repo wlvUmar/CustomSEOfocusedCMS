@@ -116,8 +116,7 @@ class Analytics {
                     COUNT(DISTINCT visit_date) as days_with_visits,
                     SUM(visits) as total_visits,
                     AVG(visits) as avg_visits_per_day,
-                    MAX(visit_date) as last_visit,
-                    MAX(last_visit) as last_visit_time
+                    MAX(visit_date) as last_visit
                 FROM analytics_bot_visits
                 WHERE visit_date >= DATE_SUB(CURDATE(), INTERVAL $days DAY)
                 GROUP BY page_slug, bot_type
