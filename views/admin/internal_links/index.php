@@ -89,10 +89,10 @@
 <div class="section-header">
     <h2>Pages & Link Status</h2>
     <div class="filter-buttons">
-        <button class="filter-btn active" onclick="filterPages('all')">All</button>
-        <button class="filter-btn" onclick="filterPages('root')">Root Pages</button>
-        <button class="filter-btn" onclick="filterPages('children')">Sub-Pages</button>
-        <button class="filter-btn" onclick="filterPages('orphan')">Orphans</button>
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="root">Root Pages</button>
+        <button class="filter-btn" data-filter="children">Sub-Pages</button>
+        <button class="filter-btn" data-filter="orphan">Orphans</button>
     </div>
 </div>
 
@@ -352,7 +352,7 @@ function filterPages(type) {
     const buttons = document.querySelectorAll('.filter-btn');
     
     buttons.forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    document.querySelector(`[data-filter="${type}"]`).classList.add('active');
     
     rows.forEach(row => {
         let show = false;
@@ -375,8 +375,18 @@ function filterPages(type) {
         row.style.display = show ? '' : 'none';
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            const type = this.dataset.filter;
+            filterPages(type);
+        });
+    });
+});
 </script>
 
-<script src="<?= BASE_URL ?>/js/admin/internal-links.js"></script>
+<script src="<?= BASE_URL ?>/js/admin/features/internal-links.js"></script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

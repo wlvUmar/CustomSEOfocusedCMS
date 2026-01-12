@@ -11,6 +11,11 @@
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/tables.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/mobile-overflow-fixes.css">
+    <!-- Chart.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script>
+        window.DEBUG = <?= IS_PRODUCTION ? 'false' : 'true' ?>;
+    </script>
     <?php
     if ($pageName){
         $cssPath = "/css/admin/{$pageName}.css";

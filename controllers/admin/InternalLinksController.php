@@ -239,7 +239,7 @@ class InternalLinksController extends Controller {
     // Helper methods
     
     private function getAllPagesWithLinkStats() {
-        $sql = "SELECT p.id, p.slug, p.title_ru, p.title_uz, p.show_link_widget,
+        $sql = "SELECT p.id, p.slug, p.title_ru, p.title_uz, p.show_link_widget, p.parent_id,
                        (SELECT COUNT(*) FROM page_link_widgets WHERE page_id = p.id) as outgoing_links,
                        (SELECT COUNT(*) FROM page_link_widgets WHERE link_to_page_id = p.id) as incoming_links
                 FROM pages p

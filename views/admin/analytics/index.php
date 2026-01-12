@@ -138,39 +138,10 @@ $conversionFunnel = $this->getAnalyticsModel()->getConversionFunnel($stats['mont
     <canvas id="heatmapChart"></canvas>
 </div>
 
-<!-- Funnel -->
-<div class="funnel-container">
-<?php
-$steps = [
-    ['label' => 'Page Visits', 'value' => (int)($stats['total']['total_visits'] ?? 0)],
-    ['label' => 'Engaged (2+ pages)', 'value' => is_array($conversionFunnel['engaged'] ?? null) ? 0 : (int)($conversionFunnel['engaged'] ?? 0)],
-    ['label' => 'Actions / Clicks', 'value' => (int)($stats['total']['total_clicks'] ?? 0)]
-];
-
-$max = max($steps[0]['value'], 1);
-
-foreach ($steps as $step):
-    $width = max(round(($step['value'] / $max) * 100), 10);
-?>
-    <div class="funnel-step">
-        <div class="funnel-track">
-
-            <div class="funnel-bar" style="width: <?= $width ?>%;">
-                <div class="funnel-flow"></div>
-            </div>
-
-            <div class="funnel-content">
-                <span class="funnel-label" title="<?= htmlspecialchars($step['label']) ?>">
-                    <?= htmlspecialchars($step['label']) ?>
-                </span>
-                <span class="funnel-value">
-                    <?= number_format($step['value']) ?>
-                </span>
-            </div>
-
-        </div>
-    </div>
-<?php endforeach; ?>
+<!-- Top Pages Performance -->
+<div class="chart-box">
+    <h2><i data-feather="trending-up"></i> Top Performing Pages</h2>
+    <canvas id="topPagesChart"></canvas>
 </div>
 
 
@@ -189,5 +160,127 @@ foreach ($steps as $step):
         <canvas id="clicksChart"></canvas>
     </div>
 </div>
+
+
+<?php if (!IS_PRODUCTION): ?>
+<!-- DEBUG PANEL -->
+<div style="background: #1e293b; color: #e2e8f0; padding: 20px; border-radius: 8px; margin-top: 30px; font-family: monospace; font-size: 12px; border: 2px solid #f59e0b;">
+    <div style="margin-bottom: 10px; color: #f59e0b; font-weight: bold;">🔧 DEBUG PANEL</div>
+    
+    <div style="margin-bottom: 10px;">
+        <strong>Chart.js Loaded:</strong> <span id="debug-chartjs">checking...</span>
+    </div>
+    
+    <div style="margin-bottom: 10px;">
+        <strong>Visits Data:</strong> <span id="debug-visits">checking...</span>
+    </div>
+    
+    <div style="margin-bottom: 10px;">
+        <strong>Clicks Data:</strong> <span id="debug-clicks">checking...</span>
+    </div>
+    
+    <div style="margin-bottom: 10px;">
+        <strong>Canvas Elements:</strong> <span id="debug-canvas">checking...</span>
+    </div>
+    
+    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #475569;">
+        <strong style="color: #10b981;">✓ Check browser Console (F12) for detailed logs</strong>
+    </div>
+</div>
+<?php endif; ?>
+
+<script>
+// Pass chart data from PHP to JavaScript
+const visitsChartData = <?= json_encode($stats['visits_chart'] ?? null) ?>;
+const clicksChartData = <?= json_encode($stats['clicks_chart'] ?? null) ?>;
+
+// Prepare top pages data
+const topPerformers = <?= json_encode($stats['top_performers'] ?? []) ?>;
+let topPagesData = {
+    labels: [],
+    visits: [],
+    clicks: []
+};
+
+if (topPerformers && Array.isArray(topPerformers) && topPerformers.length > 0) {
+    topPerformers.forEach(p => {
+        // Use page_slug as fallback label - format it nicely
+        const slug = p.page_slug || 'Unknown';
+        const label = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ').substring(0, 30);
+        const visits = parseInt(p.visits) || 0;
+        const clicks = parseInt(p.clicks) || 0;
+        
+        if (visits > 0) {  // Only add if there's actual data
+            topPagesData.labels.push(label);
+            topPagesData.visits.push(visits);
+            topPagesData.clicks.push(clicks);
+        }
+    });
+}
+
+window.topPagesChartData = topPagesData;
+
+if (window.DEBUG) {
+    console.log('=== ANALYTICS DATA DEBUG ===');
+    console.log('Stats object received:', typeof stats !== 'undefined' ? 'YES' : 'NO');
+    console.log('Raw visitsChartData from PHP:', visitsChartData);
+    console.log('Raw clicksChartData from PHP:', clicksChartData);
+    console.log('Top performers data:', topPerformers);
+    console.log('Processed topPagesData:', topPagesData);
+}
+
+// Validate and assign to window
+if (visitsChartData && typeof visitsChartData === 'object') {
+    window.visitsChartData = {
+        labels: Object.keys(visitsChartData),
+        data: Object.values(visitsChartData)
+    };
+    if (window.DEBUG) console.log('✓ window.visitsChartData set:', window.visitsChartData);
+} else {
+    if (window.DEBUG) console.warn('✗ visitsChartData invalid or null:', visitsChartData);
+    window.visitsChartData = { labels: [], data: [] };
+}
+
+if (clicksChartData && typeof clicksChartData === 'object') {
+    window.clicksChartData = {
+        labels: Object.keys(clicksChartData),
+        data: Object.values(clicksChartData)
+    };
+    if (window.DEBUG) console.log('✓ window.clicksChartData set:', window.clicksChartData);
+} else {
+    if (window.DEBUG) console.warn('✗ clicksChartData invalid or null:', clicksChartData);
+    window.clicksChartData = { labels: [], data: [] };
+}
+
+if (window.DEBUG) console.log('=== END DATA DEBUG ===');
+
+// Update debug panel (only if DEBUG enabled)
+if (window.DEBUG) {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            const chartJsEl = document.getElementById('debug-chartjs');
+            const visitsEl = document.getElementById('debug-visits');
+            const clicksEl = document.getElementById('debug-clicks');
+            const canvasEl = document.getElementById('debug-canvas');
+            
+            if (chartJsEl) chartJsEl.textContent = (typeof Chart !== 'undefined') ? '✓ YES' : '✗ NO';
+            if (visitsEl) visitsEl.textContent = (window.visitsChartData && window.visitsChartData.data.length > 0) 
+                ? '✓ ' + window.visitsChartData.data.length + ' data points'
+                : '✗ No data';
+            if (clicksEl) clicksEl.textContent = (window.clicksChartData && window.clicksChartData.data.length > 0)
+                ? '✓ ' + window.clicksChartData.data.length + ' data points'
+                : '✗ No data';
+            
+            const visitsCanvas = !!document.getElementById('visitsChart');
+            const clicksCanvas = !!document.getElementById('clicksChart');
+            if (canvasEl) canvasEl.textContent = (visitsCanvas && clicksCanvas) ? '✓ Both found' : '✗ Missing: ' + 
+                (!visitsCanvas ? 'visits' : '') + 
+                (!clicksCanvas ? ' clicks' : '');
+        }, 100);
+    });
+}
+</script>
+
+<script src="<?= BASE_URL ?>/js/admin/analytics.js"></script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

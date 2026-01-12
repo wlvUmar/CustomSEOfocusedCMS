@@ -372,6 +372,15 @@
     background: #0284c7;
 }
 
+.btn-success {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
 .btn-sm {
     padding: 0.4rem 0.8rem;
     font-size: 0.85rem;
@@ -413,6 +422,10 @@
     align-items: center;
     cursor: pointer;
     gap: 1rem;
+}
+
+.toggle input {
+    display: none;
 }
 
 .toggle-slider {

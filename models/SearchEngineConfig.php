@@ -43,34 +43,9 @@ class SearchEngineConfig {
         );
     }
 
-    public function incrementRateLimit($engine) {
-        $sql = "UPDATE search_engine_config 
-                SET submissions_today = submissions_today + 1 
-                WHERE engine = ?";
-        return $this->db->query($sql, [$engine]);
-    }
-
-    public function resetDailyCounter($engine) {
-        $sql = "UPDATE search_engine_config 
-                SET submissions_today = 0, 
-                    last_reset_date = CURDATE() 
-                WHERE engine = ?";
-        return $this->db->query($sql, [$engine]);
-    }
-
-    public function logNote($engine, $note) {
-         try {
-            $this->db->query(
-                "UPDATE search_engine_config SET notes = CONCAT(IFNULL(notes,''), ?) WHERE engine = ?", 
-                [" | " . $note, $engine]
-            );
-        } catch (Exception $e) {
-            // ignore
-        }
-    }
-    
     /**
      * Ensure default configuration exists for all supported engines
+     * Auto-inserts missing engines with default settings
      */
     public function ensureDefaults() {
         // Only these 3 engines are supported by the database enum
@@ -80,7 +55,7 @@ class SearchEngineConfig {
         try {
             $this->db->query("DELETE FROM search_engine_config WHERE engine = '' OR engine IS NULL");
         } catch (Exception $e) {
-            // Ignore if fails
+            error_log("SearchEngineConfig::ensureDefaults - Cleanup failed: " . $e->getMessage());
         }
         
         foreach ($engines as $engine) {
@@ -97,8 +72,9 @@ class SearchEngineConfig {
                 
                 try {
                     $this->db->query($sql, [$engine]);
+                    error_log("SearchEngineConfig::ensureDefaults - Auto-inserted: {$engine}");
                 } catch (Exception $e) {
-                    // Silently ignore - entry probably already exists
+                    error_log("SearchEngineConfig::ensureDefaults - Failed to insert {$engine}: " . $e->getMessage());
                 }
             }
         }
