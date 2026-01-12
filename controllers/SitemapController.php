@@ -21,6 +21,9 @@ class SitemapController extends Controller {
         header('Cache-Control: public, max-age=3600');
         header('Pragma: public');
         
+        // Get absolute base URL - ensure it's a full URL not relative path
+        $baseUrl = $this->getAbsoluteBaseUrl();
+        
         $pages = $this->pageModel->getAll(false); 
         
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
@@ -36,30 +39,48 @@ class SitemapController extends Controller {
             $changefreq = $page['enable_rotation'] ? 'monthly' : 'yearly';
             
             echo '  <url>' . "\n";
-            echo '    <loc>' . BASE_URL . '/' . htmlspecialchars($slug) . '</loc>' . "\n";
+            echo '    <loc>' . $baseUrl . '/' . htmlspecialchars($slug) . '</loc>' . "\n";
             echo '    <lastmod>' . date('Y-m-d', strtotime($updated)) . '</lastmod>' . "\n";
             echo '    <changefreq>' . $changefreq . '</changefreq>' . "\n";
             echo '    <priority>' . $priority . '</priority>' . "\n";
             
-            echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . BASE_URL . '/' . htmlspecialchars($slug) . '" />' . "\n";
-            echo '    <xhtml:link rel="alternate" hreflang="uz" href="' . BASE_URL . '/' . htmlspecialchars($slug) . '/uz" />' . "\n";
+            echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . $baseUrl . '/' . htmlspecialchars($slug) . '" />' . "\n";
+            echo '    <xhtml:link rel="alternate" hreflang="uz" href="' . $baseUrl . '/' . htmlspecialchars($slug) . '/uz" />' . "\n";
             
             echo '  </url>' . "\n";
             
             echo '  <url>' . "\n";
-            echo '    <loc>' . BASE_URL . '/' . htmlspecialchars($slug) . '/uz</loc>' . "\n";
+            echo '    <loc>' . $baseUrl . '/' . htmlspecialchars($slug) . '/uz</loc>' . "\n";
             echo '    <lastmod>' . date('Y-m-d', strtotime($updated)) . '</lastmod>' . "\n";
             echo '    <changefreq>' . $changefreq . '</changefreq>' . "\n";
             echo '    <priority>' . $priority . '</priority>' . "\n";
             
-            echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . BASE_URL . '/' . htmlspecialchars($slug) . '" />' . "\n";
-            echo '    <xhtml:link rel="alternate" hreflang="uz" href="' . BASE_URL . '/' . htmlspecialchars($slug) . '/uz" />' . "\n";
+            echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . $baseUrl . '/' . htmlspecialchars($slug) . '" />' . "\n";
+            echo '    <xhtml:link rel="alternate" hreflang="uz" href="' . $baseUrl . '/' . htmlspecialchars($slug) . '/uz" />' . "\n";
             
             echo '  </url>' . "\n";
         }
         
         echo '</urlset>';
         exit;
+    }
+
+    /**
+     * Get absolute base URL for sitemap - fallback to server values if BASE_URL is relative
+     */
+    private function getAbsoluteBaseUrl() {
+        $baseUrl = BASE_URL;
+        
+        // Check if BASE_URL is already absolute (contains :// for scheme)
+        if (strpos($baseUrl, '://') !== false) {
+            return rtrim($baseUrl, '/');
+        }
+        
+        // If BASE_URL is relative or empty, derive from server
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        
+        return $protocol . '://' . rtrim($host, '/');
     }
 
 
