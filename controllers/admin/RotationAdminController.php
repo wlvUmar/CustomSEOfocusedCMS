@@ -3,18 +3,18 @@
 
 require_once BASE_PATH . '/models/ContentRotation.php';
 require_once BASE_PATH . '/models/Page.php';
-require_once BASE_PATH . '/models/SearchEngine.php';
+require_once BASE_PATH . '/models/SearchEngineManager.php';
 
 class RotationAdminController extends Controller {
     private $rotationModel;
     private $pageModel;
-    private $engine;
+    private $searchEngineManager;
 
     public function __construct() {
         parent::__construct();
         $this->rotationModel = new ContentRotation();
         $this->pageModel = new Page();
-        $this->engine = new SearchEngine();
+        $this->searchEngineManager = new SearchEngineManager();
     }
 
     /**
@@ -171,15 +171,14 @@ class RotationAdminController extends Controller {
             $_SESSION['success'] = 'Content rotation created successfully';
         }
         
-        // Notify search engines of rotation change (non-blocking)
+        // Auto-ping sitemap to search engines when rotation is active
         try {
             $page = $this->pageModel->getById($pageId);
             if ($page && $page['is_published'] && $data['is_active']) {
-                $this->engine->notifyPageChange($page['slug'], 'rotation', $activeMonth, $_SESSION['user_id'] ?? null);
+                $this->searchEngineManager->autoPingSitemap();
             }
         } catch (Exception $e) {
-            error_log("Search engine notification failed: " . $e->getMessage());
-            $_SESSION['warning'] = "Rotation saved, but search engine notification failed: " . $e->getMessage();
+            error_log("Sitemap ping failed: " . $e->getMessage());
         }
         
         $this->redirect('/admin/rotations/manage/' . $pageId);

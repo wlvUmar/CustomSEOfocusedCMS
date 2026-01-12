@@ -2,11 +2,11 @@
 // path: ./controllers/admin/PageAdminController.php
 
 require_once BASE_PATH . '/models/Page.php';
-require_once BASE_PATH . '/models/SearchEngine.php';
+require_once BASE_PATH . '/models/SearchEngineManager.php';
 
 class PageAdminController extends Controller {
     private $pageModel;
-    private $engine;
+    private $searchEngineManager;
 
     private function sanitizeSlug($slug) {
         $slug = strtolower(trim($slug));
@@ -24,7 +24,7 @@ class PageAdminController extends Controller {
     public function __construct() {
         parent::__construct();
         $this->pageModel = new Page();
-        $this->engine = new SearchEngine();
+        $this->searchEngineManager = new SearchEngineManager();
     }
 
     public function index() {
@@ -103,77 +103,23 @@ class PageAdminController extends Controller {
             $this->pageModel->update($id, $data);
             $_SESSION['success'] = 'Page updated successfully';
             
-            // Notify search engines of update (non-blocking)
-            try {
-                if ($data['is_published']) {
-                    $result = $this->engine->notifyPageChange(
-                        $data['slug'], 
-                        $id ? 'update' : 'create', 
-                        null, 
-                        $_SESSION['user_id'] ?? null
-                    );
-
-                    // Log detailed results and provide admin feedback
-                    $successCount = 0;
-                    $failCount = 0;
-                    foreach ($result as $engine => $res) {
-                        if (isset($res['status']) && $res['status'] === 'success') {
-                            $successCount++;
-                            error_log("✓ Search engine notification SUCCESS: $engine for {$data['slug']}");
-                        } else {
-                            $failCount++;
-                            error_log("✗ Search engine notification FAILED: $engine for {$data['slug']} - " . ($res['message'] ?? 'unknown error'));
-                        }
-                    }
-
-                    if ($successCount > 0) {
-                        $_SESSION['success'] .= " (Notified $successCount search engines)";
-                    }
-                    if ($failCount > 0) {
-                        $_SESSION['warning'] = "Warning: Failed to notify $failCount search engines. Check logs for details.";
-                    }
+            if ($data['is_published']) {
+                try {
+                    $this->searchEngineManager->autoPingSitemap();
+                } catch (Exception $e) {
+                    error_log("Sitemap ping exception: " . $e->getMessage());
                 }
-            } catch (Exception $e) {
-                error_log("Search engine notification exception: " . $e->getMessage());
-                $_SESSION['warning'] = "Page saved, but search engine notification failed: " . $e->getMessage();
             }
         } else {
             $this->pageModel->create($data);
             $_SESSION['success'] = 'Page created successfully';
             
-            // Notify search engines of new page (non-blocking)
-            try {
-                if ($data['is_published']) {
-                    $result = $this->engine->notifyPageChange(
-                        $data['slug'], 
-                        $id ? 'update' : 'create', 
-                        null, 
-                        $_SESSION['user_id'] ?? null
-                    );
-
-                    // Log detailed results and provide admin feedback
-                    $successCount = 0;
-                    $failCount = 0;
-                    foreach ($result as $engine => $res) {
-                        if (isset($res['status']) && $res['status'] === 'success') {
-                            $successCount++;
-                            error_log("✓ Search engine notification SUCCESS: $engine for {$data['slug']}");
-                        } else {
-                            $failCount++;
-                            error_log("✗ Search engine notification FAILED: $engine for {$data['slug']} - " . ($res['message'] ?? 'unknown error'));
-                        }
-                    }
-
-                    if ($successCount > 0) {
-                        $_SESSION['success'] .= " (Notified $successCount search engines)";
-                    }
-                    if ($failCount > 0) {
-                        $_SESSION['warning'] = "Warning: Failed to notify $failCount search engines. Check logs for details.";
-                    }
+            if ($data['is_published']) {
+                try {
+                    $this->searchEngineManager->autoPingSitemap();
+                } catch (Exception $e) {
+                    error_log("Sitemap ping exception: " . $e->getMessage());
                 }
-            } catch (Exception $e) {
-                error_log("Search engine notification exception: " . $e->getMessage());
-                $_SESSION['warning'] = "Page created, but search engine notification failed: " . $e->getMessage();
             }
         }
         

@@ -172,24 +172,14 @@ $router->group('/admin/schemas', function($router) {
 // Backwards-compatible route: handle POSTs accidentally sent to /seo/save (without /admin)
 $router->post('/seo/save', function() { requireSEO('save'); });
 
-// Admin Search Engine Notification & Indexing
+// Admin Search Engine Configuration & Sitemap Management
 $router->group('/admin/search-engine', function($router) {
     $router->get('/', function() { requireSearchEngine('index'); });
-    $router->get('/submit', function() { requireSearchEngine('submitForm'); });
-    $router->post('/submit-page', function() { requireSearchEngine('submitPage'); });
-    $router->post('/batch-submit', function() { requireSearchEngine('batchSubmit'); });
-    $router->post('/submit-unsubmitted', function() { requireSearchEngine('submitUnsubmitted'); });
-    $router->get('/page/{slug}', function($slug) { requireSearchEngine('pageHistory', $slug); });
     $router->get('/config', function() { requireSearchEngine('config'); });
     $router->post('/save-config', function() { requireSearchEngine('saveConfig'); });
-    $router->get('/recent', function() { requireSearchEngine('recentSubmissions'); });
-    $router->get('/export', function() { requireSearchEngine('exportHistory'); });
-    $router->post('/test-connection', function() { requireSearchEngine('testConnection'); });
-    $router->post('/regenerate-api-key', function() { requireSearchEngine('regenerateApiKey'); });
-    $router->get('/verify-api-key-file', function() { requireSearchEngine('verifyApiKeyFile'); });
+    $router->post('/ping-now', function() { requireSearchEngine('pingNow'); });
 });
 
-// Admin Preview
 $router->group('/admin/preview', function($router) {
     $router->get('/{id}', function($id) { requireAdminController('PreviewController', 'show', $id); });
     $router->get('/{id}/content', function($id) { requireAdminController('PreviewController', 'getPreviewContent', $id); });
