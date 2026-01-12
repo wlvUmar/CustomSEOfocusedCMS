@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', function() {
     // Handle form submissions with loading states
-    const forms = document.querySelectorAll('form[action*="submit"]');
+    const forms = document.querySelectorAll('form[action*="submit"], form[action*="save-config"]');
     forms.forEach(form => {
         form.addEventListener('submit', function(e) {
             const submitBtn = this.querySelector('button[type="submit"]');
