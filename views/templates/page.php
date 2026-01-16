@@ -78,32 +78,26 @@ $applianceNameForSEO = $applianceName ?? '';
                         <h3><?= e($link["title_$lang"]) ?></h3>
                     </div>
 
-                    <div class="link-widget-arrow">
-                        <i data-feather="chevron-right"></i>
-                    </div>
                 </a>
                 <?php endforeach; ?>
             </div>
         </section>
         <?php endif; ?>
 
-        <?php if (!empty($faqs)): ?>
-        <section class="faq-section">
-            <h2>
-                <?= $lang === 'ru'
-                    ? 'Часто задаваемые вопросы'
-                    : 'Ko\'p beriladigan savollar'
-                ?>
-            </h2>
-
-            <div class="faq-list">
-                <?php foreach ($faqs as $faq): ?>
-                <div class="faq-item">
-                    <h3><?= e($faq["question_$lang"]) ?></h3>
-                    <p><?= nl2br(e($faq["answer_$lang"])) ?></p>
-                </div>
-                <?php endforeach; ?>
+        <?php if (!empty($seo['google_review_url'])): ?>
+        <section class="review-panel">
+            <div class="review-panel__content">
+                <h2><?= $lang === 'ru' ? 'Оставьте отзыв' : 'Sharh qoldiring' ?></h2>
+                <p>
+                    <?= $lang === 'ru'
+                        ? 'Если вам понравился сервис, будем благодарны за отзыв.'
+                        : 'Agar xizmatimiz yoqqan bo‘lsa, sharh qoldirsangiz minnatdor bo‘lamiz.'
+                    ?>
+                </p>
             </div>
+            <a class="review-panel__button" href="<?= e($seo['google_review_url']) ?>" target="_blank" rel="noopener noreferrer">
+                <?= $lang === 'ru' ? 'Оставить отзыв в Google' : 'Google-da sharh qoldirish' ?>
+            </a>
         </section>
         <?php endif; ?>
 

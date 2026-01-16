@@ -13,6 +13,8 @@
     --text-muted: #6b6b70;
     --success: #059669;
     --success-hover: #047857;
+    --link-accent: #2b6a62;
+    --link-accent-soft: #e6f2ef;
 }
 
 body { 
@@ -281,11 +283,11 @@ footer a:hover {
     height: 26px;
 }
 
-.floating-review {
+.floating-telegram {
     position: fixed;
     bottom: 88px;
     right: 20px;
-    background: #fbbc04;
+    background: #24A1DE;
     color: #fff;
     width: 56px;
     height: 56px;
@@ -293,26 +295,27 @@ footer a:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 16px rgba(251, 188, 4, 0.4);
+    box-shadow: 0 4px 16px rgba(36, 161, 222, 0.4);
     text-decoration: none;
     transition: all 0.3s;
     z-index: 998;
 }
 
-.floating-review:hover {
+.floating-telegram:hover {
     transform: scale(1.1);
-    background: #ea9c00;
-    box-shadow: 0 6px 20px rgba(251, 188, 4, 0.6);
+    background: #1b8dc4;
+    box-shadow: 0 6px 20px rgba(36, 161, 222, 0.6);
 }
 
-.floating-review:active {
+.floating-telegram:active {
     transform: scale(0.95);
 }
 
-.floating-review svg {
+.floating-telegram svg {
     width: 26px;
     height: 26px;
 }
+
 
 @keyframes pulse {
     0%, 100% { 
@@ -379,18 +382,19 @@ footer a:hover {
         width: 28px;
         height: 28px;
     }
-    
-    .floating-review {
+
+    .floating-telegram {
         width: 60px;
         height: 60px;
         bottom: 96px;
         right: 24px;
     }
     
-    .floating-review svg {
+    .floating-telegram svg {
         width: 28px;
         height: 28px;
     }
+    
 }
 
 /* Desktop Responsive (769px+) */
@@ -461,18 +465,19 @@ footer a:hover {
         width: 30px;
         height: 30px;
     }
-    
-    .floating-review {
+
+    .floating-telegram {
         width: 64px;
         height: 64px;
         bottom: 106px;
         right: 30px;
     }
     
-    .floating-review svg {
+    .floating-telegram svg {
         width: 30px;
         height: 30px;
     }
+    
 }
 
 /* Extra small phones (max 360px) */
@@ -503,18 +508,19 @@ footer a:hover {
         bottom: 16px;
         right: 16px;
     }
-    
-    .floating-review {
+
+    .floating-telegram {
         width: 52px;
         height: 52px;
         bottom: 78px;
         right: 16px;
     }
     
-    .floating-review svg {
+    .floating-telegram svg {
         width: 22px;
         height: 22px;
     }
+    
 }
 
 /* Landscape mobile optimization */
@@ -701,68 +707,65 @@ footer a:hover {
 /* Add to existing pages.css */
 
 /* FAQ Section */
-.faq-section {
-    margin-top: 60px;
-    padding-top: 40px;
-    border-top: 2px solid #EDEBD7;
+.footer-faq {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(237, 235, 215, 0.25);
 }
 
-.faq-section > h2 {
-    font-size: 1.8em;
-    margin-bottom: 30px;
-    color: var(--text-dark);
-    text-align: center;
+.footer-faq h4 {
+    color: var(--primary-light);
+    font-size: 1em;
+    margin-bottom: 10px;
 }
 
-.faq-list {
-    max-width: 800px;
-    margin: 0 auto;
+.footer-faq-list {
+    display: grid;
+    gap: 8px;
 }
 
-.faq-item {
-    background: #f9f9f7;
-    border: 1px solid #EDEBD7;
+.footer-faq-item {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(237, 235, 215, 0.15);
     border-radius: 6px;
-    padding: 24px;
-    margin-bottom: 20px;
-    transition: all 0.2s;
 }
 
-.faq-item:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border-color: var(--primary-dark);
-}
-
-.faq-item h3 {
-    font-size: 1.1em;
-    margin-bottom: 12px;
-    color: var(--primary-dark);
+.footer-faq-item summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 10px 12px;
+    font-size: 0.9em;
     font-weight: 600;
+    color: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
 }
 
-.faq-item p {
+.footer-faq-item summary::-webkit-details-marker {
+    display: none;
+}
+
+.footer-faq-item summary::after {
+    content: "+";
+    color: rgba(237, 235, 215, 0.7);
+    font-size: 1em;
+}
+
+.footer-faq-item[open] summary::after {
+    content: "–";
+}
+
+.footer-faq-answer {
+    padding: 0 12px 10px;
+    color: rgba(237, 235, 215, 0.8);
+    font-size: 0.9em;
+    line-height: 1.6;
+}
+
+.footer-faq-answer p {
     margin: 0;
-    line-height: 1.7;
-}
-
-@media (max-width: 768px) {
-    .faq-section {
-        margin-top: 40px;
-        padding-top: 30px;
-    }
-    
-    .faq-section > h2 {
-        font-size: 1.5em;
-        margin-bottom: 20px;
-    }
-    
-    .faq-item {
-        padding: 18px;
-    }
-    
-    .faq-item h3 {
-        font-size: 1.05em;
-    }
 }
 /* IMPLEMENTATION: Add to public/css/pages.css */
 
@@ -998,8 +1001,8 @@ main a:hover img {
 
 .link-widget-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
 }
 
 /* ---------- Card ---------- */
@@ -1007,34 +1010,29 @@ main a:hover img {
 .link-widget-card {
     display: flex;
     align-items: center;
-    gap: 15px;
-    padding: 20px;
-    background: #f9f9f7;
-    border: 1px solid #EDEBD7;
-    border-radius: 8px;
+    gap: 12px;
+    padding: 10px 6px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #EDEBD7;
     text-decoration: none;
-    color: var(--text-dark);
-    transition:
-        background 0.2s ease,
-        border-color 0.2s ease,
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
+    color: var(--accent-dark);
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
 .link-widget-card:hover {
-    background: #ffffff;
-    border-color: var(--primary-dark);
-    transform: translateX(4px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-bottom-color: var(--link-accent);
+    color: var(--link-accent);
+    background: var(--link-accent-soft);
 }
 
 /* ---------- Icon ---------- */
 
 .link-widget-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 6px;
-    background: var(--primary-dark);
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    background: var(--accent-dark);
     color: #ffffff;
     display: flex;
     align-items: center;
@@ -1051,11 +1049,13 @@ main a:hover img {
 
 .link-widget-content h3 {
     margin: 0;
-    font-size: 1.05em;
+    font-size: 0.92em;
     font-weight: 600;
     line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 /* ---------- Arrow ---------- */
@@ -1154,6 +1154,53 @@ main a:hover img {
     .link-widget-arrow svg {
         width: 14px;
         height: 14px;
+    }
+}
+
+/* Review panel */
+.review-panel {
+    margin: 40px 0 10px;
+    padding: 18px 20px;
+    border: 1px solid #EDEBD7;
+    border-radius: 8px;
+    background: #fffaf2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.review-panel__content h2 {
+    margin: 0 0 6px;
+    font-size: 1.2em;
+}
+
+.review-panel__content p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.95em;
+}
+
+.review-panel__button {
+    background: #fbbc04;
+    color: #1a1a1c;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.review-panel__button:hover {
+    background: #e6a900;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .review-panel {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
 

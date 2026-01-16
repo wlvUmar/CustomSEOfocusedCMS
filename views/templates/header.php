@@ -12,7 +12,15 @@ $ogTitle = $page["og_title_$lang"] ?? $metaTitle;
 $ogDescription = $page["og_description_$lang"] ?? $metaDescription;
 $ogImage = $page['og_image'] ?? (BASE_URL . '/css/logo.png');
 
-$canonicalUrl = $page['canonical_url'] ?? (BASE_URL . '/' . e($page['slug']) . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : ''));
+$baseUrl = BASE_URL;
+if (strpos($baseUrl, '://') === false) {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $baseUrl = $protocol . '://' . rtrim($host, '/');
+}
+$baseUrl = rtrim($baseUrl, '/');
+
+$canonicalUrl = $page['canonical_url'] ?? ($baseUrl . '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : ''));
 
 $templateData = [
     'page' => $page,
@@ -53,35 +61,6 @@ if (!empty($page["title_$lang"])) {
 }
 
 $pageServiceSchema = '';
-if (!empty($page["title_$lang"])) {
-    $serviceType = $seo['service_type'] ?? 'Service';
-    if (!empty($applianceName) && $serviceType === 'Service') {
-        $serviceType = $lang === 'ru' ? "Покупка и выкуп $applianceName" : "Sotib olish va sotib olish $applianceName";
-    }
-    
-    $serviceData = [
-        'service_type' => $serviceType,
-        'name' => replacePlaceholders($page["title_$lang"], $page, $seo),
-        'description' => replacePlaceholders($page["meta_description_$lang"] ?? '', $page, $seo),
-        'provider' => [
-            '@id' => BASE_URL . '#organization'
-        ],
-        'area_served' => $seo['area_served'] ?? '',
-        'service_phone' => $seo['phone'] ?? '',
-        'social_media' => array_filter([
-            $seo['social_facebook'] ?? '',
-            $seo['social_instagram'] ?? '',
-            $seo['social_twitter'] ?? '',
-            $seo['social_youtube'] ?? ''
-        ])
-    ];
-    
-    if (!empty($productImages)) {
-        $serviceData['image'] = $productImages;
-    }
-    
-    $pageServiceSchema = JsonLdGenerator::generateService($serviceData);
-}
 $isAdmin = isset($_SESSION['user_id']);
 ?>
 <!DOCTYPE html>
@@ -128,26 +107,28 @@ $isAdmin = isset($_SESSION['user_id']);
     <?php
     $allSchemas = [];
     
-    $orgSchemaJson = '';
-    if (!empty($seo['organization_schema'])) {
-        $orgSchema = json_decode($seo['organization_schema'], true);
-        if (is_array($orgSchema)) {
+$orgSchemaJson = '';
+$orgSchemaData = null;
+if (!empty($seo['organization_schema'])) {
+    $orgSchema = json_decode($seo['organization_schema'], true);
+    if (is_array($orgSchema)) {
             if (!empty($orgSchema['description']) && (strpos($orgSchema['description'], "\r\n") !== false || strpos($orgSchema['description'], "\n") !== false)) {
                 $orgSchema['description'] = preg_replace('/\s{2,}/', ' ', str_replace(["\r\n", "\r", "\n"], ' ', $orgSchema['description']));
             }
-            if (empty($orgSchema['@id'])) {
-                $orgSchema['@id'] = BASE_URL . '#organization';
-            }
-            $orgSchemaJson = json_encode($orgSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (empty($orgSchema['@id'])) {
+            $orgSchema['@id'] = $baseUrl . '#organization';
         }
-    } elseif (!empty($seo['site_name_ru']) || !empty($seo['site_name_uz'])) {
+        $orgSchemaData = $orgSchema;
+        $orgSchemaJson = json_encode($orgSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+} elseif (!empty($seo['site_name_ru']) || !empty($seo['site_name_uz'])) {
         $orgData = [
-            'id' => BASE_URL . '#organization',
+            'id' => $baseUrl . '#organization',
             'type' => $seo['org_type'] ?? 'LocalBusiness',
             'name' => $seo['org_name_ru'] ?? $seo['site_name_ru'] ?? $seo['site_name_uz'] ?? '',
-            'url' => BASE_URL,
-            'logo' => $seo['org_logo'] ?? (BASE_URL . '/css/logo.png'),
-            'image' => $seo['org_logo'] ?? (BASE_URL . '/css/logo.png'),
+            'url' => $baseUrl,
+            'logo' => $seo['org_logo'] ?? ($baseUrl . '/css/logo.png'),
+            'image' => $seo['org_logo'] ?? ($baseUrl . '/css/logo.png'),
             'description' => $seo['org_description_ru'] ?? $seo['org_description_uz'] ?? '',
             'telephone' => $seo['phone'] ?? '',
             'email' => $seo['email'] ?? '',
@@ -163,16 +144,60 @@ $isAdmin = isset($_SESSION['user_id']);
             'social_media' => array_filter([$seo['social_facebook'] ?? '', $seo['social_instagram'] ?? '', $seo['social_twitter'] ?? '', $seo['social_youtube'] ?? ''])
         ];
         $orgSchemaJson = JsonLdGenerator::generateOrganization($orgData);
+        $orgSchemaData = json_decode($orgSchemaJson, true);
     }
     if (!empty($orgSchemaJson)) $allSchemas[] = $orgSchemaJson;
 
-    if (in_array($page['slug'], ['home', 'main'], true) && !empty($seo['website_schema'])) {
-        $allSchemas[] = $seo['website_schema'];
+    $serviceSocial = array_filter([
+        $seo['social_facebook'] ?? '',
+        $seo['social_instagram'] ?? '',
+        $seo['social_twitter'] ?? '',
+        $seo['social_youtube'] ?? ''
+    ]);
+    if (!empty($orgSchemaData['sameAs']) && is_array($orgSchemaData['sameAs'])) {
+        $serviceSocial = array_merge($serviceSocial, $orgSchemaData['sameAs']);
+    }
+    $serviceSocial = array_values(array_unique(array_filter($serviceSocial)));
+
+    $pageDepth = isset($page['depth']) ? (int)$page['depth'] : 0;
+    if (!empty($page["title_$lang"]) && $pageDepth < 2) {
+        $serviceType = $seo['service_type'] ?? 'Service';
+        if (!empty($applianceName) && $serviceType === 'Service') {
+            $serviceType = $lang === 'ru' ? "Покупка и выкуп $applianceName" : "Sotib olish va sotib olish $applianceName";
+        }
+        
+        $serviceData = [
+            'service_type' => $serviceType,
+            'name' => replacePlaceholders($page["title_$lang"], $page, $seo),
+            'description' => replacePlaceholders($page["meta_description_$lang"] ?? '', $page, $seo),
+            'provider' => [
+                '@id' => $baseUrl . '#organization'
+            ],
+            'area_served' => $seo['area_served'] ?? '',
+            'service_phone' => $seo['phone'] ?? '',
+            'social_media' => $serviceSocial
+        ];
+        
+        if (!empty($productImages)) {
+            $serviceData['image'] = $productImages;
+        }
+        
+        $pageServiceSchema = JsonLdGenerator::generateService($serviceData);
     }
 
-    if (!empty($pageServiceSchema)) {
-        $allSchemas[] = $pageServiceSchema;
+    if (in_array($page['slug'], ['home', 'main'], true) && !empty($seo['website_schema'])) {
+        $websiteSchema = json_decode($seo['website_schema'], true);
+        if (is_array($websiteSchema) && empty($websiteSchema['url'])) {
+            $websiteSchema['url'] = $baseUrl;
+            $allSchemas[] = json_encode($websiteSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } else {
+            $allSchemas[] = $seo['website_schema'];
+        }
     }
+
+if (!empty($pageServiceSchema)) {
+    $allSchemas[] = $pageServiceSchema;
+}
 
     if (!empty($faqSchema)) {
         $allSchemas[] = $faqSchema;
@@ -187,13 +212,16 @@ $isAdmin = isset($_SESSION['user_id']);
         ];
         
         foreach ($breadcrumbPages as $breadcrumbPage) {
+            if (in_array($breadcrumbPage['slug'], ['home', 'main'], true)) {
+                continue;
+            }
             $breadcrumbs[] = [
                 'name' => replacePlaceholders($breadcrumbPage["title_$lang"], $breadcrumbPage, $seo),
                 'url' => '/' . $breadcrumbPage['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '')
             ];
         }
         
-        $breadcrumbSchema = JsonLdGenerator::generateBreadcrumbs($breadcrumbs, BASE_URL, $canonicalUrl);
+        $breadcrumbSchema = JsonLdGenerator::generateBreadcrumbs($breadcrumbs, $baseUrl, $canonicalUrl);
         if (!empty($breadcrumbSchema)) $allSchemas[] = $breadcrumbSchema;
     }
     
@@ -350,7 +378,7 @@ $isAdmin = isset($_SESSION['user_id']);
     <header>
         <div class="container">
             <nav>
-                <a href="<?= BASE_URL ?>" class="logo-link">
+                <a href="<?= $baseUrl ?>/" class="logo-link">
                     <img src="<?= BASE_URL ?>/css/logo.png" class="logo" alt="<?= e($seo["site_name_$lang"]) ?>">
                     <span class="site-name"><?= e($seo["site_name_$lang"]) ?></span>
                 </a>
@@ -390,19 +418,18 @@ $isAdmin = isset($_SESSION['user_id']);
         </svg>
     </a>
     <?php endif; ?>
-    
-    <?php if (!empty($seo['google_review_url'])): ?>
-    <a href="<?= e($seo['google_review_url']) ?>" 
-       class="floating-review" 
+
+    <a href="https://t.me/yourname"
+       class="floating-telegram"
        target="_blank"
        rel="noopener noreferrer"
-       title="<?= $lang === 'ru' ? 'Оставить отзыв' : 'Sharh qoldirish' ?>" 
-       aria-label="<?= $lang === 'ru' ? 'Оставить отзыв в Google' : 'Google-da sharh qoldirish' ?>">
-        <svg fill="currentColor" viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+       title="<?= $lang === 'ru' ? 'Написать в Telegram' : 'Telegramda yozish' ?>"
+       aria-label="<?= $lang === 'ru' ? 'Написать в Telegram' : 'Telegramda yozish' ?>">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M21.6 3.2c-.4-.3-1-.3-1.6-.1L2.8 9.7c-.7.3-1.1.9-1 1.6.1.7.6 1.2 1.3 1.4l4.7 1.4 1.8 5.6c.2.6.7 1 1.3 1 .4 0 .8-.2 1.1-.5l2.6-2.5 5 3.7c.3.2.6.3 1 .3.2 0 .4 0 .6-.1.6-.2 1-.7 1.1-1.3l3-15.6c.1-.6-.1-1.2-.6-1.6zM9.8 13.8l-4.1-1.2 12.4-6.3-8.3 7.5zm1.4 4.3l-.8-2.6 2.1-1.9 2.1 1.6-3.4 2.9zm4.7-4.1l-2.6-2 5.6-5-3 7z"/>
         </svg>
     </a>
-    <?php endif; ?>
+    
     
     <script>
     function trackClick(slug, lang) {

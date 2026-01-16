@@ -236,6 +236,12 @@ Sa 10:00-15:00"><?= e($settings['opening_hours'] ?? '') ?></textarea>
                            placeholder="https://youtube.com/c/yourchannel">
                 </div>
             </div>
+
+            <div class="form-group">
+                <label>Additional sameAs Links (one per line)</label>
+                <textarea name="org_sameas_extra" rows="4" placeholder="https://example.com/profile"><?= e($settings['org_sameas_extra'] ?? '') ?></textarea>
+                <small class="help-text">Merged into Organization sameAs for both custom and auto-generated schemas.</small>
+            </div>
             
             <div class="form-row">
                 <div class="form-group">

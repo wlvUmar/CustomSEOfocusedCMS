@@ -97,10 +97,12 @@ $seo = $seo ?? [];
                 <h2><?= $lang === 'ru' ? 'Часто задаваемые вопросы' : 'Ko\'p beriladigan savollar' ?></h2>
                 <div class="faq-list">
                     <?php foreach ($faqs as $faq): ?>
-                    <div class="faq-item">
-                        <h3><?= e($faq["question_$lang"]) ?></h3>
-                        <p><?= nl2br(e($faq["answer_$lang"])) ?></p>
-                    </div>
+                    <details class="faq-item">
+                        <summary><?= e($faq["question_$lang"]) ?></summary>
+                        <div class="faq-answer">
+                            <p><?= nl2br(e($faq["answer_$lang"])) ?></p>
+                        </div>
+                    </details>
                     <?php endforeach; ?>
                 </div>
             </section>

@@ -997,6 +997,10 @@ ALTER TABLE `sitemap_history`
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
+-- Add org_sameas_extra to seo_settings for backward compatible migrations
+ALTER TABLE `seo_settings`
+  ADD COLUMN `org_sameas_extra` text DEFAULT NULL AFTER `social_youtube`;
+
 --
 -- Constraints for dumped tables
 --

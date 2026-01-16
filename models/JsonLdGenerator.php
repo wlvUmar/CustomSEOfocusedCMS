@@ -14,14 +14,12 @@ class JsonLdGenerator {
             "url" => $data['url'],
         ];
         
-        // Optional @id to reference the organization from other schemas
         if (!empty($data['id'])) {
             $schema['@id'] = $data['id'];
         }
         
         if (!empty($data['logo'])) {
             $logoData = ['@type' => 'ImageObject', 'url' => $data['logo']];
-            // Add width/height if provided for richer snippets
             if (!empty($data['logo_width'])) $logoData['width'] = $data['logo_width'];
             if (!empty($data['logo_height'])) $logoData['height'] = $data['logo_height'];
             $schema['logo'] = $logoData;
@@ -32,22 +30,16 @@ class JsonLdGenerator {
         }
         
         if (!empty($data['description'])) {
-            // Clean description: remove \r\n, extra spaces, limit to ~300 chars
             $description = $data['description'];
             
-            // Remove \r\n line breaks
             $description = str_replace(["\r\n", "\r", "\n"], ' ', $description);
             
-            // Remove phone numbers
             $description = preg_replace('/\+?\d[\d\s\-\(\)]{7,}\d/', '', $description);
             
-            // Remove orphaned call-to-action phrases after phone removal
             $description = preg_replace('/(?:звоните|позвоните|call us?|телефон)[\s:!\.—\-]*(?:\s|$)/ui', '', $description);
             
-            // Clean multiple spaces
             $description = preg_replace('/\s{2,}/', ' ', trim($description));
             
-            // Trim to 300 chars
             if (mb_strlen($description) > 300) {
                 $description = mb_substr($description, 0, 297) . '...';
             }
@@ -65,7 +57,6 @@ class JsonLdGenerator {
             $schema['email'] = $data['email'];
         }
         
-        // Address
         if (!empty($data['address'])) {
             $schema['address'] = [
                 "@type" => "PostalAddress",
@@ -77,7 +68,6 @@ class JsonLdGenerator {
             ];
         }
         
-        // Geo coordinates
         if (!empty($data['latitude']) && !empty($data['longitude'])) {
             $schema['geo'] = [
                 '@type' => 'GeoCoordinates',
@@ -86,19 +76,16 @@ class JsonLdGenerator {
             ];
         }
         
-        // Opening hours
         if (!empty($data['opening_hours'])) {
             $schema['openingHours'] = is_array($data['opening_hours']) 
                 ? $data['opening_hours'] 
                 : [$data['opening_hours']];
         }
         
-        // Price range
         if (!empty($data['price_range'])) {
             $schema['priceRange'] = $data['price_range'];
         }
         
-        // Social media
         if (!empty($data['social_media'])) {
             $schema['sameAs'] = array_values(array_filter($data['social_media']));
         }
@@ -117,20 +104,15 @@ class JsonLdGenerator {
             "name" => $data['name']
         ];
         
-        // Description: clean and avoid phone numbers (use availableChannel instead)
         if (!empty($data['description'])) {
             $description = $data['description'];
             
-            // Remove \r\n line breaks
             $description = str_replace(["\r\n", "\r", "\n"], ' ', $description);
             
-            // Remove phone numbers
             $description = preg_replace('/\+?\d[\d\s\-\(\)]{7,}\d/', '', $description);
             
-            // Remove orphaned call-to-action phrases
             $description = preg_replace('/(?:звоните|позвоните|call us?|телефон)[\s:!\.—\-]*(?:\s|$)/ui', '', $description);
             
-            // Clean whitespace
             $description = preg_replace('/\s{2,}/', ' ', trim($description));
             
             if (!empty($description)) {
@@ -138,7 +120,6 @@ class JsonLdGenerator {
             }
         }
         
-        // Provider - can be either a reference or a full object
         if (!empty($data['provider'])) {
             if (is_array($data['provider'])) {
                 $schema['provider'] = $data['provider'];
@@ -150,7 +131,6 @@ class JsonLdGenerator {
             }
         }
         
-        // Image for the service (prefer product image over logo)
         if (!empty($data['image'])) {
             if (is_array($data['image'])) {
                 $schema['image'] = array_values(array_unique($data['image']));
@@ -159,7 +139,6 @@ class JsonLdGenerator {
             }
         }
         
-        // Area served - prefer structured City object when a simple name is provided
         if (!empty($data['area_served'])) {
             if (is_array($data['area_served'])) {
                 $schema['areaServed'] = $data['area_served'];
@@ -171,7 +150,6 @@ class JsonLdGenerator {
             }
         }
         
-        // Available channel (phone) - preferred over putting phone in description
         if (!empty($data['service_phone'])) {
             $schema['availableChannel'] = [
                 '@type' => 'ServiceChannel',
@@ -182,7 +160,6 @@ class JsonLdGenerator {
             ];
         }
         
-        // Price
         if (!empty($data['price'])) {
             $schema['offers'] = [
                 "@type" => "Offer",
@@ -191,7 +168,6 @@ class JsonLdGenerator {
             ];
         }
         
-        // Optional: sameAs for social profiles
         if (!empty($data['social_media'])) {
             $schema['sameAs'] = array_values(array_filter($data['social_media']));
         }
@@ -338,8 +314,9 @@ class JsonLdGenerator {
     public static function mergeSchemas($schemas) {
         $graph = [];
         $ids = [];
+        $decodedSchemas = [];
         
-        // Collect all schemas and their @ids
+        // Decode and normalize schemas
         foreach ($schemas as $schemaJson) {
             if (empty($schemaJson)) continue;
             
@@ -349,27 +326,48 @@ class JsonLdGenerator {
             // Remove @context from individual schemas (will be in root)
             unset($decoded['@context']);
             
-            // Track @ids and ensure uniqueness
+            $decodedSchemas[] = $decoded;
+        }
+        
+        // Build graph and track @ids
+        foreach ($decodedSchemas as $decoded) {
             if (!empty($decoded['@id'])) {
-                // Check for duplicate @ids
-                if (in_array($decoded['@id'], $ids)) {
-                    // Skip duplicate @id (log warning in production)
+                if (in_array($decoded['@id'], $ids, true)) {
                     error_log("Duplicate @id found: " . $decoded['@id']);
                     continue;
                 }
                 $ids[] = $decoded['@id'];
             }
             
-            // Validate that provider references exist
-            if (!empty($decoded['provider']['@id']) && !in_array($decoded['provider']['@id'], $ids)) {
-                // Provider @id will be in array after LocalBusiness is added
-                // For now, just track it
-            }
-            
             $graph[] = $decoded;
         }
         
         if (empty($graph)) return '';
+        
+        $idAliases = [];
+        foreach ($ids as $id) {
+            $idAliases[$id] = true;
+            $hashPos = strpos($id, '#');
+            if ($hashPos !== false) {
+                $fragment = substr($id, $hashPos);
+                if ($fragment !== '') {
+                    $idAliases[$fragment] = true;
+                }
+            }
+        }
+        
+        foreach ($graph as $schema) {
+            if (!empty($schema['provider']) && is_array($schema['provider'])) {
+                $providerId = $schema['provider']['@id'] ?? null;
+                if (!empty($providerId) && empty($idAliases[$providerId])) {
+                    $hashPos = strpos($providerId, '#');
+                    $fragment = $hashPos !== false ? substr($providerId, $hashPos) : null;
+                    if (empty($fragment) || empty($idAliases[$fragment])) {
+                        error_log("Missing provider @id in graph: " . $providerId);
+                    }
+                }
+            }
+        }
         
         $merged = [
             '@context' => 'https://schema.org',

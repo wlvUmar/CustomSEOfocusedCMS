@@ -60,6 +60,7 @@ class SEOController extends Controller {
             'social_instagram' => trim($_POST['social_instagram'] ?? ''),
             'social_twitter' => trim($_POST['social_twitter'] ?? ''),
             'social_youtube' => trim($_POST['social_youtube'] ?? ''),
+            'org_sameas_extra' => trim($_POST['org_sameas_extra'] ?? ''),
             
             // Service (global settings for auto-generation)
             'service_type' => trim($_POST['service_type'] ?? 'Service'),
@@ -89,13 +90,42 @@ class SEOController extends Controller {
         $text = preg_replace('/\s{2,}/', ' ', $text);
         return trim($text);
     }
+
+    private function parseSameAsLinks($text) {
+        $lines = preg_split('/\r\n|\r|\n/', $text);
+        $links = [];
+        foreach ($lines as $line) {
+            $url = trim($line);
+            if ($url === '') continue;
+            $links[] = $url;
+        }
+        return array_values(array_unique($links));
+    }
     
     private function generateOrganizationSchema($data) {
+        $baseUrl = $this->getBaseUrl();
+        $extraSameAs = $this->parseSameAsLinks($data['org_sameas_extra'] ?? '');
+
         // If admin provided a custom JSON-LD and enabled the toggle, validate and use it as-is (but enforce @id)
         if (!empty($data['org_schema_custom']) && !empty($data['organization_schema_raw'])) {
             $decoded = json_decode($data['organization_schema_raw'], true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $decoded['@id'] = BASE_URL . '#organization';
+                if (empty($decoded['@id'])) {
+                    $decoded['@id'] = $baseUrl . '#organization';
+                }
+                if (empty($decoded['url'])) {
+                    $decoded['url'] = $baseUrl;
+                }
+                if (!empty($decoded['description']) && is_string($decoded['description'])) {
+                    $decoded['description'] = $this->cleanDescription($decoded['description']);
+                }
+                if (!empty($extraSameAs)) {
+                    $existing = [];
+                    if (!empty($decoded['sameAs']) && is_array($decoded['sameAs'])) {
+                        $existing = $decoded['sameAs'];
+                    }
+                    $decoded['sameAs'] = array_values(array_unique(array_merge($existing, $extraSameAs)));
+                }
                 return json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
             }
             // If invalid JSON was provided, fall back to auto-generation so site remains valid
@@ -107,14 +137,17 @@ class SEOController extends Controller {
             $data['social_twitter'],
             $data['social_youtube']
         ]);
+        if (!empty($extraSameAs)) {
+            $socialMedia = array_values(array_unique(array_merge($socialMedia, $extraSameAs)));
+        }
         
         $openingHours = array_filter(explode("\n", $data['opening_hours']));
         
         return JsonLdGenerator::generateOrganization([
-            'id' => BASE_URL . '#organization',
+            'id' => $baseUrl . '#organization',
             'type' => $data['org_type'],
             'name' => !empty($data['org_name_ru']) ? $data['org_name_ru'] : $data['site_name_ru'],
-            'url' => BASE_URL,
+            'url' => $baseUrl,
             'logo' => $data['org_logo'],
             'description' => $data['org_description_ru'],
             'telephone' => $data['phone'],
@@ -133,10 +166,20 @@ class SEOController extends Controller {
     }
     
     private function generateWebsiteSchema($data) {
+        $baseUrl = $this->getBaseUrl();
         return JsonLdGenerator::generateWebsite([
             'name' => $data['site_name_ru'],
-            'url' => BASE_URL,
+            'url' => $baseUrl,
             'description' => $data['meta_description_ru']
         ]);
+    }
+
+    private function getBaseUrl(): string {
+        if (strpos(BASE_URL, '://') !== false) {
+            return rtrim(BASE_URL, '/');
+        }
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        return $protocol . '://' . rtrim($host, '/');
     }
 }

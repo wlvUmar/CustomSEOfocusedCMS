@@ -49,6 +49,22 @@
                     <?php endif; ?>
                 </div>
             </div>
+
+            <?php if (!empty($faqs)): ?>
+            <section class="footer-faq">
+                <h4><?= $lang === 'ru' ? 'FAQ' : 'Savollar' ?></h4>
+                <div class="footer-faq-list">
+                    <?php foreach ($faqs as $faq): ?>
+                    <details class="footer-faq-item">
+                        <summary><?= e($faq["question_$lang"]) ?></summary>
+                        <div class="footer-faq-answer">
+                            <p><?= nl2br(e($faq["answer_$lang"])) ?></p>
+                        </div>
+                    </details>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+            <?php endif; ?>
             
             <div class="copyright">
                 <p>© <?= date('Y') ?> <?= e($seo["site_name_$lang"]) ?>. <?= $lang === 'ru' ? 'Все права защищены.' : 'Barcha huquqlar himoyalangan.' ?></p>

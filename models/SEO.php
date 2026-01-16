@@ -29,6 +29,7 @@ class SEO {
                 opening_hours = ?, price_range = ?,
                 social_facebook = ?, social_instagram = ?,
                 social_twitter = ?, social_youtube = ?,
+                org_sameas_extra = ?,
                 service_type = ?, area_served = ?,
                 org_latitude = ?, org_longitude = ?,
                 organization_schema = ?, website_schema = ?
@@ -64,6 +65,7 @@ class SEO {
             $data['social_instagram'] ?? '',
             $data['social_twitter'] ?? '',
             $data['social_youtube'] ?? '',
+            $data['org_sameas_extra'] ?? '',
             $data['service_type'] ?? 'Service',
             $data['area_served'] ?? '',
             $data['org_latitude'] ?? '',
