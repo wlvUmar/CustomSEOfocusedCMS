@@ -166,7 +166,7 @@ $isAdmin = isset($_SESSION['user_id']);
     }
     if (!empty($orgSchemaJson)) $allSchemas[] = $orgSchemaJson;
 
-    if ($page['slug'] === 'home' && !empty($seo['website_schema'])) {
+    if (in_array($page['slug'], ['home', 'main'], true) && !empty($seo['website_schema'])) {
         $allSchemas[] = $seo['website_schema'];
     }
 
@@ -178,7 +178,7 @@ $isAdmin = isset($_SESSION['user_id']);
         $allSchemas[] = $faqSchema;
     }
 
-    if ($page['slug'] !== 'home') {
+    if (!in_array($page['slug'], ['home', 'main'], true)) {
         $pageModel = new Page();
         $breadcrumbPages = $pageModel->getBreadcrumbs($page['id']);
         
