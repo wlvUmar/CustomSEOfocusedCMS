@@ -10,14 +10,7 @@
             <a href="<?= $robotsUrl ?>" target="_blank" class="btn">
                 <i data-feather="file-text"></i> View Robots.txt
             </a>
-            <?php if ($isProduction): ?>
-            <form method="POST" action="<?= BASE_URL ?>/admin/seo/sitemap/ping" style="display: inline;">
-                <button type="submit" class="btn btn-primary" 
-                        onclick="return confirm('Ping Google and Bing about sitemap updates?')">
-                    <i data-feather="zap"></i> Ping Search Engines
-                </button>
-            </form>
-            <?php endif; ?>
+
         </div>
     </div>
 

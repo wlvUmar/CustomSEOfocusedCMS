@@ -69,14 +69,15 @@
 
 .media-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(4, minmax(200px, 1fr));
     gap: 15px;
     margin-top: 20px;
 }
 
 .media-card {
-    border: 1px solid #e0e0e0;
+    border: 1px solid white;
     border-radius: 8px;
+    box-shadow: 1px 2px 4px 0px #0000001c;
     overflow: hidden;
     background: white;
     transition: all 0.3s;
@@ -530,7 +531,7 @@
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
     .media-controls {
-        flex-direction: column;
+        flex-direction: row;
         align-items: stretch;
     }
 
@@ -580,7 +581,7 @@
 
     .filter-tabs {
         width: 100%;
-        flex-wrap: wrap;
+        flex-direction: row !important;
     }
 
     .search-box input {
@@ -670,7 +671,7 @@
 
 @media (max-width: 480px) {
     .media-toolbar {
-        flex-direction: column;
+        flex-direction: row;
         gap: 10px;
     }
 

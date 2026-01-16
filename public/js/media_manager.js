@@ -26,11 +26,29 @@
         .catch(e => alert('Upload failed'));
     }
 
-    function deleteMedia(id) {
-        if (!confirm('Delete this image?')) return;
+    function deleteMedia(id, usageCount) {
+        console.log('deleteMedia called with id:', id, 'usageCount:', usageCount);
+        
+        // Convert to number and validate
+        id = parseInt(id, 10);
+        if (isNaN(id) || id <= 0) {
+            alert('Error: Invalid media ID');
+            return;
+        }
+        
+        usageCount = parseInt(usageCount, 10) || 0;
+        
+        if (usageCount > 0) {
+            if (!confirm(`This media is used on ${usageCount} page(s). Delete anyway?`)) {
+                return;
+            }
+        } else {
+            if (!confirm('Delete this image?')) return;
+        }
         
         const formData = new FormData();
         formData.append('id', id);
+        if (usageCount > 0) formData.append('force', '1');
         
         fetch('<?= BASE_URL ?>/admin/media/delete', {
             method: 'POST',
@@ -39,11 +57,12 @@
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                document.querySelector(`[data-id="${id}"]`).remove();
+                location.reload();
             } else {
-                alert('Delete failed');
+                alert('Delete failed: ' + data.message);
             }
-        });
+        })
+        .catch(e => alert('Error: ' + e.message));
     }
 
     function copyUrl(url) {

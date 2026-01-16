@@ -29,9 +29,16 @@ class Media {
         $media = $this->db->fetchOne("SELECT * FROM media WHERE id = ?", [$id]);
         if ($media) {
             $filepath = UPLOAD_PATH . $media['filename'];
+            
+            // Delete the actual file
             if (file_exists($filepath)) {
-                unlink($filepath);
+                if (!unlink($filepath)) {
+                    error_log("Failed to delete file: $filepath");
+                    return false;
+                }
             }
+            
+            // Delete database record
             $sql = "DELETE FROM media WHERE id = ?";
             return $this->db->query($sql, [$id]);
         }

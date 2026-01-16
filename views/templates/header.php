@@ -1,4 +1,7 @@
 <?php
+require_once BASE_PATH . '/models/Page.php';
+require_once BASE_PATH . '/models/JsonLdGenerator.php';
+
 $lang = $lang ?? getCurrentLanguage();
 
 $metaTitle = $page["meta_title_$lang"] ?? $page["title_$lang"] ?? $seo["site_name_$lang"];

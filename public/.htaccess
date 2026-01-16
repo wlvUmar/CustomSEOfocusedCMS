@@ -1,208 +1,78 @@
-# path: ./public/.htaccess
-# Production-Ready Security Configuration
+# /public/.htaccess
 
-# ========================================
-# REWRITE ENGINE
-# ========================================
 RewriteEngine On
 
-# ========================================
-# SECURITY HEADERS
-# ========================================
+# ----------------------------------------
+# 1) Security headers (safe ones only)
+# ----------------------------------------
 <IfModule mod_headers.c>
-    # Prevent clickjacking
     Header always set X-Frame-Options "SAMEORIGIN"
-    
-    # Prevent MIME type sniffing
     Header always set X-Content-Type-Options "nosniff"
-    
-    # Enable XSS protection
-    Header always set X-XSS-Protection "1; mode=block"
-    
-    # Referrer policy
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
-    
-    # HTTPS enforcement (if using HTTPS)
-    # Uncomment after enabling SSL:
-    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
-    
-    # Remove server signature
-    Header always unset X-Powered-By
-    Header always unset Server
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>
 
-# ========================================
-# FORCE HTTPS (Uncomment after SSL setup)
-# ========================================
-# RewriteCond %{HTTPS} off
-# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
-
-# ========================================
-# REDIRECT WWW TO NON-WWW (or vice versa)
-# ========================================
-# Redirect www to non-www (uncomment if needed):
-# RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
-# RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
-
-# ========================================
-# REMOVE TRAILING SLASH
-# ========================================
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} (.+)/$
-RewriteRule ^ %1 [R=301,L]
-
-# ========================================
-# BLOCK ACCESS TO SENSITIVE FILES
-# ========================================
-<FilesMatch "^\.">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
-
-<FilesMatch "\.(env|log|sql|md|json|yml|yaml|ini|bak|backup|old|orig|save|swp|swo|DS_Store)$">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
-
-# Block access to specific files
-<Files ~ "^(composer\.json|composer\.lock|package\.json|README\.md|\.gitignore)$">
-    Order allow,deny
-    Deny from all
-</Files>
-
-# ========================================
-# BLOCK ACCESS TO CONFIG DIRECTORY
-# ========================================
-RewriteRule ^config/ - [F,L]
-RewriteRule ^logs/ - [F,L]
-RewriteRule ^database/ - [F,L]
-
-# ========================================
-# BLOCK BAD BOTS AND SCRAPERS
-# ========================================
-<IfModule mod_rewrite.c>
-    RewriteCond %{HTTP_USER_AGENT} ^.*(curl|wget|python|bot|scraper|crawler|spider|parser).*$ [NC]
-    RewriteCond %{REQUEST_URI} !^/robots\.txt$ [NC]
-    RewriteRule ^.*$ - [F,L]
-</IfModule>
-
-# ========================================
-# PREVENT DIRECTORY LISTING
-# ========================================
 Options -Indexes
+AddDefaultCharset UTF-8
 
-# ========================================
-# PROTECT AGAINST SQL INJECTION
-# ========================================
-<IfModule mod_rewrite.c>
-    RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
-    RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
-    RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2}) [OR]
-    RewriteCond %{QUERY_STRING} (\\|\.\./|\.\.\\) [OR]
-    RewriteCond %{QUERY_STRING} (union|select|insert|drop|update|delete|cast|create|table|from|where) [NC]
-    RewriteRule ^(.*)$ - [F,L]
-</IfModule>
+# ----------------------------------------
+# 2) Block obvious sensitive files
+# ----------------------------------------
+<FilesMatch "(?i)(^\.|\.env|\.log|\.sql|readme\.md|\.gitignore)$">
+    Require all denied
+</FilesMatch>
 
-# ========================================
-# BROWSER CACHING
-# ========================================
-<IfModule mod_expires.c>
-    ExpiresActive On
-    
-    # Images
-    ExpiresByType image/jpg "access plus 1 year"
-    ExpiresByType image/jpeg "access plus 1 year"
-    ExpiresByType image/gif "access plus 1 year"
-    ExpiresByType image/png "access plus 1 year"
-    ExpiresByType image/webp "access plus 1 year"
-    ExpiresByType image/svg+xml "access plus 1 year"
-    ExpiresByType image/x-icon "access plus 1 year"
-    
-    # CSS and JavaScript
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType text/javascript "access plus 1 month"
-    ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType application/x-javascript "access plus 1 month"
-    
-    # Fonts
-    ExpiresByType font/ttf "access plus 1 year"
-    ExpiresByType font/otf "access plus 1 year"
-    ExpiresByType font/woff "access plus 1 year"
-    ExpiresByType font/woff2 "access plus 1 year"
-    ExpiresByType application/font-woff "access plus 1 year"
-    
-    # HTML and XML
-    ExpiresByType text/html "access plus 1 hour"
-    ExpiresByType text/xml "access plus 1 hour"
-    ExpiresByType application/xml "access plus 1 hour"
-</IfModule>
+# Block sensitive directories (adjust to your structure)
+RewriteRule ^(config|logs|database)/ - [F,L]
 
-# ========================================
-# GZIP COMPRESSION
-# ========================================
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html
-    AddOutputFilterByType DEFLATE text/css
-    AddOutputFilterByType DEFLATE text/javascript
-    AddOutputFilterByType DEFLATE text/xml
-    AddOutputFilterByType DEFLATE text/plain
-    AddOutputFilterByType DEFLATE application/xml
-    AddOutputFilterByType DEFLATE application/xhtml+xml
-    AddOutputFilterByType DEFLATE application/rss+xml
-    AddOutputFilterByType DEFLATE application/javascript
-    AddOutputFilterByType DEFLATE application/x-javascript
-    AddOutputFilterByType DEFLATE application/json
-    AddOutputFilterByType DEFLATE image/svg+xml
-</IfModule>
+# ----------------------------------------
+# 3) Canonical: remove trailing slash (non-directories)
+# ----------------------------------------
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} .+/$
+RewriteRule ^(.+?)/$ $1 [R=301,L]
 
-# ========================================
-# PREVENT IMAGE HOTLINKING
-# ========================================
-<IfModule mod_rewrite.c>
-    RewriteCond %{HTTP_REFERER} !^$
-    RewriteCond %{HTTP_REFERER} !^https?://(www\.)?kuplyu-tashkent\.uz [NC]
-    RewriteCond %{HTTP_REFERER} !^https?://(www\.)?test\.kuplyu-tashkent\.uz [NC]
-    RewriteCond %{REQUEST_URI} \.(jpg|jpeg|png|gif|webp)$ [NC]
-    RewriteRule ^.*$ - [F,L]
-</IfModule>
-
-# ========================================
-# SERVE EXISTING FILES/DIRECTORIES NORMALLY
-# ========================================
+# ----------------------------------------
+# 4) Serve existing files/directories normally
+# ----------------------------------------
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# ========================================
-# ROUTE EVERYTHING ELSE TO INDEX.PHP
-# ========================================
+# ----------------------------------------
+# 5) Route everything else to index.php
+# ----------------------------------------
 RewriteRule ^ index.php [QSA,L]
 
-# ========================================
-# FILE SIZE LIMITS (adjust as needed)
-# ========================================
-<IfModule mod_php7.c>
-    php_value upload_max_filesize 5M
-    php_value post_max_size 10M
-    php_value max_execution_time 300
-    php_value max_input_time 300
+# ----------------------------------------
+# 6) Compression
+# ----------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/json application/xml image/svg+xml
 </IfModule>
 
-# ========================================
-# ERROR PAGES (create these pages)
-# ========================================
+# ----------------------------------------
+# 7) Simple caching (safe defaults)
+# ----------------------------------------
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType text/html "access plus 1 hour"
+    ExpiresByType application/xml "access plus 1 hour"
+</IfModule>
+
+# ----------------------------------------
+# 8) Error documents
+# ----------------------------------------
 ErrorDocument 400 /error.php?code=400
 ErrorDocument 401 /error.php?code=401
 ErrorDocument 403 /error.php?code=403
 ErrorDocument 404 /error.php?code=404
 ErrorDocument 500 /error.php?code=500
-
-# ========================================
-# DISABLE SERVER SIGNATURE
-# ========================================
-ServerSignature Off
-
-# ========================================
-# CHARSET
-# ========================================
-AddDefaultCharset UTF-8

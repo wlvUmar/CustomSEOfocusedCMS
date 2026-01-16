@@ -2,11 +2,11 @@
 // path: ./controllers/admin/PageAdminController.php
 
 require_once BASE_PATH . '/models/Page.php';
-require_once BASE_PATH . '/models/SearchEngineManager.php';
+
 
 class PageAdminController extends Controller {
     private $pageModel;
-    private $searchEngineManager;
+
 
     private function sanitizeSlug($slug) {
         $slug = strtolower(trim($slug));
@@ -24,7 +24,7 @@ class PageAdminController extends Controller {
     public function __construct() {
         parent::__construct();
         $this->pageModel = new Page();
-        $this->searchEngineManager = new SearchEngineManager();
+
     }
 
     public function index() {
@@ -103,24 +103,12 @@ class PageAdminController extends Controller {
             $this->pageModel->update($id, $data);
             $_SESSION['success'] = 'Page updated successfully';
             
-            if ($data['is_published']) {
-                try {
-                    $this->searchEngineManager->autoPingSitemap();
-                } catch (Exception $e) {
-                    error_log("Sitemap ping exception: " . $e->getMessage());
-                }
-            }
+
         } else {
             $this->pageModel->create($data);
             $_SESSION['success'] = 'Page created successfully';
             
-            if ($data['is_published']) {
-                try {
-                    $this->searchEngineManager->autoPingSitemap();
-                } catch (Exception $e) {
-                    error_log("Sitemap ping exception: " . $e->getMessage());
-                }
-            }
+
         }
         
         $this->redirect('/admin/pages');

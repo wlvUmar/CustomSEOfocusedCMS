@@ -155,10 +155,7 @@ $router->group('/admin/seo', function($router) {
         require_once BASE_PATH . '/controllers/SitemapController.php';
         (new SitemapController())->adminPanel();
     });
-    $router->post('/sitemap/ping', function() {
-        require_once BASE_PATH . '/controllers/SitemapController.php';
-        (new SitemapController())->pingSearchEngines();
-    });
+
 });
 
 // Admin Schemas
@@ -172,13 +169,7 @@ $router->group('/admin/schemas', function($router) {
 // Backwards-compatible route: handle POSTs accidentally sent to /seo/save (without /admin)
 $router->post('/seo/save', function() { requireSEO('save'); });
 
-// Admin Search Engine Configuration & Sitemap Management
-$router->group('/admin/search-engine', function($router) {
-    $router->get('/', function() { requireSearchEngine('index'); });
-    $router->get('/config', function() { requireSearchEngine('config'); });
-    $router->post('/save-config', function() { requireSearchEngine('saveConfig'); });
-    $router->post('/ping-now', function() { requireSearchEngine('pingNow'); });
-});
+
 
 $router->group('/admin/preview', function($router) {
     $router->get('/{id}', function($id) { requireAdminController('PreviewController', 'show', $id); });
@@ -288,11 +279,7 @@ function requireSEO($method) {
     (new SEOController())->$method();
 }
 
-function requireSearchEngine($method, $arg = null) {
-    require_once BASE_PATH . '/controllers/admin/SearchEngineController.php';
-    $c = new SearchEngineController();
-    $arg !== null ? $c->$method($arg) : $c->$method();
-}
+
 
 function requireSchemaAdmin($method) {
     require_once BASE_PATH . '/controllers/admin/SchemaController.php';

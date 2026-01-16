@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jan 08, 2026 at 05:47 PM
+-- Generation Time: Jan 16, 2026 at 01:00 AM
 -- Server version: 10.3.39-MariaDB-log-cll-lve
 -- PHP Version: 8.1.30
 
@@ -219,6 +219,8 @@ CREATE TABLE `media` (
 
 CREATE TABLE `pages` (
   `id` int(11) NOT NULL,
+  `parent_id` int(11) DEFAULT NULL,
+  `depth` int(11) NOT NULL DEFAULT 0,
   `slug` varchar(100) NOT NULL,
   `title_ru` varchar(200) NOT NULL,
   `title_uz` varchar(200) NOT NULL,
@@ -502,6 +504,41 @@ CREATE TABLE `v_pages_due_resubmit` (
 -- --------------------------------------------------------
 
 --
+-- Stand-in structure for view `v_page_breadcrumbs`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_page_breadcrumbs` (
+`id` int(11)
+,`slug` varchar(100)
+,`title_ru` varchar(200)
+,`title_uz` varchar(200)
+,`parent_id` int(11)
+,`total_levels` int(1)
+,`path_ids` varchar(1000)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_page_hierarchy`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_page_hierarchy` (
+`id` int(11)
+,`slug` varchar(100)
+,`title_ru` varchar(200)
+,`title_uz` varchar(200)
+,`parent_id` int(11)
+,`depth` int(11)
+,`is_published` tinyint(4)
+,`path_ru` varchar(1000)
+,`path_uz` varchar(1000)
+,`id_path` varchar(1000)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Stand-in structure for view `v_popular_paths`
 -- (See below for the actual view)
 --
@@ -610,6 +647,24 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER V
 DROP TABLE IF EXISTS `v_pages_due_resubmit`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_pages_due_resubmit`  AS SELECT `p`.`slug` AS `slug`, `p`.`title_ru` AS `title_ru`, `p`.`updated_at` AS `updated_at`, max(`s`.`submitted_at`) AS `last_submitted_at`, to_days(current_timestamp()) - to_days(max(`s`.`submitted_at`)) AS `days_since_submission` FROM (`pages` `p` left join `search_submissions` `s` on(`p`.`slug` = `s`.`page_slug` and `s`.`status` = 'success')) WHERE `p`.`is_published` = 1 GROUP BY `p`.`slug`, `p`.`title_ru`, `p`.`updated_at` HAVING `last_submitted_at` is null OR to_days(current_timestamp()) - to_days(`last_submitted_at`) > 30 ORDER BY to_days(current_timestamp()) - to_days(max(`s`.`submitted_at`)) DESC ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_page_breadcrumbs`
+--
+DROP TABLE IF EXISTS `v_page_breadcrumbs`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_page_breadcrumbs`  AS WITH breadcrumb_path AS (SELECT `pages`.`id` AS `id`, `pages`.`slug` AS `slug`, `pages`.`title_ru` AS `title_ru`, `pages`.`title_uz` AS `title_uz`, `pages`.`parent_id` AS `parent_id`, 0 AS `level`, cast(`pages`.`id` as char(1000) charset utf8mb4) AS `path_ids` FROM `pages` UNION ALL SELECT `bp`.`id` AS `id`, `bp`.`slug` AS `slug`, `bp`.`title_ru` AS `title_ru`, `bp`.`title_uz` AS `title_uz`, `p`.`parent_id` AS `parent_id`, `bp`.`level`+ 1 AS `bp.level + 1`, concat(cast(`p`.`id` as char charset utf8mb4),',',`bp`.`path_ids`) AS `CONCAT(CAST(p.id AS CHAR), ',', bp.path_ids)` FROM (`breadcrumb_path` `bp` join `pages` `p` on(`bp`.`parent_id` = `p`.`id`))) SELECT `breadcrumb_path`.`id` AS `id`, `breadcrumb_path`.`slug` AS `slug`, `breadcrumb_path`.`title_ru` AS `title_ru`, `breadcrumb_path`.`title_uz` AS `title_uz`, `breadcrumb_path`.`parent_id` AS `parent_id`, max(`breadcrumb_path`.`level`) AS `total_levels`, `breadcrumb_path`.`path_ids` AS `path_ids` FROM `breadcrumb_path` GROUP BY `breadcrumb_path`.`id`, `breadcrumb_path`.`slug`, `breadcrumb_path`.`title_ru`, `breadcrumb_path`.`title_uz`, `breadcrumb_path`.`parent_id`, `breadcrumb_path`.`path_ids``path_ids`  ;
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_page_hierarchy`
+--
+DROP TABLE IF EXISTS `v_page_hierarchy`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`kuplyuta`@`localhost` SQL SECURITY DEFINER VIEW `v_page_hierarchy`  AS WITH page_tree AS (SELECT `pages`.`id` AS `id`, `pages`.`slug` AS `slug`, `pages`.`title_ru` AS `title_ru`, `pages`.`title_uz` AS `title_uz`, `pages`.`parent_id` AS `parent_id`, `pages`.`depth` AS `depth`, `pages`.`is_published` AS `is_published`, cast(`pages`.`title_ru` as char(1000) charset utf8mb4) AS `path_ru`, cast(`pages`.`title_uz` as char(1000) charset utf8mb4) AS `path_uz`, cast(`pages`.`id` as char(1000) charset utf8mb4) AS `id_path` FROM `pages` WHERE `pages`.`parent_id` is null UNION ALL SELECT `p`.`id` AS `id`, `p`.`slug` AS `slug`, `p`.`title_ru` AS `title_ru`, `p`.`title_uz` AS `title_uz`, `p`.`parent_id` AS `parent_id`, `p`.`depth` AS `depth`, `p`.`is_published` AS `is_published`, concat(`pt`.`path_ru`,' > ',`p`.`title_ru`) AS `path_ru`, concat(`pt`.`path_uz`,' > ',`p`.`title_uz`) AS `path_uz`, concat(`pt`.`id_path`,',',`p`.`id`) AS `id_path` FROM (`pages` `p` join `page_tree` `pt` on(`p`.`parent_id` = `pt`.`id`))) SELECT `page_tree`.`id` AS `id`, `page_tree`.`slug` AS `slug`, `page_tree`.`title_ru` AS `title_ru`, `page_tree`.`title_uz` AS `title_uz`, `page_tree`.`parent_id` AS `parent_id`, `page_tree`.`depth` AS `depth`, `page_tree`.`is_published` AS `is_published`, `page_tree`.`path_ru` AS `path_ru`, `page_tree`.`path_uz` AS `path_uz`, `page_tree`.`id_path` AS `id_path` FROM `page_tree``page_tree`  ;
 
 -- --------------------------------------------------------
 
@@ -753,7 +808,9 @@ ALTER TABLE `media`
 ALTER TABLE `pages`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_slug` (`slug`),
-  ADD KEY `idx_published` (`is_published`);
+  ADD KEY `idx_published` (`is_published`),
+  ADD KEY `idx_parent_id` (`parent_id`),
+  ADD KEY `idx_depth` (`depth`);
 
 --
 -- Indexes for table `page_link_widgets`
@@ -949,6 +1006,12 @@ ALTER TABLE `users`
 --
 ALTER TABLE `content_rotations`
   ADD CONSTRAINT `content_rotations_ibfk_1` FOREIGN KEY (`page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `pages`
+--
+ALTER TABLE `pages`
+  ADD CONSTRAINT `fk_pages_parent` FOREIGN KEY (`parent_id`) REFERENCES `pages` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Constraints for table `page_link_widgets`

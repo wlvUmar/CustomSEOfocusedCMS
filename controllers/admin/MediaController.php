@@ -24,6 +24,13 @@ class MediaController extends Controller {
             $media = $this->pageMediaModel->getPageMedia($pageId);
             $pageModel = new Page();
             $page = $pageModel->getById($pageId);
+            
+            // Add usage count for page-specific media too
+            foreach ($media as &$item) {
+                $sql = "SELECT COUNT(*) as count FROM page_media WHERE media_id = ?";
+                $result = Database::getInstance()->fetchOne($sql, [$item['media_id']]);
+                $item['usage_count'] = $result['count'] ?? 0;
+            }
         } else {
             if ($filter === 'unused') {
                 $media = $this->pageMediaModel->getUnusedMedia();
@@ -135,6 +142,14 @@ class MediaController extends Controller {
             ], 400);
         }
         
+        // If force delete, remove all page_media relationships first
+        if (!empty($_POST['force'])) {
+            Database::getInstance()->query(
+                "DELETE FROM page_media WHERE media_id = ?",
+                [$id]
+            );
+        }
+        
         if ($this->mediaModel->delete($id)) {
             $_SESSION['success'] = 'Media deleted successfully';
             $this->json(['success' => true]);
@@ -217,18 +232,25 @@ class MediaController extends Controller {
     public function bulkUpload() {
         $this->requireAuth();
         
+        $isAjax = !empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false;
+        
         if (!isset($_FILES['files'])) {
+            if ($isAjax) {
+                $this->json(['success' => false, 'message' => 'No files uploaded'], 400);
+            }
             $_SESSION['error'] = 'No files uploaded';
             $this->redirect('/admin/media');
         }
         
         $uploaded = 0;
         $failed = 0;
+        $errors = [];
         $pageId = $_POST['page_id'] ?? null;
         $section = $_POST['section'] ?? 'content';
         foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
             if ($_FILES['files']['error'][$key] !== UPLOAD_ERR_OK) {
                 $failed++;
+                $errors[] = $_FILES['files']['name'][$key] . ': Upload error';
                 continue;
             }
             
@@ -241,6 +263,7 @@ class MediaController extends Controller {
             $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
             if (!in_array($file['type'], $allowedTypes) || $file['size'] > MAX_UPLOAD_SIZE) {
                 $failed++;
+                $errors[] = $file['name'] . ': Invalid file type or size';
                 continue;
             }
             
@@ -265,7 +288,18 @@ class MediaController extends Controller {
                 $uploaded++;
             } else {
                 $failed++;
+                $errors[] = $file['name'] . ': Failed to save file';
             }
+        }
+        
+        if ($isAjax) {
+            $this->json([
+                'success' => $uploaded > 0,
+                'uploaded' => $uploaded,
+                'failed' => $failed,
+                'errors' => $errors,
+                'message' => "Uploaded {$uploaded} files" . ($failed ? ", {$failed} failed" : '')
+            ]);
         }
         
         $_SESSION['success'] = "Uploaded {$uploaded} files" . ($failed ? ", {$failed} failed" : '');

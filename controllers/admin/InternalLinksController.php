@@ -22,6 +22,9 @@ class InternalLinksController extends Controller {
         // Get all pages with their link counts
         $pages = $this->getAllPagesWithLinkStats();
         
+        // Sort pages hierarchically
+        $pages = $this->sortPagesHierarchically($pages);
+        
         // Enrich with hierarchy info
         foreach ($pages as &$page) {
             $page['children'] = $this->pageModel->getChildren($page['id'], false);
@@ -155,9 +158,9 @@ class InternalLinksController extends Controller {
                 break;
                 
             case 'related':
-                // Connect pages based on similar content/keywords
+                // Smart: Connect pages based on similar content/keywords
                 foreach ($pages as $page) {
-                    $related = $this->findRelatedPages($page['id'], $maxLinks);
+                    $related = $this->findRelatedPagesSmart($page, $maxLinks);
                     foreach ($related as $targetId) {
                         try {
                             $this->widgetModel->addLink($page['id'], $targetId);
@@ -189,6 +192,90 @@ class InternalLinksController extends Controller {
         
         $_SESSION['success'] = "Auto-connected pages! Created $created new links.";
         $this->redirect('/admin/internal-links');
+    }
+
+    /**
+     * Smart algorithm to find related pages
+     */
+    private function findRelatedPagesSmart($sourcePage, $limit = 5) {
+        $scores = [];
+        
+        // Prepare source tokens
+        $sourceTokens = $this->extractTokens($sourcePage);
+        
+        // Get all other published pages
+        $allPages = $this->pageModel->getAll(false);
+        
+        foreach ($allPages as $targetPage) {
+            if ($targetPage['id'] == $sourcePage['id']) continue;
+            
+            $targetTokens = $this->extractTokens($targetPage);
+            $score = $this->calculateRelevanceScore($sourceTokens, $targetTokens);
+            
+            if ($score > 0) {
+                $scores[$targetPage['id']] = $score;
+            }
+        }
+        
+        // Sort by score desc
+        arsort($scores);
+        
+        return array_slice(array_keys($scores), 0, $limit);
+    }
+    
+    /**
+     * Extract weighted tokens from page
+     */
+    private function extractTokens($page) {
+        $tokens = [];
+        
+        // 1. Title (Weight: 3)
+        $this->addTokens($tokens, $page['title_ru'], 3);
+        
+        // 2. Meta Keywords (Weight: 5) - Strongest signal
+        if (!empty($page['meta_keywords_ru'])) {
+            $this->addTokens($tokens, $page['meta_keywords_ru'], 5);
+        }
+        
+        // 3. Content (Weight: 1) - Limit length to avoid noise
+        $content = strip_tags($page['content_ru']);
+        $content = substr($content, 0, 1000); // Analyze first 1000 chars
+        $this->addTokens($tokens, $content, 1);
+        
+        return $tokens;
+    }
+    
+    private function addTokens(&$tokens, $text, $weight) {
+        if (empty($text)) return;
+        
+        $text = mb_strtolower($text);
+        $text = preg_replace('/[^\p{L}\p{N}\s]/u', '', $text);
+        $words = preg_split('/\s+/', $text);
+        
+        $stopWords = ['the', 'and', 'for', 'that', 'this', 'with', 'from', 'but', 'not', 'are', 'was', 'were', // EN
+                      'ва', 'билан', 'учун', 'бу', 'шу', 'ҳам', 'деб', 'ки', // UZ
+                      'и', 'в', 'во', 'не', 'что', 'он', 'на', 'я', 'с', 'со', 'как', 'а', 'то', 'все', 'она', 'так', 'его', 'но', 'да', 'ты', 'к', 'у', 'же', 'вы', 'за', 'бы', 'по', 'только', 'ее', 'мне', 'было', 'вот', 'от', 'меня', 'еще', 'нет', 'о', 'из', 'ему', 'теперь', 'когда', 'даже', 'ну', 'вдруг', 'ли', 'если', 'уже', 'или', 'ни', 'быть', 'был', 'него', 'до', 'вас', 'нибудь', 'опять', 'уж', 'вам', 'ведь', 'там', 'потом', 'себя', 'ничего', 'ей', 'может', 'они', 'тут', 'где', 'есть', 'надо', 'ней', 'для', 'мы', 'тебя', 'их', 'чем', 'была', 'сам', 'чтоб', 'без', 'будто', 'чего', 'раз', 'тоже', 'себе', 'под', 'будет', 'ж', 'тогда', 'кто', 'этот', 'того', 'потому', 'этого', 'какой', 'совсем', 'ним', 'здесь', 'этом', 'один', 'почти', 'мой', 'тем', 'чтобы', 'нее', 'сейчас', 'были', 'куда', 'зачем', 'всех', 'никогда', 'можно', 'при', 'наконец', 'два', 'об', 'другой', 'хоть', 'после', 'над', 'больше', 'тот', 'через', 'эти', 'нас', 'про', 'всего', 'них', 'какая', 'много', 'разве', 'три', 'эту', 'моя', 'впрочем', 'хорошо', 'свою', 'этой', 'перед', 'иногда', 'лучше', 'чуть', 'том', 'нельзя', 'такой', 'им', 'более', 'всегда', 'конечно', 'всю', 'между']; // RU
+        
+        foreach ($words as $word) {
+            if (mb_strlen($word) < 3) continue;
+            if (in_array($word, $stopWords)) continue;
+            
+            if (!isset($tokens[$word])) {
+                $tokens[$word] = 0;
+            }
+            $tokens[$word] += $weight;
+        }
+    }
+    
+    private function calculateRelevanceScore($sourceTokens, $targetTokens) {
+        $score = 0;
+        foreach ($sourceTokens as $word => $weight) {
+            if (isset($targetTokens[$word])) {
+                // Score is product of weights (e.g. Title match Title = 3*3 = 9)
+                $score += $weight * $targetTokens[$word];
+            }
+        }
+        return $score;
     }
 
     /**
@@ -352,5 +439,51 @@ class InternalLinksController extends Controller {
     private function getMaxDepth() {
         $result = $this->db->fetchOne("SELECT MAX(depth) as max_depth FROM pages");
         return $result['max_depth'] ?? 0;
+    }
+
+    /**
+     * Sort pages in hierarchical order (Parent -> Children)
+     */
+    private function sortPagesHierarchically($pages) {
+        $grouped = [];
+        foreach ($pages as $page) {
+            $parentId = $page['parent_id'] ? $page['parent_id'] : 'root';
+            $grouped[$parentId][] = $page;
+        }
+        
+        $sorted = [];
+        $this->flattenTree($grouped, 'root', 0, $sorted);
+        
+        // Append any pages that weren't reached (detached subtrees/circular refs)
+        if (count($sorted) < count($pages)) {
+            $sortedIds = array_flip(array_column($sorted, 'id'));
+            foreach ($pages as $page) {
+                if (!isset($sortedIds[$page['id']])) {
+                    $page['level'] = 0; // Reset level for detached
+                    $sorted[] = $page;
+                }
+            }
+        }
+        
+        return $sorted;
+    }
+
+    /**
+     * Recursive helper to flatten the page tree
+     */
+    private function flattenTree(&$grouped, $parentId, $depth, &$result) {
+        if (!isset($grouped[$parentId])) return;
+        
+        // Sort siblings by title
+        usort($grouped[$parentId], function($a, $b) {
+            return strcmp($a['title_ru'], $b['title_ru']);
+        });
+
+        foreach ($grouped[$parentId] as $page) {
+            $page['level'] = $depth; // using 'level' to be consistent with common naming, view will use this
+            $result[] = $page;
+            // Recursively add children
+            $this->flattenTree($grouped, $page['id'], $depth + 1, $result);
+        }
     }
 }

@@ -34,11 +34,37 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <select name="parent_id" class="form-control">
                 <option value="">— Root Level (No Parent) —</option>
                 <?php if (!empty($allPages)): ?>
-                    <?php foreach ($allPages as $p): ?>
-                    <option value="<?= $p['id'] ?>" <?= ($page && isset($page['parent_id']) && $page['parent_id'] == $p['id']) ? 'selected' : '' ?>>
-                        <?= e($p['title_ru'] ?? $p['slug']) ?>
-                    </option>
-                    <?php endforeach; ?>
+                    <?php 
+                    function renderParentPageOptions($pages, $currentPageId = null, $parentId = 0, $depth = 0, $maxDepth = 3) {
+                        $output = '';
+                        if ($depth > $maxDepth) return $output;
+                        
+                        $childPages = array_filter($pages, function($p) use ($parentId, $currentPageId) {
+                            // Skip current page to prevent circular reference
+                            if ($currentPageId && $p['id'] == $currentPageId) return false;
+                            return ($p['parent_id'] ?? 0) == $parentId;
+                        });
+                        
+                        usort($childPages, function($a, $b) {
+                            return ($a['sort_order'] ?? 0) <=> ($b['sort_order'] ?? 0);
+                        });
+                        
+                        foreach ($childPages as $p) {
+                            $indent = str_repeat('  ', $depth) . ($depth > 0 ? '└ ' : '');
+                            $isSelected = $page && isset($page['parent_id']) && $page['parent_id'] == $p['id'];
+                            $output .= sprintf(
+                                '<option value="%d" %s>%s%s</option>' . "\n",
+                                $p['id'],
+                                $isSelected ? 'selected' : '',
+                                $indent,
+                                e($p['title_ru'] ?? $p['slug'])
+                            );
+                            $output .= renderParentPageOptions($pages, $currentPageId, $p['id'], $depth + 1, $maxDepth);
+                        }
+                        return $output;
+                    }
+                    echo renderParentPageOptions($allPages, $page['id'] ?? null);
+                    ?>
                 <?php endif; ?>
             </select>
             <small style="display: block; margin-top: 5px; color: #666;">Create a page hierarchy. URLs remain flat, but breadcrumbs will show the path.</small>

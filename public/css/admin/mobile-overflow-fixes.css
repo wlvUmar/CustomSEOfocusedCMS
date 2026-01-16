@@ -1,8 +1,3 @@
-/* MOBILE OVERFLOW FIXES
-   Applied globally to prevent horizontal scrolling on mobile devices
-   Target: iPhone SE 2020 (375px) and all devices < 768px width
-*/
-
 @media (max-width: 768px) {
     /* === FOUNDATION === */
     html,

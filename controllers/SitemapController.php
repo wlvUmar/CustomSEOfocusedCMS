@@ -139,34 +139,5 @@ class SitemapController extends Controller {
     /**
      * Ping search engines about sitemap update
      */
-    public function pingSearchEngines() {
-        $this->requireAuth();
-        
-        if (!IS_PRODUCTION) {
-            $_SESSION['error'] = 'Cannot ping search engines in development mode';
-            $this->redirect('/admin/seo/sitemap');
-            return;
-        }
-        
-        $sitemapUrl = urlencode(BASE_URL . '/sitemap.xml');
-        $results = [];
-        
-        // Google
-        $googleUrl = "https://www.google.com/ping?sitemap=$sitemapUrl";
-        $googleResult = @file_get_contents($googleUrl);
-        $results['google'] = $googleResult !== false;
-        
-        // Bing
-        $bingUrl = "https://www.bing.com/ping?sitemap=$sitemapUrl";
-        $bingResult = @file_get_contents($bingUrl);
-        $results['bing'] = $bingResult !== false;
-        
-        if ($results['google'] || $results['bing']) {
-            $_SESSION['success'] = 'Successfully pinged search engines!';
-        } else {
-            $_SESSION['error'] = 'Failed to ping search engines';
-        }
-        
-        $this->redirect('/admin/seo/sitemap');
-    }
+
 }

@@ -3,11 +3,17 @@
 <div class="page-header">
     <h1><i data-feather="git-branch"></i> Internal Links Manager</h1>
     <div class="btn-group">
+        <button onclick="expandAll()" class="btn btn-secondary">
+            <i data-feather="maximize-2"></i>
+        </button>
+        <button onclick="collapseAll()" class="btn btn-secondary">
+            <i data-feather="minimize-2"></i>
+        </button>
         <button onclick="showAutoConnectModal()" class="btn btn-primary">
-            <i data-feather="zap"></i> Auto-Connect Pages
+            <i data-feather="zap"></i> Auto-Connect
         </button>
         <button onclick="showBulkModal()" class="btn btn-secondary">
-            <i data-feather="layers"></i> Bulk Actions
+            <i data-feather="layers"></i> Bulk
         </button>
     </div>
 </div>
@@ -90,8 +96,7 @@
     <h2>Pages & Link Status</h2>
     <div class="filter-buttons">
         <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="root">Root Pages</button>
-        <button class="filter-btn" data-filter="children">Sub-Pages</button>
+        <button class="filter-btn" data-filter="root">Root</button>
         <button class="filter-btn" data-filter="orphan">Orphans</button>
     </div>
 </div>
@@ -115,9 +120,12 @@
         <?php foreach ($pages as $page): 
             $isRoot = empty($page['parent_id']);
             $hasChildren = !empty($page['children']);
-            $isOrphan = $page['outgoing_links'] == 0 && $page['incoming_links'] == 0;
+            $isOrphan = $page['outgoing_links'] == 0 && $page['incoming_links'] == 0 && $isRoot;
+            $depth = $page['level'] ?? 0;
+            $indent = $depth * 25;
         ?>
-        <tr class="page-row" 
+        <tr class="page-row depth-<?= $depth ?>" 
+            data-page-id="<?= $page['id'] ?>"
             data-is-root="<?= $isRoot ? '1' : '0' ?>"
             data-is-child="<?= !$isRoot ? '1' : '0' ?>"
             data-is-orphan="<?= $isOrphan ? '1' : '0' ?>">
@@ -125,11 +133,29 @@
                 <input type="checkbox" class="page-checkbox" value="<?= $page['id'] ?>">
             </td>
             <td>
-                <strong><?= e($page['title_ru']) ?></strong>
-                <?php if ($isOrphan): ?>
-                <span class="badge badge-danger" style="margin-left: 8px;">Orphan</span>
-                <?php endif; ?>
-                <small><?= e($page['slug']) ?></small>
+                <div style="display: flex; align-items: center; padding-left: <?= $indent ?>px;">
+                    <?php if ($depth > 0): ?>
+                        <span style="color: #9ca3af; margin-right: 4px;">↳</span>
+                    <?php endif; ?>
+                    
+                    <?php if ($hasChildren): ?>
+                        <button class="toggle-children" onclick="toggleChildren(<?= $page['id'] ?>)" type="button">
+                            <i data-feather="chevron-down"></i>
+                        </button>
+                    <?php else: ?>
+                        <span class="toggle-placeholder"></span>
+                    <?php endif; ?>
+
+                    <div>
+                        <strong><?= e($page['title_ru']) ?></strong>
+                        <?php if ($isOrphan): ?>
+                        <span class="badge badge-danger" style="margin-left: 8px;">Orphan</span>
+                        <?php endif; ?>
+                        <div style="font-size: 0.85em; color: #6b7280;">
+                            <?= e($page['slug']) ?>
+                        </div>
+                    </div>
+                </div>
             </td>
             <td>
                 <div class="hierarchy-info">
@@ -344,6 +370,43 @@
 .page-row[data-is-orphan="1"] {
     opacity: 0.7;
 }
+
+/* Collapsible Hierarchy Styles */
+.page-row.hidden {
+    display: none !important;
+}
+
+.toggle-children {
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    color: #6b7280;
+    transition: transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 4px;
+}
+
+.toggle-children:hover {
+    color: #111827;
+    background: #f3f4f6;
+    border-radius: 4px;
+}
+
+.toggle-children.collapsed {
+    transform: rotate(-90deg);
+}
+
+.toggle-placeholder {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 4px;
+}
 </style>
 
 <script>
@@ -373,6 +436,78 @@ function filterPages(type) {
         }
         
         row.style.display = show ? '' : 'none';
+        
+        // Reset hierarchy visibility when filtering
+        if (type !== 'all') {
+            row.classList.remove('hidden');
+        }
+    });
+}
+
+function toggleChildren(pageId) {
+    const btn = document.querySelector(`[data-page-id="${pageId}"] .toggle-children`);
+    const allRows = document.querySelectorAll('.page-row');
+    
+    let foundCurrent = false;
+    let currentDepth = -1;
+    
+    for (let row of allRows) {
+        if (row.dataset.pageId == pageId) {
+            foundCurrent = true;
+            currentDepth = parseInt(row.className.match(/depth-(\d+)/)[1]);
+            continue;
+        }
+        
+        if (foundCurrent) {
+            const rowDepthMatch = row.className.match(/depth-(\d+)/);
+            if (!rowDepthMatch) continue;
+            
+            const rowDepth = parseInt(rowDepthMatch[1]);
+            
+            if (rowDepth <= currentDepth) {
+                break;
+            }
+            
+            // If we are collapsing, hide all descendants
+            if (!btn.classList.contains('collapsed')) {
+                row.classList.add('hidden');
+                // Also collapse the children buttons of descendants to keep state consistent
+                const childBtn = row.querySelector('.toggle-children');
+                if (childBtn) childBtn.classList.add('collapsed');
+            } else {
+                // If we are expanding, only show direct children (depth + 1)
+                // BUT we need to be careful. If we just show depth+1, we might leave their children hidden (correct).
+                if (rowDepth === currentDepth + 1) {
+                    row.classList.remove('hidden');
+                    // Ensure the direct child is set to collapsed initially
+                     const childBtn = row.querySelector('.toggle-children');
+                     if (childBtn) childBtn.classList.add('collapsed');
+                }
+            }
+        }
+    }
+    
+    btn.classList.toggle('collapsed');
+}
+
+function expandAll() {
+    document.querySelectorAll('.page-row').forEach(row => {
+        row.classList.remove('hidden');
+    });
+    document.querySelectorAll('.toggle-children').forEach(btn => {
+        btn.classList.remove('collapsed');
+    });
+}
+
+function collapseAll() {
+    document.querySelectorAll('.page-row').forEach(row => {
+        const depthMatch = row.className.match(/depth-(\d+)/);
+        if (depthMatch && parseInt(depthMatch[1]) > 0) {
+            row.classList.add('hidden');
+        }
+    });
+    document.querySelectorAll('.toggle-children').forEach(btn => {
+        btn.classList.add('collapsed');
     });
 }
 

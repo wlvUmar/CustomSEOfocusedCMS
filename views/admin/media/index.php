@@ -35,6 +35,13 @@
 
 <!-- Media Grid -->
 <div class="media-grid" id="media-grid">
+    <?php 
+    // Debug: show first item structure
+    if (!empty($media)) {
+        echo "<!-- DEBUG: First media item structure: " . json_encode($media[0]) . " -->";
+        echo "<!-- DEBUG: Array keys: " . implode(", ", array_keys($media[0])) . " -->";
+    }
+    ?>
     <?php if (empty($media)): ?>
         <div class="empty-state">
             <i data-feather="image" style="width:64px;height:64px;opacity:0.3;"></i>
@@ -46,21 +53,22 @@
         </div>
     <?php else: ?>
         <?php foreach ($media as $item): ?>
-            <div class="media-card" data-id="<?= $item['id'] ?>" data-name="<?= e($item['original_name']) ?>">
+            <?php 
+            // Get media ID - try multiple sources
+            $mediaId = 0;
+            if (isset($item['media_id']) && $item['media_id']) {
+                $mediaId = (int)$item['media_id'];
+            } else if (isset($item['id']) && $item['id']) {
+                $mediaId = (int)$item['id'];
+            }
+            ?>
+            <div class="media-card" data-id="<?= $mediaId ?>" data-name="<?= e($item['original_name']) ?>">
                 <div class="media-thumbnail">
                     <img src="<?= UPLOAD_URL . e($item['filename']) ?>" alt="<?= e($item['original_name']) ?>" loading="lazy">
-                    <div class="media-overlay">
-                        <button class="btn-icon" onclick="viewMediaInfo(<?= $item['id'] ?>)" title="View Details">
-                            <i data-feather="info"></i>
-                        </button>
-                        <button class="btn-icon" onclick="copyMediaId(<?= $item['id'] ?>)" title="Copy ID">
-                            <i data-feather="hash"></i>
-                        </button>
-                    </div>
                 </div>
 
                 <div class="media-details">
-                    <div class="media-id">ID: <?= $item['id'] ?></div>
+                    <div class="media-id">ID: <?= $mediaId ?></div>
                     <div class="media-filename" title="<?= e($item['original_name']) ?>">
                         <?= e(strlen($item['original_name']) > 30 ? substr($item['original_name'], 0, 27) . '...' : $item['original_name']) ?>
                     </div>
@@ -75,13 +83,10 @@
                 </div>
 
                 <div class="media-actions">
-                    <button class="btn btn-sm btn-primary" onclick="showAttachModal(<?= $item['id'] ?>)" title="Attach to Page">
+                    <button class="btn btn-sm btn-primary" onclick="showAttachModal(<?= $mediaId ?>)" title="Attach to Page">
                         <i data-feather="link"></i> Attach
                     </button>
-                    <button class="btn btn-sm" onclick="copyPlaceholder(<?= $item['id'] ?>)" title="Copy Placeholder">
-                        <i data-feather="code"></i> {{media:<?= $item['id'] ?>}}
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteMedia(<?= $item['id'] ?>, <?= $item['usage_count'] ?? 0 ?>)" title="Delete">
+                    <button class="btn btn-sm btn-danger" data-media-id="<?= $mediaId ?>" onclick="deleteMedia(this.dataset.mediaId, <?= $item['usage_count'] ?? 0 ?>)" title="Delete">
                         <i data-feather="trash-2"></i>
                     </button>
                 </div>
@@ -104,9 +109,34 @@
                 <label>Select Page:</label>
                 <select id="attach-page-id" class="form-control" required>
                     <option value="">-- Select Page --</option>
-                    <?php foreach ($allPages as $page): ?>
-                        <option value="<?= $page['id'] ?>"><?= e($page['title_ru']) ?> (<?= $page['slug'] ?>)</option>
-                    <?php endforeach; ?>
+                    <?php 
+                    // Build hierarchical page list
+                    function renderPageHierarchy($pages, $parentId = 0, $depth = 0, $maxDepth = 3) {
+                        $output = '';
+                        if ($depth > $maxDepth) return $output;
+                        
+                        $childPages = array_filter($pages, function($p) use ($parentId) {
+                            return ($p['parent_id'] ?? 0) == $parentId;
+                        });
+                        
+                        usort($childPages, function($a, $b) {
+                            return ($a['sort_order'] ?? 0) <=> ($b['sort_order'] ?? 0);
+                        });
+                        
+                        foreach ($childPages as $page) {
+                            $indent = str_repeat('  ', $depth) . ($depth > 0 ? '└ ' : '');
+                            $output .= sprintf(
+                                '<option value="%d">%s%s</option>' . "\n",
+                                $page['id'],
+                                $indent,
+                                e($page['title_ru'] ?? $page['slug'])
+                            );
+                            $output .= renderPageHierarchy($pages, $page['id'], $depth + 1, $maxDepth);
+                        }
+                        return $output;
+                    }
+                    echo renderPageHierarchy($allPages);
+                    ?>
                 </select>
             </div>
 
@@ -153,19 +183,6 @@
     </div>
 </div>
 
-<!-- Media Info Modal -->
-<div id="info-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Media Details</h3>
-            <button onclick="closeInfoModal()" class="btn-close">&times;</button>
-        </div>
-        <div class="modal-body" id="info-modal-body">
-            Loading...
-        </div>
-    </div>
-</div>
-
 <script>
 function filterMedia() {
     const search = document.getElementById('search').value.toLowerCase();
@@ -178,28 +195,56 @@ function filterMedia() {
 }
 
 function uploadFiles() {
-    const files = document.getElementById('upload-input').files;
-    if (!files.length) return;
-    
-    const formData = new FormData();
-    Array.from(files).forEach(file => {
-        formData.append('files[]', file);
-    });
-    
-    fetch('<?= BASE_URL ?>/admin/media/bulk-upload', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        location.reload();
-    })
-    .catch(err => {
-        console.log(err)
-        alert('Upload failed: ' + err.message);
+  const input = document.getElementById('upload-input');
+  const files = input?.files;
+  if (!files || !files.length) return;
 
-    });
+  const formData = new FormData();
+  Array.from(files).forEach(file => formData.append('files[]', file));
+
+  fetch('<?= BASE_URL ?>/admin/media/bulk-upload', {
+    method: 'POST',
+    body: formData,
+    credentials: 'same-origin',
+    headers: {
+      'Accept': 'application/json'
+    }
+  })
+  .then(async (r) => {
+    const ct = r.headers.get('content-type') || '';
+    const text = await r.text(); // read once
+
+    // Non-2xx => show body snippet for debugging
+    if (!r.ok) {
+      console.error('Upload failed HTTP', r.status, r.statusText, 'CT:', ct, 'Body:', text);
+      throw new Error(`HTTP ${r.status}. Response: ${text.slice(0, 300)}`);
+    }
+
+    // If server didn't return JSON, show what it returned
+    if (!ct.includes('application/json')) {
+      console.error('Expected JSON, got:', ct, text);
+      throw new Error(`Expected JSON but got ${ct}. Body: ${text.slice(0, 300)}`);
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error('Invalid JSON:', text);
+      throw new Error(`Invalid JSON. Body: ${text.slice(0, 300)}`);
+    }
+
+    return data;
+  })
+  .then((data) => {
+    location.reload();
+  })
+  .catch((err) => {
+    console.log(err);
+    alert('Upload failed: ' + err.message);
+  });
 }
+
 
 function showAttachModal(mediaId) {
     document.getElementById('attach-media-id').value = mediaId;
@@ -271,8 +316,24 @@ function copyPlaceholder(id) {
 }
 
 function deleteMedia(id, usageCount) {
-    if (usageCount > 0) {
-        if (!confirm(`This media is used on ${usageCount} page(s). Delete anyway?`)) {
+    // Debug: log what we're receiving
+    console.log('Raw id:', id, 'Raw usageCount:', usageCount);
+    
+    // Parse ID safely
+    const mediaId = parseInt(id, 10);
+    
+    console.log('Parsed mediaId:', mediaId, 'Type:', typeof mediaId);
+    
+    if (isNaN(mediaId) || mediaId <= 0) {
+        console.error('Invalid mediaId detected:', mediaId);
+        alert('Invalid media ID: ' + id);
+        return;
+    }
+    
+    const usage = parseInt(usageCount, 10) || 0;
+    
+    if (usage > 0) {
+        if (!confirm(`This media is used on ${usage} page(s). Delete anyway?`)) {
             return;
         }
     } else {
@@ -281,8 +342,8 @@ function deleteMedia(id, usageCount) {
     
     const formData = new FormData();
     formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?>');
-    formData.append('id', id);
-    if (usageCount > 0) formData.append('force', '1');
+    formData.append('id', mediaId);
+    if (usage > 0) formData.append('force', '1');
     
     fetch('<?= BASE_URL ?>/admin/media/delete', {
         method: 'POST',
@@ -299,45 +360,6 @@ function deleteMedia(id, usageCount) {
     .catch(err => {
         alert('Error: ' + err.message);
     });
-}
-
-function viewMediaInfo(id) {
-    document.getElementById('info-modal').classList.add('active');
-    document.getElementById('info-modal-body').innerHTML = 'Loading...';
-    
-    fetch('<?= BASE_URL ?>/admin/media/info?id=' + id)
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            const info = data.media;
-            const pages = data.pages || [];
-            
-            let html = `
-                <div><strong>ID:</strong> ${info.id}</div>
-                <div><strong>Filename:</strong> ${info.filename}</div>
-                <div><strong>Size:</strong> ${(info.file_size / 1024).toFixed(1)} KB</div>
-                <div><strong>Uploaded:</strong> ${info.uploaded_at}</div>
-                <hr>
-                <h4>Used on ${pages.length} page(s):</h4>
-            `;
-            
-            if (pages.length > 0) {
-                html += '<ul>';
-                pages.forEach(p => {
-                    html += `<li>${p.title_ru} (${p.slug}) - Section: ${p.section}</li>`;
-                });
-                html += '</ul>';
-            } else {
-                html += '<p><em>Not used on any pages yet</em></p>';
-            }
-            
-            document.getElementById('info-modal-body').innerHTML = html;
-        }
-    });
-}
-
-function closeInfoModal() {
-    document.getElementById('info-modal').classList.remove('active');
 }
 </script>
 

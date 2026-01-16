@@ -66,13 +66,11 @@ function isBot() {
 }
 
 function showError(int $code = 500) {
-    // Check if $router exists in this scope
     global $router;
 
     if (isset($router) && method_exists($router, 'error')) {
         $router->error($code);
     } else {
-        // fallback if router is unavailable
         http_response_code($code);
         echo "Error $code";
         exit;
@@ -196,40 +194,67 @@ function replacePlaceholders($text, $page, $seo) {
     return renderTemplate($text, $data);
 }
 
+function shouldSkipTracking(): bool
+{
+    if (!empty($_COOKIE['no_track']) && $_COOKIE['no_track'] === '1') {
+        return true;
+    }
+
+    $clientIp = getClientIp();
+    $skipIps = [
+        '213.230.80.213',
+    ];
+
+    if ($clientIp && in_array($clientIp, $skipIps, true)) {
+        return true;
+    }
+
+    return false;
+}
+
+
+function getClientIp(): ?string
+{
+    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+        return $_SERVER['HTTP_CF_CONNECTING_IP'];
+    }
+
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        $ip = trim($parts[0]);
+        if (filter_var($ip, FILTER_VALIDATE_IP)) return $ip;
+    }
+
+    $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+    return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : null;
+}
+
+
 function trackVisit($slug, $language) {
-    // DEBUG: Log all visits
+    if (shouldSkipTracking()) return;
+
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-    error_log("[TRACK_VISIT] Slug: $slug, Lang: $language, UA: $userAgent");
-    
-    // Skip tracking bot visits in regular analytics
+
     if (isBot()) {
-        error_log("[TRACK_VISIT] Bot detected, calling trackBotVisit()");
         trackBotVisit($slug, $language);
         return;
     }
-    
-    error_log("[TRACK_VISIT] Regular user, tracking in analytics table");
-    
+
     try {
         $db = Database::getInstance();
         $date = date('Y-m-d');
-        
+
         $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, date) 
                 VALUES (?, ?, 1, 0, ?) 
                 ON DUPLICATE KEY UPDATE visits = visits + 1";
-        
+
         $db->query($sql, [$slug, $language, $date]);
-        
-        // Update monthly summary
         updateMonthlySummary($slug, $language);
     } catch (Exception $e) {
         error_log("Analytics error: " . $e->getMessage());
     }
 }
 
-/**
- * Track bot/crawler visits separately for crawl analysis
- */
 function trackBotVisit($slug, $language) {
     error_log("[TRACK_BOT_VISIT] Called for slug: $slug, language: $language");
     
@@ -238,7 +263,6 @@ function trackBotVisit($slug, $language) {
         $date = date('Y-m-d');
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
         
-        // Determine bot type
         $botType = 'unknown';
         $userAgentLower = strtolower($userAgent);
         
@@ -266,25 +290,24 @@ function trackBotVisit($slug, $language) {
 }
 
 function trackClick($slug, $language) {
+    if (shouldSkipTracking()) return;
+
     try {
         $db = Database::getInstance();
         $date = date('Y-m-d');
-        
+
         $sql = "UPDATE analytics SET clicks = clicks + 1 
                 WHERE page_slug = ? AND language = ? AND date = ?";
-        
+
         $db->query($sql, [$slug, $language, $date]);
-        
         updateMonthlySummary($slug, $language);
     } catch (Exception $e) {
         error_log("Click tracking error: " . $e->getMessage());
     }
 }
 
-/**
- * Track internal link navigation
- * Records when users click from one page to another
- */
+
+
 function trackInternalLink($fromSlug, $toSlug, $language) {
     try {
         $db = Database::getInstance();
@@ -296,7 +319,6 @@ function trackInternalLink($fromSlug, $toSlug, $language) {
         
         $db->query($sql, [$fromSlug, $toSlug, $language, $date]);
         
-        // Update monthly summary
         updateInternalLinkMonthlySummary($fromSlug, $toSlug, $language);
     } catch (Exception $e) {
         error_log("Internal link tracking error: " . $e->getMessage());
