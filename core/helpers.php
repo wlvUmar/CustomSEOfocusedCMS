@@ -27,6 +27,18 @@ function setLanguage($lang) {
     }
 }
 
+function logDebug($message) {
+    if (!IS_PRODUCTION) {
+        error_log($message);
+    }
+}
+
+function logInfo($message) {
+    if (!IS_PRODUCTION) {
+        error_log($message);
+    }
+}
+
 
 function isBot() {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
@@ -57,7 +69,7 @@ function isBot() {
     
     foreach ($bots as $bot) {
         if (strpos($userAgentLower, $bot) !== false) {
-            error_log("[IS_BOT] Bot detected! Type: $bot, UA: $userAgent");
+            logDebug("[IS_BOT] Bot detected! Type: $bot, UA: $userAgent");
             return true;
         }
     }
@@ -256,7 +268,7 @@ function trackVisit($slug, $language) {
 }
 
 function trackBotVisit($slug, $language) {
-    error_log("[TRACK_BOT_VISIT] Called for slug: $slug, language: $language");
+    logDebug("[TRACK_BOT_VISIT] Called for slug: $slug, language: $language");
     
     try {
         $db = Database::getInstance();
@@ -274,7 +286,7 @@ function trackBotVisit($slug, $language) {
         elseif (strpos($userAgentLower, 'duckduckbot') !== false) $botType = 'duckduckgo';
         else $botType = 'other';
         
-        error_log("[TRACK_BOT_VISIT] Bot type: $botType, Date: $date");
+        logDebug("[TRACK_BOT_VISIT] Bot type: $botType, Date: $date");
         
         $sql = "INSERT INTO analytics_bot_visits 
                 (page_slug, language, bot_type, user_agent, visit_date, visits) 
@@ -283,7 +295,7 @@ function trackBotVisit($slug, $language) {
         
         $db->query($sql, [$slug, $language, $botType, substr($userAgent, 0, 255), $date]);
         
-        error_log("[TRACK_BOT_VISIT] Successfully inserted/updated bot visit record");
+        logDebug("[TRACK_BOT_VISIT] Successfully inserted/updated bot visit record");
     } catch (Exception $e) {
         error_log("[TRACK_BOT_VISIT] ERROR: " . $e->getMessage());
     }

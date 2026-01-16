@@ -37,7 +37,7 @@ class AuthController extends Controller {
             $_SESSION['last_activity'] = time();
 
             // Log successful login
-            error_log("User logged in successfully: {$user['username']} (ID: {$user['id']})");
+            logInfo("User logged in successfully: {$user['username']} (ID: {$user['id']})");
             
             // Redirect to intended page or dashboard
             $redirectUrl = $_SESSION['redirect_after_login'] ?? '/admin/dashboard';
