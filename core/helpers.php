@@ -45,6 +45,15 @@ function isBot() {
     
     $bots = [
         'googlebot',
+        'google-inspectiontool',
+        'google-structured-data-testing-tool',
+        'google-pagerenderer',
+        'google page renderer',
+        'googleother',
+        'google-extended',
+        'adsbot-google',
+        'mediapartners-google',
+        'apis-google',
         'bingbot',
         'slurp',           // Yahoo
         'duckduckbot',
@@ -279,6 +288,15 @@ function trackBotVisit($slug, $language) {
         $userAgentLower = strtolower($userAgent);
         
         if (strpos($userAgentLower, 'googlebot') !== false) $botType = 'googlebot';
+        elseif (strpos($userAgentLower, 'google-inspectiontool') !== false) $botType = 'googlebot';
+        elseif (strpos($userAgentLower, 'google-structured-data-testing-tool') !== false) $botType = 'googlebot';
+        elseif (strpos($userAgentLower, 'google-pagerenderer') !== false) $botType = 'googlebot';
+        elseif (strpos($userAgentLower, 'google page renderer') !== false) $botType = 'googlebot';
+        elseif (strpos($userAgentLower, 'googleother') !== false) $botType = 'googlebot';
+        elseif (strpos($userAgentLower, 'google-extended') !== false) $botType = 'googlebot';
+        elseif (strpos($userAgentLower, 'adsbot-google') !== false) $botType = 'googlebot';
+        elseif (strpos($userAgentLower, 'mediapartners-google') !== false) $botType = 'googlebot';
+        elseif (strpos($userAgentLower, 'apis-google') !== false) $botType = 'googlebot';
         elseif (strpos($userAgentLower, 'bingbot') !== false) $botType = 'bingbot';
         elseif (strpos($userAgentLower, 'yandexbot') !== false) $botType = 'yandexbot';
         elseif (strpos($userAgentLower, 'baiduspider') !== false) $botType = 'baiduspider';

@@ -26,6 +26,9 @@ class Router {
     public function dispatch() {
         try {
             $method = $_SERVER['REQUEST_METHOD'];
+            if ($method === 'HEAD') {
+                $method = 'GET';
+            }
             $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $base = dirname($_SERVER['SCRIPT_NAME']);
             
