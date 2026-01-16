@@ -255,6 +255,11 @@ function trackVisit($slug, $language) {
     if (shouldSkipTracking()) return;
 
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+    if (!empty($_GET['debug_ua']) && $_GET['debug_ua'] === '1') {
+        $method = $_SERVER['REQUEST_METHOD'] ?? 'UNKNOWN';
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        error_log("[DEBUG_UA] method=$method uri=$uri slug=$slug lang=$language ua=$userAgent");
+    }
 
     if (isBot()) {
         trackBotVisit($slug, $language);
