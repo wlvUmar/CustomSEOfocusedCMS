@@ -258,6 +258,10 @@ class JsonLdGenerator {
             "contentUrl" => $data['url']
         ];
         
+        if (!empty($data['id'])) {
+            $schema['@id'] = $data['id'];
+        }
+        
         if (!empty($data['caption'])) {
             $schema['caption'] = $data['caption'];
         }
@@ -272,6 +276,10 @@ class JsonLdGenerator {
         
         if (!empty($data['description'])) {
             $schema['description'] = $data['description'];
+        }
+        
+        if (!empty($data['name'])) {
+            $schema['name'] = $data['name'];
         }
         
         return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);

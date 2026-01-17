@@ -83,6 +83,10 @@ class PageController extends Controller {
         $seoSettings = $this->seoModel->getSettings();
         $faqs = $this->faqModel->getBySlug($slug);
         $blogSchema = $this->blogSchemaModel->get($slug);
+        
+        // Generate hero image schema
+        $heroImageSchema = $this->generateHeroImageSchema($page['id'], $currentLang);
+        
         trackVisit($slug, $currentLang);
         $templateData = [
             'page' => [
@@ -122,11 +126,58 @@ class PageController extends Controller {
             'seo' => $seoSettings,
             'faqs' => $faqs,
             'blogSchema' => $blogSchema,
+            'heroImageSchema' => $heroImageSchema,
             'lang' => $currentLang,
             'templateData' => $templateData
         ];
         
         $this->view('templates/page', $data);
+    }
+
+    /**
+     * Generate ImageObject schema for hero banner image
+     */
+    private function generateHeroImageSchema($pageId, $lang) {
+        require_once BASE_PATH . '/models/PageMedia.php';
+        $pageMediaModel = new PageMedia();
+        $heroMedia = $pageMediaModel->getPageMedia($pageId, 'hero');
+        
+        if (empty($heroMedia)) {
+            return '';
+        }
+        
+        $heroImage = $heroMedia[0]; // Use first hero image
+        $heroImageUrl = UPLOAD_URL . $heroImage['filename'];
+        
+        // Get page for canonical URL
+        $page = $this->pageModel->getById($pageId);
+        $baseUrl = BASE_URL;
+        if (strpos($baseUrl, '://') === false) {
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $baseUrl = $protocol . '://' . rtrim($host, '/');
+        }
+        $baseUrl = rtrim($baseUrl, '/');
+        $canonicalUrl = $baseUrl . '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '');
+        
+        $imageData = [
+            'id' => $canonicalUrl . '#primaryimage',
+            'url' => $heroImageUrl,
+            'contentUrl' => $heroImageUrl,
+            'name' => $heroImage["alt_text_$lang"] ?? $page["title_$lang"] ?? '',
+            'caption' => $heroImage["caption_$lang"] ?? '',
+            'description' => $heroImage["alt_text_$lang"] ?? $page["meta_description_$lang"] ?? ''
+        ];
+        
+        // Add dimensions if available
+        if (!empty($heroImage['width'])) {
+            $imageData['width'] = $heroImage['width'];
+        }
+        if (!empty($heroImage['height'])) {
+            $imageData['height'] = $heroImage['height'];
+        }
+        
+        return JsonLdGenerator::generateImage($imageData);
     }
 
     public function trackClick() {

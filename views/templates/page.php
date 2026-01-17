@@ -35,9 +35,7 @@ $applianceNameForSEO = $applianceName ?? '';
         $content = renderTemplate($content, $templateData);
         
         // Enhance content for SEO (fix images, headings, links)
-        if (!empty($applianceNameForSEO)) {
-            $content = enhanceContentSEO($content, $page["title_$lang"], $applianceNameForSEO);
-        }
+        $content = enhanceContentSEO($content, $page["title_$lang"], $applianceNameForSEO);
         
         echo $content;
         ?>
