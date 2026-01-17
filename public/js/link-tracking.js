@@ -21,15 +21,24 @@
         const lang = getCurrentLanguage();
         
         if (fromSlug === toSlug) return;
-        
+
+        const body = new URLSearchParams({
+            from: fromSlug,
+            to: toSlug,
+            lang: lang
+        });
+
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(window.baseUrl + '/track-internal-link', body);
+            return;
+        }
+
         fetch(window.baseUrl + '/track-internal-link', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/x-www-form-urlencoded' 
             },
-            body: 'from=' + encodeURIComponent(fromSlug) + 
-                  '&to=' + encodeURIComponent(toSlug) + 
-                  '&lang=' + encodeURIComponent(lang),
+            body: body.toString(),
             keepalive: true // Ensure request completes even if page unloads
         }).catch(function(err) {
             console.debug('Link tracking failed:', err);
@@ -70,17 +79,4 @@
     } else {
         setupLinkTracking();
     }
-    document.querySelectorAll('main a[href^="/"], main a[href^="' + window.baseUrl + '"]').forEach(link => {
-        link.addEventListener('click', function() {
-            const linkText = this.textContent;
-            const toSlug = extractSlugFromHref(this.href);
-            
-            navigator.sendBeacon(window.baseUrl + '/track-link-click', new URLSearchParams({
-                from: getCurrentSlug(),
-                to: toSlug,
-                text: linkText,
-                lang: getCurrentLanguage()
-            }));
-        });
-    });
 })();

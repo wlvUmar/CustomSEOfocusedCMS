@@ -74,7 +74,9 @@ class PageController extends Controller {
                     }
                 }
                 
-                $this->analyticsModel->trackRotationShown($slug, $activeMonth, $currentLang);
+                if (!shouldSkipTracking() && !isBot()) {
+                    $this->analyticsModel->trackRotationShown($slug, $activeMonth, $currentLang);
+                }
             }
         }
         

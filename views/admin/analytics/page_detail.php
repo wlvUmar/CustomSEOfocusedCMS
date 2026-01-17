@@ -106,8 +106,8 @@
                     <td><?= number_format($row['total_visits']) ?></td>
                     <td><?= number_format($row['total_clicks']) ?></td>
                     <td>
-                        <span class="status-badge <?= $row['rotation_month'] ? 'status-daily' : 'status-rare' ?>">
-                            <?= $row['rotation_month'] ? 'Yes' : 'No' ?>
+                        <span class="status-badge <?= ($row['times_shown'] ?? 0) > 0 ? 'status-daily' : 'status-rare' ?>">
+                            <?= ($row['times_shown'] ?? 0) > 0 ? 'Yes' : 'No' ?>
                         </span>
                     </td>
                     <td><?= (int)($row['times_shown'] ?? 0) ?></td>

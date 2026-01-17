@@ -2,8 +2,14 @@
 define('BASE_PATH', dirname(__DIR__));
 define('BASE_URL', getenv('BASE_URL') ?: '');
 
-define('UPLOAD_PATH', BASE_PATH . '/public/uploads/');
-define('UPLOAD_URL', BASE_URL . '/uploads/');
+$publicPath = getenv('PUBLIC_PATH');
+if (!$publicPath) {
+    $publicPath = is_dir(BASE_PATH . '/public_html') ? BASE_PATH . '/public_html' : BASE_PATH . '/public';
+}
+define('PUBLIC_PATH', $publicPath);
+
+define('UPLOAD_PATH', PUBLIC_PATH . '/css/uploads/');
+define('UPLOAD_URL', BASE_URL . '/css/uploads/');
 define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024); 
 
 define('SUPPORTED_LANGUAGES', ['ru', 'uz']);

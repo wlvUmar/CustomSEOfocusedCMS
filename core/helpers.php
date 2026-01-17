@@ -344,6 +344,8 @@ function trackClick($slug, $language) {
 
 
 function trackInternalLink($fromSlug, $toSlug, $language) {
+    if (shouldSkipTracking()) return;
+
     try {
         $db = Database::getInstance();
         $date = date('Y-m-d');

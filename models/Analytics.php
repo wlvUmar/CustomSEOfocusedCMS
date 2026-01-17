@@ -84,22 +84,38 @@ class Analytics {
                     ar.page_slug,
                     ar.rotation_month,
                     ar.year,
-                    SUM(ar.times_shown) as times_shown,
-                    MAX(ar.unique_days) as unique_days,
-                    SUM(am.total_visits) as total_visits,
-                    SUM(am.total_clicks) as total_clicks,
+                    ar.times_shown,
+                    ar.unique_days,
+                    COALESCE(am.total_visits, 0) as total_visits,
+                    COALESCE(am.total_clicks, 0) as total_clicks,
                     p.title_ru,
                     p.id as page_id
-                FROM analytics_rotations ar
-                LEFT JOIN analytics_monthly am ON 
+                FROM (
+                    SELECT 
+                        page_slug,
+                        rotation_month,
+                        year,
+                        SUM(times_shown) as times_shown,
+                        MAX(unique_days) as unique_days
+                    FROM analytics_rotations
+                    WHERE DATE(CONCAT(year, '-', rotation_month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
+                    GROUP BY page_slug, year, rotation_month
+                ) ar
+                LEFT JOIN (
+                    SELECT 
+                        page_slug,
+                        year,
+                        month,
+                        SUM(total_visits) as total_visits,
+                        SUM(total_clicks) as total_clicks
+                    FROM analytics_monthly
+                    GROUP BY page_slug, year, month
+                ) am ON 
                     ar.page_slug = am.page_slug AND 
                     ar.year = am.year AND 
-                    ar.rotation_month = am.month AND
-                    ar.language = am.language
+                    ar.rotation_month = am.month
                 LEFT JOIN pages p ON ar.page_slug = p.slug
-                WHERE DATE(CONCAT(ar.year, '-', ar.rotation_month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
-                GROUP BY ar.page_slug, ar.year, ar.rotation_month, p.title_ru, p.id
-                ORDER BY ar.year DESC, ar.rotation_month DESC, SUM(ar.times_shown) DESC";
+                ORDER BY ar.year DESC, ar.rotation_month DESC, ar.times_shown DESC";
 
         return $this->db->fetchAll($sql);
     }
@@ -177,18 +193,32 @@ class Analytics {
                     am.year,
                     am.total_visits,
                     am.total_clicks,
-                    ar.rotation_month,
-                    ar.times_shown
-                FROM analytics_monthly am
-                LEFT JOIN analytics_rotations ar ON 
-                    am.page_slug = ar.page_slug AND 
+                    COALESCE(ar.times_shown, 0) as times_shown
+                FROM (
+                    SELECT 
+                        year,
+                        month,
+                        SUM(total_visits) as total_visits,
+                        SUM(total_clicks) as total_clicks
+                    FROM analytics_monthly
+                    WHERE page_slug = ?
+                      AND DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
+                    GROUP BY year, month
+                ) am
+                LEFT JOIN (
+                    SELECT 
+                        year,
+                        rotation_month,
+                        SUM(times_shown) as times_shown
+                    FROM analytics_rotations
+                    WHERE page_slug = ?
+                    GROUP BY year, rotation_month
+                ) ar ON 
                     am.year = ar.year AND 
                     am.month = ar.rotation_month
-                WHERE am.page_slug = ?
-                  AND DATE(CONCAT(am.year, '-', am.month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
                 ORDER BY am.year DESC, am.month DESC";
 
-        return $this->db->fetchAll($sql, [$pageSlug]);
+        return $this->db->fetchAll($sql, [$pageSlug, $pageSlug]);
     }
 
 
@@ -405,13 +435,32 @@ class Analytics {
                         THEN ROUND((SUM(il.total_clicks) / SUM(am.total_visits)) * 100, 2)
                         ELSE 0 
                     END as click_through_rate
-                FROM analytics_internal_links_monthly il
-                LEFT JOIN analytics_monthly am ON 
+                FROM (
+                    SELECT 
+                        from_slug,
+                        to_slug,
+                        language,
+                        year,
+                        month,
+                        SUM(total_clicks) as total_clicks
+                    FROM analytics_internal_links_monthly
+                    WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                    GROUP BY from_slug, to_slug, language, year, month
+                ) il
+                LEFT JOIN (
+                    SELECT 
+                        page_slug,
+                        language,
+                        year,
+                        month,
+                        SUM(total_visits) as total_visits
+                    FROM analytics_monthly
+                    GROUP BY page_slug, language, year, month
+                ) am ON 
                     il.from_slug = am.page_slug AND 
                     il.year = am.year AND 
                     il.month = am.month AND
                     il.language = am.language
-                WHERE DATE(CONCAT(il.year, '-', il.month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
                 GROUP BY il.from_slug, il.to_slug
                 HAVING link_clicks > 5
                 ORDER BY click_through_rate DESC
