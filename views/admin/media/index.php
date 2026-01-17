@@ -570,10 +570,24 @@ document.addEventListener('click', (event) => {
     
     fetch('<?= BASE_URL ?>/admin/media/detach', {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json'
+        }
     })
-    .then(r => r.json())
-    .then(data => {
+    .then(async (r) => {
+        const ct = r.headers.get('content-type') || '';
+        const text = await r.text();
+        if (!r.ok) {
+            throw new Error(`HTTP ${r.status}. ${text.slice(0, 300)}`);
+        }
+        if (!ct.includes('application/json')) {
+            throw new Error(`Expected JSON but got ${ct}. ${text.slice(0, 300)}`);
+        }
+        return JSON.parse(text);
+    })
+    .then((data) => {
         if (data.success) {
             location.reload();
         } else {

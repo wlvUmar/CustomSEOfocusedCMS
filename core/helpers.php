@@ -492,6 +492,24 @@ function enhanceContentSEO($content, $pageTitle = '', $applianceName = '') {
         }
         $h1->parentNode->replaceChild($h2, $h1);
     }
+
+    // Remove duplicate title when template already renders the page title
+    $pageTitleRendered = !empty($GLOBALS['pageTitleRendered']);
+    if ($pageTitleRendered && $pageTitle) {
+        $normalize = function ($text) {
+            $text = mb_strtolower(trim($text));
+            return preg_replace('/\s+/', ' ', $text);
+        };
+        $normalizedTitle = $normalize($pageTitle);
+        $h2s = $dom->getElementsByTagName('h2');
+        foreach ($h2s as $h2) {
+            $text = $normalize($h2->textContent ?? '');
+            if ($text === $normalizedTitle) {
+                $h2->parentNode->removeChild($h2);
+                break;
+            }
+        }
+    }
     
     // Enhance internal links with keyword-rich anchor text
     $links = $dom->getElementsByTagName('a');
@@ -629,14 +647,22 @@ function renderHeroSection($mediaItems, $lang) {
     $media = $mediaItems[0]; // Only use first image
     $alt = $media["alt_text_$lang"] ?? $media['original_name'];
     $caption = $media["caption_$lang"] ?? '';
+    $heroTitle = $GLOBALS['currentPageTitle'] ?? '';
     
     $html = '<div class="hero-media">';
     $html .= '<img src="/uploads/' . htmlspecialchars($media['filename']) . '" ';
     $html .= 'alt="' . htmlspecialchars($alt) . '" ';
     $html .= 'class="hero-image" loading="eager">';
     
-    if ($caption) {
-        $html .= '<div class="hero-caption">' . htmlspecialchars($caption) . '</div>';
+    if ($heroTitle || $caption) {
+        $html .= '<div class="hero-content">';
+        if ($heroTitle) {
+            $html .= '<h1 class="hero-title">' . htmlspecialchars($heroTitle) . '</h1>';
+        }
+        if ($caption) {
+            $html .= '<div class="hero-caption">' . htmlspecialchars($caption) . '</div>';
+        }
+        $html .= '</div>';
     }
     
     $html .= '</div>';

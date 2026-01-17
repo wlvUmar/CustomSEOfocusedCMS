@@ -11,14 +11,22 @@ $applianceNameForSEO = $applianceName ?? '';
 
         <?php
         // Auto-inject hero section if media exists
+        $pageTitle = $page["title_$lang"] ?? $page['title_ru'] ?? $page['slug'] ?? '';
+        $GLOBALS['currentPageTitle'] = $pageTitle;
         require_once BASE_PATH . '/models/PageMedia.php';
         $pageMediaModel = new PageMedia();
         $heroMedia = $pageMediaModel->getPageMedia($page['id'], 'hero');
+        $hasHero = !empty($heroMedia);
+        $GLOBALS['heroTitleActive'] = $hasHero;
+        $GLOBALS['pageTitleRendered'] = $hasHero && !empty($pageTitle);
         
-        if (!empty($heroMedia)) {
+        if ($hasHero) {
             echo '<div class="auto-hero-section">';
             echo processMediaPlaceholders('{{media-section:hero}}', $page['id']);
             echo '</div>';
+        } elseif (!empty($pageTitle)) {
+            $GLOBALS['pageTitleRendered'] = true;
+            echo '<div class="page-hero"><h1>' . e($pageTitle) . '</h1></div>';
         }
         ?>
 
