@@ -38,8 +38,11 @@
     <?php 
     // Debug: show first item structure
     if (!empty($media)) {
-        echo "<!-- DEBUG: First media item structure: " . json_encode($media[0]) . " -->";
-        echo "<!-- DEBUG: Array keys: " . implode(", ", array_keys($media[0])) . " -->";
+        $firstMedia = reset($media);
+        if (is_array($firstMedia)) {
+            echo "<!-- DEBUG: First media item structure: " . json_encode($firstMedia) . " -->";
+            echo "<!-- DEBUG: Array keys: " . implode(", ", array_keys($firstMedia)) . " -->";
+        }
     }
     ?>
     <?php if (empty($media)): ?>
