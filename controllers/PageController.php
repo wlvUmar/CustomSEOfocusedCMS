@@ -146,9 +146,6 @@ class PageController extends Controller {
             return '';
         }
         
-        $heroImage = $heroMedia[0]; // Use first hero image
-        $heroImageUrl = UPLOAD_URL . $heroImage['filename'];
-        
         // Get page for canonical URL
         $page = $this->pageModel->getById($pageId);
         $baseUrl = BASE_URL;
@@ -159,6 +156,10 @@ class PageController extends Controller {
         }
         $baseUrl = rtrim($baseUrl, '/');
         $canonicalUrl = $baseUrl . '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '');
+
+        $heroImage = $heroMedia[0]; // Use first hero image
+        // Ensure URL is absolute by using the calculated baseUrl
+        $heroImageUrl = $baseUrl . '/uploads/' . $heroImage['filename'];
         
         $imageData = [
             'id' => $canonicalUrl . '#primaryimage',
