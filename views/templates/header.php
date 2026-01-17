@@ -419,7 +419,7 @@ if (!empty($pageServiceSchema)) {
     </a>
     <?php endif; ?>
 
-    <a href="https://t.me/yourname"
+    <a href="https://t.me/azimjumayev"
        class="floating-telegram"
        target="_blank"
        rel="noopener noreferrer"

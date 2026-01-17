@@ -30,6 +30,12 @@ class Controller {
 
     protected function requireAuth() {
         if (!isset($_SESSION['user_id'])) {
+            $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+            $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest')
+                || strpos($accept, 'application/json') !== false;
+            if ($isAjax) {
+                $this->json(['success' => false, 'message' => 'Authentication required'], 401);
+            }
             $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
             $this->redirect('/admin/login');
         }

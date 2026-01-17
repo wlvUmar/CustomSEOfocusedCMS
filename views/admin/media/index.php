@@ -323,7 +323,7 @@ function uploadFiles() {
   const formData = new FormData();
   Array.from(files).forEach(file => formData.append('files[]', file));
 
-  fetch('<?= BASE_URL ?>/admin/media/bulk-upload', {
+  fetch('/admin/media/bulk-upload', {
     method: 'POST',
     body: formData,
     credentials: 'same-origin',
@@ -387,7 +387,7 @@ function applyAttachmentFields(attachment) {
 }
 
 function fetchAttachment(mediaId, pageId) {
-    let url = '<?= BASE_URL ?>/admin/media/attachment?media_id=' + encodeURIComponent(mediaId);
+    let url = '/admin/media/attachment?media_id=' + encodeURIComponent(mediaId);
     if (pageId) {
         url += '&page_id=' + encodeURIComponent(pageId);
     }
@@ -447,9 +447,13 @@ function attachMedia() {
     formData.append('alignment', alignment);
     if (width) formData.append('width', width);
     
-    fetch('<?= BASE_URL ?>/admin/media/attach', {
+    fetch('/admin/media/attach', {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json'
+        }
     })
     .then(r => r.json())
     .then(data => {
@@ -513,9 +517,13 @@ function deleteMedia(id, usageCount) {
     formData.append('id', mediaId);
     if (usage > 0) formData.append('force', '1');
     
-    fetch('<?= BASE_URL ?>/admin/media/delete', {
+    fetch('/admin/media/delete', {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json'
+        }
     })
     .then(r => r.json())
     .then(data => {
@@ -568,7 +576,7 @@ document.addEventListener('click', (event) => {
     formData.append('page_id', pageId);
     if (section) formData.append('section', section);
     
-    fetch('<?= BASE_URL ?>/admin/media/detach', {
+    fetch('/admin/media/detach', {
         method: 'POST',
         body: formData,
         credentials: 'same-origin',
