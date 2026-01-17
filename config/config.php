@@ -8,8 +8,8 @@ if (!$publicPath) {
 }
 define('PUBLIC_PATH', $publicPath);
 
-define('UPLOAD_PATH', PUBLIC_PATH . '/css/uploads/');
-define('UPLOAD_URL', BASE_URL . '/css/uploads/');
+define('UPLOAD_PATH', PUBLIC_PATH . '/uploads/');
+define('UPLOAD_URL', BASE_URL . '/uploads/');
 define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024); 
 
 define('SUPPORTED_LANGUAGES', ['ru', 'uz']);
