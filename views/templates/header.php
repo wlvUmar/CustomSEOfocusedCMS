@@ -51,12 +51,12 @@ if (!empty($page["title_$lang"])) {
         $applianceName = trim($matches[1]);
     }
     
-    $productImages[] = !empty($page['og_image']) ? $page['og_image'] : ($seo['org_logo'] ?? (BASE_URL . '/css/logo.png'));
+    $productImages[] = !empty($page['og_image']) ? $page['og_image'] : ($seo['org_logo'] ?? ($baseUrl . '/css/logo.png'));
     
     $pageModel = new Page();
     $attachedMedia = $pageModel->getMedia($page['id']);
     foreach ($attachedMedia as $m) {
-        $productImages[] = UPLOAD_URL . $m['filename'];
+        $productImages[] = $baseUrl . '/uploads/' . $m['filename'];
     }
 }
 
