@@ -97,6 +97,31 @@ class PageMedia {
     }
 
     /**
+     * Get a specific attachment for media + page
+     */
+    public function getAttachment($mediaId, $pageId) {
+        $sql = "SELECT pm.*, p.slug, p.title_ru
+                FROM page_media pm
+                JOIN pages p ON pm.page_id = p.id
+                WHERE pm.media_id = ? AND pm.page_id = ?
+                LIMIT 1";
+        return $this->db->fetchOne($sql, [$mediaId, $pageId]);
+    }
+
+    /**
+     * Get the most recent attachment for a media
+     */
+    public function getLastAttachment($mediaId) {
+        $sql = "SELECT pm.*, p.slug, p.title_ru
+                FROM page_media pm
+                JOIN pages p ON pm.page_id = p.id
+                WHERE pm.media_id = ?
+                ORDER BY pm.id DESC
+                LIMIT 1";
+        return $this->db->fetchOne($sql, [$mediaId]);
+    }
+
+    /**
      * Check if media is used on a page
      */
     public function isMediaUsed($mediaId, $pageId = null) {

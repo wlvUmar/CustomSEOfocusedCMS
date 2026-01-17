@@ -35,6 +35,28 @@ $applianceNameForSEO = $applianceName ?? '';
         ?>
 
         <?php
+        // Auto-inject banner section if media exists
+        $bannerMedia = $pageMediaModel->getPageMedia($page['id'], 'banner');
+        
+        if (!empty($bannerMedia)) {
+            echo '<div class="auto-banner-section">';
+            echo processMediaPlaceholders('{{media-section:banner}}', $page['id']);
+            echo '</div>';
+        }
+        ?>
+
+        <?php
+        // Auto-inject content media if media exists (renders all content section media)
+        $contentMedia = $pageMediaModel->getPageMedia($page['id'], 'content');
+        
+        if (!empty($contentMedia)) {
+            echo '<div class="auto-content-media">';
+            echo processMediaPlaceholders('{{media-section:content}}', $page['id']);
+            echo '</div>';
+        }
+        ?>
+
+        <?php
         // Auto-inject gallery section if media exists
         $galleryMedia = $pageMediaModel->getPageMedia($page['id'], 'gallery');
         

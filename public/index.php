@@ -120,6 +120,7 @@ $router->group('/admin/media', function($router) {
     $router->post('/attach', function() { requireMediaAdmin('attachToPage'); });
     $router->post('/detach', function() { requireMediaAdmin('detachFromPage'); });
     $router->get('/info', function() { requireMediaAdmin('getMediaInfo'); });
+    $router->get('/attachment', function() { requireMediaAdmin('getAttachment'); });
     $router->post('/bulk-action', function() { requireMediaAdmin('bulkAction'); });
 });
 

@@ -80,6 +80,34 @@
                             </span>
                         <?php endif; ?>
                     </div>
+                    <?php if (!empty($item['pages'])): ?>
+                        <div class="media-usage">
+                            <div class="media-usage-title">Attached to:</div>
+                            <?php foreach ($item['pages'] as $pageItem): ?>
+                                <?php
+                                $slug = $pageItem['slug'] ?? ($pageItem['title_ru'] ?? '');
+                                $section = $pageItem['section'] ?? '';
+                                $pageId = $pageItem['id'] ?? ($pageItem['page_id'] ?? null);
+                                ?>
+                                <div class="media-usage-item">
+                                    <span class="media-usage-label">
+                                        <?= e($slug) ?><?= $section ? ' (' . e($section) . ')' : '' ?>
+                                    </span>
+                                    <?php if (!empty($pageId)): ?>
+                                        <button
+                                            type="button"
+                                            class="media-detach"
+                                            data-media-id="<?= $mediaId ?>"
+                                            data-page-id="<?= (int)$pageId ?>"
+                                            data-section="<?= e($section) ?>"
+                                        >
+                                            Detach
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="media-actions">
@@ -95,7 +123,6 @@
     <?php endif; ?>
 </div>
 
-<!-- Attach Media Modal -->
 <div id="attach-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -107,14 +134,12 @@
             
             <div class="form-group">
                 <label>Select Page:</label>
-                <select id="attach-page-id" class="form-control" required>
-                    <option value="">-- Select Page --</option>
+                <input type="hidden" id="attach-page-id" required>
+                <div id="attach-page-selected" class="muted">No page selected</div>
+                <div id="attach-page-tree" class="page-tree">
                     <?php 
-                    // Build hierarchical page list
-                    function renderPageHierarchy($pages, $parentId = 0, $depth = 0, $maxDepth = 3) {
+                    function renderPageHierarchy($pages, $parentId = 0) {
                         $output = '';
-                        if ($depth > $maxDepth) return $output;
-                        
                         $childPages = array_filter($pages, function($p) use ($parentId) {
                             return ($p['parent_id'] ?? 0) == $parentId;
                         });
@@ -124,20 +149,34 @@
                         });
                         
                         foreach ($childPages as $page) {
-                            $indent = str_repeat('  ', $depth) . ($depth > 0 ? '└ ' : '');
-                            $output .= sprintf(
-                                '<option value="%d">%s%s</option>' . "\n",
-                                $page['id'],
-                                $indent,
-                                e($page['title_ru'] ?? $page['slug'])
-                            );
-                            $output .= renderPageHierarchy($pages, $page['id'], $depth + 1, $maxDepth);
+                            $label = e($page['slug'] ?? $page['title_ru'] ?? '');
+                            $hasChildren = false;
+                            foreach ($pages as $maybeChild) {
+                                if (($maybeChild['parent_id'] ?? 0) == $page['id']) {
+                                    $hasChildren = true;
+                                    break;
+                                }
+                            }
+                            
+                            if ($hasChildren) {
+                                $output .= '<details class="page-branch">';
+                                $output .= '<summary>';
+                                $output .= '<span class="page-label">' . $label . '</span>';
+                                $output .= '<button type="button" class="page-pick" data-page-id="' . $page['id'] . '" data-page-label="' . $label . '">Select</button>';
+                                $output .= '</summary>';
+                                $output .= '<div class="page-children">';
+                                $output .= renderPageHierarchy($pages, $page['id']);
+                                $output .= '</div>';
+                                $output .= '</details>';
+                            } else {
+                                $output .= '<button type="button" class="page-leaf page-pick" data-page-id="' . $page['id'] . '" data-page-label="' . $label . '">' . $label . '</button>';
+                            }
                         }
                         return $output;
                     }
                     echo renderPageHierarchy($allPages);
                     ?>
-                </select>
+                </div>
             </div>
 
             <div class="form-group">
@@ -182,6 +221,88 @@
         </div>
     </div>
 </div>
+
+<style>
+.page-tree {
+    max-height: 260px;
+    overflow: auto;
+    padding: 8px 10px;
+    border: 1px solid #e1e1e1;
+    border-radius: 6px;
+    background: #fafafa;
+}
+.page-branch summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 0;
+}
+.page-label {
+    flex: 1;
+}
+.page-children {
+    padding-left: 16px;
+    margin: 4px 0 8px;
+}
+.page-leaf {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 4px 6px;
+    margin: 2px 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+.page-leaf:hover,
+.page-pick:hover {
+    background: #f0f0f0;
+}
+.page-pick {
+    border: 0;
+    background: #e9eef5;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.muted {
+    color: #777;
+    margin-bottom: 6px;
+}
+.media-usage {
+    color: #666;
+    font-size: 12px;
+    margin-top: 6px;
+}
+.media-usage-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.media-usage-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 2px 0;
+}
+.media-usage-label {
+    color: #555;
+}
+.media-detach {
+    border: 0;
+    background: #f4d6d6;
+    color: #7a1f1f;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+}
+.media-detach:hover {
+    background: #f0c4c4;
+}
+</style>
 
 <script>
 function filterMedia() {
@@ -245,10 +366,57 @@ function uploadFiles() {
   });
 }
 
+function resetAttachmentFields() {
+    document.getElementById('attach-section').value = 'content';
+    document.getElementById('attach-alt-ru').value = '';
+    document.getElementById('attach-alt-uz').value = '';
+    document.getElementById('attach-alignment').value = 'center';
+    document.getElementById('attach-width').value = '';
+}
+
+function applyAttachmentFields(attachment) {
+    if (!attachment) {
+        resetAttachmentFields();
+        return;
+    }
+    document.getElementById('attach-section').value = attachment.section || 'content';
+    document.getElementById('attach-alt-ru').value = attachment.alt_text_ru || '';
+    document.getElementById('attach-alt-uz').value = attachment.alt_text_uz || '';
+    document.getElementById('attach-alignment').value = attachment.alignment || 'center';
+    document.getElementById('attach-width').value = attachment.width || '';
+}
+
+function fetchAttachment(mediaId, pageId) {
+    let url = '<?= BASE_URL ?>/admin/media/attachment?media_id=' + encodeURIComponent(mediaId);
+    if (pageId) {
+        url += '&page_id=' + encodeURIComponent(pageId);
+    }
+    return fetch(url, {
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .catch(() => null);
+}
 
 function showAttachModal(mediaId) {
     document.getElementById('attach-media-id').value = mediaId;
+    document.getElementById('attach-page-id').value = '';
+    document.getElementById('attach-page-selected').textContent = 'No page selected';
+    resetAttachmentFields();
     document.getElementById('attach-modal').classList.add('active');
+    
+    fetchAttachment(mediaId)
+        .then((data) => {
+            if (!data || !data.success || !data.attachment) return;
+            const attachment = data.attachment;
+            applyAttachmentFields(attachment);
+            if (attachment.page_id) {
+                document.getElementById('attach-page-id').value = attachment.page_id;
+                document.getElementById('attach-page-selected').textContent = attachment.page_slug || 'Selected page';
+            }
+        });
 }
 
 function closeAttachModal() {
@@ -361,6 +529,61 @@ function deleteMedia(id, usageCount) {
         alert('Error: ' + err.message);
     });
 }
+
+document.addEventListener('click', (event) => {
+    const target = event.target.closest('.page-pick');
+    if (!target) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const pageId = target.getAttribute('data-page-id');
+    const label = target.getAttribute('data-page-label') || '';
+    document.getElementById('attach-page-id').value = pageId;
+    document.getElementById('attach-page-selected').textContent = label || 'No page selected';
+    const mediaId = document.getElementById('attach-media-id').value;
+    if (mediaId && pageId) {
+        fetchAttachment(mediaId, pageId)
+            .then((data) => {
+                if (!data || !data.success || !data.attachment) {
+                    resetAttachmentFields();
+                    return;
+                }
+                applyAttachmentFields(data.attachment);
+            });
+    }
+});
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('.media-detach');
+    if (!button) return;
+    event.preventDefault();
+    const mediaId = button.getAttribute('data-media-id');
+    const pageId = button.getAttribute('data-page-id');
+    const section = button.getAttribute('data-section');
+    if (!mediaId || !pageId) return;
+    if (!confirm('Detach this media from the page?')) return;
+    
+    const formData = new FormData();
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?>');
+    formData.append('media_id', mediaId);
+    formData.append('page_id', pageId);
+    if (section) formData.append('section', section);
+    
+    fetch('<?= BASE_URL ?>/admin/media/detach', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(err => {
+        alert('Error: ' + err.message);
+    });
+});
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

@@ -30,6 +30,16 @@ class MediaController extends Controller {
                 $sql = "SELECT COUNT(*) as count FROM page_media WHERE media_id = ?";
                 $result = Database::getInstance()->fetchOne($sql, [$item['media_id']]);
                 $item['usage_count'] = $result['count'] ?? 0;
+                if (!empty($page)) {
+                    $slug = $page['slug'] ?? ($page['title_ru'] ?? '');
+                    if ($slug !== '') {
+                        $item['pages'] = [[
+                            'page_id' => $page['id'] ?? ($pageId ?? null),
+                            'slug' => $slug,
+                            'section' => $item['section'] ?? null
+                        ]];
+                    }
+                }
             }
         } else {
             if ($filter === 'unused') {
@@ -41,6 +51,9 @@ class MediaController extends Controller {
                     $sql = "SELECT COUNT(*) as count FROM page_media WHERE media_id = ?";
                     $result = Database::getInstance()->fetchOne($sql, [$item['id']]);
                     $item['usage_count'] = $result['count'] ?? 0;
+                    if (($item['usage_count'] ?? 0) > 0) {
+                        $item['pages'] = $this->pageMediaModel->getMediaPages($item['id']);
+                    }
                 }
                 
                 if ($filter === 'used') {
@@ -226,6 +239,40 @@ class MediaController extends Controller {
             'media' => $media,
             'stats' => $stats,
             'pages' => $pages
+        ]);
+    }
+
+    public function getAttachment() {
+        $this->requireAuth();
+        
+        $mediaId = $_GET['media_id'] ?? 0;
+        $pageId = $_GET['page_id'] ?? null;
+        
+        if (!$mediaId) {
+            $this->json(['success' => false, 'message' => 'Missing media_id'], 400);
+        }
+        
+        if ($pageId) {
+            $attachment = $this->pageMediaModel->getAttachment($mediaId, $pageId);
+        } else {
+            $attachment = $this->pageMediaModel->getLastAttachment($mediaId);
+        }
+        
+        if (!$attachment) {
+            $this->json(['success' => false, 'message' => 'Attachment not found'], 404);
+        }
+        
+        $this->json([
+            'success' => true,
+            'attachment' => [
+                'page_id' => $attachment['page_id'] ?? null,
+                'page_slug' => $attachment['slug'] ?? ($attachment['title_ru'] ?? ''),
+                'section' => $attachment['section'] ?? 'content',
+                'alt_text_ru' => $attachment['alt_text_ru'] ?? '',
+                'alt_text_uz' => $attachment['alt_text_uz'] ?? '',
+                'alignment' => $attachment['alignment'] ?? 'center',
+                'width' => $attachment['width'] ?? ''
+            ]
         ]);
     }
 
