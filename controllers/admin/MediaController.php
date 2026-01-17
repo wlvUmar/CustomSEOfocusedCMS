@@ -81,6 +81,9 @@ class MediaController extends Controller {
         $this->requireAuth();
         
         if (!isset($_FILES['file'])) {
+            $postMax = ini_get('post_max_size');
+            $uploadMax = ini_get('upload_max_filesize');
+            error_log('Media upload: missing $_FILES["file"]; post_max_size=' . $postMax . ' upload_max_filesize=' . $uploadMax);
             $this->json(['success' => false, 'message' => 'No file uploaded'], 400);
         }
         
@@ -89,10 +92,12 @@ class MediaController extends Controller {
         // Validate file
         $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (!in_array($file['type'], $allowedTypes)) {
+            error_log('Media upload: invalid type ' . ($file['type'] ?? ''));
             $this->json(['success' => false, 'message' => 'Invalid file type'], 400);
         }
         
         if ($file['size'] > MAX_UPLOAD_SIZE) {
+            error_log('Media upload: file too large size=' . ($file['size'] ?? 0));
             $this->json(['success' => false, 'message' => 'File too large'], 400);
         }
         
@@ -132,6 +137,7 @@ class MediaController extends Controller {
                 'url' => UPLOAD_URL . $filename
             ]);
         } else {
+            error_log('Media upload: move_uploaded_file failed to ' . $filepath);
             $this->json(['success' => false, 'message' => 'Failed to save file'], 500);
         }
     }
@@ -282,6 +288,9 @@ class MediaController extends Controller {
         $isAjax = !empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false;
         
         if (!isset($_FILES['files'])) {
+            $postMax = ini_get('post_max_size');
+            $uploadMax = ini_get('upload_max_filesize');
+            error_log('Media bulk upload: missing $_FILES["files"]; post_max_size=' . $postMax . ' upload_max_filesize=' . $uploadMax);
             if ($isAjax) {
                 $this->json(['success' => false, 'message' => 'No files uploaded'], 400);
             }
@@ -298,6 +307,7 @@ class MediaController extends Controller {
             if ($_FILES['files']['error'][$key] !== UPLOAD_ERR_OK) {
                 $failed++;
                 $errors[] = $_FILES['files']['name'][$key] . ': Upload error';
+                error_log('Media bulk upload: upload error code=' . $_FILES['files']['error'][$key]);
                 continue;
             }
             
@@ -311,6 +321,7 @@ class MediaController extends Controller {
             if (!in_array($file['type'], $allowedTypes) || $file['size'] > MAX_UPLOAD_SIZE) {
                 $failed++;
                 $errors[] = $file['name'] . ': Invalid file type or size';
+                error_log('Media bulk upload: invalid type/size name=' . $file['name'] . ' type=' . ($file['type'] ?? '') . ' size=' . ($file['size'] ?? 0));
                 continue;
             }
             
@@ -336,6 +347,7 @@ class MediaController extends Controller {
             } else {
                 $failed++;
                 $errors[] = $file['name'] . ': Failed to save file';
+                error_log('Media bulk upload: move_uploaded_file failed to ' . $filepath);
             }
         }
         
