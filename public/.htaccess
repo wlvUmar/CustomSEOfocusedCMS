@@ -3,6 +3,17 @@
 RewriteEngine On
 
 # ----------------------------------------
+# 0) PHP upload limits (Apache mod_php)
+# ----------------------------------------
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 12M
+    php_value max_file_uploads 20
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+
+# ----------------------------------------
 # 1) Security headers (safe ones only)
 # ----------------------------------------
 <IfModule mod_headers.c>
