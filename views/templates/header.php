@@ -20,7 +20,23 @@ if (strpos($baseUrl, '://') === false) {
 }
 $baseUrl = rtrim($baseUrl, '/');
 
-$canonicalUrl = $page['canonical_url'] ?? ($baseUrl . '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : ''));
+$isHome = ($page['slug'] === 'main' || $page['slug'] === 'home');
+$pageSlug = $isHome ? '' : $page['slug'];
+$canonicalUrl = $page['canonical_url'] ?? ($baseUrl . ($isHome ? '/' : '/' . $pageSlug) . ($lang !== DEFAULT_LANGUAGE ? $lang : ''));
+// If we have a language, ensure it has a slash if not at root, or just slash lang.
+if ($lang !== DEFAULT_LANGUAGE) {
+    if ($isHome) {
+        $canonicalUrl = $page['canonical_url'] ?? ($baseUrl . '/' . $lang);
+    } else {
+        $canonicalUrl = $page['canonical_url'] ?? ($baseUrl . '/' . $pageSlug . '/' . $lang);
+    }
+} else {
+    if ($isHome) {
+        $canonicalUrl = $page['canonical_url'] ?? ($baseUrl . '/');
+    } else {
+        $canonicalUrl = $page['canonical_url'] ?? ($baseUrl . '/' . $pageSlug);
+    }
+}
 
 $templateData = [
     'page' => $page,
@@ -91,9 +107,9 @@ $isAdmin = isset($_SESSION['user_id']);
     <meta name="author" content="<?= e($seo["site_name_$lang"]) ?>">
     
     <link rel="canonical" href="<?= $canonicalUrl ?>">
-    <link rel="alternate" hreflang="ru" href="<?= BASE_URL ?>/<?= e($page['slug']) ?>">
-    <link rel="alternate" hreflang="uz" href="<?= BASE_URL ?>/<?= e($page['slug']) ?>/uz">
-    <link rel="alternate" hreflang="x-default" href="<?= BASE_URL ?>/<?= e($page['slug']) ?>">
+    <link rel="alternate" hreflang="ru" href="<?= $baseUrl ?>/<?= $isHome ? '' : e($pageSlug) ?>">
+    <link rel="alternate" hreflang="uz" href="<?= $baseUrl ?>/<?= $isHome ? '' : e($pageSlug) . '/' ?>uz">
+    <link rel="alternate" hreflang="x-default" href="<?= $baseUrl ?>/<?= $isHome ? '' : e($pageSlug) ?>">
     
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?= $canonicalUrl ?>">

@@ -201,6 +201,12 @@ $router->post('/track-internal-link', function() {
     (new PageController())->trackInternalLink();
 });
 
+// Redirect /main to /
+$router->get('/main', function() {
+    header("Location: " . BASE_URL . "/", true, 301);
+    exit;
+});
+
 // Root route - show home page
 $router->get('/', function() {
     require_once BASE_PATH . '/controllers/PageController.php';

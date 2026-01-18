@@ -1,6 +1,7 @@
 # /public/.htaccess
 
 RewriteEngine On
+RewriteBase /
 
 # ----------------------------------------
 # 0) PHP upload limits (Apache mod_php)
@@ -41,7 +42,7 @@ RewriteRule ^(config|logs|database)/ - [F,L]
 # ----------------------------------------
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} .+/$
-RewriteRule ^(.+?)/$ $1 [R=301,L]
+RewriteRule ^(.+?)/$ /$1 [R=301,L]
 
 # ----------------------------------------
 # 4) Serve existing files/directories normally
