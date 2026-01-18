@@ -2,6 +2,7 @@
 // path: ./controllers/admin/PageAdminController.php
 
 require_once BASE_PATH . '/models/Page.php';
+require_once BASE_PATH . '/models/IndexNow.php';
 
 
 class PageAdminController extends Controller {
@@ -108,7 +109,22 @@ class PageAdminController extends Controller {
             $this->pageModel->create($data);
             $_SESSION['success'] = 'Page created successfully';
             
+        }
 
+        // Trigger IndexNow submission
+        try {
+            $fullUrl = BASE_URL . '/' . $data['slug'];
+            // If it's a multilingual site, we might want to submit both language versions if they have different URLs
+            // Assuming the router handles /ru/slug and /uz/slug or just /slug depending on setup.
+            // Based on code, it seems just /slug.
+            
+            // Also need to handle nested pages if slug doesn't include parent structure
+            // But PageAdminController sanitizeSlug suggests flat slugs or manual handling.
+            // Let's assume standard BASE_URL + / + slug for now.
+            
+            IndexNow::submit($fullUrl);
+        } catch (Exception $e) {
+            logDebug("IndexNow submission error: " . $e->getMessage());
         }
         
         $this->redirect('/admin/pages');

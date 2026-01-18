@@ -14,6 +14,7 @@ define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024);
 
 define('SUPPORTED_LANGUAGES', ['ru', 'uz']);
 define('DEFAULT_LANGUAGE', 'ru');
+define('GTM_ID', 'GTM-PRK222HD');
 
 date_default_timezone_set('Asia/Tashkent');
 
