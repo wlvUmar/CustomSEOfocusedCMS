@@ -24,7 +24,7 @@ RewriteBase /
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>
 
-Options -Indexes
+Options -Indexes -MultiViews
 AddDefaultCharset UTF-8
 
 # ----------------------------------------
@@ -40,7 +40,11 @@ RewriteRule ^(config|logs|database)/ - [F,L]
 # ----------------------------------------
 # 3) Canonical: remove trailing slash and fix /main
 # ----------------------------------------
-RewriteRule ^main/?$ / [R=301,L,NC]
+# Force /main and /main/ to root using absolute URL to prevent path leak
+RewriteCond %{HTTPS} on
+RewriteRule ^main/?$ https://%{HTTP_HOST}/ [R=301,L,NC]
+RewriteCond %{HTTPS} off
+RewriteRule ^main/?$ http://%{HTTP_HOST}/ [R=301,L,NC]
 
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} .+/$
