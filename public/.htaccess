@@ -38,8 +38,10 @@ AddDefaultCharset UTF-8
 RewriteRule ^(config|logs|database)/ - [F,L]
 
 # ----------------------------------------
-# 3) Canonical: remove trailing slash (non-directories)
+# 3) Canonical: remove trailing slash and fix /main
 # ----------------------------------------
+RewriteRule ^main/?$ / [R=301,L,NC]
+
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} .+/$
 RewriteRule ^(.+?)/$ /$1 [R=301,L]
