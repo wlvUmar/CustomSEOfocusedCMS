@@ -1,5 +1,8 @@
 # /public/.htaccess
 
+# Force /main and /main/ to root at the alias level
+RedirectMatch 301 ^/main/?$ /
+
 RewriteEngine On
 RewriteBase /
 
@@ -38,14 +41,8 @@ AddDefaultCharset UTF-8
 RewriteRule ^(config|logs|database)/ - [F,L]
 
 # ----------------------------------------
-# 3) Canonical: remove trailing slash and fix /main
+# 3) Canonical: remove trailing slash (non-directories)
 # ----------------------------------------
-# Force /main and /main/ to root using absolute URL to prevent path leak
-RewriteCond %{HTTPS} on
-RewriteRule ^main/?$ https://%{HTTP_HOST}/ [R=301,L,NC]
-RewriteCond %{HTTPS} off
-RewriteRule ^main/?$ http://%{HTTP_HOST}/ [R=301,L,NC]
-
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_URI} .+/$
 RewriteRule ^(.+?)/$ /$1 [R=301,L]
