@@ -17,8 +17,7 @@ $csp = [
     "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
     "style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
-    "script-src-elem 'self' https://www.googletagmanager.com https://cdnjs.cloudflare.com https://unpkg.com",
-    "script-src-attr 'self' https://www.googletagmanager.com https://cdnjs.cloudflare.com https://unpkg.com",
+    "script-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://www.googletagmanager.com",
     "img-src 'self' data: blob: https: https://www.google-analytics.com https://www.googletagmanager.com",
     "font-src 'self' data: https://cdnjs.cloudflare.com",
     "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://www.google-analytics.com https://www.googletagmanager.com",
@@ -27,6 +26,7 @@ $csp = [
     "worker-src 'self' blob:",
     "child-src 'self' blob:"
 ];
+
 
 
 header('Content-Security-Policy: ' . implode('; ', $csp));
