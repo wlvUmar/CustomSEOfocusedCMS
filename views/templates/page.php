@@ -73,7 +73,22 @@ $applianceNameForSEO = $applianceName ?? '';
             echo '</div>';
         }
         ?>
-
+        <?php if (!empty($seo['google_review_url'])): ?>
+        <section class="review-panel">
+            <div class="review-panel__content">
+                <h2><?= $lang === 'ru' ? 'Оставьте отзыв' : 'Sharh qoldiring' ?></h2>
+                <p>
+                    <?= $lang === 'ru'
+                        ? 'Если вам понравился сервис, будем благодарны за отзыв.'
+                        : 'Agar xizmatimiz yoqqan bo‘lsa, sharh qoldirsangiz minnatdor bo‘lamiz.'
+                    ?>
+                </p>
+            </div>
+            <a class="review-panel__button" href="<?= e($seo['google_review_url']) ?>" target="_blank" rel="noopener noreferrer">
+                <?= $lang === 'ru' ? 'Оставить отзыв в Google' : 'Google-da sharh qoldirish' ?>
+            </a>
+        </section>
+        <?php endif; ?>
         <?php
         require_once BASE_PATH . '/models/LinkWidget.php';
 
@@ -112,22 +127,7 @@ $applianceNameForSEO = $applianceName ?? '';
         </section>
         <?php endif; ?>
 
-        <?php if (!empty($seo['google_review_url'])): ?>
-        <section class="review-panel">
-            <div class="review-panel__content">
-                <h2><?= $lang === 'ru' ? 'Оставьте отзыв' : 'Sharh qoldiring' ?></h2>
-                <p>
-                    <?= $lang === 'ru'
-                        ? 'Если вам понравился сервис, будем благодарны за отзыв.'
-                        : 'Agar xizmatimiz yoqqan bo‘lsa, sharh qoldirsangiz minnatdor bo‘lamiz.'
-                    ?>
-                </p>
-            </div>
-            <a class="review-panel__button" href="<?= e($seo['google_review_url']) ?>" target="_blank" rel="noopener noreferrer">
-                <?= $lang === 'ru' ? 'Оставить отзыв в Google' : 'Google-da sharh qoldirish' ?>
-            </a>
-        </section>
-        <?php endif; ?>
+
 
     </div>
 </main>
