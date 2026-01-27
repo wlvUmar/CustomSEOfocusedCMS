@@ -10,7 +10,6 @@ deployment:
     - /bin/cp -R /home/kuplyuta/appliances/models/. $DEPLOYPATH/models >> /home/kuplyuta/deploy.log 2>&1
     - /bin/cp -R /home/kuplyuta/appliances/views/. $DEPLOYPATH/views >> /home/kuplyuta/deploy.log 2>&1
     - /bin/cp /home/kuplyuta/appliances/.htaccess $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
-    - /bin/cp /home/kuplyuta/appliances/parse.py $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
     # Public folder
     - /bin/cp -R /home/kuplyuta/appliances/public/. $PUBLICPATH >> /home/kuplyuta/deploy.log 2>&1
     - echo "Deployment finished at $(date)" >> /home/kuplyuta/deploy.log
