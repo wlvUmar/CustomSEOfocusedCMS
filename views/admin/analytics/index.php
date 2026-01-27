@@ -301,7 +301,12 @@ async function updatePerformanceChart(aggregation) {
     // Fetch new data
     try {
         const months = <?= $stats['months'] ?>;
-        const response = await fetch(`<?= BASE_URL ?>/admin/analytics/getData?months=${months}&aggregation=${aggregation}`);
+        const response = await fetch(`<?= BASE_URL ?>/admin/analytics/getData?months=${months}&aggregation=${aggregation}`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
         const data = await response.json();
         
         // Update chart

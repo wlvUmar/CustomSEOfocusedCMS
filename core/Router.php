@@ -46,13 +46,13 @@ class Router {
 
             foreach ($this->routes[$method] as $pattern => $callback) {
                 $regex = $this->convertPatternToRegex($pattern);
-
                 if (preg_match($regex, $uri, $matches)) {
                     $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
                     return call_user_func_array($callback, $params);
                 }
             }
 
+            error_log("Router 404: $method $uri");
             $this->error(404);
 
         } catch (\Throwable $e) {
@@ -60,7 +60,7 @@ class Router {
             $this->error(500);
         }
     }
-
+    
     private function convertPatternToRegex(string $pattern): string {
         $pattern = '/' . ltrim($pattern, '/');
         $pattern = preg_replace('/\{([a-zA-Z0-9_]+)\}/', '(?P<$1>[^/]+)', $pattern);
