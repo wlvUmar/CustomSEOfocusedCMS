@@ -74,6 +74,7 @@ class AnalyticsController extends Controller {
         $data = [
             'crawl_frequency' => $this->analyticsModel->getCrawlFrequency($days),
             'bot_summary' => $this->analyticsModel->getBotVisitSummary($days),
+            'daily_stats' => $this->analyticsModel->getDailyBotActivity($days),
             'days' => $days,
             'pageName' => 'analytics/crawl'
         ];
@@ -111,11 +112,32 @@ class AnalyticsController extends Controller {
     public function getData() {
         $this->requireAuth();
         
-        $type = $_GET['type'] ?? 'visits';
         $months = $_GET['months'] ?? 6;
+        $aggregation = $_GET['aggregation'] ?? 'monthly';
         
-        $data = $this->analyticsModel->getChartData($type, $months);
-        $this->json($data);
+        $visits = null;
+        $clicks = null;
+        
+        switch ($aggregation) {
+            case 'daily':
+                $visits = $this->analyticsModel->getDailyChartData('visits', $months);
+                $clicks = $this->analyticsModel->getDailyChartData('clicks', $months);
+                break;
+            case 'weekly':
+                $visits = $this->analyticsModel->getWeeklyChartData('visits', $months);
+                $clicks = $this->analyticsModel->getWeeklyChartData('clicks', $months);
+                break;
+            case 'monthly':
+            default:
+                $visits = $this->analyticsModel->getChartData('visits', $months);
+                $clicks = $this->analyticsModel->getChartData('clicks', $months);
+                break;
+        }
+        
+        $this->json([
+            'visits' => $visits,
+            'clicks' => $clicks
+        ]);
     }
 
     /**
@@ -158,9 +180,9 @@ class AnalyticsController extends Controller {
         
         $data = [
             'navigation_flow' => $this->analyticsModel->getNavigationFlow(30),
-            'popular_paths' => $this->analyticsModel->getPopularPaths($months, 20),
             'link_effectiveness' => $this->analyticsModel->getLinkEffectiveness($months),
-            'navigation_funnels' => $this->analyticsModel->getNavigationFunnels($months),
+            'link_stats' => $this->analyticsModel->getLinkEffectivenessStats($months),
+            'navigation_trends' => $this->analyticsModel->getDailyNavigationTrends($months * 30),
             'months' => $months,
             'pageName' => 'analytics/navigation'
         ];

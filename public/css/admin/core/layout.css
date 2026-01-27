@@ -231,13 +231,14 @@ body {
 }
 
 @keyframes subtle-pulse {
+
     0%,
     100% {
         box-shadow: 0 0 4px rgba(0, 0, 0, 1);
     }
 
     50% {
-        box-shadow: 0 0 12px rgba(0, 0, 0, 1); 
+        box-shadow: 0 0 12px rgba(0, 0, 0, 1);
     }
 }
 
@@ -478,6 +479,21 @@ body {
     margin-bottom: 20px;
     font-size: 13px;
     color: var(--text-muted);
+}
+
+.help-subtext {
+    display: block;
+    margin-top: 5px;
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+form.inline-form {
+    display: inline;
+}
+
+.form-actions-secondary {
+    margin-top: 20px;
 }
 
 
@@ -1195,7 +1211,7 @@ body {
     .data-table {
         overflow-x: auto;
     }
-    
+
     .form-row {
         grid-template-columns: 1fr;
     }
@@ -1764,7 +1780,8 @@ body {
         box-sizing: border-box;
     }
 
-    html, body {
+    html,
+    body {
         width: 100%;
         overflow-x: hidden;
         margin: 0;
@@ -1912,7 +1929,8 @@ body {
         width: 20px;
         height: 20px;
     }
-     .btn-sm {
+
+    .btn-sm {
         min-height: 38px;
     }
 
@@ -1983,6 +2001,7 @@ body {
 
 /* CRITICAL: Universal overflow fix for mobile */
 @media (max-width: 768px) {
+
     /* Prevent any element from exceeding viewport width */
     html {
         overflow-x: hidden;

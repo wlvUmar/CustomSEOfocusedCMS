@@ -3,6 +3,102 @@
    Target: iPhone SE 2020 (375px) and all devices < 768px width
 */
 
+/* --- HIERARCHY & NESTED TABLES --- */
+.hierarchy-indent {
+    color: #6b6b70;
+    font-family: monospace;
+    opacity: 0.5;
+    letter-spacing: -2px;
+}
+
+.hierarchy-icon {
+    width: 14px;
+    height: 14px;
+    color: #6b6b70;
+}
+
+.toggle-children {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #6b6b70;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+    border-radius: 4px;
+}
+
+.toggle-children:hover {
+    background-color: #f5f3e5;
+    color: #303034;
+}
+
+.toggle-children i,
+.toggle-children svg {
+    width: 16px;
+    height: 16px;
+}
+
+.toggle-children.collapsed {
+    transform: rotate(-90deg);
+}
+
+.toggle-placeholder {
+    width: 20px;
+    display: inline-block;
+}
+
+.children-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    background-color: #f5f3e5;
+    color: #6b6b70;
+    border-radius: 9px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 6px;
+    padding: 0 5px;
+}
+
+.page-row.hidden {
+    display: none;
+}
+
+.page-row.depth-0 .id-cell {
+    border-left: 3px solid transparent;
+}
+
+/* Mobile specific depth indicators */
+@media (max-width: 768px) {
+    .page-row.depth-0 {
+        border-left: 4px solid #303034;
+    }
+
+    .page-row.depth-1 {
+        border-left: 4px solid #64748b;
+        margin-left: 10px;
+    }
+
+    .page-row.depth-2 {
+        border-left: 4px solid #6b6b70;
+        margin-left: 20px;
+    }
+
+    .page-row.depth-3 {
+        border-left: 4px solid #9ca3af;
+        margin-left: 30px;
+    }
+}
+
+/* ========================================
+
 /* ========================================
    BASE TABLE STYLES (All Devices)
    ======================================== */
@@ -54,6 +150,7 @@ table td {
    ======================================== */
 
 @media (min-width: 1025px) {
+
     .data-table th,
     .admin-table th,
     table th {
@@ -79,6 +176,7 @@ table td {
    ======================================== */
 
 @media (max-width: 1024px) and (min-width: 769px) {
+
     .data-table,
     .admin-table,
     table {
@@ -114,6 +212,7 @@ table td {
    ======================================== */
 
 @media (max-width: 768px) {
+
     /* === FOUNDATION === */
     .data-table,
     .admin-table,
@@ -201,7 +300,7 @@ table td {
     }
 
     /* === SPECIAL COLUMN HANDLING === */
-    
+
     /* ID column - minimal */
     .col-id {
         width: auto;
@@ -374,6 +473,7 @@ table td {
    ======================================== */
 
 @media (max-width: 768px) and (min-width: 481px) {
+
     .data-table td,
     .admin-table td,
     table td {
@@ -402,6 +502,7 @@ table td {
    ======================================== */
 
 @media (max-width: 480px) {
+
     .data-table,
     .admin-table,
     table {
@@ -472,6 +573,7 @@ table td {
    ======================================== */
 
 @media (max-width: 375px) {
+
     .data-table,
     .admin-table,
     table {

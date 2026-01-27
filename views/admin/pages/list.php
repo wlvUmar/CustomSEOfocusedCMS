@@ -120,7 +120,7 @@ function renderPageRow($page, $depth = 0) {
                 
                 <form method="POST" 
                       action="<?= BASE_URL ?>/admin/pages/delete" 
-                      style="display:inline;"
+                      class="inline-form"
                       onsubmit="return confirm('Delete this page<?= $hasChildren ? ' and all its sub-pages' : '' ?>?');">
                     <?= csrfField() ?>
                     <input type="hidden" name="id" value="<?= $page['id'] ?>">
@@ -230,10 +230,6 @@ function renderPageRow($page, $depth = 0) {
         ?>
     </tbody>
 </table>
-
-<style>
-
-</style>
 
 <script>
 function toggleChildren(pageId) {

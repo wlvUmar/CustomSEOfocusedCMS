@@ -67,7 +67,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     ?>
                 <?php endif; ?>
             </select>
-            <small style="display: block; margin-top: 5px; color: #666;">Create a page hierarchy. URLs remain flat, but breadcrumbs will show the path.</small>
+            <small class="help-subtext">Create a page hierarchy. URLs remain flat, but breadcrumbs will show the path.</small>
         </div>
         
         <div class="form-row">
@@ -114,7 +114,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </div>
         
         <?php if ($page): ?>
-        <div class="form-actions" style="margin-top: 20px;">
+        <div class="form-actions form-actions-secondary">
             <a href="<?= BASE_URL ?>/admin/rotations/manage/<?= $page['id'] ?>" class="btn btn-secondary">Manage Content Rotations</a>
         </div>
         <?php endif; ?>

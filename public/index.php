@@ -146,6 +146,7 @@ $router->group('/admin/analytics', function($router) {
     $router->get('/page/{slug}', function($slug) { requireAnalytics('pageDetail', $slug); });
     $router->get('/export', function() { requireAnalytics('export'); });
     $router->get('/navigation', function() { requireAnalytics('navigationAnalytics'); });
+    $router->get('/getData', function() { requireAnalytics('getData'); });
 });
 
 // Admin SEO
