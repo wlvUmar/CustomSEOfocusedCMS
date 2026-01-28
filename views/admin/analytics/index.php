@@ -17,136 +17,113 @@
     </div>
 </div>
 
-<!-- Trend Cards -->
-<div class="trend-cards">
+<!-- Performance Scorecards (GSC Style) -->
+<style>
+    .performance-scorecards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .performance-scorecard {
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-right: 1px solid #f1f5f9;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        position: relative;
+    }
+    .performance-scorecard:last-child { border-right: none; }
+    .performance-scorecard:hover { background: #f8fafc; }
+    
+    .performance-scorecard.active.visits { border-top: 4px solid #3b82f6; padding-top: 16px; }
+    .performance-scorecard.active.clicks { border-top: 4px solid #10b981; padding-top: 16px; }
+    .performance-scorecard.active.phones { border-top: 4px solid #f59e0b; padding-top: 16px; }
+    .performance-scorecard.active.ctr { border-top: 4px solid #8b5cf6; padding-top: 16px; }
+    
+    .performance-scorecard:not(.active) { opacity: 0.6; }
+    
+    .sc-label { color: #64748b; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+    .sc-value { font-size: 24px; font-weight: 700; color: #1e293b; }
+    .sc-change { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+    .sc-change.positive { color: #10b981; }
+    .sc-change.negative { color: #ef4444; }
+</style>
+
+<div class="performance-scorecards">
     <?php
-    $metrics = [
-        [
-            'label' => 'Current Month Visits',
-            'icon'  => 'eye',
-            'key'   => 'visits'
-        ],
-        [
-            'label' => 'Current Month Clicks',
-            'icon'  => 'mouse-pointer',
-            'key'   => 'clicks'
-        ]
+    $totalVisits = $stats['total']['total_visits'] ?? 0;
+    $totalClicks = $stats['total']['total_clicks'] ?? 0;
+    $totalPhones = $stats['total']['total_phone_calls'] ?? 0;
+    $overallCtr = $totalVisits > 0 ? round((($totalClicks + $totalPhones) / $totalVisits) * 100, 2) : 0;
+    
+    $scorecards = [
+        ['label' => 'Total Visits', 'icon' => 'eye', 'value' => $totalVisits, 'class' => 'visits', 'metric' => 'visits'],
+        ['label' => 'Total Clicks', 'icon' => 'mouse-pointer', 'value' => $totalClicks, 'class' => 'clicks', 'metric' => 'clicks'],
+        ['label' => 'Phone Calls', 'icon' => 'phone', 'value' => $totalPhones, 'class' => 'phones', 'metric' => 'phone_calls'],
+        ['label' => 'Average CTR', 'icon' => 'percent', 'value' => $overallCtr . '%', 'class' => 'ctr', 'metric' => 'ctr']
     ];
-
-    foreach ($metrics as $metric):
-        $change = $stats['trends']['changes'][$metric['key']] ?? 0;
+    
+    foreach ($scorecards as $sc): 
+        $change = $stats['trends']['changes'][$sc['metric']] ?? 0;
     ?>
-    <div class="trend-card">
-        <div class="trend-header">
-            <span class="trend-label">
-                <i data-feather="<?= $metric['icon'] ?>"></i> <?= $metric['label'] ?>
-            </span>
-
-            <span class="trend-change <?= $change >= 0 ? 'positive' : 'negative' ?>">
-                <i data-feather="<?= $change >= 0 ? 'trending-up' : 'trending-down' ?>"></i>
-                <?= abs($change) ?>%
-            </span>
+    <div class="performance-scorecard active <?= $sc['class'] ?>" data-metric="<?= $sc['metric'] ?>">
+        <div class="sc-label">
+            <i data-feather="<?= $sc['icon'] ?>" style="width: 14px; height: 14px;"></i>
+            <?= $sc['label'] ?>
         </div>
-
-        <div class="trend-value">
-            <?= number_format($stats['trends']['current'][$metric['key']] ?? 0) ?>
+        <div class="sc-value"><?= is_numeric($sc['value']) ? number_format($sc['value']) : $sc['value'] ?></div>
+        <?php if (isset($stats['trends']['changes'][$sc['metric']])): ?>
+        <div class="sc-change <?= $change >= 0 ? 'positive' : 'negative' ?>">
+            <i data-feather="<?= $change >= 0 ? 'trending-up' : 'trending-down' ?>" style="width: 12px; height: 12px;"></i>
+            <?= abs($change) ?>%
         </div>
-
-        <div class="trend-comparison">
-            vs <?= number_format($stats['trends']['previous'][$metric['key']] ?? 0) ?> last month
-        </div>
+        <?php endif; ?>
     </div>
     <?php endforeach; ?>
-
-    <div class="trend-card">
-        <div class="trend-header">
-            <span class="trend-label">
-                <i data-feather="percent"></i> Overall CTR
-            </span>
-        </div>
-
-        <?php
-        $totalVisits = $stats['total']['total_visits'] ?? 0;
-        $totalClicks = $stats['total']['total_clicks'] ?? 0;
-        $ctr = $totalVisits > 0 ? round(($totalClicks / $totalVisits) * 100, 2) : 0;
-        ?>
-
-        <div class="trend-value"><?= $ctr ?>%</div>
-
-        <div class="trend-comparison">
-            <?= number_format($totalClicks) ?> clicks / <?= number_format($totalVisits) ?> visits
-        </div>
-    </div>
 </div>
 
-<!-- Insight Cards -->
-<div class="insight-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
+<!-- Insight Mini-Cards -->
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px;">
     <?php
-    // Rotation Impact Insights
     $rotationImpact = $this->getAnalyticsModel()->getRotationImpact($stats['months']);
-    ?>
-    <a href="<?= BASE_URL ?>/admin/analytics/rotation" style="text-decoration: none;">
-        <div class="insight-card" style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
-            <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                <i data-feather="repeat" style="width: 24px; height: 24px; margin-right: 10px; stroke-width: 2.5;"></i>
-                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Rotation Impact</h3>
-            </div>
-            <div style="font-size: 32px; font-weight: bold; margin-bottom: 10px;">
-                <?= $rotationImpact['ctr_improvement'] >= 0 ? '+' : '' ?><?= $rotationImpact['ctr_improvement'] ?? '0' ?>%
-            </div>
-            <div style="font-size: 14px; opacity: 0.9; margin-bottom: 12px;">
-                CTR Change vs Non-Rotating
-            </div>
-            <div style="font-size: 13px; opacity: 0.85; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 12px;">
-                <div><?= $rotationImpact['pages_with_rotation'] ?? 0 ?> pages use rotation</div>
-                <div style="margin-top: 5px;">Click to view details →</div>
-            </div>
-        </div>
-    </a>
-
-    <?php
-    // Navigation Insights  
     $navStats = $this->getAnalyticsModel()->getNavigationStats($stats['months']);
-    ?>
-    <a href="<?= BASE_URL ?>/admin/analytics/navigation" style="text-decoration: none;">
-        <div class="insight-card" style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
-            <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                <i data-feather="git-branch" style="width: 24px; height: 24px; margin-right: 10px; stroke-width: 2.5;"></i>
-                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Navigation Insights</h3>
-            </div>
-            <div style="font-size: 32px; font-weight: bold; margin-bottom: 10px;">
-                <?= number_format($navStats['total_clicks'] ?? 0) ?>
-            </div>
-            <div style="font-size: 14px; opacity: 0.9; margin-bottom: 12px;">
-                Internal Link Clicks
-            </div>
-            <div style="font-size: 13px; opacity: 0.85; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 12px;">
-                <div>Avg CTR: <strong><?= $navStats['avg_ctr'] ?? '0' ?>%</strong></div>
-                <div style="margin-top: 5px;">Click to view details →</div>
-            </div>
-        </div>
-    </a>
-
-    <?php
-    // Crawl Insights
     $crawlStats = $this->getAnalyticsModel()->getCrawlInsights(7);
     ?>
-    <a href="<?= BASE_URL ?>/admin/analytics/crawl" style="text-decoration: none;">
-        <div class="insight-card" style="background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 20px; border-radius: 12px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
-            <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                <i data-feather="activity" style="width: 24px; height: 24px; margin-right: 10px; stroke-width: 2.5;"></i>
-                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Crawl Insights</h3>
-            </div>
-            <div style="font-size: 32px; font-weight: bold; margin-bottom: 10px;">
-                <?= $crawlStats['pages_crawled'] ?? 0 ?>
-            </div>
-            <div style="font-size: 14px; opacity: 0.9; margin-bottom: 12px;">
-                Pages Crawled (7 days)
-            </div>
-            <div style="font-size: 13px; opacity: 0.85; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 12px;">
-                <div>Most active: <strong><?= $crawlStats['top_bot'] ?? 'N/A' ?></strong></div>
-                <div style="margin-top: 5px;">Click to view details →</div>
-            </div>
+    <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
+        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #fff7ed; color: #f59e0b; border-radius: 10px; margin-right: 12px;">
+            <i data-feather="repeat"></i>
+        </div>
+        <div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Rotation</div>
+            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $rotationImpact['ctr_improvement'] > 0 ? '+' : '' ?><?= $rotationImpact['ctr_improvement'] ?>% CTR</div>
+        </div>
+    </a>
+    
+    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
+        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #e0e7ff; color: #3b82f6; border-radius: 10px; margin-right: 12px;">
+            <i data-feather="git-branch"></i>
+        </div>
+        <div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Navigation</div>
+            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= number_format($navStats['total_clicks'] ?? 0) ?> link clicks</div>
+        </div>
+    </a>
+    
+    <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
+        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #d1fae5; color: #10b981; border-radius: 10px; margin-right: 12px;">
+            <i data-feather="activity"></i>
+        </div>
+        <div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Crawl</div>
+            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $crawlStats['pages_crawled'] ?? 0 ?> pages (7d)</div>
         </div>
     </a>
 </div>
@@ -273,53 +250,19 @@
 <?php endif; ?>
 
 <script>
-// Pass chart data from PHP to JavaScript
-const visitsChartData = <?= json_encode($stats['visits_chart'] ?? null) ?>;
-const clicksChartData = <?= json_encode($stats['clicks_chart'] ?? null) ?>;
+const visitsChartData = <?= json_encode($stats['visits_chart'] ?? []) ?>;
+const clicksChartData = <?= json_encode($stats['clicks_chart'] ?? []) ?>;
+const phonesChartData = <?= json_encode($stats['phone_calls_chart'] ?? []) ?>;
 
-// Combine visits and clicks for performance chart
+// Combine metrics for performance chart
 window.performanceChartData = {
     labels: visitsChartData ? Object.keys(visitsChartData) : [],
     visits: visitsChartData ? Object.values(visitsChartData) : [],
-    clicks: clicksChartData ? Object.values(clicksChartData) : []
+    clicks: clicksChartData ? Object.values(clicksChartData) : [],
+    phones: phonesChartData ? Object.values(phonesChartData) : []
 };
 
-// Function to update performance chart with different aggregation
-async function updatePerformanceChart(aggregation) {
-    // Update button styles
-    document.querySelectorAll('.agg-toggle-btn').forEach(btn => {
-        btn.style.background = 'white';
-        btn.style.color = '#64748b';
-        btn.style.borderColor = '#e2e8f0';
-    });
-    
-    const activeBtn = document.getElementById(`btn-${aggregation}`);
-    activeBtn.style.background = '#3b82f6';
-    activeBtn.style.color = 'white';
-    activeBtn.style.borderColor = '#3b82f6';
-    
-    // Fetch new data
-    try {
-        const months = <?= $stats['months'] ?>;
-        const response = await fetch(`<?= BASE_URL ?>/admin/analytics/getData?months=${months}&aggregation=${aggregation}`, {
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
-        const data = await response.json();
-        
-        // Update chart
-        if (performanceChartInstance && data.visits && data.clicks) {
-            performanceChartInstance.data.labels = Object.keys(data.visits);
-            performanceChartInstance.data.datasets[0].data = Object.values(data.visits);
-            performanceChartInstance.data.datasets[1].data = Object.values(data.clicks);
-            performanceChartInstance.update();
-        }
-    } catch (error) {
-        console.error('Error fetching chart data:', error);
-    }
-}
+// Chart update function is now defined in analytics.js
 
 if (window.DEBUG) {
     console.log('=== ANALYTICS DATA DEBUG ===');

@@ -205,4 +205,16 @@ class PageController extends Controller {
         
         $this->json(['success' => false], 400);
     }
+
+    public function trackPhoneCall() {
+        $slug = $_POST['slug'] ?? '';
+        $lang = $_POST['lang'] ?? getCurrentLanguage();
+        
+        if ($slug) {
+            trackPhoneCall($slug, $lang);
+            $this->json(['success' => true]);
+        }
+        
+        $this->json(['success' => false], 400);
+    }
 }

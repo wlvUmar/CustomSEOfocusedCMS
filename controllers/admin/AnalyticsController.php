@@ -31,6 +31,7 @@ class AnalyticsController extends Controller {
             'page_stats' => $this->analyticsModel->getPageStats($months),
             'visits_chart' => $this->analyticsModel->getChartData('visits', $months),
             'clicks_chart' => $this->analyticsModel->getChartData('clicks', $months),
+            'phone_calls_chart' => $this->analyticsModel->getChartData('phone_calls', $months),
             'trends' => $this->analyticsModel->getPerformanceTrends(),
             'top_performers' => $this->analyticsModel->getTopPerformers($months),
             'language_stats' => $this->analyticsModel->getLanguageStats($months),
@@ -117,26 +118,31 @@ class AnalyticsController extends Controller {
         
         $visits = null;
         $clicks = null;
+        $phone_calls = null;
         
         switch ($aggregation) {
             case 'daily':
                 $visits = $this->analyticsModel->getDailyChartData('visits', $months);
                 $clicks = $this->analyticsModel->getDailyChartData('clicks', $months);
+                $phone_calls = $this->analyticsModel->getDailyChartData('phone_calls', $months);
                 break;
             case 'weekly':
                 $visits = $this->analyticsModel->getWeeklyChartData('visits', $months);
                 $clicks = $this->analyticsModel->getWeeklyChartData('clicks', $months);
+                $phone_calls = $this->analyticsModel->getWeeklyChartData('phone_calls', $months);
                 break;
             case 'monthly':
             default:
                 $visits = $this->analyticsModel->getChartData('visits', $months);
                 $clicks = $this->analyticsModel->getChartData('clicks', $months);
+                $phone_calls = $this->analyticsModel->getChartData('phone_calls', $months);
                 break;
         }
         
         $this->json([
             'visits' => $visits,
-            'clicks' => $clicks
+            'clicks' => $clicks,
+            'phone_calls' => $phone_calls
         ]);
     }
 

@@ -307,7 +307,16 @@ function trackBotVisit($slug, $language) {
         elseif (strpos($userAgentLower, 'baiduspider') !== false) $botType = 'baiduspider';
         elseif (strpos($userAgentLower, 'slurp') !== false) $botType = 'yahoo';
         elseif (strpos($userAgentLower, 'duckduckbot') !== false) $botType = 'duckduckgo';
-        else $botType = 'other';
+        else {
+            // Expanded regex-based detection for "Other" bots
+            if (preg_match('/([a-zA-Z0-9_\-]+bot|spider|crawler|scraper)/i', $userAgent, $matches)) {
+                $botType = strtolower($matches[1]);
+            } elseif (preg_match('/(facebook|twitter|slack|discord|whatsapp|telegram|pinterest|linkedin)externalhit/i', $userAgent, $matches)) {
+                $botType = strtolower($matches[1]);
+            } else {
+                $botType = 'other';
+            }
+        }
         
         logDebug("[TRACK_BOT_VISIT] Bot type: $botType, Date: $date");
         
@@ -341,6 +350,25 @@ function trackClick($slug, $language) {
     }
 }
 
+function trackPhoneCall($slug, $language) {
+    if (shouldSkipTracking()) return;
+
+    try {
+        $db = Database::getInstance();
+        $date = date('Y-m-d');
+
+        // Note: Phone calls are counted as BOTH a click and a phone_call
+        $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, date) 
+                VALUES (?, ?, 0, 1, 1, ?) 
+                ON DUPLICATE KEY UPDATE clicks = clicks + 1, phone_calls = phone_calls + 1";
+
+        $db->query($sql, [$slug, $language, $date]);
+        updateMonthlySummary($slug, $language);
+    } catch (Exception $e) {
+        error_log("Phone call tracking error: " . $e->getMessage());
+    }
+}
+
 
 
 function trackInternalLink($fromSlug, $toSlug, $language) {
@@ -368,15 +396,16 @@ function updateMonthlySummary($slug, $language) {
         $year = date('Y');
         $month = date('n');
         
-        $sql = "INSERT INTO analytics_monthly (page_slug, language, year, month, total_visits, total_clicks, unique_days)
+        $sql = "INSERT INTO analytics_monthly (page_slug, language, year, month, total_visits, total_clicks, total_phone_calls, unique_days)
                 SELECT page_slug, language, YEAR(date), MONTH(date), 
-                       SUM(visits), SUM(clicks), COUNT(DISTINCT date)
+                       SUM(visits), SUM(clicks), SUM(phone_calls), COUNT(DISTINCT date)
                 FROM analytics
                 WHERE page_slug = ? AND language = ? AND YEAR(date) = ? AND MONTH(date) = ?
                 GROUP BY page_slug, language, YEAR(date), MONTH(date)
                 ON DUPLICATE KEY UPDATE 
                     total_visits = VALUES(total_visits),
                     total_clicks = VALUES(total_clicks),
+                    total_phone_calls = VALUES(total_phone_calls),
                     unique_days = VALUES(unique_days)";
         
         $db->query($sql, [$slug, $language, $year, $month]);

@@ -41,3 +41,4 @@ INDEXNOW_IMPLEMENTATION.md
 *.md
 *.txt
 config/service-accounts/google-service-account.json
+database/schema.sql

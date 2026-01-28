@@ -1,162 +1,183 @@
 // Analytics Charts JavaScript
-// Renders Chart.js charts for analytics dashboard
+// Renders Chart.js charts for analytics dashboard (GSC-style)
 
-// Global chart instance for updates
 let performanceChartInstance = null;
+const CHART_COLORS = {
+    visits: '#3b82f6',
+    clicks: '#10b981',
+    phones: '#f59e0b',
+    ctr: '#8b5cf6'
+};
 
 document.addEventListener('DOMContentLoaded', function () {
-    if (window.DEBUG) {
-        console.log('=== ANALYTICS DEBUG ===');
-        console.log('DOMContentLoaded fired');
-        console.log('window.performanceChartData:', window.performanceChartData);
-        console.log('Chart.js loaded?', typeof Chart !== 'undefined' ? 'YES' : 'NO');
-    }
-
     const performanceCanvas = document.getElementById('performanceChart');
-
-    if (window.DEBUG) {
-        console.log('Canvas elements found?', {
-            performanceElement: !!performanceCanvas
-        });
-    }
-
-    // Initialize performance chart if canvas exists
     if (performanceCanvas && typeof Chart !== 'undefined') {
-        if (window.DEBUG) console.log('Initializing performance chart...');
-        try {
-            initPerformanceChart();
-            if (window.DEBUG) console.log('✓ Performance chart initialized successfully');
-        } catch (e) {
-            console.error('✗ Error initializing performance chart:', e);
-        }
-    } else {
-        if (window.DEBUG) {
-            if (!performanceCanvas) console.warn('performanceChart canvas element not found!');
-            if (typeof Chart === 'undefined') console.warn('Chart.js not loaded!');
-        }
+        initPerformanceChart();
+        setupScorecardToggles();
     }
-
-    if (window.DEBUG) console.log('=== END DEBUG ===');
 });
 
 function initPerformanceChart() {
     const canvas = document.getElementById('performanceChart');
     if (!canvas) return;
 
-    let chartData = window.performanceChartData || {
-        labels: [],
-        visits: [],
-        clicks: []
-    };
+    const data = window.performanceChartData || { labels: [], visits: [], clicks: [], phones: [] };
 
-    if (window.DEBUG) {
-        console.log('Creating performance chart with:', chartData);
-    }
+    // Calculate CTR array
+    const ctrData = data.visits.map((v, i) => {
+        const c = (data.clicks[i] || 0) + (data.phones[i] || 0);
+        return v > 0 ? parseFloat(((c / v) * 100).toFixed(2)) : 0;
+    });
 
-    // Store chart instance globally for updates
     performanceChartInstance = new Chart(canvas, {
         type: 'line',
         data: {
-            labels: chartData.labels || generateMonthLabels(6),
+            labels: data.labels,
             datasets: [
                 {
                     label: 'Visits',
-                    data: chartData.visits || [],
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                    data: data.visits,
+                    borderColor: CHART_COLORS.visits,
+                    backgroundColor: CHART_COLORS.visits + '10',
                     borderWidth: 2,
-                    fill: true,
                     tension: 0.4,
-                    pointBackgroundColor: '#3b82f6',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
+                    yAxisID: 'y'
                 },
                 {
                     label: 'Clicks',
-                    data: chartData.clicks || [],
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                    data: data.clicks,
+                    borderColor: CHART_COLORS.clicks,
+                    backgroundColor: CHART_COLORS.clicks + '10',
                     borderWidth: 2,
-                    fill: true,
                     tension: 0.4,
-                    pointBackgroundColor: '#10b981',
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Phone Calls',
+                    data: data.phones || [],
+                    borderColor: CHART_COLORS.phones,
+                    backgroundColor: CHART_COLORS.phones + '10',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'CTR',
+                    data: ctrData,
+                    borderColor: CHART_COLORS.ctr,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    tension: 0.4,
+                    yAxisID: 'y1',
+                    hidden: true // Hidden by default like GSC
                 }
             ]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        color: '#64748b',
-                        font: { size: 13, weight: '500' },
-                        padding: 15,
-                        usePointStyle: true,
-                        pointStyle: 'circle'
-                    }
-                },
+                legend: { display: false }, // Use custom scorecards instead
                 tooltip: {
-                    enabled: true,
                     backgroundColor: '#1e293b',
-                    titleColor: '#f1f5f9',
-                    bodyColor: '#f1f5f9',
                     padding: 12,
-                    cornerRadius: 8,
-                    displayColors: true
+                    callbacks: {
+                        label: function (context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            if (context.dataset.yAxisID === 'y1') {
+                                label += context.parsed.y + '%';
+                            } else {
+                                label += context.parsed.y.toLocaleString();
+                            }
+                            return label;
+                        }
+                    }
                 }
             },
             scales: {
                 y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
                     beginAtZero: true,
-                    grace: '5%',
-                    grid: {
-                        color: '#e2e8f0',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 12 }
-                    }
+                    title: { display: true, text: 'Volume' }
                 },
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 12 }
-                    }
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    grid: { drawOnChartArea: false },
+                    title: { display: true, text: 'CTR %' }
                 }
             }
         }
     });
+
+    // Initial sync with active toggles
+    syncTogglesFromChart();
 }
 
-/**
- * Generate month labels for the last N months
- */
-function generateMonthLabels(monthsBack) {
-    const labels = [];
-    const now = new Date();
+function setupScorecardToggles() {
+    document.querySelectorAll('.performance-scorecard').forEach((card, index) => {
+        card.addEventListener('click', () => {
+            const isHidden = !performanceChartInstance.isDatasetVisible(index);
+            performanceChartInstance.setDatasetVisibility(index, isHidden);
+            performanceChartInstance.update();
 
-    for (let i = monthsBack - 1; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthName = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        labels.push(monthName);
+            card.classList.toggle('active', isHidden);
+        });
+    });
+}
+
+function syncTogglesFromChart() {
+    document.querySelectorAll('.performance-scorecard').forEach((card, index) => {
+        const isVisible = performanceChartInstance.isDatasetVisible(index);
+        card.classList.toggle('active', isVisible);
+    });
+}
+
+// Override global updatePerformanceChart to handle multiple datasets
+const originalUpdateChart = window.updatePerformanceChart;
+window.updatePerformanceChart = async function (aggregation) {
+    // Call UI update part of original if it was specific
+    document.querySelectorAll('.agg-toggle-btn').forEach(btn => {
+        btn.style.background = 'white'; btn.style.color = '#64748b'; btn.style.borderColor = '#e2e8f0';
+    });
+    const activeBtn = document.getElementById(`btn-${aggregation}`);
+    if (activeBtn) {
+        activeBtn.style.background = '#3b82f6'; activeBtn.style.color = 'white'; activeBtn.style.borderColor = '#3b82f6';
     }
 
-    return labels;
-}
+    try {
+        const months = new URLSearchParams(window.location.search).get('months') || 6;
+        const response = await fetch(`${window.baseUrl}/admin/analytics/getData?months=${months}&aggregation=${aggregation}`, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await response.json();
+
+        if (performanceChartInstance && data.visits) {
+            performanceChartInstance.data.labels = Object.keys(data.visits);
+            performanceChartInstance.data.datasets[0].data = Object.values(data.visits);
+            performanceChartInstance.data.datasets[1].data = Object.values(data.clicks);
+            performanceChartInstance.data.datasets[2].data = Object.values(data.phone_calls);
+
+            // Recalculate CTR
+            const visitsArr = Object.values(data.visits);
+            const clicksArr = Object.values(data.clicks);
+            const phonesArr = Object.values(data.phone_calls);
+            const newCtr = visitsArr.map((v, i) => {
+                const c = (clicksArr[i] || 0) + (phonesArr[i] || 0);
+                return v > 0 ? parseFloat(((c / v) * 100).toFixed(2)) : 0;
+            });
+            performanceChartInstance.data.datasets[3].data = newCtr;
+
+            performanceChartInstance.update();
+        }
+    } catch (error) {
+        console.error('Error fetching chart data:', error);
+    }
+};

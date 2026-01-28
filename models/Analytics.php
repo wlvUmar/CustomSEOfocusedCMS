@@ -11,7 +11,7 @@ class Analytics {
     public function getMonthlyData($months = 6) {
         $months = (int)$months;
 
-        $sql = "SELECT year, month, SUM(total_visits) as visits, SUM(total_clicks) as clicks
+        $sql = "SELECT year, month, SUM(total_visits) as visits, SUM(total_clicks) as clicks, SUM(total_phone_calls) as phone_calls
                 FROM analytics_monthly
                 WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
                 GROUP BY year, month
@@ -23,7 +23,7 @@ class Analytics {
     public function getPageStats($months = 6) {
         $months = (int)$months;
 
-        $sql = "SELECT page_slug, language, SUM(total_visits) as visits, SUM(total_clicks) as clicks
+        $sql = "SELECT page_slug, language, SUM(total_visits) as visits, SUM(total_clicks) as clicks, SUM(total_phone_calls) as phone_calls
                 FROM analytics_monthly
                 WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
                 GROUP BY page_slug, language
@@ -36,6 +36,7 @@ class Analytics {
         $sql = "SELECT 
                     SUM(total_visits) as total_visits,
                     SUM(total_clicks) as total_clicks,
+                    SUM(total_phone_calls) as total_phone_calls,
                     COUNT(DISTINCT page_slug) as unique_pages
                 FROM analytics_monthly";
         
@@ -48,7 +49,8 @@ class Analytics {
         
         $sql = "SELECT 
                     SUM(total_visits) as visits,
-                    SUM(total_clicks) as clicks
+                    SUM(total_clicks) as clicks,
+                    SUM(total_phone_calls) as phone_calls
                 FROM analytics_monthly
                 WHERE year = ? AND month = ?";
         
@@ -71,12 +73,9 @@ class Analytics {
     /**
      * Get daily aggregated data for charts
      */
-    /**
-     * Get daily aggregated data for charts
-     */
     public function getDailyChartData($type = 'visits', $months = 1) {
         $months = (int)$months;
-        $field = $type === 'visits' ? 'visits' : 'clicks';
+        $field = ($type === 'visits') ? 'visits' : (($type === 'phone_calls') ? 'phone_calls' : 'clicks');
         
         $sql = "SELECT 
                     date,
@@ -102,7 +101,7 @@ class Analytics {
      */
     public function getWeeklyChartData($type = 'visits', $months = 3) {
         $months = (int)$months;
-        $field = $type === 'visits' ? 'visits' : 'clicks';
+        $field = ($type === 'visits') ? 'visits' : (($type === 'phone_calls') ? 'phone_calls' : 'clicks');
         
         $sql = "SELECT 
                     YEARWEEK(date, 1) as week_year,

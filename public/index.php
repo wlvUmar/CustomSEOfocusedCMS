@@ -294,4 +294,9 @@ function requireSchemaAdmin($method) {
     (new SchemaController())->$method();
 }
 
+$router->post('/track-phone-call', function() {
+    require_once BASE_PATH . '/controllers/PageController.php';
+    (new PageController())->trackPhoneCall();
+});
+
 ob_end_flush();
