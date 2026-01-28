@@ -18,6 +18,23 @@
 </div>
 
 <!-- Performance Scorecards (GSC Style) -->
+<script>
+    window.baseUrl = '<?= BASE_URL ?>';
+</script>
+<script>
+    const visitsChartData = <?= json_encode($stats['visits_chart'] ?? []) ?>;
+    const clicksChartData = <?= json_encode($stats['clicks_chart'] ?? []) ?>;
+    const phonesChartData = <?= json_encode($stats['phone_calls_chart'] ?? []) ?>;
+
+    window.performanceChartData = {
+        labels: Object.keys(visitsChartData || {}),
+        visits: Object.values(visitsChartData || {}),
+        clicks: Object.values(clicksChartData || {}),
+        phones: Object.values(phonesChartData || {})
+    };
+</script>
+<script src="<?= BASE_URL ?>/js/admin/analytics.js"></script>
+
 <style>
     .performance-scorecards {
         display: grid;
@@ -250,18 +267,6 @@
 <?php endif; ?>
 
 <script>
-const visitsChartData = <?= json_encode($stats['visits_chart'] ?? []) ?>;
-const clicksChartData = <?= json_encode($stats['clicks_chart'] ?? []) ?>;
-const phonesChartData = <?= json_encode($stats['phone_calls_chart'] ?? []) ?>;
-
-// Combine metrics for performance chart
-window.performanceChartData = {
-    labels: visitsChartData ? Object.keys(visitsChartData) : [],
-    visits: visitsChartData ? Object.values(visitsChartData) : [],
-    clicks: clicksChartData ? Object.values(clicksChartData) : [],
-    phones: phonesChartData ? Object.values(phonesChartData) : []
-};
-
 // Chart update function is now defined in analytics.js
 
 if (window.DEBUG) {
@@ -298,7 +303,5 @@ if (window.DEBUG) {
     });
 }
 </script>
-
-<script src="<?= BASE_URL ?>/js/admin/analytics.js"></script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

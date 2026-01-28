@@ -14,6 +14,7 @@
     <!-- Chart.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script>
+        window.baseUrl = '<?= BASE_URL ?>';
         window.DEBUG = <?= IS_PRODUCTION ? 'false' : 'true' ?>;
     </script>
     <?php
