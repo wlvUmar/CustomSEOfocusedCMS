@@ -3,6 +3,12 @@
 
 class GlobalJsonLdGenerator {
 
+    private static function unifiedOrganizationDescriptionRu() {
+        // Single source of truth for brand description across all pages (RU).
+        // Keep it clean, factual, and reusable for homepage/service pages/articles.
+        return 'Сервис скупки бытовой техники в Ташкенте: быстро оцениваем, честно предлагаем цену и выкупаем технику в удобное время. Принимаем разные категории техники, работаем аккуратно и прозрачно, отвечаем на вопросы и помогаем с вывозом при необходимости.';
+    }
+
     /**
      * Generate Organization schema
      */
@@ -13,10 +19,9 @@ class GlobalJsonLdGenerator {
             if (is_array($orgSchema)) {
                 $orgSchema = self::sanitizeUrlValues($orgSchema, $baseUrl);
                 // Clean description
-                if (!empty($orgSchema['description'])) {
-                    $orgSchema['description'] = self::cleanText($orgSchema['description']);
-                }
-
+                // Enforce a single clean RU description everywhere (avoid typos/duplication from DB).
+                $orgSchema['description'] = self::cleanText(self::unifiedOrganizationDescriptionRu());
+                
                 // STRICT ENFORCEMENT: Override any host/ids from DB to avoid localhost leakage.
                 $orgSchema['@id'] = $baseUrl . '#organization';
                 $orgSchema['url'] = $baseUrl;
@@ -30,12 +35,6 @@ class GlobalJsonLdGenerator {
                     } elseif (is_array($orgSchema['logo']) && !empty($orgSchema['logo']['url'])) {
                         $orgSchema['logo']['url'] = absoluteUrl($orgSchema['logo']['url'], $baseUrl);
                     }
-                }
-
-                // If DB schema has a bad/empty description, prefer admin description fields.
-                $fallbackDesc = $seoSettings["org_description_$lang"] ?? '';
-                if (empty($orgSchema['description']) && !empty($fallbackDesc)) {
-                    $orgSchema['description'] = self::cleanText($fallbackDesc);
                 }
 
                 return $orgSchema;
@@ -54,9 +53,7 @@ class GlobalJsonLdGenerator {
             ]
         ];
 
-        if (!empty($seoSettings["org_description_$lang"])) {
-            $schema['description'] = self::cleanText($seoSettings["org_description_$lang"]);
-        }
+        $schema['description'] = self::cleanText(self::unifiedOrganizationDescriptionRu());
 
         if (!empty($seoSettings['phone'])) {
             $schema['telephone'] = $seoSettings['phone'];

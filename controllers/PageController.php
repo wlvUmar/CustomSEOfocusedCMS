@@ -371,22 +371,23 @@ class PageController extends Controller {
         $text = trim(strip_tags((string)($text ?? '')));
         $text = preg_replace('/\s{2,}/', ' ', $text);
 
-        // Try to turn keyword-heavy titles into a short service label.
-        if (mb_strlen($text) > 60) {
-            if ($lang === 'ru') {
-                if (preg_match('/(?:продать|скупка|выкуп)\\s+([а-яёa-z0-9\\s\\-]{2,40})/ui', $text, $m)) {
-                    $appliance = trim($m[1]);
-                    // Remove common geo/marketing tails if captured.
-                    $appliance = preg_replace('/\\s+(в\\s+ташкенте|в\\s+узбекистане|быстро|срочно).*$/ui', '', $appliance);
-                    if ($appliance !== '') return 'Продать ' . $appliance;
-                }
+        // Prefer a short human label for service pages: "Продать <предмет>".
+        if ($lang === 'ru') {
+            if (preg_match('/(?:продать|скупка|выкуп)\\s+([а-яёa-z0-9\\s\\-]{2,60})/ui', $text, $m)) {
+                $appliance = trim($m[1]);
+                // Remove common geo/marketing tails if captured.
+                $appliance = preg_replace('/\\s+(в\\s+ташкенте|в\\s+узбекистане|быстро|срочно|недорого|дорого).*$/ui', '', $appliance);
+                // Trim after separators that often start SEO tails.
+                $appliance = preg_split('/\\s*[\\|\\-—:]+\\s*/u', $appliance)[0] ?? $appliance;
+                $appliance = trim($appliance);
+                if ($appliance !== '') return 'Продать ' . $appliance;
             }
+        }
 
-            // Fallback: keep the first chunk before separators.
-            $parts = preg_split('/\\s*[\\|\\-—:]+\\s*/u', $text);
-            if (is_array($parts) && !empty($parts[0])) {
-                $text = trim($parts[0]);
-            }
+        // Fallback: keep the first chunk before separators.
+        $parts = preg_split('/\\s*[\\|\\-—:]+\\s*/u', $text);
+        if (is_array($parts) && !empty($parts[0])) {
+            $text = trim($parts[0]);
         }
 
         // Final hard cap (Breadcrumb item names should be short).

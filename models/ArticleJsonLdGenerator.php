@@ -33,11 +33,9 @@ class ArticleJsonLdGenerator {
         $breadcrumbSchema = self::generateBreadcrumbSchema($article, $lang, $baseUrl, $articleUrl);
         $graph[] = $breadcrumbSchema;
         
-        // 4. Primary ImageObject schema (if featured image exists)
-        if (!empty($article['image'])) {
-            $imageSchema = self::generateImageSchema($article, $lang, $articleUrl, $baseUrl);
-            $graph[] = $imageSchema;
-        }
+        // 4. Primary ImageObject schema (featured image preferred, fallback to logo)
+        $imageSchema = self::generateImageSchema($article, $lang, $articleUrl, $baseUrl, $seo);
+        $graph[] = $imageSchema;
         
         // 5. FAQPage schema (only if article contains FAQs)
         if (!empty($faqs)) {
@@ -57,7 +55,7 @@ class ArticleJsonLdGenerator {
      * Generate Article/BlogPosting schema
      */
     public static function generateArticleSchema($article, $lang, $articleUrl, $baseUrl, $seo, $datePublished, $dateModified) {
-        $wordCount = 0;
+        $wordCount = null;
         if (!empty($article["content_$lang"])) {
             // Strip HTML and count real words (Cyrillic/Latin) to avoid constant/incorrect values.
             $text = strip_tags((string)$article["content_$lang"]);
@@ -66,23 +64,18 @@ class ArticleJsonLdGenerator {
 
             if ($text !== '') {
                 if (preg_match_all('/[\\p{L}\\p{N}]+(?:-[\\p{L}\\p{N}]+)*/u', $text, $m)) {
-                    $wordCount = count($m[0]);
+                    $count = count($m[0]);
+                    if ($count > 0) {
+                        $wordCount = $count;
+                    }
                 }
             }
         }
 
-        // Author logic: Avoid "Admin". Use Organization as fallback identity if author is generic.
-        $authorName = $article['author'] ?? 'Editorial Team';
-        if (stripos($authorName, 'admin') !== false || empty($authorName)) {
-            $authorData = [
-                '@id' => $baseUrl . '#organization'
-            ];
-        } else {
-             $authorData = [
-                '@type' => 'Person',
-                'name' => $authorName
-            ];
-        }
+        // Brand-authored articles: keep meta author and JSON-LD author aligned to Organization.
+        $authorData = [
+            '@id' => $baseUrl . '#organization'
+        ];
 
         $schema = [
             '@type' => 'Article',
@@ -92,7 +85,6 @@ class ArticleJsonLdGenerator {
             'url' => $articleUrl,
             'datePublished' => $datePublished,
             'dateModified' => $dateModified,
-            'wordCount' => $wordCount,
             'inLanguage' => $lang === 'ru' ? 'ru-RU' : 'uz-UZ',
             'isAccessibleForFree' => true,
             'author' => $authorData,
@@ -103,16 +95,15 @@ class ArticleJsonLdGenerator {
                 '@id' => $articleUrl . '#webpage'
             ]
         ];
-        
-        // Add featured image
-        if (!empty($article['image'])) {
-            $imageUrl = absoluteUrl('/uploads/' . $article['image'], $baseUrl);
-            // Include absolute URL data on the property (and also provide an ImageObject node in the graph).
-            $schema['image'] = [
-                '@id' => $articleUrl . '#primaryimage',
-                'url' => $imageUrl
-            ];
+
+        if ($wordCount !== null) {
+            $schema['wordCount'] = $wordCount;
         }
+        
+        // Primary image wiring (featured image preferred, fallback to logo) via ImageObject node.
+        $schema['image'] = [
+            '@id' => $articleUrl . '#primaryimage'
+        ];
         
         // Add article section (category)
         if (!empty($article["category_$lang"])) {
@@ -153,15 +144,13 @@ class ArticleJsonLdGenerator {
             ]
         ];
         
-        // Only add primaryImageOfPage if image exists
-        if (!empty($article['image'])) {
-            $schema['primaryImageOfPage'] = [
-                '@id' => $articleUrl . '#primaryimage'
-            ];
-            $schema['image'] = [
-                '@id' => $articleUrl . '#primaryimage'
-            ];
-        }
+        // Primary image wiring always present (featured image preferred, fallback to logo).
+        $schema['primaryImageOfPage'] = [
+            '@id' => $articleUrl . '#primaryimage'
+        ];
+        $schema['image'] = [
+            '@id' => $articleUrl . '#primaryimage'
+        ];
         
         return $schema;
     }
@@ -201,8 +190,12 @@ class ArticleJsonLdGenerator {
     /**
      * Generate ImageObject schema for featured image
      */
-    public static function generateImageSchema($article, $lang, $articleUrl, $baseUrl) {
-        $imageUrl = absoluteUrl('/uploads/' . $article['image'], $baseUrl);
+    public static function generateImageSchema($article, $lang, $articleUrl, $baseUrl, $seo) {
+        if (!empty($article['image'])) {
+            $imageUrl = absoluteUrl('/uploads/' . $article['image'], $baseUrl);
+        } else {
+            $imageUrl = absoluteUrl($seo['org_logo'] ?? '/css/logo.png', $baseUrl);
+        }
         
         $schema = [
             '@type' => 'ImageObject',

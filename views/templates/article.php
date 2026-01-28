@@ -15,6 +15,7 @@ $ogImage = absoluteUrl(
 );
 
 $isAdmin = isset($_SESSION['user_id']) && !isBot();
+$brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_name_ru"] ?? ''); // brand-authored articles
 ?>
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
@@ -34,7 +35,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <title><?= e($metaTitle) ?></title>
     
     <meta name="description" content="<?= e($metaDescription) ?>">
-    <meta name="author" content="<?= e($article['author']) ?>">
+    <meta name="author" content="<?= e($brandAuthor) ?>">
     
     <meta name="robots" content="index, follow">
     
@@ -53,7 +54,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <meta property="og:site_name" content="<?= e($seo["site_name_$lang"]) ?>">
     <meta property="article:published_time" content="<?= $datePublished ?>">
     <meta property="article:modified_time" content="<?= $dateModified ?>">
-    <meta property="article:author" content="<?= e($article['author']) ?>">
+    <meta property="article:author" content="<?= e($brandAuthor) ?>">
     <?php if (!empty($article["category_$lang"])): ?>
     <meta property="article:section" content="<?= e($article["category_$lang"]) ?>">
     <?php endif; ?>
