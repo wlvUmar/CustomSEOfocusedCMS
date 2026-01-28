@@ -1,23 +1,9 @@
 <?php
 define('BASE_PATH', dirname(__DIR__));
-define('BASE_URL', getenv('BASE_URL') ?: '');
 
-$publicPath = getenv('PUBLIC_PATH');
-if (!$publicPath) {
-    $publicPath = is_dir(BASE_PATH . '/public_html') ? BASE_PATH . '/public_html' : BASE_PATH . '/public';
-}
-define('PUBLIC_PATH', $publicPath);
-
-define('UPLOAD_PATH', PUBLIC_PATH . '/uploads/');
-define('UPLOAD_URL', BASE_URL . '/uploads/');
-define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024); 
-
-define('SUPPORTED_LANGUAGES', ['ru', 'uz']);
-define('DEFAULT_LANGUAGE', 'ru');
-define('GTM_ID', 'GTM-PRK222HD');
-
-date_default_timezone_set('Asia/Tashkent');
-
+// Load .env before defining constants that depend on environment variables.
+// Previously BASE_URL was defined before loading .env, causing production URL leakage
+// when BASE_URL was set only in the .env file.
 if (file_exists(BASE_PATH . '/.env')) {
     $lines = file(BASE_PATH . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
@@ -36,3 +22,23 @@ if (file_exists(BASE_PATH . '/.env')) {
         $_ENV[$key] = $value;
     }
 }
+
+// Single source of truth for the site base URL (should be absolute in production).
+// Example production value: https://kuplyu-tashkent.uz
+define('BASE_URL', getenv('BASE_URL') ?: '');
+
+$publicPath = getenv('PUBLIC_PATH');
+if (!$publicPath) {
+    $publicPath = is_dir(BASE_PATH . '/public_html') ? BASE_PATH . '/public_html' : BASE_PATH . '/public';
+}
+define('PUBLIC_PATH', $publicPath);
+
+define('UPLOAD_PATH', PUBLIC_PATH . '/uploads/');
+define('UPLOAD_URL', BASE_URL . '/uploads/');
+define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024);
+
+define('SUPPORTED_LANGUAGES', ['ru', 'uz']);
+define('DEFAULT_LANGUAGE', 'ru');
+define('GTM_ID', 'GTM-PRK222HD');
+
+date_default_timezone_set('Asia/Tashkent');

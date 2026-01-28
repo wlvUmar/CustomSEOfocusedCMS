@@ -150,6 +150,11 @@ class PageController extends Controller {
                 '@id' => $pageCanonicalUrl . '#breadcrumb',
                 'itemListElement' => $items
             ];
+
+            // Only reference breadcrumb from WebPage when we actually include a BreadcrumbList node.
+            $webPageSchema['breadcrumb'] = [
+                '@id' => $pageCanonicalUrl . '#breadcrumb'
+            ];
         }
         
         // Start graph
@@ -261,18 +266,12 @@ class PageController extends Controller {
         
         // Get page for canonical URL
         $page = $this->pageModel->getById($pageId);
-        $baseUrl = BASE_URL;
-        if (strpos($baseUrl, '://') === false) {
-            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $baseUrl = $protocol . '://' . rtrim($host, '/');
-        }
-        $baseUrl = rtrim($baseUrl, '/');
-        $canonicalUrl = $baseUrl . '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '');
+        $baseUrl = siteBaseUrl();
+        $canonicalUrl = canonicalUrlForPage($page['slug'] ?? '', $lang);
 
         $heroImage = $heroMedia[0]; // Use first hero image
         // Ensure URL is absolute by using the calculated baseUrl
-        $heroImageUrl = $baseUrl . '/uploads/' . $heroImage['filename'];
+        $heroImageUrl = absoluteUrl('/uploads/' . $heroImage['filename'], $baseUrl);
         
         $imageData = [
             'id' => $canonicalUrl . '#primaryimage',
@@ -355,13 +354,46 @@ class PageController extends Controller {
             if ($lang !== DEFAULT_LANGUAGE) {
                 $url .= '/' . $lang;
             }
+
+            $rawName = replacePlaceholders($bPage["title_$lang"], $bPage, $seoSettings);
+            $name = $this->cleanBreadcrumbLabel($rawName, $lang);
             
             $breadcrumbs[] = [
-                'name' => replacePlaceholders($bPage["title_$lang"], $bPage, $seoSettings),
+                'name' => $name,
                 'url' => $url
             ];
         }
         
         return $breadcrumbs;
+    }
+
+    private function cleanBreadcrumbLabel($text, $lang) {
+        $text = trim(strip_tags((string)($text ?? '')));
+        $text = preg_replace('/\s{2,}/', ' ', $text);
+
+        // Try to turn keyword-heavy titles into a short service label.
+        if (mb_strlen($text) > 60) {
+            if ($lang === 'ru') {
+                if (preg_match('/(?:продать|скупка|выкуп)\\s+([а-яёa-z0-9\\s\\-]{2,40})/ui', $text, $m)) {
+                    $appliance = trim($m[1]);
+                    // Remove common geo/marketing tails if captured.
+                    $appliance = preg_replace('/\\s+(в\\s+ташкенте|в\\s+узбекистане|быстро|срочно).*$/ui', '', $appliance);
+                    if ($appliance !== '') return 'Продать ' . $appliance;
+                }
+            }
+
+            // Fallback: keep the first chunk before separators.
+            $parts = preg_split('/\\s*[\\|\\-—:]+\\s*/u', $text);
+            if (is_array($parts) && !empty($parts[0])) {
+                $text = trim($parts[0]);
+            }
+        }
+
+        // Final hard cap (Breadcrumb item names should be short).
+        if (mb_strlen($text) > 70) {
+            $text = trim(mb_substr($text, 0, 67)) . '...';
+        }
+
+        return $text;
     }
 }

@@ -66,26 +66,21 @@ class ArticleController extends Controller {
             $relatedPage = $pageModel->getById($article['related_page_id']);
         }
         
-        // Check for thin content
-        if ($this->articleModel->isThinContent($article["content_$currentLang"])) {
-            $seoSettings['noindex'] = true;
-        }
-
         // Generate JSON-LD if not already set
         // STRICT DATE SYNCHRONIZATION: Create authoritative date strings
         $datePublished = date('c', strtotime($article['created_at']));
         $dateModified = date('c', strtotime($article['updated_at']));
-        
-        if (empty($article["jsonld_$currentLang"])) {
-            $article["jsonld_$currentLang"] = ArticleJsonLdGenerator::generateArticleGraph(
-                $article,
-                $currentLang,
-                $seoSettings,
-                [], // FAQs
-                $datePublished, // Pass explicit dates
-                $dateModified
-            );
-        }
+
+        // Always generate article JSON-LD at render time to keep schema consistent and avoid localhost leakage
+        // from stored JSON-LD blobs in the database.
+        $article["jsonld_$currentLang"] = ArticleJsonLdGenerator::generateArticleGraph(
+            $article,
+            $currentLang,
+            $seoSettings,
+            [], // FAQs
+            $datePublished, // Pass explicit dates
+            $dateModified
+        );
         
         // Generate Global Schema
         require_once BASE_PATH . '/models/GlobalJsonLdGenerator.php';

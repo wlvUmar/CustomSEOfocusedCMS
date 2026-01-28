@@ -39,6 +39,99 @@ function logInfo($message) {
     }
 }
 
+/**
+ * Resolve the absolute canonical site base URL used for SEO/meta and JSON-LD.
+ *
+ * Priority:
+ *  1) BASE_URL env/constant (should be absolute in production, e.g. https://kuplyu-tashkent.uz)
+ *  2) Current request host/proto as a fallback
+ */
+function siteBaseUrl() {
+    $baseUrl = defined('BASE_URL') ? (string)BASE_URL : '';
+    $baseUrl = trim($baseUrl);
+
+    // If already absolute, use it as-is.
+    if ($baseUrl !== '' && strpos($baseUrl, '://') !== false) {
+        return rtrim($baseUrl, '/');
+    }
+
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? '');
+    $host = trim((string)$host);
+
+    if ($host === '') {
+        // CLI context: return relative BASE_URL (path) if provided, otherwise empty.
+        return rtrim($baseUrl, '/');
+    }
+
+    // If BASE_URL is a path prefix (e.g. /myapp), append it to the host.
+    if ($baseUrl !== '' && strpos($baseUrl, '/') === 0) {
+        return $protocol . '://' . rtrim($host, '/') . rtrim($baseUrl, '/');
+    }
+
+    return $protocol . '://' . rtrim($host, '/');
+}
+
+function siteUrl($path = '') {
+    $base = siteBaseUrl();
+    $path = (string)($path ?? '');
+    if ($path === '' || $path === '/') return $base . '/';
+    return $base . '/' . ltrim($path, '/');
+}
+
+/**
+ * Convert a possibly-relative URL into an absolute URL on the canonical site host.
+ * Also rewrites absolute localhost/127.0.0.1 URLs to the canonical host.
+ */
+function absoluteUrl($url, $baseUrl = null) {
+    $url = trim((string)($url ?? ''));
+    if ($url === '') return '';
+
+    $baseUrl = $baseUrl ? rtrim((string)$baseUrl, '/') : siteBaseUrl();
+
+    // Protocol-relative URL.
+    if (strpos($url, '//') === 0) {
+        return 'https:' . $url;
+    }
+
+    $parsed = @parse_url($url);
+    if (is_array($parsed) && !empty($parsed['scheme'])) {
+        $host = strtolower((string)($parsed['host'] ?? ''));
+        if (in_array($host, ['localhost', '127.0.0.1', '::1'], true)) {
+            $path = $parsed['path'] ?? '';
+            $query = isset($parsed['query']) ? ('?' . $parsed['query']) : '';
+            $fragment = isset($parsed['fragment']) ? ('#' . $parsed['fragment']) : '';
+            return $baseUrl . ($path ?: '') . $query . $fragment;
+        }
+        return $url;
+    }
+
+    if (strpos($url, '/') === 0) {
+        return $baseUrl . $url;
+    }
+
+    return $baseUrl . '/' . $url;
+}
+
+function canonicalUrlForPage($slug, $lang) {
+    $slug = (string)($slug ?? '');
+    $lang = (string)($lang ?? DEFAULT_LANGUAGE);
+
+    $isHome = in_array($slug, ['home', 'main', ''], true);
+    if ($isHome) {
+        return $lang !== DEFAULT_LANGUAGE ? siteUrl($lang) : siteUrl('/');
+    }
+
+    return $lang !== DEFAULT_LANGUAGE ? siteUrl($slug . '/' . $lang) : siteUrl($slug);
+}
+
+function canonicalUrlForArticle($id, $lang) {
+    $id = (string)$id;
+    $lang = (string)($lang ?? DEFAULT_LANGUAGE);
+
+    return $lang !== DEFAULT_LANGUAGE ? siteUrl('articles/' . $id . '/' . $lang) : siteUrl('articles/' . $id);
+}
+
 
 function isBot() {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';

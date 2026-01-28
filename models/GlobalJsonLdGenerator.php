@@ -11,12 +11,33 @@ class GlobalJsonLdGenerator {
         if (!empty($seoSettings['organization_schema'])) {
             $orgSchema = json_decode($seoSettings['organization_schema'], true);
             if (is_array($orgSchema)) {
+                $orgSchema = self::sanitizeUrlValues($orgSchema, $baseUrl);
                 // Clean description
                 if (!empty($orgSchema['description'])) {
                     $orgSchema['description'] = self::cleanText($orgSchema['description']);
                 }
-                // STRICT ID ENFORCEMENT: Override any ID from DB
+
+                // STRICT ENFORCEMENT: Override any host/ids from DB to avoid localhost leakage.
                 $orgSchema['@id'] = $baseUrl . '#organization';
+                $orgSchema['url'] = $baseUrl;
+
+                if (!empty($orgSchema['logo'])) {
+                    if (is_string($orgSchema['logo'])) {
+                        $orgSchema['logo'] = [
+                            '@type' => 'ImageObject',
+                            'url' => absoluteUrl($orgSchema['logo'], $baseUrl),
+                        ];
+                    } elseif (is_array($orgSchema['logo']) && !empty($orgSchema['logo']['url'])) {
+                        $orgSchema['logo']['url'] = absoluteUrl($orgSchema['logo']['url'], $baseUrl);
+                    }
+                }
+
+                // If DB schema has a bad/empty description, prefer admin description fields.
+                $fallbackDesc = $seoSettings["org_description_$lang"] ?? '';
+                if (empty($orgSchema['description']) && !empty($fallbackDesc)) {
+                    $orgSchema['description'] = self::cleanText($fallbackDesc);
+                }
+
                 return $orgSchema;
             }
         }
@@ -29,9 +50,13 @@ class GlobalJsonLdGenerator {
             'url' => $baseUrl,
             'logo' => [
                 '@type' => 'ImageObject',
-                'url' => $seoSettings['org_logo'] ?? ($baseUrl . '/css/logo.png')
+                'url' => absoluteUrl($seoSettings['org_logo'] ?? ($baseUrl . '/css/logo.png'), $baseUrl)
             ]
         ];
+
+        if (!empty($seoSettings["org_description_$lang"])) {
+            $schema['description'] = self::cleanText($seoSettings["org_description_$lang"]);
+        }
 
         if (!empty($seoSettings['phone'])) {
             $schema['telephone'] = $seoSettings['phone'];
@@ -78,8 +103,10 @@ class GlobalJsonLdGenerator {
         if (!empty($seoSettings['website_schema'])) {
              $siteSchema = json_decode($seoSettings['website_schema'], true);
              if (is_array($siteSchema)) {
+                 $siteSchema = self::sanitizeUrlValues($siteSchema, $baseUrl);
                  // STRICT ID ENFORCEMENT
                  $siteSchema['@id'] = $baseUrl . '#website';
+                 $siteSchema['url'] = $baseUrl;
                  $siteSchema['publisher'] = ['@id' => $baseUrl . '#organization'];
                  return $siteSchema;
              }
@@ -100,25 +127,62 @@ class GlobalJsonLdGenerator {
      * Get validated Base URL
      */
     public static function getBaseUrl() {
-        $baseUrl = defined('BASE_URL') ? BASE_URL : '';
-        
-        if (strpos($baseUrl, '://') !== false) {
-            return rtrim($baseUrl, '/');
-        }
-        
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        
-        // If BASE_URL is just a path (e.g., /myapp), append it
-        if ($baseUrl && strpos($baseUrl, '/') === 0) {
-            return $protocol . '://' . rtrim($host, '/') . rtrim($baseUrl, '/');
-        }
-        
-        return $protocol . '://' . rtrim($host, '/');
+        // Delegate to the shared resolver so templates, sitemap, and JSON-LD agree.
+        return siteBaseUrl();
     }
 
     private static function cleanText($text) {
-        return preg_replace('/\s{2,}/', ' ', str_replace(["\r\n", "\r", "\n"], ' ', $text));
+        $text = (string)($text ?? '');
+        $text = str_replace(["\r\n", "\r", "\n"], ' ', $text);
+        $text = preg_replace('/\s{2,}/', ' ', trim($text));
+
+        // Remove duplicated sentences (common copy/paste issue in descriptions).
+        $parts = preg_split('/(?<=[.!?])\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY);
+        if (!is_array($parts) || count($parts) < 2) return $text;
+
+        $out = [];
+        $seen = [];
+        foreach ($parts as $p) {
+            $key = mb_strtolower(trim($p));
+            if ($key === '') continue;
+            if (isset($seen[$key])) continue;
+            $seen[$key] = true;
+            $out[] = trim($p);
+        }
+
+        return trim(implode(' ', $out));
+    }
+
+    /**
+     * Recursively sanitize URL-like string values inside a schema array:
+     * - Rewrite localhost/127.0.0.1 to the canonical host
+     * - Convert root-relative paths to absolute URLs
+     */
+    private static function sanitizeUrlValues($value, $baseUrl) {
+        if (is_array($value)) {
+            foreach ($value as $k => $v) {
+                $value[$k] = self::sanitizeUrlValues($v, $baseUrl);
+            }
+            return $value;
+        }
+
+        if (!is_string($value)) return $value;
+
+        // Convert root-relative to absolute.
+        if (strpos($value, '/') === 0) {
+            return absoluteUrl($value, $baseUrl);
+        }
+
+        $parsed = @parse_url($value);
+        if (!is_array($parsed) || empty($parsed['scheme'])) return $value;
+
+        $host = strtolower((string)($parsed['host'] ?? ''));
+        if (!in_array($host, ['localhost', '127.0.0.1', '::1'], true)) return $value;
+
+        $path = $parsed['path'] ?? '';
+        $query = isset($parsed['query']) ? ('?' . $parsed['query']) : '';
+        $fragment = isset($parsed['fragment']) ? ('#' . $parsed['fragment']) : '';
+        return rtrim($baseUrl, '/') . ($path ?: '') . $query . $fragment;
     }
 
     /**
@@ -173,10 +237,8 @@ class GlobalJsonLdGenerator {
      * Generate WebPage schema for standard pages
      */
     public static function generateWebPageSchema($page, $lang, $baseUrl, $primaryImageId = null, $faqId = null) {
-        $canonicalUrl = $page['canonical_url'] ?? $baseUrl . '/' . $page['slug'];
-        if ($lang !== DEFAULT_LANGUAGE) {
-             $canonicalUrl .= "/$lang";
-        }
+        $slug = $page['slug'] ?? '';
+        $canonicalUrl = canonicalUrlForPage($slug, $lang);
 
         $schema = [
             '@type' => 'WebPage',
@@ -189,11 +251,8 @@ class GlobalJsonLdGenerator {
             ],
             'inLanguage' => $lang === 'ru' ? 'ru-RU' : 'uz-UZ'
         ];
-        
-        // Link Breadcrumb
-        $schema['breadcrumb'] = [
-             '@id' => $canonicalUrl . '#breadcrumb'
-        ];
+
+        // BreadcrumbList is optional; controllers can add it when present.
         
         // Link Primary Image
         if ($primaryImageId) {

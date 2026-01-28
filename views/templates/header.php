@@ -10,33 +10,10 @@ $metaDescription = $page["meta_description_$lang"] ?? $seo["meta_description_$la
 
 $ogTitle = $page["og_title_$lang"] ?? $metaTitle;
 $ogDescription = $page["og_description_$lang"] ?? $metaDescription;
-$ogImage = $page['og_image'] ?? (BASE_URL . '/css/logo.png');
+$baseUrl = siteBaseUrl();
+$ogImage = absoluteUrl($page['og_image'] ?? ($seo['org_logo'] ?? '/css/logo.png'), $baseUrl);
 
-$baseUrl = BASE_URL;
-if (strpos($baseUrl, '://') === false) {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $baseUrl = $protocol . '://' . rtrim($host, '/');
-}
-$baseUrl = rtrim($baseUrl, '/');
-
-$isHome = ($page['slug'] === 'main' || $page['slug'] === 'home');
-$pageSlug = $isHome ? '' : $page['slug'];
-$canonicalUrl = $page['canonical_url'] ?? ($baseUrl . ($isHome ? '/' : '/' . $pageSlug) . ($lang !== DEFAULT_LANGUAGE ? $lang : ''));
-// If we have a language, ensure it has a slash if not at root, or just slash lang.
-if ($lang !== DEFAULT_LANGUAGE) {
-    if ($isHome) {
-        $canonicalUrl = $page['canonical_url'] ?? ($baseUrl . '/' . $lang);
-    } else {
-        $canonicalUrl = $page['canonical_url'] ?? ($baseUrl . '/' . $pageSlug . '/' . $lang);
-    }
-} else {
-    if ($isHome) {
-        $canonicalUrl = $page['canonical_url'] ?? ($baseUrl . '/');
-    } else {
-        $canonicalUrl = $page['canonical_url'] ?? ($baseUrl . '/' . $pageSlug);
-    }
-}
+$canonicalUrl = canonicalUrlForPage($page['slug'] ?? '', $lang);
 
 $templateData = [
     'page' => $page,
@@ -67,17 +44,17 @@ if (!empty($page["title_$lang"])) {
         $applianceName = trim($matches[1]);
     }
     
-    $productImages[] = !empty($page['og_image']) ? $page['og_image'] : ($seo['org_logo'] ?? ($baseUrl . '/css/logo.png'));
+    $productImages[] = $ogImage;
     
     $pageModel = new Page();
     $attachedMedia = $pageModel->getMedia($page['id']);
     foreach ($attachedMedia as $m) {
-        $productImages[] = $baseUrl . '/uploads/' . $m['filename'];
+        $productImages[] = absoluteUrl('/uploads/' . $m['filename'], $baseUrl);
     }
 }
 
 $pageServiceSchema = '';
-$isAdmin = isset($_SESSION['user_id']);
+$isAdmin = isset($_SESSION['user_id']) && !isBot();
 ?>
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
@@ -107,9 +84,9 @@ $isAdmin = isset($_SESSION['user_id']);
     <meta name="author" content="<?= e($seo["site_name_$lang"]) ?>">
     
     <link rel="canonical" href="<?= $canonicalUrl ?>">
-    <link rel="alternate" hreflang="ru" href="<?= $baseUrl ?>/<?= $isHome ? '' : e($pageSlug) ?>">
-    <link rel="alternate" hreflang="uz" href="<?= $baseUrl ?>/<?= $isHome ? '' : e($pageSlug) . '/' ?>uz">
-    <link rel="alternate" hreflang="x-default" href="<?= $baseUrl ?>/<?= $isHome ? '' : e($pageSlug) ?>">
+    <link rel="alternate" hreflang="ru" href="<?= canonicalUrlForPage($page['slug'] ?? '', 'ru') ?>">
+    <link rel="alternate" hreflang="uz" href="<?= canonicalUrlForPage($page['slug'] ?? '', 'uz') ?>">
+    <link rel="alternate" hreflang="x-default" href="<?= canonicalUrlForPage($page['slug'] ?? '', 'ru') ?>">
     
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?= $canonicalUrl ?>">

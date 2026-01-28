@@ -152,18 +152,7 @@ class SitemapController extends Controller {
      * Get absolute base URL for sitemap - fallback to server values if BASE_URL is relative
      */
     private function getAbsoluteBaseUrl() {
-        $baseUrl = BASE_URL;
-        
-        // Check if BASE_URL is already absolute (contains :// for scheme)
-        if (strpos($baseUrl, '://') !== false) {
-            return rtrim($baseUrl, '/');
-        }
-        
-        // If BASE_URL is relative or empty, derive from server
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        
-        return $protocol . '://' . rtrim($host, '/');
+        return siteBaseUrl();
     }
 
 
@@ -190,7 +179,7 @@ class SitemapController extends Controller {
             echo "Disallow: /database/\n";
             echo "\n";
             
-            echo "Sitemap: " . BASE_URL . "/sitemap.xml\n";
+            echo "Sitemap: " . siteUrl('sitemap.xml') . "\n";
             
         } else {
             echo "User-agent: *\n";

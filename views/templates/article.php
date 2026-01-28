@@ -6,23 +6,15 @@ $metaTitle = $article["meta_title_$lang"] ?? $article["title_$lang"];
 $metaDescription = $article["meta_description_$lang"] ?? $article["excerpt_$lang"] ?? '';
 $ogTitle = $article["og_title_$lang"] ?? $metaTitle;
 $ogDescription = $article["og_description_$lang"] ?? $metaDescription;
-$ogImage = $article['og_image'] ?? ($article['image'] ? (BASE_URL . '/uploads/' . $article['image']) : (BASE_URL . '/css/logo.png'));
+$baseUrl = siteBaseUrl();
+$canonicalUrl = canonicalUrlForArticle($article['id'], $lang);
+$ogImage = absoluteUrl(
+    $article['og_image']
+        ?? (!empty($article['image']) ? ('/uploads/' . $article['image']) : '/css/logo.png'),
+    $baseUrl
+);
 
-// Get absolute base URL
-$baseUrl = BASE_URL;
-if (strpos($baseUrl, '://') === false) {
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $baseUrl = $protocol . '://' . rtrim($host, '/');
-}
-$baseUrl = rtrim($baseUrl, '/');
-
-$canonicalUrl = $baseUrl . '/articles/' . $article['id'];
-if ($lang !== DEFAULT_LANGUAGE) {
-    $canonicalUrl .= '/' . $lang;
-}
-
-$isAdmin = isset($_SESSION['user_id']);
+$isAdmin = isset($_SESSION['user_id']) && !isBot();
 ?>
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
@@ -44,16 +36,12 @@ $isAdmin = isset($_SESSION['user_id']);
     <meta name="description" content="<?= e($metaDescription) ?>">
     <meta name="author" content="<?= e($article['author']) ?>">
     
-    <?php if (!empty($seo['noindex'])): ?>
-    <meta name="robots" content="noindex, follow">
-    <?php else: ?>
     <meta name="robots" content="index, follow">
-    <?php endif; ?>
     
     <link rel="canonical" href="<?= $canonicalUrl ?>">
-    <link rel="alternate" hreflang="ru" href="<?= $baseUrl ?>/articles/<?= $article['id'] ?>">
-    <link rel="alternate" hreflang="uz" href="<?= $baseUrl ?>/articles/<?= $article['id'] ?>/uz">
-    <link rel="alternate" hreflang="x-default" href="<?= $baseUrl ?>/articles/<?= $article['id'] ?>">
+    <link rel="alternate" hreflang="ru" href="<?= canonicalUrlForArticle($article['id'], 'ru') ?>">
+    <link rel="alternate" hreflang="uz" href="<?= canonicalUrlForArticle($article['id'], 'uz') ?>">
+    <link rel="alternate" hreflang="x-default" href="<?= canonicalUrlForArticle($article['id'], 'ru') ?>">
     
     <!-- OpenGraph / Facebook -->
     <meta property="og:type" content="article">

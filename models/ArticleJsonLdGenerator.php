@@ -10,10 +10,7 @@ class ArticleJsonLdGenerator {
      */
     public static function generateArticleGraph($article, $lang, $seo, $faqs = [], $datePublished = null, $dateModified = null) {
         $baseUrl = self::getBaseUrl();
-        $articleUrl = $baseUrl . '/articles/' . $article['id'];
-        if ($lang !== DEFAULT_LANGUAGE) {
-            $articleUrl .= '/' . $lang;
-        }
+        $articleUrl = canonicalUrlForArticle($article['id'], $lang);
         
         // Use passed dates or fallback (though Controller should now always pass them)
         $datePublished = $datePublished ?? date('c', strtotime($article['created_at']));
@@ -62,8 +59,16 @@ class ArticleJsonLdGenerator {
     public static function generateArticleSchema($article, $lang, $articleUrl, $baseUrl, $seo, $datePublished, $dateModified) {
         $wordCount = 0;
         if (!empty($article["content_$lang"])) {
-             $text = strip_tags($article["content_$lang"]);
-             $wordCount = count(preg_split('/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY));
+            // Strip HTML and count real words (Cyrillic/Latin) to avoid constant/incorrect values.
+            $text = strip_tags((string)$article["content_$lang"]);
+            $text = html_entity_decode($text, ENT_QUOTES, 'UTF-8');
+            $text = preg_replace('/\s{2,}/', ' ', trim($text));
+
+            if ($text !== '') {
+                if (preg_match_all('/[\\p{L}\\p{N}]+(?:-[\\p{L}\\p{N}]+)*/u', $text, $m)) {
+                    $wordCount = count($m[0]);
+                }
+            }
         }
 
         // Author logic: Avoid "Admin". Use Organization as fallback identity if author is generic.
@@ -101,9 +106,11 @@ class ArticleJsonLdGenerator {
         
         // Add featured image
         if (!empty($article['image'])) {
-            $imageUrl = $baseUrl . '/uploads/' . $article['image'];
+            $imageUrl = absoluteUrl('/uploads/' . $article['image'], $baseUrl);
+            // Include absolute URL data on the property (and also provide an ImageObject node in the graph).
             $schema['image'] = [
-                '@id' => $articleUrl . '#primaryimage'
+                '@id' => $articleUrl . '#primaryimage',
+                'url' => $imageUrl
             ];
         }
         
@@ -151,6 +158,9 @@ class ArticleJsonLdGenerator {
             $schema['primaryImageOfPage'] = [
                 '@id' => $articleUrl . '#primaryimage'
             ];
+            $schema['image'] = [
+                '@id' => $articleUrl . '#primaryimage'
+            ];
         }
         
         return $schema;
@@ -192,7 +202,7 @@ class ArticleJsonLdGenerator {
      * Generate ImageObject schema for featured image
      */
     public static function generateImageSchema($article, $lang, $articleUrl, $baseUrl) {
-        $imageUrl = $baseUrl . '/uploads/' . $article['image'];
+        $imageUrl = absoluteUrl('/uploads/' . $article['image'], $baseUrl);
         
         $schema = [
             '@type' => 'ImageObject',
@@ -238,17 +248,6 @@ class ArticleJsonLdGenerator {
      * Get absolute base URL
      */
     private static function getBaseUrl() {
-        $baseUrl = BASE_URL;
-        
-        // Check if BASE_URL is already absolute
-        if (strpos($baseUrl, '://') !== false) {
-            return rtrim($baseUrl, '/');
-        }
-        
-        // Derive from server
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        
-        return $protocol . '://' . rtrim($host, '/');
+        return siteBaseUrl();
     }
 }
