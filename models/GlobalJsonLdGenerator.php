@@ -212,6 +212,10 @@ class GlobalJsonLdGenerator {
             'provider' => [
                 '@id' => $baseUrl . '#organization'
             ],
+            // Tie the Service entity to the WebPage entity (minor enrichment).
+            'mainEntityOfPage' => [
+                '@id' => $pageUrl . '#webpage'
+            ],
             'areaServed' => [
                 '@type' => 'City',
                 'name' => $seo['city'] ?? 'Tashkent'

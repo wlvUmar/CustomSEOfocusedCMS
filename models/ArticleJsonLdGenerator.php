@@ -3,6 +3,34 @@
 // ARTICLE-SPECIFIC JSON-LD GENERATOR - COMPLETELY SEPARATE FROM PAGE LOGIC
 
 class ArticleJsonLdGenerator {
+
+    private static function computeWordCountFromHtml($html) {
+        $html = (string)($html ?? '');
+        if (trim($html) === '') return null;
+
+        // Remove scripts/styles that can inflate or distort text extraction.
+        $html = preg_replace('/<script\b[^>]*>.*?<\/script>/is', ' ', $html);
+        $html = preg_replace('/<style\b[^>]*>.*?<\/style>/is', ' ', $html);
+
+        // Ensure block-level boundaries don't smash words together.
+        $html = preg_replace('/<(br|hr)\b[^>]*>/i', ' ', $html);
+        $html = preg_replace('/<\/(p|div|li|h[1-6]|tr|td|th|blockquote|section|article)\s*>/i', ' ', $html);
+
+        $text = strip_tags($html);
+        $text = html_entity_decode($text, ENT_QUOTES, 'UTF-8');
+
+        // Normalize NBSP and whitespace.
+        $text = str_replace(["\xC2\xA0", "\xE2\x80\xAF"], ' ', $text);
+        $text = preg_replace('/\s{2,}/u', ' ', trim($text));
+        if ($text === '') return null;
+
+        if (!preg_match_all('/[\\p{L}\\p{N}]+(?:-[\\p{L}\\p{N}]+)*/u', $text, $m)) {
+            return null;
+        }
+
+        $count = count($m[0]);
+        return $count > 0 ? $count : null;
+    }
     
     /**
      * Generate complete @graph structure for an article
@@ -57,19 +85,7 @@ class ArticleJsonLdGenerator {
     public static function generateArticleSchema($article, $lang, $articleUrl, $baseUrl, $seo, $datePublished, $dateModified) {
         $wordCount = null;
         if (!empty($article["content_$lang"])) {
-            // Strip HTML and count real words (Cyrillic/Latin) to avoid constant/incorrect values.
-            $text = strip_tags((string)$article["content_$lang"]);
-            $text = html_entity_decode($text, ENT_QUOTES, 'UTF-8');
-            $text = preg_replace('/\s{2,}/', ' ', trim($text));
-
-            if ($text !== '') {
-                if (preg_match_all('/[\\p{L}\\p{N}]+(?:-[\\p{L}\\p{N}]+)*/u', $text, $m)) {
-                    $count = count($m[0]);
-                    if ($count > 0) {
-                        $wordCount = $count;
-                    }
-                }
-            }
+            $wordCount = self::computeWordCountFromHtml($article["content_$lang"]);
         }
 
         // Brand-authored articles: keep meta author and JSON-LD author aligned to Organization.
