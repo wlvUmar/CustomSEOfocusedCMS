@@ -168,6 +168,16 @@ $router->group('/admin/schemas', function($router) {
     $router->post('/bulk-import', function() { requireSchemaAdmin('bulkImport'); });
 });
 
+// Admin Articles
+$router->group('/admin/articles', function($router) {
+    $router->get('/', function() { requireArticleAdmin('index'); });
+    $router->get('/new', function() { requireArticleAdmin('edit'); });
+    $router->get('/edit/{id}', function($id) { requireArticleAdmin('edit', $id); });
+    $router->post('/save', function() { requireArticleAdmin('save'); });
+    $router->post('/delete', function() { requireArticleAdmin('delete'); });
+    $router->post('/toggle-publish', function() { requireArticleAdmin('togglePublish'); });
+});
+
 // Backwards-compatible route: handle POSTs accidentally sent to /seo/save (without /admin)
 $router->post('/seo/save', function() { requireSEO('save'); });
 
@@ -185,7 +195,15 @@ $router->group('/admin/preview', function($router) {
 */
 $router->get('/sitemap.xml', function() {
     require_once BASE_PATH . '/controllers/SitemapController.php';
-    (new SitemapController())->generateXML();
+    (new SitemapController())->generateSitemapIndex();
+});
+$router->get('/sitemap-pages.xml', function() {
+    require_once BASE_PATH . '/controllers/SitemapController.php';
+    (new SitemapController())->generatePagesSitemap();
+});
+$router->get('/sitemap-articles.xml', function() {
+    require_once BASE_PATH . '/controllers/SitemapController.php';
+    (new SitemapController())->generateArticlesSitemap();
 });
 $router->get('/robots.txt', function() {
     require_once BASE_PATH . '/controllers/SitemapController.php';
@@ -215,6 +233,18 @@ $router->get('/', function() {
     (new PageController())->show('main');
 });
 
+// Article routes (must be before catch-all page routes)
+$router->get('/articles/{id}/{lang}', function($id, $lang) {
+    require_once BASE_PATH . '/controllers/ArticleController.php';
+    (new ArticleController())->show($id, $lang);
+});
+
+$router->get('/articles/{id}', function($id) {
+    require_once BASE_PATH . '/controllers/ArticleController.php';
+    setLanguage(DEFAULT_LANGUAGE);
+    (new ArticleController())->show($id);
+});
+
 // Catch-all public pages (always at the end)
 $router->get('/{slug}/{lang}', function($slug, $lang) {
     require_once BASE_PATH . '/controllers/PageController.php';
@@ -225,6 +255,18 @@ $router->get('/{slug}', function($slug) {
     require_once BASE_PATH . '/controllers/PageController.php';
     setLanguage(DEFAULT_LANGUAGE);
     (new PageController())->show($slug);
+});
+
+// Public article routes
+$router->get('/articles/{id}', function($id) {
+    require_once BASE_PATH . '/controllers/ArticleController.php';
+    setLanguage(DEFAULT_LANGUAGE);
+    (new ArticleController())->show($id);
+});
+
+$router->get('/articles/{id}/{lang}', function($id, $lang) {
+    require_once BASE_PATH . '/controllers/ArticleController.php';
+    (new ArticleController())->show($id, $lang);
 });
 
 // 404 handler
@@ -292,6 +334,12 @@ function requireSEO($method) {
 function requireSchemaAdmin($method) {
     require_once BASE_PATH . '/controllers/admin/SchemaController.php';
     (new SchemaController())->$method();
+}
+
+function requireArticleAdmin($method, $id = null) {
+    require_once BASE_PATH . '/controllers/admin/ArticleAdminController.php';
+    $c = new ArticleAdminController();
+    $id !== null ? $c->$method($id) : $c->$method();
 }
 
 $router->post('/track-phone-call', function() {

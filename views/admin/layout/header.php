@@ -78,6 +78,9 @@
                     <a href="<?= BASE_URL ?>/admin/pages" class="<?= strpos($_SERVER['REQUEST_URI'], '/pages') !== false ? 'active' : '' ?>">
                         <i data-feather="file-text"></i> Pages
                     </a>
+                    <a href="<?= BASE_URL ?>/admin/articles" class="<?= strpos($_SERVER['REQUEST_URI'], '/articles') !== false ? 'active' : '' ?>">
+                        <i data-feather="book-open"></i> Articles
+                    </a>
                     <a href="<?= BASE_URL ?>/admin/rotations/overview" class="<?= strpos($_SERVER['REQUEST_URI'], '/rotations') !== false ? 'active' : '' ?>">
                         <i data-feather="repeat"></i> Content Rotation
                     </a>

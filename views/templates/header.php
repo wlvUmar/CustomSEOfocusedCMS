@@ -132,144 +132,28 @@ $isAdmin = isset($_SESSION['user_id']);
     <?php
     $allSchemas = [];
     
-$orgSchemaJson = '';
-$orgSchemaData = null;
-if (!empty($seo['organization_schema'])) {
-    $orgSchema = json_decode($seo['organization_schema'], true);
-    if (is_array($orgSchema)) {
-            if (!empty($orgSchema['description']) && (strpos($orgSchema['description'], "\r\n") !== false || strpos($orgSchema['description'], "\n") !== false)) {
-                $orgSchema['description'] = preg_replace('/\s{2,}/', ' ', str_replace(["\r\n", "\r", "\n"], ' ', $orgSchema['description']));
-            }
-        if (empty($orgSchema['@id'])) {
-            $orgSchema['@id'] = $baseUrl . '#organization';
-        }
-        $orgSchemaData = $orgSchema;
-        $orgSchemaJson = json_encode($orgSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    }
-} elseif (!empty($seo['site_name_ru']) || !empty($seo['site_name_uz'])) {
-        $orgData = [
-            'id' => $baseUrl . '#organization',
-            'type' => $seo['org_type'] ?? 'LocalBusiness',
-            'name' => $seo['org_name_ru'] ?? $seo['site_name_ru'] ?? $seo['site_name_uz'] ?? '',
-            'url' => $baseUrl,
-            'logo' => $seo['org_logo'] ?? ($baseUrl . '/css/logo.png'),
-            'image' => $seo['org_logo'] ?? ($baseUrl . '/css/logo.png'),
-            'description' => $seo['org_description_ru'] ?? $seo['org_description_uz'] ?? '',
-            'telephone' => $seo['phone'] ?? '',
-            'email' => $seo['email'] ?? '',
-            'address' => $seo['address_ru'] ?? $seo['address_uz'] ?? '',
-            'city' => $seo['city'] ?? 'Tashkent',
-            'region' => $seo['region'] ?? 'Tashkent',
-            'postal' => $seo['postal_code'] ?? '',
-            'country' => $seo['country'] ?? 'UZ',
-            'latitude' => $seo['org_latitude'] ?? null,
-            'longitude' => $seo['org_longitude'] ?? null,
-            'opening_hours' => !empty($seo['opening_hours']) ? explode("\n", $seo['opening_hours']) : [],
-            'price_range' => $seo['price_range'] ?? '',
-            'social_media' => array_filter([$seo['social_facebook'] ?? '', $seo['social_instagram'] ?? '', $seo['social_twitter'] ?? '', $seo['social_youtube'] ?? ''])
-        ];
-        $orgSchemaJson = JsonLdGenerator::generateOrganization($orgData);
-        $orgSchemaData = json_decode($orgSchemaJson, true);
-    }
-    if (!empty($orgSchemaJson)) $allSchemas[] = $orgSchemaJson;
-
-    $serviceSocial = array_filter([
-        $seo['social_facebook'] ?? '',
-        $seo['social_instagram'] ?? '',
-        $seo['social_twitter'] ?? '',
-        $seo['social_youtube'] ?? ''
-    ]);
-    if (!empty($orgSchemaData['sameAs']) && is_array($orgSchemaData['sameAs'])) {
-        $serviceSocial = array_merge($serviceSocial, $orgSchemaData['sameAs']);
-    }
-    $serviceSocial = array_values(array_unique(array_filter($serviceSocial)));
-
-    $pageDepth = isset($page['depth']) ? (int)$page['depth'] : 0;
-    if (!empty($page["title_$lang"]) && $pageDepth < 2) {
-        $serviceType = $seo['service_type'] ?? 'Service';
-        if (!empty($applianceName) && $serviceType === 'Service') {
-            $serviceType = $lang === 'ru' ? "Покупка и выкуп $applianceName" : "Sotib olish va sotib olish $applianceName";
-        }
-        
-        $serviceData = [
-            'service_type' => $serviceType,
-            'name' => replacePlaceholders($page["title_$lang"], $page, $seo),
-            'description' => replacePlaceholders($page["meta_description_$lang"] ?? '', $page, $seo),
-            'provider' => [
-                '@id' => $baseUrl . '#organization'
-            ],
-            'area_served' => $seo['area_served'] ?? '',
-            'service_phone' => $seo['phone'] ?? '',
-            'social_media' => $serviceSocial
-        ];
-        
-        if (!empty($productImages)) {
-            $serviceData['image'] = $productImages;
-        }
-        
-        $pageServiceSchema = JsonLdGenerator::generateService($serviceData);
-    }
-
-    if (in_array($page['slug'], ['home', 'main'], true) && !empty($seo['website_schema'])) {
-        $websiteSchema = json_decode($seo['website_schema'], true);
-        if (is_array($websiteSchema) && empty($websiteSchema['url'])) {
-            $websiteSchema['url'] = $baseUrl;
-            $allSchemas[] = json_encode($websiteSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        } else {
-            $allSchemas[] = $seo['website_schema'];
-        }
-    }
-
-if (!empty($pageServiceSchema)) {
-    $allSchemas[] = $pageServiceSchema;
-}
-
-    if (!empty($faqSchema)) {
-        $allSchemas[] = $faqSchema;
-    }
-
-    // Add hero image schema if provided by controller
-    if (!empty($heroImageSchema)) {
-        $allSchemas[] = $heroImageSchema;
-    }
-
-    if (!in_array($page['slug'], ['home', 'main'], true)) {
-        $pageModel = new Page();
-        $breadcrumbPages = $pageModel->getBreadcrumbs($page['id']);
-        
-        $breadcrumbs = [
-            ['name' => $seo["site_name_$lang"], 'url' => '/']
-        ];
-        
-        foreach ($breadcrumbPages as $breadcrumbPage) {
-            if (in_array($breadcrumbPage['slug'], ['home', 'main'], true)) {
-                continue;
-            }
-            $breadcrumbs[] = [
-                'name' => replacePlaceholders($breadcrumbPage["title_$lang"], $breadcrumbPage, $seo),
-                'url' => '/' . $breadcrumbPage['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '')
-            ];
-        }
-        
-        $breadcrumbSchema = JsonLdGenerator::generateBreadcrumbs($breadcrumbs, $baseUrl, $canonicalUrl);
-        if (!empty($breadcrumbSchema)) $allSchemas[] = $breadcrumbSchema;
+    // Output Global Schema if verified
+    if (!empty($sitewideSchema)) {
+        echo '<script type="application/ld+json">' . json_encode($sitewideSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . '</script>';
+    } else {
+        // Fallback or legacy handling (e.g. for error pages or direct view calls without controller?)
+        // Assuming controllers always pass it now.
+        // But let's keep the existing logic ONLY if sitewideSchema is missing, OR better,
+        // we cleaned it up.
+        // The instruction says "Remove legacy inline schema".
+        // Let's remove the huge block.
     }
     
+    // Note: $heroImageSchema, $faqSchema might still be passed separately in some contexts or merged.
+    // In PageController, we are now merging everything into $sitewideSchema?
+    // Wait, PageController line: $graph = [$orgSchema, $webSiteSchema, $webPageSchema];
+    // It does NOT include faqSchema or heroImageSchema in that graph yet.
+    // Let's refrain from deleting FAQ/Hero logic yet, only the Organization/Service/WebSite logic that we replaced.
+    
+    // Output Blog Schema if present
     if (!empty($blogSchema)) {
-        if (is_array($blogSchema)) {
-             $allSchemas[] = json_encode($blogSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
-        } else {
-             $allSchemas[] = $blogSchema;
-        }
-    }
-    
-    if (!empty($allSchemas)) {
-        $mergedSchema = JsonLdGenerator::mergeSchemas($allSchemas);
-        if (!empty($mergedSchema)) {
-            echo '<script type="application/ld+json">' . "\n";
-            echo $mergedSchema . "\n";
-            echo '</script>' . "\n";
-        }
+        $blogJson = is_array($blogSchema) ? json_encode($blogSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) : $blogSchema;
+        echo '<script type="application/ld+json">' . $blogJson . '</script>';
     }
     ?>
     

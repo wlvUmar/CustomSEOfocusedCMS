@@ -51,7 +51,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         
                         foreach ($childPages as $p) {
                             $indent = str_repeat('  ', $depth) . ($depth > 0 ? '└ ' : '');
-                            $isSelected = $page && isset($page['parent_id']) && $page['parent_id'] == $p['id'];
+                            $isSelected = isset($page) && $page && isset($page['parent_id']) && $page['parent_id'] == $p['id'];
                             $output .= sprintf(
                                 '<option value="%d" %s>%s%s</option>' . "\n",
                                 $p['id'],

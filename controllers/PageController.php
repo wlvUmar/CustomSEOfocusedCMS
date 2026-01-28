@@ -85,7 +85,119 @@ class PageController extends Controller {
         $blogSchema = $this->blogSchemaModel->get($slug);
         
         // Generate hero image schema
-        $heroImageSchema = $this->generateHeroImageSchema($page['id'], $currentLang);
+        // Note: generateHeroImageSchema returns JSON string for individual use, but we want the raw data or array for the graph.
+        // Let's refactor usage. generateHeroImageSchema inside PageController creates an ImageObject.
+        // We will call it, decode it, and add to graph.
+        $heroImageSchemaJson = $this->generateHeroImageSchema($page['id'], $currentLang);
+        $heroImageSchemaArray = !empty($heroImageSchemaJson) ? json_decode($heroImageSchemaJson, true) : null;
+        $primaryImageId = $heroImageSchemaArray ? ($heroImageSchemaArray['@id'] ?? null) : null;
+        
+        // --- PREPARE DATA FOR SCHEMA (Clean Placeholders) ---
+        $pageForSchema = $page;
+        $pageForSchema["title_$currentLang"] = replacePlaceholders($page["title_$currentLang"], $page, $seoSettings);
+        $pageForSchema["meta_description_$currentLang"] = replacePlaceholders($page["meta_description_$currentLang"] ?? '', $page, $seoSettings);
+        
+        // Generate Global Schema (Organization + WebSite)
+        require_once BASE_PATH . '/models/GlobalJsonLdGenerator.php';
+        $baseUrl = GlobalJsonLdGenerator::getBaseUrl();
+        $orgSchema = GlobalJsonLdGenerator::generateOrganizationSchema($seoSettings, $currentLang, $baseUrl);
+        $webSiteSchema = GlobalJsonLdGenerator::generateWebSiteSchema($seoSettings, $currentLang, $baseUrl);
+        
+        // Prepare FAQ Data (if any)
+        $faqId = null;
+        $faqSchemaArray = null;
+        if (!empty($faqs)) {
+            require_once BASE_PATH . '/models/JsonLdGenerator.php';
+            // We use standard generator but want array?
+            // Let's generate basic structure here for graph consistency or decode
+            $pageUrl = $baseUrl . '/' . $page['slug'] . ($currentLang !== DEFAULT_LANGUAGE ? '/' . $currentLang : '');
+            // FIX: generateFAQSchema is a helper function, not a class method
+            $faqSchemaJson = generateFAQSchema($faqs, $currentLang, $pageUrl);
+            $faqSchemaArray = json_decode($faqSchemaJson, true);
+            if ($faqSchemaArray) {
+                unset($faqSchemaArray['@context']); // Remove context for graph
+                $faqId = $faqSchemaArray['@id'] ?? ($pageUrl . '#faq');
+                $faqSchemaArray['@id'] = $faqId; // Ensure ID matches
+            }
+        }
+
+        // Generate WebPage Schema (Pass Image ID and FAQ ID)
+        $webPageSchema = GlobalJsonLdGenerator::generateWebPageSchema(
+            $pageForSchema, 
+            $currentLang, 
+            $baseUrl, 
+            $primaryImageId,
+            $faqId
+        );
+        $pageCanonicalUrl = $webPageSchema['url'];
+        
+        // Generate BreadcrumbList Schema
+        require_once BASE_PATH . '/models/JsonLdGenerator.php';
+        $breadcrumbs = $this->getBreadcrumbData($page, $currentLang, $baseUrl, $seoSettings);
+        $breadcrumbSchema = null;
+        if (!empty($breadcrumbs)) {
+            $items = [];
+            foreach ($breadcrumbs as $index => $item) {
+                $items[] = [
+                    '@type' => 'ListItem',
+                    'position' => $index + 1,
+                    'name' => $item['name'],
+                    'item' => $item['url']
+                ];
+            }
+            $breadcrumbSchema = [
+                '@type' => 'BreadcrumbList',
+                '@id' => $pageCanonicalUrl . '#breadcrumb',
+                'itemListElement' => $items
+            ];
+        }
+        
+        // Start graph
+        $graph = [$orgSchema, $webSiteSchema];
+        
+        // SERVICE SCHEMA LOGIC
+        if (!in_array($slug, ['home', 'main'])) {
+             // Generate Service with Page URL for ID
+             $serviceSchema = GlobalJsonLdGenerator::generateServiceSchema(
+                 $pageForSchema, 
+                 $currentLang, 
+                 $baseUrl, 
+                 $seoSettings, 
+                 $pageCanonicalUrl // Use canonical URL for ID base
+             );
+             
+             // Link WebPage -> Service (mainEntity) via ID
+             $webPageSchema['mainEntity'] = [
+                 '@id' => $serviceSchema['@id']
+             ];
+             
+             // Add Service to graph
+             $graph[] = $serviceSchema;
+        }
+
+        // Add WebPage to graph
+        $graph[] = $webPageSchema;
+        
+        // Add BreadcrumbList to graph
+        if ($breadcrumbSchema) {
+            $graph[] = $breadcrumbSchema;
+        }
+        
+        // Add Hero Image Object to graph
+        if ($heroImageSchemaArray) {
+            unset($heroImageSchemaArray['@context']);
+            $graph[] = $heroImageSchemaArray;
+        }
+        
+        // Add FAQPage to graph
+        if ($faqSchemaArray) {
+            $graph[] = $faqSchemaArray;
+        }
+
+        $sitewideSchema = [
+            '@context' => 'https://schema.org',
+            '@graph' => $graph
+        ];
         
         trackVisit($slug, $currentLang);
         $templateData = [
@@ -126,7 +238,8 @@ class PageController extends Controller {
             'seo' => $seoSettings,
             'faqs' => $faqs,
             'blogSchema' => $blogSchema,
-            'heroImageSchema' => $heroImageSchema,
+            'heroImageSchema' => '', // Cleared because it is now in sitewideSchema
+            'sitewideSchema' => $sitewideSchema,
             'lang' => $currentLang,
             'templateData' => $templateData
         ];
@@ -216,5 +329,39 @@ class PageController extends Controller {
         }
         
         $this->json(['success' => false], 400);
+    }
+    
+    private function getBreadcrumbData($page, $lang, $baseUrl, $seoSettings) {
+        $breadcrumbs = [
+            ['name' => $seoSettings["site_name_$lang"] ?? 'Home', 'url' => $baseUrl . '/']
+        ];
+        
+        if (in_array($page['slug'], ['home', 'main'])) {
+            return []; // No breadcrumbs for home
+        }
+        
+        // Use Page model to get hierarchy
+        $breadcrumbPages = $this->pageModel->getBreadcrumbs($page['id']);
+        
+        // Reverse because getBreadcrumbs might return Leaf -> Root? Let's check model.
+        // Model getBreadcrumbs: returns [current, parent, grandparent...]. So yes, we need to reverse or iterate correctly.
+        // Wait, logic says: array_unshift($breadcrumbs, $parent); so it builds [Grandparent, Parent, Current].
+        // Let's assume it returns Root -> ... -> Current.
+        
+        foreach ($breadcrumbPages as $bPage) {
+            if (in_array($bPage['slug'], ['home', 'main'])) continue;
+            
+            $url = $baseUrl . '/' . $bPage['slug'];
+            if ($lang !== DEFAULT_LANGUAGE) {
+                $url .= '/' . $lang;
+            }
+            
+            $breadcrumbs[] = [
+                'name' => replacePlaceholders($bPage["title_$lang"], $bPage, $seoSettings),
+                'url' => $url
+            ];
+        }
+        
+        return $breadcrumbs;
     }
 }
