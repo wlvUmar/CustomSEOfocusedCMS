@@ -159,8 +159,8 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
                     ?>
                     
                     <div class="lang-switch">
-                        <a href="<?= BASE_URL ?>/articles/<?= $article['id'] ?>" <?= $lang === 'ru' ? 'class="active"' : '' ?>>RU</a>
-                        <a href="<?= BASE_URL ?>/articles/<?= $article['id'] ?>/uz" <?= $lang === 'uz' ? 'class="active"' : '' ?>>UZ</a>
+                        <a href="<?= canonicalUrlForArticle($article['id'], 'ru') ?>" <?= $lang === 'ru' ? 'class="active"' : '' ?>>RU</a>
+                        <a href="<?= canonicalUrlForArticle($article['id'], 'uz') ?>" <?= $lang === 'uz' ? 'class="active"' : '' ?>>UZ</a>
                     </div>
                 </div>
             </nav>

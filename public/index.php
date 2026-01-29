@@ -229,6 +229,17 @@ $router->get('/main', function() {
     header("Location: " . BASE_URL . "/", true, 301);
     exit;
 });
+// Redirect /main/uz to /uz (canonical language homepage).
+$router->get('/main/uz', function() {
+    header("Location: " . BASE_URL . "/uz", true, 301);
+    exit;
+});
+
+// Canonical Uzbek homepage route.
+$router->get('/uz', function() {
+    require_once BASE_PATH . '/controllers/PageController.php';
+    (new PageController())->show('main', 'uz');
+});
 
 // Root route - show home page
 $router->get('/', function() {

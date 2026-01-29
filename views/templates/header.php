@@ -296,8 +296,8 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
                     ?>
                     
                     <div class="lang-switch">
-                        <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>" <?= $lang === 'ru' ? 'class="active"' : '' ?>>RU</a>
-                        <a href="<?= BASE_URL ?>/<?= e($page['slug']) ?>/uz" <?= $lang === 'uz' ? 'class="active"' : '' ?>>UZ</a>
+                        <a href="<?= canonicalUrlForPage($page['slug'] ?? '', 'ru') ?>" <?= $lang === 'ru' ? 'class="active"' : '' ?>>RU</a>
+                        <a href="<?= canonicalUrlForPage($page['slug'] ?? '', 'uz') ?>" <?= $lang === 'uz' ? 'class="active"' : '' ?>>UZ</a>
                     </div>
                 </div>
             </nav>

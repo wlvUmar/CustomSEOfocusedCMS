@@ -65,30 +65,51 @@ class SitemapController extends Controller {
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
                       xmlns:xhtml="http://www.w3.org/1999/xhtml">' . "\n";
+
+        // Prevent accidental duplicates (e.g. if both "home" and "main" exist).
+        $seen = [];
         
         foreach ($pages as $page) {
             $slug = $page['slug'];
             $updated = $page['updated_at'];
             
-            $priority = $slug === 'home' ? '1.0' : '0.8';
+            $isHome = in_array($slug, ['home', 'main'], true);
+            $priority = $isHome ? '1.0' : '0.8';
             $changefreq = $page['enable_rotation'] ? 'monthly' : 'yearly';
-            
+
+            // Canonical URL paths: homepage should be "/" (not "/main" or "/home").
+            $ruPath = $isHome ? '' : htmlspecialchars($slug);
+            $uzPath = $isHome ? 'uz' : (htmlspecialchars($slug) . '/uz');
+
+            $ruLoc = $baseUrl . '/' . $ruPath;
+            $uzLoc = $baseUrl . '/' . $uzPath;
+
+            // Normalize double slashes (home path).
+            $ruLoc = rtrim($ruLoc, '/');
+            $ruLoc = $ruLoc === rtrim($baseUrl, '/') ? ($baseUrl . '/') : ($ruLoc);
+            $uzLoc = rtrim($uzLoc, '/');
+
+            if (isset($seen[$ruLoc])) {
+                continue;
+            }
+            $seen[$ruLoc] = true;
+
             echo '  <url>' . "\n";
-            echo '    <loc>' . $baseUrl . '/' . htmlspecialchars($slug) . '</loc>' . "\n";
+            echo '    <loc>' . $ruLoc . '</loc>' . "\n";
             echo '    <lastmod>' . date('Y-m-d', strtotime($updated)) . '</lastmod>' . "\n";
             echo '    <changefreq>' . $changefreq . '</changefreq>' . "\n";
             echo '    <priority>' . $priority . '</priority>' . "\n";
-            echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . $baseUrl . '/' . htmlspecialchars($slug) . '" />' . "\n";
-            echo '    <xhtml:link rel="alternate" hreflang="uz" href="' . $baseUrl . '/' . htmlspecialchars($slug) . '/uz" />' . "\n";
+            echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . $ruLoc . '" />' . "\n";
+            echo '    <xhtml:link rel="alternate" hreflang="uz" href="' . $uzLoc . '" />' . "\n";
             echo '  </url>' . "\n";
             
             echo '  <url>' . "\n";
-            echo '    <loc>' . $baseUrl . '/' . htmlspecialchars($slug) . '/uz</loc>' . "\n";
+            echo '    <loc>' . $uzLoc . '</loc>' . "\n";
             echo '    <lastmod>' . date('Y-m-d', strtotime($updated)) . '</lastmod>' . "\n";
             echo '    <changefreq>' . $changefreq . '</changefreq>' . "\n";
             echo '    <priority>' . $priority . '</priority>' . "\n";
-            echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . $baseUrl . '/' . htmlspecialchars($slug) . '" />' . "\n";
-            echo '    <xhtml:link rel="alternate" hreflang="uz" href="' . $baseUrl . '/' . htmlspecialchars($slug) . '/uz" />' . "\n";
+            echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . $ruLoc . '" />' . "\n";
+            echo '    <xhtml:link rel="alternate" hreflang="uz" href="' . $uzLoc . '" />' . "\n";
             echo '  </url>' . "\n";
         }
         
