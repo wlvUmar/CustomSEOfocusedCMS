@@ -137,12 +137,18 @@ document.addEventListener('click', function (e) {
     const card = e.target.closest('.link-widget-card');
     if (!card) return;
 
-    fetch('<?= BASE_URL ?>/track-internal-link', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `from=${card.dataset.from}&to=${card.dataset.to}&lang=<?= $lang ?>`,
-        keepalive: true
-    }).catch(() => {});
+    try {
+        fetch('/track-internal-link', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+                from: card.dataset.from || '',
+                to: card.dataset.to || '',
+                lang: '<?= $lang ?>'
+            }).toString(),
+            keepalive: true
+        }).catch(() => {});
+    } catch (e) {}
 });
 </script>
 

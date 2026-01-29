@@ -294,40 +294,55 @@ class PageController extends Controller {
     }
 
     public function trackClick() {
-        $slug = $_POST['slug'] ?? '';
-        $lang = $_POST['lang'] ?? getCurrentLanguage();
-        
-        if ($slug) {
-            trackClick($slug, $lang);
-            $this->json(['success' => true]);
+        $slug = trim((string)($_POST['slug'] ?? ''));
+        $lang = normalizeTrackingLanguage($_POST['lang'] ?? getCurrentLanguage());
+
+        if (!trackingRateLimit('click', 200, 300)) {
+            $this->json(['success' => false, 'message' => 'Rate limit'], 429);
         }
-        
-        $this->json(['success' => false], 400);
+
+        if (!$slug || !isValidAnalyticsSlug($slug)) {
+            $this->json(['success' => false, 'message' => 'Invalid slug'], 400);
+        }
+
+        trackClick($slug, $lang);
+        $this->json(['success' => true]);
     }
 
     public function trackInternalLink() {
-        $fromSlug = $_POST['from'] ?? '';
-        $toSlug = $_POST['to'] ?? '';
-        $lang = $_POST['lang'] ?? getCurrentLanguage();
-        
-        if ($fromSlug && $toSlug) {
-            trackInternalLink($fromSlug, $toSlug, $lang);
-            $this->json(['success' => true]);
+        $fromSlug = trim((string)($_POST['from'] ?? ''));
+        $toSlug = trim((string)($_POST['to'] ?? ''));
+        $lang = normalizeTrackingLanguage($_POST['lang'] ?? getCurrentLanguage());
+
+        if (!trackingRateLimit('internal_link', 500, 300)) {
+            $this->json(['success' => false, 'message' => 'Rate limit'], 429);
         }
-        
-        $this->json(['success' => false], 400);
+
+        if (!$fromSlug || !$toSlug) {
+            $this->json(['success' => false, 'message' => 'Missing params'], 400);
+        }
+        if (!isValidAnalyticsInternalLinkSlug($fromSlug) || !isValidAnalyticsInternalLinkSlug($toSlug)) {
+            $this->json(['success' => false, 'message' => 'Invalid params'], 400);
+        }
+
+        trackInternalLink($fromSlug, $toSlug, $lang);
+        $this->json(['success' => true]);
     }
 
     public function trackPhoneCall() {
-        $slug = $_POST['slug'] ?? '';
-        $lang = $_POST['lang'] ?? getCurrentLanguage();
-        
-        if ($slug) {
-            trackPhoneCall($slug, $lang);
-            $this->json(['success' => true]);
+        $slug = trim((string)($_POST['slug'] ?? ''));
+        $lang = normalizeTrackingLanguage($_POST['lang'] ?? getCurrentLanguage());
+
+        if (!trackingRateLimit('phone_call', 50, 300)) {
+            $this->json(['success' => false, 'message' => 'Rate limit'], 429);
         }
-        
-        $this->json(['success' => false], 400);
+
+        if (!$slug || !isValidAnalyticsSlug($slug)) {
+            $this->json(['success' => false, 'message' => 'Invalid slug'], 400);
+        }
+
+        trackPhoneCall($slug, $lang);
+        $this->json(['success' => true]);
     }
     
     private function getBreadcrumbData($page, $lang, $baseUrl, $seoSettings) {

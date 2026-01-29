@@ -267,7 +267,7 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
     <a href="tel:<?= preg_replace('/[^0-9+]/', '', $seo['phone']) ?>" 
        class="floating-call" 
        title="<?= $lang === 'ru' ? 'Позвонить' : 'Qo\'ng\'iroq qilish' ?>"
-       onclick="trackClick('article-<?= $article['id'] ?>', '<?= $lang ?>')">
+       onclick="trackPhoneCall('article-<?= $article['id'] ?>', '<?= $lang ?>')">
         <svg fill="currentColor" viewBox="0 0 20 20">
             <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
         </svg>
@@ -292,13 +292,18 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
     </footer>
     
     <script>
-    function trackClick(slug, lang) {
-        fetch('<?= BASE_URL ?>/track-click', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'slug=' + slug + '&lang=' + lang
-        });
-        
+    function postTracking(endpoint, params) {
+        try {
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(params).toString(),
+                keepalive: true
+            }).catch(() => {});
+        } catch (e) {}
+    }
+
+    function maybeAskForReview() {
         <?php if (!empty($seo['google_review_url'])): ?>
         setTimeout(function() {
             if (confirm('<?= $lang === 'ru' ? 'Спасибо! Не могли бы вы оставить отзыв о нашем сервисе?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?' ?>')) {
@@ -306,6 +311,16 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
             }
         }, 3000);
         <?php endif; ?>
+    }
+
+    function trackClick(slug, lang) {
+        postTracking('/track-click', { slug, lang });
+        maybeAskForReview();
+    }
+
+    function trackPhoneCall(slug, lang) {
+        postTracking('/track-phone-call', { slug, lang });
+        maybeAskForReview();
     }
 
     </script>

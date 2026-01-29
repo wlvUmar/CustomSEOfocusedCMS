@@ -326,6 +326,57 @@ function shouldSkipTracking(): bool
     return false;
 }
 
+function normalizeTrackingLanguage($lang): string
+{
+    $lang = strtolower(trim((string)($lang ?? '')));
+    if (!in_array($lang, SUPPORTED_LANGUAGES, true)) {
+        return DEFAULT_LANGUAGE;
+    }
+    return $lang;
+}
+
+function isValidAnalyticsSlug($slug): bool
+{
+    $slug = (string)($slug ?? '');
+    if ($slug === '' || strlen($slug) > 120) return false;
+
+    // Accept page slugs like "televizor" and synthetic slugs like "article-123".
+    return (bool)preg_match('/^[a-z0-9][a-z0-9\-_]*$/', $slug);
+}
+
+function isValidAnalyticsInternalLinkSlug($slug): bool
+{
+    // Slightly looser: allow article-* too (for future use) but still ASCII-safe.
+    return isValidAnalyticsSlug($slug);
+}
+
+function trackingRateLimit(string $action, int $maxAttempts, int $windowSeconds): bool
+{
+    // Lightweight in-session limiter for public analytics endpoints.
+    // Avoid using the login-oriented RateLimiter defaults (too strict for real users).
+    if (session_status() !== PHP_SESSION_ACTIVE) return true;
+
+    $maxAttempts = max(1, (int)$maxAttempts);
+    $windowSeconds = max(1, (int)$windowSeconds);
+
+    $key = 'trk_' . preg_replace('/[^a-z0-9_\-]/i', '_', $action);
+    $now = time();
+
+    $state = $_SESSION[$key] ?? ['count' => 0, 'ts' => $now];
+    if (!is_array($state) || !isset($state['count'], $state['ts'])) {
+        $state = ['count' => 0, 'ts' => $now];
+    }
+
+    if (($now - (int)$state['ts']) > $windowSeconds) {
+        $state = ['count' => 0, 'ts' => $now];
+    }
+
+    $state['count'] = (int)$state['count'] + 1;
+    $_SESSION[$key] = $state;
+
+    return $state['count'] <= $maxAttempts;
+}
+
 
 function getClientIp(): ?string
 {
@@ -343,16 +394,45 @@ function getClientIp(): ?string
     return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : null;
 }
 
+function bumpMonthlySummary($slug, $language, $deltaVisits, $deltaClicks, $deltaPhoneCalls, $isNewDay): void
+{
+    try {
+        $db = Database::getInstance();
+        $year = (int)date('Y');
+        $month = (int)date('n');
+
+        $deltaVisits = (int)$deltaVisits;
+        $deltaClicks = (int)$deltaClicks;
+        $deltaPhoneCalls = (int)$deltaPhoneCalls;
+        $deltaDays = $isNewDay ? 1 : 0;
+
+        $sql = "INSERT INTO analytics_monthly
+                    (page_slug, language, year, month, total_visits, total_clicks, total_phone_calls, unique_days)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    total_visits = total_visits + VALUES(total_visits),
+                    total_clicks = total_clicks + VALUES(total_clicks),
+                    total_phone_calls = total_phone_calls + VALUES(total_phone_calls),
+                    unique_days = unique_days + VALUES(unique_days)";
+
+        $db->query($sql, [$slug, $language, $year, $month, $deltaVisits, $deltaClicks, $deltaPhoneCalls, $deltaDays]);
+    } catch (Exception $e) {
+        error_log("Monthly summary error: " . $e->getMessage());
+    }
+}
 
 function trackVisit($slug, $language) {
     if (shouldSkipTracking()) return;
 
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-    if (!empty($_GET['debug_ua']) && $_GET['debug_ua'] === '1') {
+    if (!IS_PRODUCTION && !empty($_GET['debug_ua']) && $_GET['debug_ua'] === '1') {
         $method = $_SERVER['REQUEST_METHOD'] ?? 'UNKNOWN';
         $uri = $_SERVER['REQUEST_URI'] ?? '';
         error_log("[DEBUG_UA] method=$method uri=$uri slug=$slug lang=$language ua=$userAgent");
     }
+
+    $language = normalizeTrackingLanguage($language);
+    if (!isValidAnalyticsSlug($slug)) return;
 
     if (isBot()) {
         trackBotVisit($slug, $language);
@@ -367,8 +447,9 @@ function trackVisit($slug, $language) {
                 VALUES (?, ?, 1, 0, ?) 
                 ON DUPLICATE KEY UPDATE visits = visits + 1";
 
-        $db->query($sql, [$slug, $language, $date]);
-        updateMonthlySummary($slug, $language);
+        $stmt = $db->query($sql, [$slug, $language, $date]);
+        $isNewDay = ($stmt && $stmt->rowCount() === 1);
+        bumpMonthlySummary($slug, $language, 1, 0, 0, $isNewDay);
     } catch (Exception $e) {
         error_log("Analytics error: " . $e->getMessage());
     }
@@ -428,16 +509,21 @@ function trackBotVisit($slug, $language) {
 
 function trackClick($slug, $language) {
     if (shouldSkipTracking()) return;
+    if (isBot()) return;
 
     try {
         $db = Database::getInstance();
         $date = date('Y-m-d');
+        $language = normalizeTrackingLanguage($language);
+        if (!isValidAnalyticsSlug($slug)) return;
 
-        $sql = "UPDATE analytics SET clicks = clicks + 1 
-                WHERE page_slug = ? AND language = ? AND date = ?";
+        $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, date)
+                VALUES (?, ?, 0, 1, 0, ?)
+                ON DUPLICATE KEY UPDATE clicks = clicks + 1";
 
-        $db->query($sql, [$slug, $language, $date]);
-        updateMonthlySummary($slug, $language);
+        $stmt = $db->query($sql, [$slug, $language, $date]);
+        $isNewDay = ($stmt && $stmt->rowCount() === 1);
+        bumpMonthlySummary($slug, $language, 0, 1, 0, $isNewDay);
     } catch (Exception $e) {
         error_log("Click tracking error: " . $e->getMessage());
     }
@@ -445,18 +531,22 @@ function trackClick($slug, $language) {
 
 function trackPhoneCall($slug, $language) {
     if (shouldSkipTracking()) return;
+    if (isBot()) return;
 
     try {
         $db = Database::getInstance();
         $date = date('Y-m-d');
+        $language = normalizeTrackingLanguage($language);
+        if (!isValidAnalyticsSlug($slug)) return;
 
         // Note: Phone calls are counted as BOTH a click and a phone_call
         $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, date) 
                 VALUES (?, ?, 0, 1, 1, ?) 
                 ON DUPLICATE KEY UPDATE clicks = clicks + 1, phone_calls = phone_calls + 1";
 
-        $db->query($sql, [$slug, $language, $date]);
-        updateMonthlySummary($slug, $language);
+        $stmt = $db->query($sql, [$slug, $language, $date]);
+        $isNewDay = ($stmt && $stmt->rowCount() === 1);
+        bumpMonthlySummary($slug, $language, 0, 1, 1, $isNewDay);
     } catch (Exception $e) {
         error_log("Phone call tracking error: " . $e->getMessage());
     }
@@ -466,44 +556,46 @@ function trackPhoneCall($slug, $language) {
 
 function trackInternalLink($fromSlug, $toSlug, $language) {
     if (shouldSkipTracking()) return;
+    if (isBot()) return;
 
     try {
         $db = Database::getInstance();
         $date = date('Y-m-d');
+        $language = normalizeTrackingLanguage($language);
+        if (!isValidAnalyticsInternalLinkSlug($fromSlug)) return;
+        if (!isValidAnalyticsInternalLinkSlug($toSlug)) return;
         
         $sql = "INSERT INTO analytics_internal_links (from_slug, to_slug, language, clicks, date) 
                 VALUES (?, ?, ?, 1, ?) 
                 ON DUPLICATE KEY UPDATE clicks = clicks + 1";
         
-        $db->query($sql, [$fromSlug, $toSlug, $language, $date]);
-        
-        updateInternalLinkMonthlySummary($fromSlug, $toSlug, $language);
+        $stmt = $db->query($sql, [$fromSlug, $toSlug, $language, $date]);
+        $isNewDay = ($stmt && $stmt->rowCount() === 1);
+        bumpInternalLinkMonthlySummary($fromSlug, $toSlug, $language, 1, $isNewDay);
     } catch (Exception $e) {
         error_log("Internal link tracking error: " . $e->getMessage());
     }
 }
 
-function updateMonthlySummary($slug, $language) {
+function bumpInternalLinkMonthlySummary($fromSlug, $toSlug, $language, $deltaClicks, $isNewDay): void
+{
     try {
         $db = Database::getInstance();
-        $year = date('Y');
-        $month = date('n');
-        
-        $sql = "INSERT INTO analytics_monthly (page_slug, language, year, month, total_visits, total_clicks, total_phone_calls, unique_days)
-                SELECT page_slug, language, YEAR(date), MONTH(date), 
-                       SUM(visits), SUM(clicks), SUM(phone_calls), COUNT(DISTINCT date)
-                FROM analytics
-                WHERE page_slug = ? AND language = ? AND YEAR(date) = ? AND MONTH(date) = ?
-                GROUP BY page_slug, language, YEAR(date), MONTH(date)
-                ON DUPLICATE KEY UPDATE 
-                    total_visits = VALUES(total_visits),
-                    total_clicks = VALUES(total_clicks),
-                    total_phone_calls = VALUES(total_phone_calls),
-                    unique_days = VALUES(unique_days)";
-        
-        $db->query($sql, [$slug, $language, $year, $month]);
+        $year = (int)date('Y');
+        $month = (int)date('n');
+        $deltaClicks = (int)$deltaClicks;
+        $deltaDays = $isNewDay ? 1 : 0;
+
+        $sql = "INSERT INTO analytics_internal_links_monthly
+                    (from_slug, to_slug, language, year, month, total_clicks, unique_days)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    total_clicks = total_clicks + VALUES(total_clicks),
+                    unique_days = unique_days + VALUES(unique_days)";
+
+        $db->query($sql, [$fromSlug, $toSlug, $language, $year, $month, $deltaClicks, $deltaDays]);
     } catch (Exception $e) {
-        error_log("Monthly summary error: " . $e->getMessage());
+        error_log("Internal link monthly summary error: " . $e->getMessage());
     }
 }
 
@@ -511,11 +603,12 @@ function updateMonthlySummary($slug, $language) {
  * Update monthly summary for internal link tracking
  */
 function updateInternalLinkMonthlySummary($fromSlug, $toSlug, $language) {
+    // Legacy recompute retained for admin repair scripts; prefer bumpInternalLinkMonthlySummary.
     try {
         $db = Database::getInstance();
         $year = date('Y');
         $month = date('n');
-        
+
         $sql = "INSERT INTO analytics_internal_links_monthly 
                 (from_slug, to_slug, language, year, month, total_clicks, unique_days)
                 SELECT from_slug, to_slug, language, YEAR(date), MONTH(date), 
@@ -527,7 +620,7 @@ function updateInternalLinkMonthlySummary($fromSlug, $toSlug, $language) {
                 ON DUPLICATE KEY UPDATE 
                     total_clicks = VALUES(total_clicks),
                     unique_days = VALUES(unique_days)";
-        
+
         $db->query($sql, [$fromSlug, $toSlug, $language, $year, $month]);
     } catch (Exception $e) {
         error_log("Internal link monthly summary error: " . $e->getMessage());

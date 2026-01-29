@@ -219,6 +219,10 @@ $router->post('/track-internal-link', function() {
     require_once BASE_PATH . '/controllers/PageController.php';
     (new PageController())->trackInternalLink();
 });
+$router->post('/track-phone-call', function() {
+    require_once BASE_PATH . '/controllers/PageController.php';
+    (new PageController())->trackPhoneCall();
+});
 
 // Redirect /main to /
 $router->get('/main', function() {
@@ -255,18 +259,6 @@ $router->get('/{slug}', function($slug) {
     require_once BASE_PATH . '/controllers/PageController.php';
     setLanguage(DEFAULT_LANGUAGE);
     (new PageController())->show($slug);
-});
-
-// Public article routes
-$router->get('/articles/{id}', function($id) {
-    require_once BASE_PATH . '/controllers/ArticleController.php';
-    setLanguage(DEFAULT_LANGUAGE);
-    (new ArticleController())->show($id);
-});
-
-$router->get('/articles/{id}/{lang}', function($id, $lang) {
-    require_once BASE_PATH . '/controllers/ArticleController.php';
-    (new ArticleController())->show($id, $lang);
 });
 
 // 404 handler
@@ -341,10 +333,5 @@ function requireArticleAdmin($method, $id = null) {
     $c = new ArticleAdminController();
     $id !== null ? $c->$method($id) : $c->$method();
 }
-
-$router->post('/track-phone-call', function() {
-    require_once BASE_PATH . '/controllers/PageController.php';
-    (new PageController())->trackPhoneCall();
-});
 
 ob_end_flush();
