@@ -171,11 +171,15 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
         <div class="container article-container">
             <article class="unified-article-card">
                 <!-- Hero Header -->
-                <header class="article-card-header">
+                <div class="article-card-header">
                     <div class="header-content">
-                        
+                        <div class="article-eyebrow">
+                            <?= !empty($article["category_$lang"]) ? e($article["category_$lang"]) : ($lang === 'ru' ? 'Статья' : 'Maqola') ?>
+                        </div>
                         <h1><?= e($article["title_$lang"]) ?></h1>
-                        
+                        <?php if (!empty($article["excerpt_$lang"])): ?>
+                            <p class="article-subtitle"><?= e($article["excerpt_$lang"]) ?></p>
+                        <?php endif; ?>
                         <div class="article-meta">
                             <span>
                                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,7 +195,7 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
                             </span>
                         </div>
                     </div>
-                </header>
+                </div>
 
                 <!-- Featured Image -->
                 <?php if (!empty($article['image'])): ?>
@@ -328,86 +332,133 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
     <style>
     /* Article Page Specific Styles */
     main.article-page {
-        padding-top: 3rem !important;
+        padding-top: 2.5rem !important;
         padding-bottom: 5rem !important;
         position: relative;
         z-index: 1; /* Low z-index base */
+        background:
+            radial-gradient(1200px 400px at 10% -10%, rgba(240, 242, 232, 0.9), transparent 70%),
+            radial-gradient(800px 360px at 90% 0%, rgba(230, 228, 208, 0.65), transparent 70%);
     }
     
     .article-container {
-        max-width: 1200px; /* Wider */
-        padding: 0 15px;
+        max-width: 1040px;
+        padding: 0 18px;
     }
 
     .unified-article-card {
-        background: white;
-        border-radius: 20px; /* Slightly less rounded */
+        background: #fff;
+        border-radius: 18px;
         overflow: hidden;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+        box-shadow: 0 16px 40px rgba(0,0,0,0.08);
         margin-bottom: 3rem;
         position: relative;
-        z-index: 1; /* Ensure it stays below sticky header (assuming header is > 1) */
-        /* Removed transform transition to avoid stacking context issues */
+        z-index: 1;
+        border: 1px solid rgba(0,0,0,0.04);
     }
     
     /* Hero Header */
     .article-card-header {
-        background-color: #E6E4D0;
-        padding: 40px 40px 30px; /* Thinner vertical padding */
+        background: linear-gradient(180deg, #f3f1df 0%, #e6e4d0 100%);
+        padding: 46px 56px 34px;
         text-align: center;
-        border-bottom: 1px solid rgba(0,0,0,0.03);
+        border-bottom: 1px solid rgba(0,0,0,0.04);
+        position: relative;
+    }
+
+    .article-card-header::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+            radial-gradient(circle at 20% 20%, rgba(255,255,255,0.5), transparent 35%),
+            radial-gradient(circle at 80% 0%, rgba(255,255,255,0.35), transparent 40%);
+        pointer-events: none;
     }
     
     .header-content {
-        max-width: 900px; /* Allow wider text */
+        max-width: 860px;
         margin: 0 auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .article-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(48, 48, 52, 0.08);
+        color: #2f2f32;
+        font-size: 0.78rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 700;
+        margin-bottom: 14px;
     }
     
     /* Removed article-badge style */
     
     .article-card-header h1 {
-        font-size: 2.5rem; /* Slightly smaller */
+        font-size: 2.6rem;
         color: #1a1a1c;
-        margin: 0 0 1rem;
+        margin: 0 0 0.8rem;
         line-height: 1.1;
-        letter-spacing: -0.5px;
+        letter-spacing: -0.6px;
         font-weight: 800;
+    }
+
+    .article-subtitle {
+        margin: 0 auto 1.2rem;
+        font-size: 1.05rem;
+        color: #4a4a4d;
+        max-width: 720px;
+        line-height: 1.65;
     }
     
     .article-meta {
         display: flex;
         justify-content: center;
-        gap: 24px;
-        color: #555;
-        font-size: 0.95rem;
-        font-weight: 500;
+        gap: 14px;
+        color: #3a3a3d;
+        font-size: 0.9rem;
+        font-weight: 600;
+        flex-wrap: wrap;
     }
     
     .article-meta span {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 8px;
+        background: rgba(255,255,255,0.7);
+        border: 1px solid rgba(0,0,0,0.06);
+        padding: 6px 12px;
+        border-radius: 999px;
     }
     
     /* Feature Image */
     .article-card-image {
-        height: 400px; /* Reduced specific height */
         background: #f0f0f0;
+        border-bottom: 1px solid rgba(0,0,0,0.04);
+        max-height: 520px;
+        overflow: hidden;
     }
     
     .article-card-image img {
         width: 100%;
-        height: 100%;
-        object-fit: cover;
+        height: auto;
         display: block;
+        object-fit: cover;
     }
     
     /* Content Body */
     .article-card-body {
-        padding: 50px 60px; /* Reduced vertical padding */
-        font-size: 1.15rem;
-        line-height: 1.9;
+        padding: 46px 60px 56px;
+        font-size: 1.1rem;
+        line-height: 1.85;
         color: #2c2c2e;
+        background: #fff;
     }
 
     /* Related Page Banner (CTA) */
@@ -572,6 +623,19 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
         }
         .article-featured-image {
             margin: -24px -24px 24px -24px;
+        }
+        .article-card-header {
+            padding: 34px 22px 26px;
+        }
+        .article-card-header h1 {
+            font-size: 2rem;
+        }
+        .article-subtitle {
+            font-size: 1rem;
+        }
+        .article-card-body {
+            padding: 32px 24px 40px;
+            font-size: 1.02rem;
         }
         .hero-content h1 {
             font-size: 1.8rem;
