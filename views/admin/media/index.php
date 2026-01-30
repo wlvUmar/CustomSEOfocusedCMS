@@ -117,6 +117,9 @@
                     <button class="btn btn-sm btn-primary" onclick="showAttachModal(<?= $mediaId ?>)" title="Attach to Page">
                         <i data-feather="link"></i> Attach
                     </button>
+                    <button class="btn btn-sm btn-secondary" data-link="<?= UPLOAD_URL . e($item['filename']) ?>" onclick="copyMediaLink(this)" title="Copy media link">
+                        <i data-feather="copy"></i> Copy Link
+                    </button>
                     <button class="btn btn-sm btn-danger" data-media-id="<?= $mediaId ?>" onclick="deleteMedia(this.dataset.mediaId, <?= $item['usage_count'] ?? 0 ?>)" title="Delete">
                         <i data-feather="trash-2"></i>
                     </button>
@@ -488,6 +491,13 @@ function copyPlaceholder(id) {
     const placeholder = '{{media:' + id + '}}';
     navigator.clipboard.writeText(placeholder);
     alert('Copied: ' + placeholder);
+}
+
+function copyMediaLink(button) {
+    const link = button?.dataset?.link;
+    if (!link) return;
+    navigator.clipboard.writeText(link);
+    alert('Copied media link:\n' + link);
 }
 
 function deleteMedia(id, usageCount) {

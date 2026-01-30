@@ -117,7 +117,10 @@ class ArticleAdminController extends Controller {
         
         // Handle image upload if provided
         if (!empty($_FILES['image_upload']['name'])) {
-            $uploadDir = BASE_PATH . '/public/uploads/';
+            $uploadDir = UPLOAD_PATH;
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
             $fileName = time() . '_' . basename($_FILES['image_upload']['name']);
             $targetPath = $uploadDir . $fileName;
             

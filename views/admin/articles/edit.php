@@ -132,7 +132,7 @@ $title = $isEdit ? 'Edit Article' : 'New Article';
                           name="content_ru" 
                           rows="15" 
                           required
-                          class="form-control"><?= htmlspecialchars($article['content_ru'] ?? '') ?></textarea>
+                          class="form-control tinymce"><?= $article['content_ru'] ?? '' ?></textarea>
             </div>
 
             <div class="form-group">
@@ -140,7 +140,7 @@ $title = $isEdit ? 'Edit Article' : 'New Article';
                 <textarea id="content_uz" 
                           name="content_uz" 
                           rows="15"
-                          class="form-control"><?= htmlspecialchars($article['content_uz'] ?? '') ?></textarea>
+                          class="form-control tinymce"><?= $article['content_uz'] ?? '' ?></textarea>
             </div>
 
             <div class="form-group">
@@ -233,5 +233,17 @@ $title = $isEdit ? 'Edit Article' : 'New Article';
         <p>No manual SEO work required!</p>
     </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.7.0/tinymce.min.js"></script>
+<script>
+tinymce.init({
+    selector: '.tinymce',
+    height: 420,
+    menubar: false,
+    plugins: 'fullscreen code link image lists',
+    toolbar: 'undo redo | blocks | bold italic underline | alignleft aligncenter alignright | bullist numlist | link image | code fullscreen',
+    content_css: '<?= BASE_URL ?>/css/pages.css'
+});
+</script>
 
 <?php require_once BASE_PATH . '/views/admin/layout/footer.php'; ?>

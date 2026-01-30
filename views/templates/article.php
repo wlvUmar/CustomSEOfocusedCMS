@@ -464,28 +464,88 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
     
     /* Typography inside article */
     .article-card-body p {
-        margin-bottom: 1.5rem;
+        margin: 0 0 1.4rem;
+    }
+
+    .article-card-body h2,
+    .article-card-body h3,
+    .article-card-body h4 {
+        margin: 2.2rem 0 1rem;
+        color: #111;
+        line-height: 1.25;
     }
 
     .article-card-body h2 {
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-        font-size: 1.5rem;
-        color: #111;
+        font-size: 1.7rem;
     }
-    
-    .article-card-body p {
-        margin-bottom: 1.5rem;
+
+    .article-card-body h3 {
+        font-size: 1.35rem;
     }
-    
-    .article-card-body ul {
-        margin-bottom: 1.5rem;
-        padding-left: 1.5rem;
+
+    .article-card-body h4 {
+        font-size: 1.15rem;
+        letter-spacing: 0.2px;
     }
-    
+
+    .article-card-body ul,
+    .article-card-body ol {
+        margin: 0 0 1.4rem;
+        padding-left: 1.6rem;
+    }
+
+    .article-card-body li {
+        margin: 0.35rem 0;
+    }
+
     .article-card-body a {
         color: #2b6a62;
         text-decoration: underline;
+        text-decoration-thickness: 2px;
+        text-underline-offset: 3px;
+    }
+
+    .article-card-body blockquote {
+        margin: 1.8rem 0;
+        padding: 1rem 1.2rem;
+        border-left: 4px solid #2b6a62;
+        background: #f6f7f2;
+        color: #2f3b35;
+        font-style: italic;
+    }
+
+    .article-card-body img,
+    .article-card-body video {
+        max-width: 100%;
+        height: auto;
+        border-radius: 10px;
+        display: block;
+        margin: 1.6rem auto;
+    }
+
+    .article-card-body hr {
+        border: 0;
+        border-top: 1px solid #ececec;
+        margin: 2rem 0;
+    }
+
+    .article-card-body table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.6rem 0;
+        font-size: 0.98rem;
+    }
+
+    .article-card-body th,
+    .article-card-body td {
+        border: 1px solid #e3e3e3;
+        padding: 10px 12px;
+        text-align: left;
+    }
+
+    .article-card-body thead th {
+        background: #f6f6f6;
+        font-weight: 600;
     }
 
     /* Breadcrumbs override */

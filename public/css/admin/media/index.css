@@ -177,10 +177,11 @@
     display: flex;
     gap: 8px;
     border-top: 1px solid #f0f0f0;
+    flex-wrap: wrap;
 }
 
 .media-actions .btn {
-    flex: 1;
+    flex: 1 1 120px;
     font-size: 12px;
     padding: 6px 8px;
 }
