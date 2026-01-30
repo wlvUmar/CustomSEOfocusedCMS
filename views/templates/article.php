@@ -342,8 +342,8 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
     }
     
     .article-container {
-        max-width: 1040px;
-        padding: 0 18px;
+        max-width: 1240px;
+        padding: 0 24px;
     }
 
     .unified-article-card {
