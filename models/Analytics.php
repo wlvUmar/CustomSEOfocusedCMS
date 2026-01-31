@@ -97,7 +97,7 @@ class Analytics {
         return $result;
     }
 
-    public function getRangeChartData($type, $startDate, $endDate) {
+    public function getRangeChartData($type, $startDate, $endDate, $labelMode = 'date') {
         $field = ($type === 'visits') ? 'visits' : (($type === 'phone_calls') ? 'phone_calls' : 'clicks');
         $sql = "SELECT 
                     date,
@@ -110,8 +110,21 @@ class Analytics {
         $data = $this->db->fetchAll($sql, [$startDate, $endDate]);
 
         $result = [];
+        $cursor = new DateTime($startDate);
+        $end = new DateTime($endDate);
+        while ($cursor <= $end) {
+            $label = $labelMode === 'weekday'
+                ? $cursor->format('D')
+                : $cursor->format('M j');
+            $result[$label] = 0;
+            $cursor->modify('+1 day');
+        }
+
         foreach ($data as $row) {
-            $dateLabel = date('M j', strtotime($row['date']));
+            $dateObj = new DateTime($row['date']);
+            $dateLabel = $labelMode === 'weekday'
+                ? $dateObj->format('D')
+                : $dateObj->format('M j');
             $result[$dateLabel] = (int)($row['value'] ?? 0);
         }
 

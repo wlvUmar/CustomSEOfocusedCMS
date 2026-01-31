@@ -8,7 +8,29 @@ const CHART_COLORS = {
     phones: '#f59e0b',
     ctr: '#8b5cf6'
 };
-const RANGE_FILTER = new URLSearchParams(window.location.search).get('range') || '';
+
+function getQueryParam(name) {
+    try {
+        if (typeof URLSearchParams !== 'undefined') {
+            return new URLSearchParams(window.location.search).get(name) || '';
+        }
+    } catch (e) {
+        // Fallback below
+    }
+
+    const query = window.location.search ? window.location.search.substring(1) : '';
+    if (!query) return '';
+    const pairs = query.split('&');
+    for (let i = 0; i < pairs.length; i++) {
+        const part = pairs[i].split('=');
+        if (decodeURIComponent(part[0] || '') === name) {
+            return decodeURIComponent(part[1] || '');
+        }
+    }
+    return '';
+}
+
+const RANGE_FILTER = getQueryParam('range');
 
 document.addEventListener('DOMContentLoaded', function () {
     const performanceCanvas = document.getElementById('performanceChart');
@@ -162,7 +184,7 @@ function syncTogglesFromChart() {
 const originalUpdateChart = window.updatePerformanceChart;
 window.updatePerformanceChart = async function (aggregation) {
     if (RANGE_FILTER && aggregation !== 'daily') {
-        aggregation = 'daily';
+        return;
     }
 
     // Call UI update part of original if it was specific
@@ -175,7 +197,7 @@ window.updatePerformanceChart = async function (aggregation) {
     }
 
     try {
-        const months = new URLSearchParams(window.location.search).get('months') || 6;
+        const months = getQueryParam('months') || 6;
         const rangeParam = RANGE_FILTER ? `&range=${encodeURIComponent(RANGE_FILTER)}` : '';
         const response = await fetch(`${window.baseUrl}/admin/analytics/getData?months=${months}&aggregation=${aggregation}${rangeParam}`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }

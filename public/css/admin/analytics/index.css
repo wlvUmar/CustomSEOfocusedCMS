@@ -171,6 +171,7 @@
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    position: relative;
 }
 
 .chart-box h2 {
@@ -187,6 +188,15 @@
 
 #performanceChart {
     height: 400px !important;
+    position: relative;
+    z-index: 1;
+}
+
+.agg-toggle-btn {
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
+    touch-action: manipulation;
 }
 
 /* ---------- Funnel ---------- */

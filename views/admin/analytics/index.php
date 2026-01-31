@@ -4,18 +4,21 @@
     <h1><i data-feather="trending-up"></i> Analytics Dashboard</h1>
 
     <div class="header-actions">
-        <select id="rangeSelect" onchange="updateAnalyticsFilters()" class="btn">
-            <option value="" <?= empty($stats['range']) ? 'selected' : '' ?>>All (Monthly)</option>
-            <option value="today" <?= ($stats['range'] ?? '') === 'today' ? 'selected' : '' ?>>Today</option>
-            <option value="yesterday" <?= ($stats['range'] ?? '') === 'yesterday' ? 'selected' : '' ?>>Yesterday</option>
-            <option value="day_before" <?= ($stats['range'] ?? '') === 'day_before' ? 'selected' : '' ?>>Day Before Yesterday</option>
-            <option value="last_week" <?= ($stats['range'] ?? '') === 'last_week' ? 'selected' : '' ?>>Last Week (Mon–Sun)</option>
-        </select>
-
-        <select id="monthsSelect" onchange="updateAnalyticsFilters()" class="btn" <?= !empty($stats['range']) ? 'disabled' : '' ?>>
-            <option value="3" <?= $stats['months'] == 3 ? 'selected' : '' ?>>Last 3 Months</option>
-            <option value="6" <?= $stats['months'] == 6 ? 'selected' : '' ?>>Last 6 Months</option>
-            <option value="12" <?= $stats['months'] == 12 ? 'selected' : '' ?>>Last 12 Months</option>
+        <select id="periodSelect" onchange="updateAnalyticsFilters()" class="btn">
+            <optgroup label="Daily">
+                <option value="range:today" <?= ($stats['range'] ?? '') === 'today' ? 'selected' : '' ?>>Today</option>
+                <option value="range:yesterday" <?= ($stats['range'] ?? '') === 'yesterday' ? 'selected' : '' ?>>Yesterday</option>
+                <option value="range:day_before" <?= ($stats['range'] ?? '') === 'day_before' ? 'selected' : '' ?>>Day Before Yesterday</option>
+            </optgroup>
+            <optgroup label="Weekly">
+                <option value="range:last_week" <?= ($stats['range'] ?? '') === 'last_week' ? 'selected' : '' ?>>Last Week (Mon–Sun)</option>
+            </optgroup>
+            <optgroup label="Monthly">
+                <option value="months:1" <?= empty($stats['range']) && $stats['months'] == 1 ? 'selected' : '' ?>>Last 1 Month</option>
+                <option value="months:3" <?= empty($stats['range']) && $stats['months'] == 3 ? 'selected' : '' ?>>Last 3 Months</option>
+                <option value="months:6" <?= empty($stats['range']) && $stats['months'] == 6 ? 'selected' : '' ?>>Last 6 Months</option>
+                <option value="months:12" <?= empty($stats['range']) && $stats['months'] == 12 ? 'selected' : '' ?>>Last 12 Months</option>
+            </optgroup>
         </select>
 
         <a href="<?= BASE_URL ?>/admin/analytics/export?months=<?= $stats['months'] ?><?= !empty($stats['range']) ? '&range=' . urlencode($stats['range']) : '' ?>"
@@ -33,17 +36,17 @@
 
 <script>
 function updateAnalyticsFilters() {
-    const range = document.getElementById('rangeSelect').value;
-    const months = document.getElementById('monthsSelect').value;
+    const selection = document.getElementById('periodSelect').value;
     const params = new URLSearchParams(window.location.search);
 
-    if (range) {
-        params.set('range', range);
-    } else {
+    if (selection.startsWith('range:')) {
+        params.set('range', selection.replace('range:', ''));
+        params.delete('months');
+    } else if (selection.startsWith('months:')) {
+        params.set('months', selection.replace('months:', ''));
         params.delete('range');
     }
 
-    params.set('months', months);
     window.location = `?${params.toString()}`;
 }
 </script>
@@ -181,18 +184,24 @@ function updateAnalyticsFilters() {
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2 style="margin: 0;"><i data-feather="activity"></i> Performance Overview</h2>
         
+        <?php if (empty($stats['range'])): ?>
+        <?php $activeAgg = $stats['aggregation'] ?? (($stats['months'] ?? 3) >= 3 ? 'monthly' : 'weekly'); ?>
         <div class="btn-group" style="display: flex; gap: 8px;">
-            <?php $activeAgg = !empty($stats['range']) ? 'daily' : 'monthly'; ?>
+            <?php if ((int)($stats['months'] ?? 3) >= 1): ?>
             <button onclick="updatePerformanceChart('daily')" id="btn-daily" class="agg-toggle-btn <?= $activeAgg === 'daily' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'daily' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'daily' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'daily' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
                 Daily
             </button>
             <button onclick="updatePerformanceChart('weekly')" id="btn-weekly" class="agg-toggle-btn <?= $activeAgg === 'weekly' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'weekly' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'weekly' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'weekly' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
                 Weekly
             </button>
+            <?php endif; ?>
+            <?php if ((int)($stats['months'] ?? 3) >= 3): ?>
             <button onclick="updatePerformanceChart('monthly')" id="btn-monthly" class="agg-toggle-btn <?= $activeAgg === 'monthly' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'monthly' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'monthly' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'monthly' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
                 Monthly
             </button>
+            <?php endif; ?>
         </div>
+        <?php endif; ?>
     </div>
     <canvas id="performanceChart" height="320"></canvas>
 </div>
