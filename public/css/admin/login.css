@@ -26,6 +26,22 @@ body {
         linear-gradient(135deg, #0a0a0f 0%, #141323 60%, #1a0f1f 100%);
 }
 
+.login-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.035) 0px,
+        rgba(255, 255, 255, 0.035) 1px,
+        transparent 1px,
+        transparent 14px
+    );
+    opacity: 0.35;
+    mix-blend-mode: screen;
+    animation: scan 18s linear infinite;
+}
+
 .login-stage {
     position: absolute;
     inset: 0;
@@ -42,6 +58,7 @@ body {
     background-size: 60px 60px;
     transform: skewY(-8deg);
     opacity: 0.25;
+    animation: gridShift 20s ease-in-out infinite;
 }
 
 .orb {
@@ -82,6 +99,16 @@ body {
     50% { transform: translateY(-18px) rotate(3deg); }
 }
 
+@keyframes gridShift {
+    0%, 100% { transform: skewY(-8deg) translateY(0); }
+    50% { transform: skewY(-8deg) translateY(18px); }
+}
+
+@keyframes scan {
+    0% { transform: translateX(-10%); }
+    100% { transform: translateX(10%); }
+}
+
 .sticker {
     position: absolute;
     padding: 8px 14px;
@@ -94,6 +121,7 @@ body {
     font-size: 12px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    animation: stickerJitter 6s ease-in-out infinite;
 }
 
 .sticker-1 {
@@ -106,12 +134,42 @@ body {
     left: 12%;
     background: #fff;
     font-size: 18px;
+    animation-delay: -2s;
 }
 
 .sticker-3 {
     top: 65%;
     right: 25%;
     background: #8ef0ff;
+    animation-delay: -4s;
+}
+
+.login-card::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 22px;
+    background: conic-gradient(
+        from 120deg,
+        rgba(255, 122, 0, 0.5),
+        rgba(108, 188, 255, 0.35),
+        rgba(255, 91, 213, 0.45),
+        rgba(30, 210, 164, 0.45),
+        rgba(255, 122, 0, 0.5)
+    );
+    z-index: -1;
+    filter: blur(18px);
+    opacity: 0.75;
+    animation: haloSpin 12s linear infinite;
+}
+
+.login-card::after {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border-radius: 14px;
+    border: 1px dashed rgba(17, 17, 20, 0.2);
+    pointer-events: none;
 }
 
 .login-card {
@@ -125,6 +183,8 @@ body {
         0 24px 60px rgba(0, 0, 0, 0.4),
         0 0 0 2px rgba(255, 255, 255, 0.3);
     border: 2px dashed rgba(17, 17, 20, 0.2);
+    transform: rotate(-0.4deg);
+    animation: cardFloat 8s ease-in-out infinite;
 }
 
 .login-eyebrow {
@@ -136,11 +196,21 @@ body {
     margin-bottom: 10px;
 }
 
+.login-eyebrow::after {
+    content: '';
+    display: block;
+    width: 64px;
+    height: 3px;
+    margin-top: 8px;
+    background: linear-gradient(90deg, var(--login-accent), transparent);
+}
+
 .login-box h2 {
     font-family: "Permanent Marker", "Space Grotesk", system-ui, sans-serif;
     font-size: 2.4rem;
     color: var(--login-ink);
     margin-bottom: 6px;
+    letter-spacing: 1px;
 }
 
 .login-subtitle {
@@ -160,12 +230,14 @@ body {
     padding: 12px 14px;
     background: #fff;
     font-size: 15px;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .login-box input:focus {
     border-color: var(--login-accent);
     outline: none;
     box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.2);
+    transform: translateY(-1px);
 }
 
 .login-submit {
@@ -177,10 +249,28 @@ body {
     background: linear-gradient(135deg, var(--login-accent), #ffb347);
     border: none;
     box-shadow: 0 10px 24px rgba(255, 122, 0, 0.35);
+    position: relative;
+    overflow: hidden;
 }
 
 .login-submit:hover {
     filter: brightness(1.05);
+}
+
+.login-submit::after {
+    content: '';
+    position: absolute;
+    top: -60%;
+    left: -30%;
+    width: 60%;
+    height: 220%;
+    background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s ease;
+}
+
+.login-submit:hover::after {
+    transform: translateX(200%);
 }
 
 .login-hint {
@@ -194,6 +284,34 @@ body {
     background: #ffe3e3;
     color: #8a1c1c;
     border-left: 4px solid #d63b3b;
+}
+
+@keyframes haloSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes stickerJitter {
+    0%, 100% { transform: rotate(-6deg) translateY(0); }
+    50% { transform: rotate(-4deg) translateY(-3px); }
+}
+
+@keyframes cardFloat {
+    0%, 100% { transform: rotate(-0.4deg) translateY(0); }
+    50% { transform: rotate(0.2deg) translateY(-10px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .login-wrapper::after,
+    .grid-wash,
+    .orb,
+    .sticker,
+    .login-card,
+    .login-card::before,
+    .login-submit::after {
+        animation: none !important;
+        transition: none !important;
+    }
 }
 
 @media (max-width: 600px) {
