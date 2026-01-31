@@ -1,0 +1,211 @@
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Space+Grotesk:wght@400;500;700&display=swap');
+
+:root {
+    --login-ink: #111114;
+    --login-cream: #f7f0e8;
+    --login-accent: #ff7a00;
+    --login-mint: #1ed2a4;
+    --login-pink: #ff5bd5;
+    --login-blue: #6cbcff;
+}
+
+body {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    background: #0b0b0e;
+}
+
+.login-wrapper {
+    position: relative;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background:
+        radial-gradient(900px 400px at 20% 10%, rgba(255, 122, 0, 0.18), transparent 70%),
+        radial-gradient(700px 380px at 80% 0%, rgba(108, 188, 255, 0.2), transparent 70%),
+        linear-gradient(135deg, #0a0a0f 0%, #141323 60%, #1a0f1f 100%);
+}
+
+.login-stage {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.grid-wash {
+    position: absolute;
+    inset: -30% 0 0 0;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+    transform: skewY(-8deg);
+    opacity: 0.25;
+}
+
+.orb {
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    filter: blur(0.5px);
+    opacity: 0.7;
+    mix-blend-mode: screen;
+    animation: floaty 8s ease-in-out infinite;
+}
+
+.orb-1 {
+    top: 12%;
+    left: 10%;
+    background: radial-gradient(circle at 30% 30%, #fff, var(--login-pink), transparent 70%);
+}
+
+.orb-2 {
+    bottom: 8%;
+    right: 12%;
+    background: radial-gradient(circle at 40% 40%, #fff, var(--login-blue), transparent 70%);
+    animation-delay: -3s;
+}
+
+.orb-3 {
+    top: 55%;
+    left: 65%;
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(circle at 40% 40%, #fff, var(--login-mint), transparent 70%);
+    animation-delay: -5s;
+}
+
+@keyframes floaty {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-18px) rotate(3deg); }
+}
+
+.sticker {
+    position: absolute;
+    padding: 8px 14px;
+    font-weight: 700;
+    border-radius: 999px;
+    color: #151515;
+    background: #ffd400;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+    transform: rotate(-6deg);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.sticker-1 {
+    top: 18%;
+    right: 14%;
+}
+
+.sticker-2 {
+    bottom: 18%;
+    left: 12%;
+    background: #fff;
+    font-size: 18px;
+}
+
+.sticker-3 {
+    top: 65%;
+    right: 25%;
+    background: #8ef0ff;
+}
+
+.login-card {
+    position: relative;
+    z-index: 2;
+    width: min(440px, 92vw);
+    background: var(--login-cream);
+    border-radius: 18px;
+    padding: 38px 34px 32px;
+    box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.4),
+        0 0 0 2px rgba(255, 255, 255, 0.3);
+    border: 2px dashed rgba(17, 17, 20, 0.2);
+}
+
+.login-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: rgba(17, 17, 20, 0.65);
+    margin-bottom: 10px;
+}
+
+.login-box h2 {
+    font-family: "Permanent Marker", "Space Grotesk", system-ui, sans-serif;
+    font-size: 2.4rem;
+    color: var(--login-ink);
+    margin-bottom: 6px;
+}
+
+.login-subtitle {
+    margin-bottom: 24px;
+    color: rgba(17, 17, 20, 0.7);
+    font-size: 0.95rem;
+}
+
+.login-box .form-group label {
+    font-weight: 600;
+    color: rgba(17, 17, 20, 0.85);
+}
+
+.login-box input {
+    border-radius: 12px;
+    border: 2px solid rgba(17, 17, 20, 0.15);
+    padding: 12px 14px;
+    background: #fff;
+    font-size: 15px;
+}
+
+.login-box input:focus {
+    border-color: var(--login-accent);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.2);
+}
+
+.login-submit {
+    width: 100%;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-weight: 700;
+    font-size: 15px;
+    background: linear-gradient(135deg, var(--login-accent), #ffb347);
+    border: none;
+    box-shadow: 0 10px 24px rgba(255, 122, 0, 0.35);
+}
+
+.login-submit:hover {
+    filter: brightness(1.05);
+}
+
+.login-hint {
+    margin-top: 12px;
+    font-size: 12px;
+    color: rgba(17, 17, 20, 0.6);
+    text-align: center;
+}
+
+.alert-error {
+    background: #ffe3e3;
+    color: #8a1c1c;
+    border-left: 4px solid #d63b3b;
+}
+
+@media (max-width: 600px) {
+    .login-card {
+        padding: 30px 24px;
+    }
+
+    .login-box h2 {
+        font-size: 2rem;
+    }
+
+    .sticker {
+        display: none;
+    }
+}
