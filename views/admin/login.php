@@ -9,6 +9,7 @@
 </head>
 <body>
     <div class="login-wrapper">
+        <input type="checkbox" id="party-mode" class="party-toggle" aria-hidden="true">
         <div class="login-stage" aria-hidden="true">
             <div class="orb orb-1"></div>
             <div class="orb orb-2"></div>
@@ -17,10 +18,16 @@
             <div class="sticker sticker-1">NO SLEEP</div>
             <div class="sticker sticker-2">⚡</div>
             <div class="sticker sticker-3">BRB</div>
+            <div class="ticker">
+                <span>STATUS: caffeinated</span>
+                <span>STATUS: keyboard wizardry</span>
+                <span>STATUS: not a robot</span>
+                <span>STATUS: ship it</span>
+            </div>
         </div>
         <div class="login-box login-card">
             <div class="login-eyebrow">Unauthorized Humans Keep Out</div>
-            <h2>Admin Login</h2>
+            <h2 class="glitch" data-text="Admin Login">Admin Login</h2>
             <p class="login-subtitle">You found the secret door. Be cool.</p>
             
             <?php if (isset($_SESSION['error'])): ?>
@@ -40,7 +47,10 @@
                 </div>
                 
                 <button type="submit" class="btn btn-primary login-submit">Beam Me In</button>
-                <div class="login-hint">Tip: if you’re a bot, pretend to be a toaster.</div>
+                <div class="login-actions">
+                    <label class="party-label" for="party-mode">Party Mode</label>
+                    <span class="login-hint">Tip: if you’re a bot, pretend to be a toaster.</span>
+                </div>
                 <?= csrfField() ?>
             </form>
         </div>

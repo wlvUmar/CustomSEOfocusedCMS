@@ -49,6 +49,12 @@ body {
     z-index: 0;
 }
 
+.party-toggle {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .grid-wash {
     position: absolute;
     inset: -30% 0 0 0;
@@ -144,6 +150,27 @@ body {
     animation-delay: -4s;
 }
 
+.ticker {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 16px;
+    display: flex;
+    gap: 40px;
+    padding: 8px 0;
+    background: rgba(0, 0, 0, 0.35);
+    color: #d4f7ff;
+    font-size: 12px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    overflow: hidden;
+}
+
+.ticker span {
+    white-space: nowrap;
+    animation: tickerScroll 14s linear infinite;
+}
+
 .login-card::before {
     content: '';
     position: absolute;
@@ -185,6 +212,42 @@ body {
     border: 2px dashed rgba(17, 17, 20, 0.2);
     transform: rotate(-0.4deg);
     animation: cardFloat 8s ease-in-out infinite;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.login-card:focus-within {
+    transform: rotate(0deg) translateY(-8px);
+    box-shadow:
+        0 30px 70px rgba(0, 0, 0, 0.45),
+        0 0 0 2px rgba(255, 122, 0, 0.25);
+}
+
+.glitch {
+    position: relative;
+    display: inline-block;
+}
+
+.glitch::before,
+.glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0.6;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+}
+
+.glitch::before {
+    color: #ff2f92;
+    transform: translate(-2px, -1px);
+    animation: glitchShift 3s infinite steps(2, end);
+}
+
+.glitch::after {
+    color: #3ac5ff;
+    transform: translate(2px, 1px);
+    animation: glitchShift 2.4s infinite steps(2, end) reverse;
 }
 
 .login-eyebrow {
@@ -251,10 +314,12 @@ body {
     box-shadow: 0 10px 24px rgba(255, 122, 0, 0.35);
     position: relative;
     overflow: hidden;
+    transform: translateZ(0);
 }
 
 .login-submit:hover {
     filter: brightness(1.05);
+    animation: buttonWiggle 0.6s ease;
 }
 
 .login-submit::after {
@@ -273,6 +338,33 @@ body {
     transform: translateX(200%);
 }
 
+.login-actions {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.party-label {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: rgba(17, 17, 20, 0.7);
+    background: rgba(255, 122, 0, 0.2);
+    padding: 6px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.party-label:hover {
+    transform: translateY(-2px) rotate(-2deg);
+    background: rgba(255, 122, 0, 0.35);
+}
+
 .login-hint {
     margin-top: 12px;
     font-size: 12px;
@@ -284,6 +376,22 @@ body {
     background: #ffe3e3;
     color: #8a1c1c;
     border-left: 4px solid #d63b3b;
+    position: relative;
+    transform: rotate(-1deg);
+}
+
+.alert-error::after {
+    content: 'NOPE';
+    position: absolute;
+    right: 12px;
+    top: -10px;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    padding: 4px 8px;
+    background: #ff5b5b;
+    color: #fff;
+    border-radius: 999px;
+    transform: rotate(6deg);
 }
 
 @keyframes haloSpin {
@@ -301,18 +409,46 @@ body {
     50% { transform: rotate(0.2deg) translateY(-10px); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .login-wrapper::after,
-    .grid-wash,
-    .orb,
-    .sticker,
-    .login-card,
-    .login-card::before,
-    .login-submit::after {
-        animation: none !important;
-        transition: none !important;
-    }
+@keyframes buttonWiggle {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(-1deg); }
+    50% { transform: rotate(1deg); }
+    75% { transform: rotate(-1deg); }
+    100% { transform: rotate(0deg); }
 }
+
+@keyframes glitchShift {
+    0%, 100% { clip-path: inset(0 0 0 0); }
+    20% { clip-path: inset(0 0 60% 0); }
+    40% { clip-path: inset(35% 0 20% 0); }
+    60% { clip-path: inset(20% 0 40% 0); }
+    80% { clip-path: inset(60% 0 0 0); }
+}
+
+@keyframes tickerScroll {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-120%); }
+}
+
+.party-toggle:checked ~ .login-stage .grid-wash {
+    opacity: 0.5;
+    background-size: 30px 30px;
+}
+
+.party-toggle:checked ~ .login-stage .orb {
+    animation-duration: 4s;
+}
+
+.party-toggle:checked ~ .login-stage .sticker {
+    animation-duration: 2s;
+}
+
+.party-toggle:checked ~ .login-card {
+    box-shadow:
+        0 30px 80px rgba(255, 91, 213, 0.35),
+        0 0 0 2px rgba(108, 188, 255, 0.35);
+}
+
 
 @media (max-width: 600px) {
     .login-card {
