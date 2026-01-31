@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login</title>
+    <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/login.css">
 </head>
 <body>
     <div class="login-wrapper">
-        <input type="checkbox" id="party-mode" class="party-toggle" aria-hidden="true">
+        <input type="checkbox" id="party-mode" class="party-toggle" tabindex="-1">
         <div class="login-stage" aria-hidden="true">
             <div class="orb orb-1"></div>
             <div class="orb orb-2"></div>
@@ -38,12 +39,12 @@
             <form method="POST" action="<?= BASE_URL ?>/admin/login">
                 <div class="form-group">
                     <label>Username</label>
-                    <input type="text" name="username" required autofocus placeholder="the chosen one">
+                    <input type="text" name="username" required autofocus autocomplete="username" placeholder="the chosen one">
                 </div>
                 
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" name="password" required placeholder="••••••••••">
+                    <input type="password" name="password" required autocomplete="current-password" placeholder="••••••••••">
                 </div>
                 
                 <button type="submit" class="btn btn-primary login-submit">Beam Me In</button>
