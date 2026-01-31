@@ -118,6 +118,34 @@ class Analytics {
         return $result;
     }
 
+    public function getHourlyChartDataForDate($type, $date) {
+        $field = ($type === 'visits') ? 'visits' : (($type === 'phone_calls') ? 'phone_calls' : 'clicks');
+
+        $sql = "SELECT 
+                    hour,
+                    SUM($field) as value
+                FROM analytics_hourly
+                WHERE date = ?
+                GROUP BY hour
+                ORDER BY hour ASC";
+
+        $data = $this->db->fetchAll($sql, [$date]);
+
+        $result = [];
+        for ($hour = 0; $hour <= 23; $hour++) {
+            $label = str_pad((string)$hour, 2, '0', STR_PAD_LEFT) . ':00';
+            $result[$label] = 0;
+        }
+
+        foreach ($data as $row) {
+            $hour = (int)($row['hour'] ?? 0);
+            $label = str_pad((string)$hour, 2, '0', STR_PAD_LEFT) . ':00';
+            $result[$label] = (int)($row['value'] ?? 0);
+        }
+
+        return $result;
+    }
+
     /**
      * Get daily aggregated data for charts
      */

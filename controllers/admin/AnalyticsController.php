@@ -31,13 +31,20 @@ class AnalyticsController extends Controller {
             $start = $rangeInfo['start'];
             $end = $rangeInfo['end'];
 
+            $isSingleDay = ($start === $end);
             $stats = [
                 'total' => $this->analyticsModel->getRangeTotalStats($start, $end),
                 'current_month' => $this->analyticsModel->getCurrentMonthStats(),
                 'page_stats' => $this->analyticsModel->getRangePageStats($start, $end),
-                'visits_chart' => $this->analyticsModel->getRangeChartData('visits', $start, $end),
-                'clicks_chart' => $this->analyticsModel->getRangeChartData('clicks', $start, $end),
-                'phone_calls_chart' => $this->analyticsModel->getRangeChartData('phone_calls', $start, $end),
+                'visits_chart' => $isSingleDay
+                    ? $this->analyticsModel->getHourlyChartDataForDate('visits', $start)
+                    : $this->analyticsModel->getRangeChartData('visits', $start, $end),
+                'clicks_chart' => $isSingleDay
+                    ? $this->analyticsModel->getHourlyChartDataForDate('clicks', $start)
+                    : $this->analyticsModel->getRangeChartData('clicks', $start, $end),
+                'phone_calls_chart' => $isSingleDay
+                    ? $this->analyticsModel->getHourlyChartDataForDate('phone_calls', $start)
+                    : $this->analyticsModel->getRangeChartData('phone_calls', $start, $end),
                 'trends' => $this->analyticsModel->getPerformanceTrendsByDateRange($start, $end),
                 'top_performers' => $this->analyticsModel->getRangeTopPerformers($start, $end),
                 'language_stats' => $this->analyticsModel->getRangeLanguageStats($start, $end),
@@ -45,6 +52,7 @@ class AnalyticsController extends Controller {
                 'view' => $view,
                 'range' => $range,
                 'range_label' => $rangeInfo['label'],
+                'range_granularity' => $isSingleDay ? 'hourly' : 'daily',
                 'pageName' => 'analytics/index'
             ];
         } else {
@@ -151,9 +159,15 @@ class AnalyticsController extends Controller {
         if ($rangeInfo) {
             $start = $rangeInfo['start'];
             $end = $rangeInfo['end'];
-            $visits = $this->analyticsModel->getRangeChartData('visits', $start, $end);
-            $clicks = $this->analyticsModel->getRangeChartData('clicks', $start, $end);
-            $phone_calls = $this->analyticsModel->getRangeChartData('phone_calls', $start, $end);
+            if ($start === $end) {
+                $visits = $this->analyticsModel->getHourlyChartDataForDate('visits', $start);
+                $clicks = $this->analyticsModel->getHourlyChartDataForDate('clicks', $start);
+                $phone_calls = $this->analyticsModel->getHourlyChartDataForDate('phone_calls', $start);
+            } else {
+                $visits = $this->analyticsModel->getRangeChartData('visits', $start, $end);
+                $clicks = $this->analyticsModel->getRangeChartData('clicks', $start, $end);
+                $phone_calls = $this->analyticsModel->getRangeChartData('phone_calls', $start, $end);
+            }
         } else {
             switch ($aggregation) {
                 case 'daily':

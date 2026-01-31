@@ -421,6 +421,31 @@ function bumpMonthlySummary($slug, $language, $deltaVisits, $deltaClicks, $delta
     }
 }
 
+function bumpHourlySummary($slug, $language, $deltaVisits, $deltaClicks, $deltaPhoneCalls): void
+{
+    try {
+        $db = Database::getInstance();
+        $date = date('Y-m-d');
+        $hour = (int)date('G');
+
+        $deltaVisits = (int)$deltaVisits;
+        $deltaClicks = (int)$deltaClicks;
+        $deltaPhoneCalls = (int)$deltaPhoneCalls;
+
+        $sql = "INSERT INTO analytics_hourly
+                    (page_slug, language, date, hour, visits, clicks, phone_calls)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    visits = visits + VALUES(visits),
+                    clicks = clicks + VALUES(clicks),
+                    phone_calls = phone_calls + VALUES(phone_calls)";
+
+        $db->query($sql, [$slug, $language, $date, $hour, $deltaVisits, $deltaClicks, $deltaPhoneCalls]);
+    } catch (Exception $e) {
+        error_log("Hourly summary error: " . $e->getMessage());
+    }
+}
+
 function trackVisit($slug, $language) {
     if (shouldSkipTracking()) return;
 
@@ -450,6 +475,7 @@ function trackVisit($slug, $language) {
         $stmt = $db->query($sql, [$slug, $language, $date]);
         $isNewDay = ($stmt && $stmt->rowCount() === 1);
         bumpMonthlySummary($slug, $language, 1, 0, 0, $isNewDay);
+        bumpHourlySummary($slug, $language, 1, 0, 0);
     } catch (Exception $e) {
         error_log("Analytics error: " . $e->getMessage());
     }
@@ -524,6 +550,7 @@ function trackClick($slug, $language) {
         $stmt = $db->query($sql, [$slug, $language, $date]);
         $isNewDay = ($stmt && $stmt->rowCount() === 1);
         bumpMonthlySummary($slug, $language, 0, 1, 0, $isNewDay);
+        bumpHourlySummary($slug, $language, 0, 1, 0);
     } catch (Exception $e) {
         error_log("Click tracking error: " . $e->getMessage());
     }
@@ -547,6 +574,7 @@ function trackPhoneCall($slug, $language) {
         $stmt = $db->query($sql, [$slug, $language, $date]);
         $isNewDay = ($stmt && $stmt->rowCount() === 1);
         bumpMonthlySummary($slug, $language, 0, 1, 1, $isNewDay);
+        bumpHourlySummary($slug, $language, 0, 1, 1);
     } catch (Exception $e) {
         error_log("Phone call tracking error: " . $e->getMessage());
     }
