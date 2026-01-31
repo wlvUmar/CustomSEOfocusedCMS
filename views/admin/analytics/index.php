@@ -194,7 +194,7 @@ function updateAnalyticsFilters() {
             </button>
         </div>
     </div>
-    <canvas id="performanceChart"></canvas>
+    <canvas id="performanceChart" height="320"></canvas>
 </div>
 
 <!-- Top Pages Performance -->

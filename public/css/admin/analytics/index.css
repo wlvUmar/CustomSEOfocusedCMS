@@ -181,6 +181,8 @@
 .chart-box canvas {
     min-height: 250px;
     max-width: 100%;
+    width: 100% !important;
+    display: block;
 }
 
 #performanceChart {
@@ -485,6 +487,10 @@
         margin-bottom: 15px;
     }
 
+    #performanceChart {
+        height: 320px !important;
+    }
+
     .performers-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 12px;
@@ -537,6 +543,10 @@
 
     .chart-box {
         padding: 12px;
+    }
+
+    #performanceChart {
+        height: 260px !important;
     }
 
     .performers-grid {

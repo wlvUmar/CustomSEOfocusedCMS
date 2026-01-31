@@ -23,6 +23,16 @@ document.addEventListener('DOMContentLoaded', function () {
         if (weeklyBtn) { weeklyBtn.disabled = true; weeklyBtn.style.opacity = '0.5'; weeklyBtn.style.cursor = 'not-allowed'; }
         if (monthlyBtn) { monthlyBtn.disabled = true; monthlyBtn.style.opacity = '0.5'; monthlyBtn.style.cursor = 'not-allowed'; }
     }
+
+    if (performanceChartInstance) {
+        setTimeout(() => performanceChartInstance.resize(), 100);
+    }
+});
+
+window.addEventListener('resize', () => {
+    if (performanceChartInstance) {
+        performanceChartInstance.resize();
+    }
 });
 
 function initPerformanceChart() {
