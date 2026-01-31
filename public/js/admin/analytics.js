@@ -8,12 +8,20 @@ const CHART_COLORS = {
     phones: '#f59e0b',
     ctr: '#8b5cf6'
 };
+const RANGE_FILTER = new URLSearchParams(window.location.search).get('range') || '';
 
 document.addEventListener('DOMContentLoaded', function () {
     const performanceCanvas = document.getElementById('performanceChart');
     if (performanceCanvas && typeof Chart !== 'undefined') {
         initPerformanceChart();
         setupScorecardToggles();
+    }
+
+    if (RANGE_FILTER) {
+        const weeklyBtn = document.getElementById('btn-weekly');
+        const monthlyBtn = document.getElementById('btn-monthly');
+        if (weeklyBtn) { weeklyBtn.disabled = true; weeklyBtn.style.opacity = '0.5'; weeklyBtn.style.cursor = 'not-allowed'; }
+        if (monthlyBtn) { monthlyBtn.disabled = true; monthlyBtn.style.opacity = '0.5'; monthlyBtn.style.cursor = 'not-allowed'; }
     }
 });
 
@@ -143,6 +151,10 @@ function syncTogglesFromChart() {
 // Override global updatePerformanceChart to handle multiple datasets
 const originalUpdateChart = window.updatePerformanceChart;
 window.updatePerformanceChart = async function (aggregation) {
+    if (RANGE_FILTER && aggregation !== 'daily') {
+        aggregation = 'daily';
+    }
+
     // Call UI update part of original if it was specific
     document.querySelectorAll('.agg-toggle-btn').forEach(btn => {
         btn.style.background = 'white'; btn.style.color = '#64748b'; btn.style.borderColor = '#e2e8f0';
@@ -154,7 +166,8 @@ window.updatePerformanceChart = async function (aggregation) {
 
     try {
         const months = new URLSearchParams(window.location.search).get('months') || 6;
-        const response = await fetch(`${window.baseUrl}/admin/analytics/getData?months=${months}&aggregation=${aggregation}`, {
+        const rangeParam = RANGE_FILTER ? `&range=${encodeURIComponent(RANGE_FILTER)}` : '';
+        const response = await fetch(`${window.baseUrl}/admin/analytics/getData?months=${months}&aggregation=${aggregation}${rangeParam}`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
         const data = await response.json();

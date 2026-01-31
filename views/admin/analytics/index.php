@@ -4,18 +4,49 @@
     <h1><i data-feather="trending-up"></i> Analytics Dashboard</h1>
 
     <div class="header-actions">
-        <select onchange="window.location='?months='+this.value" class="btn">
+        <select id="rangeSelect" onchange="updateAnalyticsFilters()" class="btn">
+            <option value="" <?= empty($stats['range']) ? 'selected' : '' ?>>All (Monthly)</option>
+            <option value="today" <?= ($stats['range'] ?? '') === 'today' ? 'selected' : '' ?>>Today</option>
+            <option value="yesterday" <?= ($stats['range'] ?? '') === 'yesterday' ? 'selected' : '' ?>>Yesterday</option>
+            <option value="day_before" <?= ($stats['range'] ?? '') === 'day_before' ? 'selected' : '' ?>>Day Before Yesterday</option>
+            <option value="last_week" <?= ($stats['range'] ?? '') === 'last_week' ? 'selected' : '' ?>>Last Week (Mon–Sun)</option>
+        </select>
+
+        <select id="monthsSelect" onchange="updateAnalyticsFilters()" class="btn" <?= !empty($stats['range']) ? 'disabled' : '' ?>>
             <option value="3" <?= $stats['months'] == 3 ? 'selected' : '' ?>>Last 3 Months</option>
             <option value="6" <?= $stats['months'] == 6 ? 'selected' : '' ?>>Last 6 Months</option>
             <option value="12" <?= $stats['months'] == 12 ? 'selected' : '' ?>>Last 12 Months</option>
         </select>
 
-        <a href="<?= BASE_URL ?>/admin/analytics/export?months=<?= $stats['months'] ?>"
+        <a href="<?= BASE_URL ?>/admin/analytics/export?months=<?= $stats['months'] ?><?= !empty($stats['range']) ? '&range=' . urlencode($stats['range']) : '' ?>"
            class="btn btn-secondary">
             <i data-feather="download"></i> Export CSV
         </a>
     </div>
 </div>
+
+<?php if (!empty($stats['range_label'])): ?>
+<div style="margin: 0 0 16px; color: #64748b; font-size: 13px;">
+    Showing: <strong><?= e($stats['range_label']) ?></strong>
+</div>
+<?php endif; ?>
+
+<script>
+function updateAnalyticsFilters() {
+    const range = document.getElementById('rangeSelect').value;
+    const months = document.getElementById('monthsSelect').value;
+    const params = new URLSearchParams(window.location.search);
+
+    if (range) {
+        params.set('range', range);
+    } else {
+        params.delete('range');
+    }
+
+    params.set('months', months);
+    window.location = `?${params.toString()}`;
+}
+</script>
 
 <!-- Performance Scorecards (GSC Style) -->
 <script>
@@ -151,13 +182,14 @@
         <h2 style="margin: 0;"><i data-feather="activity"></i> Performance Overview</h2>
         
         <div class="btn-group" style="display: flex; gap: 8px;">
-            <button onclick="updatePerformanceChart('daily')" id="btn-daily" class="agg-toggle-btn" style="padding: 6px 14px; border: 1px solid #e2e8f0; background: white; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: #64748b; transition: all 0.2s;">
+            <?php $activeAgg = !empty($stats['range']) ? 'daily' : 'monthly'; ?>
+            <button onclick="updatePerformanceChart('daily')" id="btn-daily" class="agg-toggle-btn <?= $activeAgg === 'daily' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'daily' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'daily' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'daily' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
                 Daily
             </button>
-            <button onclick="updatePerformanceChart('weekly')" id="btn-weekly" class="agg-toggle-btn" style="padding: 6px 14px; border: 1px solid #e2e8f0; background: white; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: #64748b; transition: all 0.2s;">
+            <button onclick="updatePerformanceChart('weekly')" id="btn-weekly" class="agg-toggle-btn <?= $activeAgg === 'weekly' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'weekly' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'weekly' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'weekly' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
                 Weekly
             </button>
-            <button onclick="updatePerformanceChart('monthly')" id="btn-monthly" class="agg-toggle-btn active" style="padding: 6px 14px; border: 1px solid #3b82f6; background: #3b82f6; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: white; transition: all 0.2s;">
+            <button onclick="updatePerformanceChart('monthly')" id="btn-monthly" class="agg-toggle-btn <?= $activeAgg === 'monthly' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'monthly' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'monthly' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'monthly' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
                 Monthly
             </button>
         </div>

@@ -334,7 +334,8 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
     
     /* Hero Header */
     .article-card-header {
-        background: linear-gradient(180deg, #f3f1df 0%, #e6e4d0 100%);
+        
+        background: linear-gradient(180deg, #e6e4d0 0%, #f3f1df 100%);;
         padding: 46px 56px 34px;
         text-align: center;
         border-bottom: 1px solid rgba(0,0,0,0.04);

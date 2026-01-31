@@ -32,6 +32,21 @@ class Analytics {
         return $this->db->fetchAll($sql);
     }
 
+    public function getRangePageStats($startDate, $endDate) {
+        $sql = "SELECT 
+                    page_slug,
+                    language,
+                    SUM(visits) as visits,
+                    SUM(clicks) as clicks,
+                    SUM(phone_calls) as phone_calls
+                FROM analytics
+                WHERE date BETWEEN ? AND ?
+                GROUP BY page_slug, language
+                ORDER BY visits DESC";
+
+        return $this->db->fetchAll($sql, [$startDate, $endDate]);
+    }
+
     public function getTotalStats() {
         $sql = "SELECT 
                     SUM(total_visits) as total_visits,
@@ -41,6 +56,18 @@ class Analytics {
                 FROM analytics_monthly";
         
         return $this->db->fetchOne($sql);
+    }
+
+    public function getRangeTotalStats($startDate, $endDate) {
+        $sql = "SELECT 
+                    SUM(visits) as total_visits,
+                    SUM(clicks) as total_clicks,
+                    SUM(phone_calls) as total_phone_calls,
+                    COUNT(DISTINCT page_slug) as unique_pages
+                FROM analytics
+                WHERE date BETWEEN ? AND ?";
+
+        return $this->db->fetchOne($sql, [$startDate, $endDate]);
     }
 
     public function getCurrentMonthStats() {
@@ -67,6 +94,27 @@ class Analytics {
             $result[$monthName] = (int)($row[$type] ?? 0);
         }
         
+        return $result;
+    }
+
+    public function getRangeChartData($type, $startDate, $endDate) {
+        $field = ($type === 'visits') ? 'visits' : (($type === 'phone_calls') ? 'phone_calls' : 'clicks');
+        $sql = "SELECT 
+                    date,
+                    SUM($field) as value
+                FROM analytics
+                WHERE date BETWEEN ? AND ?
+                GROUP BY date
+                ORDER BY date ASC";
+
+        $data = $this->db->fetchAll($sql, [$startDate, $endDate]);
+
+        $result = [];
+        foreach ($data as $row) {
+            $dateLabel = date('M j', strtotime($row['date']));
+            $result[$dateLabel] = (int)($row['value'] ?? 0);
+        }
+
         return $result;
     }
 
@@ -359,6 +407,65 @@ class Analytics {
         ];
     }
 
+    public function getPerformanceTrendsByDateRange($startDate, $endDate, $pageSlug = null) {
+        $start = new DateTime($startDate);
+        $end = new DateTime($endDate);
+        $days = (int)$start->diff($end)->format('%a') + 1;
+
+        $prevEnd = (clone $start)->modify('-1 day');
+        $prevStart = (clone $prevEnd)->modify('-' . ($days - 1) . ' days');
+
+        $paramsCurrent = [$start->format('Y-m-d'), $end->format('Y-m-d')];
+        $paramsPrevious = [$prevStart->format('Y-m-d'), $prevEnd->format('Y-m-d')];
+
+        $whereCurrent = ["date BETWEEN ? AND ?"];
+        $wherePrevious = ["date BETWEEN ? AND ?"];
+
+        if ($pageSlug !== null) {
+            $whereCurrent[] = "page_slug = ?";
+            $wherePrevious[] = "page_slug = ?";
+            $paramsCurrent[] = $pageSlug;
+            $paramsPrevious[] = $pageSlug;
+        }
+
+        $sql = "
+            SELECT 'current' as period, SUM(visits) as visits, SUM(clicks) as clicks
+            FROM analytics
+            WHERE " . implode(' AND ', $whereCurrent) . "
+            UNION ALL
+            SELECT 'previous' as period, SUM(visits) as visits, SUM(clicks) as clicks
+            FROM analytics
+            WHERE " . implode(' AND ', $wherePrevious);
+
+        $params = array_merge($paramsCurrent, $paramsPrevious);
+
+        $results = $this->db->fetchAll($sql, $params);
+
+        $current = ['visits' => 0, 'clicks' => 0];
+        $previous = ['visits' => 0, 'clicks' => 0];
+
+        foreach ($results as $row) {
+            if ($row['period'] === 'current') {
+                $current = $row;
+            } else {
+                $previous = $row;
+            }
+        }
+
+        return [
+            'current' => $current,
+            'previous' => $previous,
+            'changes' => [
+                'visits' => $previous['visits'] > 0
+                    ? round((($current['visits'] - $previous['visits']) / $previous['visits']) * 100, 1)
+                    : 0,
+                'clicks' => $previous['clicks'] > 0
+                    ? round((($current['clicks'] - $previous['clicks']) / $previous['clicks']) * 100, 1)
+                    : 0
+            ]
+        ];
+    }
+
     /**
      * Get daily activity for heat map visualization
      */
@@ -406,6 +513,22 @@ class Analytics {
         return $this->db->fetchAll($sql, [$months, $limit]);
     }
 
+    public function getRangeTopPerformers($startDate, $endDate, $limit = 10) {
+        $sql = "SELECT 
+                    page_slug,
+                    SUM(visits) as visits,
+                    SUM(clicks) as clicks,
+                    ROUND((SUM(clicks) / NULLIF(SUM(visits), 0)) * 100, 2) as ctr
+                FROM analytics
+                WHERE date BETWEEN ? AND ?
+                GROUP BY page_slug
+                HAVING visits > 0
+                ORDER BY ctr DESC, visits DESC
+                LIMIT ?";
+
+        return $this->db->fetchAll($sql, [$startDate, $endDate, $limit]);
+    }
+
     /**
      * Get language preference statistics
      */
@@ -420,6 +543,19 @@ class Analytics {
                 GROUP BY language";
         
         return $this->db->fetchAll($sql, [$months]);
+    }
+
+    public function getRangeLanguageStats($startDate, $endDate) {
+        $sql = "SELECT 
+                    language,
+                    SUM(visits) as visits,
+                    SUM(clicks) as clicks,
+                    COUNT(DISTINCT page_slug) as unique_pages
+                FROM analytics
+                WHERE date BETWEEN ? AND ?
+                GROUP BY language";
+
+        return $this->db->fetchAll($sql, [$startDate, $endDate]);
     }
 
 

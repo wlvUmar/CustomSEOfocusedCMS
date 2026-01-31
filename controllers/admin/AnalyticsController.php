@@ -16,29 +16,55 @@ class AnalyticsController extends Controller {
 
     public function index() {
         $this->requireAuth();
-        
+
         $months = isset($_GET['months']) ? intval($_GET['months']) : 6;
         $months = max(1, min(24, $months));
+        $range = $_GET['range'] ?? '';
+        $rangeInfo = $this->resolveDateRange($range);
         
         $view = $_GET['view'] ?? 'overview';
         if (!in_array($view, ['overview', 'rotation', 'navigation', 'crawl'])) {
             $view = 'overview';
         }
-        
-        $stats = [
-            'total' => $this->analyticsModel->getTotalStats(),
-            'current_month' => $this->analyticsModel->getCurrentMonthStats(),
-            'page_stats' => $this->analyticsModel->getPageStats($months),
-            'visits_chart' => $this->analyticsModel->getChartData('visits', $months),
-            'clicks_chart' => $this->analyticsModel->getChartData('clicks', $months),
-            'phone_calls_chart' => $this->analyticsModel->getChartData('phone_calls', $months),
-            'trends' => $this->analyticsModel->getPerformanceTrends(),
-            'top_performers' => $this->analyticsModel->getTopPerformers($months),
-            'language_stats' => $this->analyticsModel->getLanguageStats($months),
-            'months' => $months,
-            'view' => $view,
-            'pageName' => 'analytics/index'
-        ];
+
+        if ($rangeInfo) {
+            $start = $rangeInfo['start'];
+            $end = $rangeInfo['end'];
+
+            $stats = [
+                'total' => $this->analyticsModel->getRangeTotalStats($start, $end),
+                'current_month' => $this->analyticsModel->getCurrentMonthStats(),
+                'page_stats' => $this->analyticsModel->getRangePageStats($start, $end),
+                'visits_chart' => $this->analyticsModel->getRangeChartData('visits', $start, $end),
+                'clicks_chart' => $this->analyticsModel->getRangeChartData('clicks', $start, $end),
+                'phone_calls_chart' => $this->analyticsModel->getRangeChartData('phone_calls', $start, $end),
+                'trends' => $this->analyticsModel->getPerformanceTrendsByDateRange($start, $end),
+                'top_performers' => $this->analyticsModel->getRangeTopPerformers($start, $end),
+                'language_stats' => $this->analyticsModel->getRangeLanguageStats($start, $end),
+                'months' => $months,
+                'view' => $view,
+                'range' => $range,
+                'range_label' => $rangeInfo['label'],
+                'pageName' => 'analytics/index'
+            ];
+        } else {
+            $stats = [
+                'total' => $this->analyticsModel->getTotalStats(),
+                'current_month' => $this->analyticsModel->getCurrentMonthStats(),
+                'page_stats' => $this->analyticsModel->getPageStats($months),
+                'visits_chart' => $this->analyticsModel->getChartData('visits', $months),
+                'clicks_chart' => $this->analyticsModel->getChartData('clicks', $months),
+                'phone_calls_chart' => $this->analyticsModel->getChartData('phone_calls', $months),
+                'trends' => $this->analyticsModel->getPerformanceTrends(),
+                'top_performers' => $this->analyticsModel->getTopPerformers($months),
+                'language_stats' => $this->analyticsModel->getLanguageStats($months),
+                'months' => $months,
+                'view' => $view,
+                'range' => '',
+                'range_label' => '',
+                'pageName' => 'analytics/index'
+            ];
+        }
         
         $this->view('admin/analytics/index', [
             'stats' => $stats,
@@ -115,28 +141,38 @@ class AnalyticsController extends Controller {
         
         $months = $_GET['months'] ?? 6;
         $aggregation = $_GET['aggregation'] ?? 'monthly';
+        $range = $_GET['range'] ?? '';
+        $rangeInfo = $this->resolveDateRange($range);
         
         $visits = null;
         $clicks = null;
         $phone_calls = null;
-        
-        switch ($aggregation) {
-            case 'daily':
-                $visits = $this->analyticsModel->getDailyChartData('visits', $months);
-                $clicks = $this->analyticsModel->getDailyChartData('clicks', $months);
-                $phone_calls = $this->analyticsModel->getDailyChartData('phone_calls', $months);
-                break;
-            case 'weekly':
-                $visits = $this->analyticsModel->getWeeklyChartData('visits', $months);
-                $clicks = $this->analyticsModel->getWeeklyChartData('clicks', $months);
-                $phone_calls = $this->analyticsModel->getWeeklyChartData('phone_calls', $months);
-                break;
-            case 'monthly':
-            default:
-                $visits = $this->analyticsModel->getChartData('visits', $months);
-                $clicks = $this->analyticsModel->getChartData('clicks', $months);
-                $phone_calls = $this->analyticsModel->getChartData('phone_calls', $months);
-                break;
+
+        if ($rangeInfo) {
+            $start = $rangeInfo['start'];
+            $end = $rangeInfo['end'];
+            $visits = $this->analyticsModel->getRangeChartData('visits', $start, $end);
+            $clicks = $this->analyticsModel->getRangeChartData('clicks', $start, $end);
+            $phone_calls = $this->analyticsModel->getRangeChartData('phone_calls', $start, $end);
+        } else {
+            switch ($aggregation) {
+                case 'daily':
+                    $visits = $this->analyticsModel->getDailyChartData('visits', $months);
+                    $clicks = $this->analyticsModel->getDailyChartData('clicks', $months);
+                    $phone_calls = $this->analyticsModel->getDailyChartData('phone_calls', $months);
+                    break;
+                case 'weekly':
+                    $visits = $this->analyticsModel->getWeeklyChartData('visits', $months);
+                    $clicks = $this->analyticsModel->getWeeklyChartData('clicks', $months);
+                    $phone_calls = $this->analyticsModel->getWeeklyChartData('phone_calls', $months);
+                    break;
+                case 'monthly':
+                default:
+                    $visits = $this->analyticsModel->getChartData('visits', $months);
+                    $clicks = $this->analyticsModel->getChartData('clicks', $months);
+                    $phone_calls = $this->analyticsModel->getChartData('phone_calls', $months);
+                    break;
+            }
         }
         
         $this->json([
@@ -153,7 +189,14 @@ class AnalyticsController extends Controller {
         $this->requireAuth();
         
         $months = $_GET['months'] ?? 6;
-        $stats = $this->analyticsModel->getPageStats($months);
+        $range = $_GET['range'] ?? '';
+        $rangeInfo = $this->resolveDateRange($range);
+
+        if ($rangeInfo) {
+            $stats = $this->analyticsModel->getRangePageStats($rangeInfo['start'], $rangeInfo['end']);
+        } else {
+            $stats = $this->analyticsModel->getPageStats($months);
+        }
         
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="analytics_' . date('Y-m-d') . '.csv"');
@@ -172,7 +215,7 @@ class AnalyticsController extends Controller {
                 $row['visits'],
                 $row['clicks'],
                 $ctr,
-                $months . ' months'
+                $rangeInfo ? $rangeInfo['label'] : ($months . ' months')
             ]);
         }
         
@@ -197,5 +240,48 @@ class AnalyticsController extends Controller {
     }
     public function getAnalyticsModel() {
         return $this->analyticsModel;
+    }
+
+    private function resolveDateRange($range) {
+        if (empty($range)) {
+            return null;
+        }
+
+        $today = new DateTime('today');
+        $start = null;
+        $end = null;
+        $label = '';
+
+        switch ($range) {
+            case 'today':
+                $start = clone $today;
+                $end = clone $today;
+                $label = 'Today (' . $today->format('M j, Y') . ')';
+                break;
+            case 'yesterday':
+                $start = (clone $today)->modify('-1 day');
+                $end = clone $start;
+                $label = 'Yesterday (' . $start->format('M j, Y') . ')';
+                break;
+            case 'day_before':
+                $start = (clone $today)->modify('-2 days');
+                $end = clone $start;
+                $label = 'Day before yesterday (' . $start->format('M j, Y') . ')';
+                break;
+            case 'last_week':
+                $currentWeekStart = (clone $today)->modify('monday this week');
+                $start = (clone $currentWeekStart)->modify('-7 days');
+                $end = (clone $start)->modify('+6 days');
+                $label = 'Last week (' . $start->format('M j, Y') . ' - ' . $end->format('M j, Y') . ')';
+                break;
+            default:
+                return null;
+        }
+
+        return [
+            'start' => $start->format('Y-m-d'),
+            'end' => $end->format('Y-m-d'),
+            'label' => $label
+        ];
     }
 }
