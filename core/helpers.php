@@ -937,6 +937,12 @@ function getResponsiveImageWidths() {
 }
 
 function getUploadsDir() {
+    if (defined('UPLOAD_PATH') && UPLOAD_PATH) {
+        return rtrim(UPLOAD_PATH, '/\\');
+    }
+    if (defined('PUBLIC_PATH') && PUBLIC_PATH) {
+        return rtrim(PUBLIC_PATH, '/\\') . '/uploads';
+    }
     return __DIR__ . '/../public/uploads';
 }
 
