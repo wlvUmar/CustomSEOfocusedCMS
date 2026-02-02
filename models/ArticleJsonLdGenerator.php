@@ -36,7 +36,7 @@ class ArticleJsonLdGenerator {
      * Generate complete @graph structure for an article
      * Includes: Article, WebPage, BreadcrumbList, ImageObject, Organization reference
      */
-    public static function generateArticleGraph($article, $lang, $seo, $faqs = [], $datePublished = null, $dateModified = null) {
+    public static function generateArticleGraph($article, $lang, $seo, $faqs = [], $datePublished = null, $dateModified = null, $author = null) {
         $baseUrl = self::getBaseUrl();
         $articleUrl = canonicalUrlForArticle($article['id'], $lang);
         
@@ -54,7 +54,7 @@ class ArticleJsonLdGenerator {
         $graph[] = $webPageSchema;
         
         // 2. Article/BlogPosting schema
-        $articleSchema = self::generateArticleSchema($article, $lang, $articleUrl, $baseUrl, $seo, $datePublished, $dateModified);
+        $articleSchema = self::generateArticleSchema($article, $lang, $articleUrl, $baseUrl, $seo, $datePublished, $dateModified, $author);
         $graph[] = $articleSchema;
         
         // 3. BreadcrumbList schema
@@ -82,16 +82,31 @@ class ArticleJsonLdGenerator {
     /**
      * Generate Article/BlogPosting schema
      */
-    public static function generateArticleSchema($article, $lang, $articleUrl, $baseUrl, $seo, $datePublished, $dateModified) {
+    public static function generateArticleSchema($article, $lang, $articleUrl, $baseUrl, $seo, $datePublished, $dateModified, $author = null) {
         $wordCount = null;
         if (!empty($article["content_$lang"])) {
             $wordCount = self::computeWordCountFromHtml($article["content_$lang"]);
         }
 
-        // Brand-authored articles: keep meta author and JSON-LD author aligned to Organization.
         $authorData = [
             '@id' => $baseUrl . '#organization'
         ];
+
+        if (is_array($author) && !empty($author['name'])) {
+            $authorData = [
+                '@type' => 'Person',
+                'name' => $author['name']
+            ];
+            if (!empty($author['url'])) {
+                $authorData['url'] = $author['url'];
+            }
+            if (!empty($author['sameAs']) && is_array($author['sameAs'])) {
+                $authorData['sameAs'] = array_values(array_filter($author['sameAs']));
+            }
+            $authorData['worksFor'] = [
+                '@id' => $baseUrl . '#organization'
+            ];
+        }
 
         $schema = [
             '@type' => 'BlogPosting',

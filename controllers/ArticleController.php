@@ -73,13 +73,22 @@ class ArticleController extends Controller {
 
         // Always generate article JSON-LD at render time to keep schema consistent and avoid localhost leakage
         // from stored JSON-LD blobs in the database.
+        $authorName = 'Umar Tolibov';
+        $authorUrl = $this->resolveAuthorProfileUrl($currentLang);
+        $authorSameAs = ['https://t.me/n0_odle'];
+
         $article["jsonld_$currentLang"] = ArticleJsonLdGenerator::generateArticleGraph(
             $article,
             $currentLang,
             $seoSettings,
             [], // FAQs
             $datePublished, // Pass explicit dates
-            $dateModified
+            $dateModified,
+            [
+                'name' => $authorName,
+                'url' => $authorUrl,
+                'sameAs' => $authorSameAs
+            ]
         );
         
         // Generate Global Schema
@@ -104,6 +113,8 @@ class ArticleController extends Controller {
             'sitewideSchema' => $sitewideSchema,
             'datePublished' => $datePublished, // Pass exact same string
             'dateModified' => $dateModified,   // Pass exact same string
+            'authorName' => $authorName,
+            'authorUrl' => $authorUrl,
             'msg' => []
         ];
         
@@ -131,5 +142,18 @@ class ArticleController extends Controller {
         ];
         
         $this->view('templates/articles_index', $data);
+    }
+
+    private function resolveAuthorProfileUrl($lang) {
+        require_once BASE_PATH . '/models/Page.php';
+        $pageModel = new Page();
+        $about = $pageModel->getBySlug('o-nas');
+        if (!$about) {
+            $about = $pageModel->getBySlug('about');
+        }
+        if ($about) {
+            return canonicalUrlForPage($about['slug'], $lang);
+        }
+        return siteUrl('/');
     }
 }

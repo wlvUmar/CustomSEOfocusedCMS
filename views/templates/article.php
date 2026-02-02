@@ -15,7 +15,7 @@ $ogImage = absoluteUrl(
 );
 
 $isAdmin = isset($_SESSION['user_id']) && !isBot();
-$brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_name_ru"] ?? ''); // brand-authored articles
+$brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_name_ru"] ?? ''));
 ?>
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
