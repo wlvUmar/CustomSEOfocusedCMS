@@ -893,7 +893,7 @@ function renderHeroSection($mediaItems, $lang) {
     $heroTitle = $GLOBALS['currentPageTitle'] ?? '';
     $filename = $media['filename'] ?? '';
     $imagePath = '/uploads/' . htmlspecialchars($filename);
-    $imageSources = $filename ? buildResponsiveImageSources($filename, [480, 768, 1024, 1366]) : null;
+    $imageSources = $filename ? buildResponsiveImageSources($filename, getResponsiveImageWidths()) : null;
     $imageDims = $filename ? getImageDimensions($filename) : null;
     
     $html = '<div class="hero-media">';
@@ -932,6 +932,10 @@ function renderHeroSection($mediaItems, $lang) {
     return $html;
 }
 
+function getResponsiveImageWidths() {
+    return [480, 768, 1024, 1366];
+}
+
 function getUploadsDir() {
     return __DIR__ . '/../public/uploads';
 }
@@ -946,7 +950,12 @@ function getImageDimensions($filename) {
 
 function buildResponsiveImageSources($filename, $widths) {
     $path = getUploadsDir() . '/' . $filename;
-    if (!file_exists($path) || !function_exists('getimagesize')) return null;
+    if (!file_exists($path)) return null;
+    $prebuilt = findExistingDerivedSources($filename, $widths);
+    if ($prebuilt) {
+        return $prebuilt;
+    }
+    if (!function_exists('getimagesize')) return null;
     $info = @getimagesize($path);
     if (!$info) return null;
     $originalWidth = (int)$info[0];
@@ -967,6 +976,32 @@ function buildResponsiveImageSources($filename, $widths) {
         }
     }
     if (empty($fallbackSrcset) && empty($webpSrcset)) return null;
+    return [
+        'fallback' => implode(', ', $fallbackSrcset),
+        'webp' => implode(', ', $webpSrcset)
+    ];
+}
+
+function findExistingDerivedSources($filename, $widths) {
+    $derivedDir = getUploadsDir() . '/derived';
+    if (!is_dir($derivedDir)) return null;
+    $name = pathinfo($filename, PATHINFO_FILENAME);
+    $fallbackSrcset = [];
+    $webpSrcset = [];
+    foreach ($widths as $width) {
+        if ($width <= 0) continue;
+        $fallbackPath = $derivedDir . '/' . $name . '_w' . $width . '.jpg';
+        if (file_exists($fallbackPath)) {
+            $fallbackSrcset[] = '/uploads/derived/' . $name . '_w' . $width . '.jpg ' . $width . 'w';
+        }
+        $webpPath = $derivedDir . '/' . $name . '_w' . $width . '.webp';
+        if (file_exists($webpPath)) {
+            $webpSrcset[] = '/uploads/derived/' . $name . '_w' . $width . '.webp ' . $width . 'w';
+        }
+    }
+    if (empty($fallbackSrcset) && empty($webpSrcset)) {
+        return null;
+    }
     return [
         'fallback' => implode(', ', $fallbackSrcset),
         'webp' => implode(', ', $webpSrcset)
@@ -1033,6 +1068,84 @@ function ensureDerivedImage($filename, $targetWidth, $format) {
 
     if (!$saved) return null;
     return '/uploads/derived/' . $targetName;
+}
+
+function generateResponsiveImageVariants($filename, $widths) {
+    if (empty($filename)) return;
+    if (empty($widths)) {
+        $widths = getResponsiveImageWidths();
+    }
+    foreach ($widths as $width) {
+        ensureDerivedImage($filename, (int)$width, 'jpg');
+        ensureDerivedImage($filename, (int)$width, 'webp');
+    }
+}
+
+function regenerateImageVariants($widths = null) {
+    if (empty($widths)) {
+        $widths = getResponsiveImageWidths();
+    }
+
+    $uploadsDir = getUploadsDir();
+    if (!is_dir($uploadsDir)) {
+        return [
+            'success' => false,
+            'message' => 'Uploads directory not found.'
+        ];
+    }
+
+    $canProcess = function_exists('getimagesize') &&
+        (function_exists('imagecreatefromjpeg') || function_exists('imagecreatefrompng') || function_exists('imagecreatefromwebp'));
+    if (!$canProcess) {
+        return [
+            'success' => false,
+            'message' => 'Image processing not available (PHP GD missing).'
+        ];
+    }
+
+    $processed = 0;
+    $skipped = 0;
+    $errors = 0;
+    $webpEnabled = function_exists('imagewebp');
+
+    @set_time_limit(0);
+
+    $iterator = new DirectoryIterator($uploadsDir);
+    foreach ($iterator as $fileInfo) {
+        if ($fileInfo->isDot()) continue;
+        if ($fileInfo->isDir()) {
+            if ($fileInfo->getFilename() === 'derived') continue;
+            continue;
+        }
+
+        $filename = $fileInfo->getFilename();
+        if ($filename === '.htaccess') {
+            $skipped++;
+            continue;
+        }
+
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            $skipped++;
+            continue;
+        }
+
+        try {
+            generateResponsiveImageVariants($filename, $widths);
+            $processed++;
+        } catch (Throwable $e) {
+            $errors++;
+            error_log('Variant generation failed for ' . $filename . ': ' . $e->getMessage());
+        }
+    }
+
+    return [
+        'success' => true,
+        'processed' => $processed,
+        'skipped' => $skipped,
+        'errors' => $errors,
+        'webp' => $webpEnabled
+    ];
 }
 
 /**

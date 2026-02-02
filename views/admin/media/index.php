@@ -6,6 +6,9 @@
         <button onclick="document.getElementById('upload-input').click()" class="btn btn-primary">
             <i data-feather="upload"></i> Upload Media
         </button>
+        <button id="regen-variants-btn" onclick="regenerateVariants()" class="btn btn-secondary">
+            <i data-feather="refresh-ccw"></i> Regenerate Variants
+        </button>
     </div>
 </div>
 
@@ -370,6 +373,60 @@ function uploadFiles() {
     console.log(err);
     alert('Upload failed: ' + err.message);
   });
+}
+
+function regenerateVariants() {
+    const btn = document.getElementById('regen-variants-btn');
+    if (!btn) return;
+
+    if (!confirm('Regenerate responsive image variants for all uploads? This can take a few minutes.')) {
+        return;
+    }
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Generating...';
+
+    const formData = new FormData();
+    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?>');
+
+    fetch('/admin/media/regenerate-variants', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(async (r) => {
+        const ct = r.headers.get('content-type') || '';
+        const text = await r.text();
+
+        if (!r.ok) {
+            throw new Error(`HTTP ${r.status}. ${text.slice(0, 300)}`);
+        }
+        if (!ct.includes('application/json')) {
+            throw new Error(`Expected JSON but got ${ct}. ${text.slice(0, 300)}`);
+        }
+        return JSON.parse(text);
+    })
+    .then((data) => {
+        if (!data.success) {
+            throw new Error(data.message || 'Variant generation failed.');
+        }
+        const webpText = data.webp ? 'WebP: enabled' : 'WebP: not available';
+        alert(`Variants generated.\nProcessed: ${data.processed}\nSkipped: ${data.skipped}\nErrors: ${data.errors}\n${webpText}`);
+    })
+    .catch((err) => {
+        alert('Regeneration failed: ' + err.message);
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        if (window.feather && typeof feather.replace === 'function') {
+            feather.replace();
+        }
+    });
 }
 
 function resetAttachmentFields() {

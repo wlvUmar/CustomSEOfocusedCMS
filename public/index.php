@@ -118,6 +118,7 @@ $router->group('/admin/media', function($router) {
     $router->post('/delete', function() { requireMediaAdmin('delete'); });
     $router->post('/bulk-upload', function() { requireMediaAdmin('bulkUpload'); });
     $router->post('/attach', function() { requireMediaAdmin('attachToPage'); });
+    $router->post('/regenerate-variants', function() { requireMediaAdmin('regenerateVariants'); });
     $router->post('/detach', function() { requireMediaAdmin('detachFromPage'); });
     $router->get('/info', function() { requireMediaAdmin('getMediaInfo'); });
     $router->get('/attachment', function() { requireMediaAdmin('getAttachment'); });

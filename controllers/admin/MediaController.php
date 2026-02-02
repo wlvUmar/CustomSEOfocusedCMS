@@ -121,6 +121,7 @@ class MediaController extends Controller {
             ];
             
             $mediaId = $this->mediaModel->create($data);
+            generateResponsiveImageVariants($filename, getResponsiveImageWidths());
             
             // If page_id is provided, attach immediately
             if (!empty($_POST['page_id'])) {
@@ -336,6 +337,7 @@ class MediaController extends Controller {
                     'file_size' => $file['size'],
                     'mime_type' => $file['type']
                 ]);
+                generateResponsiveImageVariants($filename, getResponsiveImageWidths());
                 if ($pageId) {
                     $this->pageMediaModel->attachMedia($pageId, $mediaId, [
                         'section' => $section,
@@ -405,5 +407,20 @@ class MediaController extends Controller {
         }
         
         $this->json(['success' => true]);
+    }
+
+    public function regenerateVariants() {
+        $this->requireAuth();
+
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+        }
+
+        $result = regenerateImageVariants();
+        if (empty($result['success'])) {
+            $this->json($result, 500);
+        }
+
+        $this->json($result);
     }
 }
