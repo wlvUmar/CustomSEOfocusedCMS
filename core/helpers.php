@@ -891,11 +891,31 @@ function renderHeroSection($mediaItems, $lang) {
     $alt = $media["alt_text_$lang"] ?? $media['original_name'];
     $caption = $media["caption_$lang"] ?? '';
     $heroTitle = $GLOBALS['currentPageTitle'] ?? '';
+    $filename = $media['filename'] ?? '';
+    $imagePath = '/uploads/' . htmlspecialchars($filename);
+    $imageSources = $filename ? buildResponsiveImageSources($filename, [480, 768, 1024, 1366]) : null;
+    $imageDims = $filename ? getImageDimensions($filename) : null;
     
     $html = '<div class="hero-media">';
-    $html .= '<img src="/uploads/' . htmlspecialchars($media['filename']) . '" ';
+    if ($imageSources) {
+        $html .= '<picture>';
+        if (!empty($imageSources['webp'])) {
+            $html .= '<source type="image/webp" srcset="' . htmlspecialchars($imageSources['webp']) . '" sizes="(max-width: 900px) 100vw, 1100px">';
+        }
+    }
+    $html .= '<img src="' . $imagePath . '" ';
     $html .= 'alt="' . htmlspecialchars($alt) . '" ';
-    $html .= 'class="hero-image" loading="eager">';
+    if ($imageDims) {
+        $html .= 'width="' . (int)$imageDims['width'] . '" height="' . (int)$imageDims['height'] . '" ';
+    }
+    $html .= 'class="hero-image" loading="eager" decoding="async" fetchpriority="high"';
+    if ($imageSources) {
+        $html .= ' srcset="' . htmlspecialchars($imageSources['fallback']) . '" sizes="(max-width: 900px) 100vw, 1100px"';
+    }
+    $html .= '>';
+    if ($imageSources) {
+        $html .= '</picture>';
+    }
     
     if ($heroTitle || $caption) {
         $html .= '<div class="hero-content">';
@@ -910,6 +930,109 @@ function renderHeroSection($mediaItems, $lang) {
     
     $html .= '</div>';
     return $html;
+}
+
+function getUploadsDir() {
+    return __DIR__ . '/../public/uploads';
+}
+
+function getImageDimensions($filename) {
+    $path = getUploadsDir() . '/' . $filename;
+    if (!file_exists($path)) return null;
+    $info = @getimagesize($path);
+    if (!$info) return null;
+    return ['width' => $info[0], 'height' => $info[1]];
+}
+
+function buildResponsiveImageSources($filename, $widths) {
+    $path = getUploadsDir() . '/' . $filename;
+    if (!file_exists($path) || !function_exists('getimagesize')) return null;
+    $info = @getimagesize($path);
+    if (!$info) return null;
+    $originalWidth = (int)$info[0];
+    $usableWidths = array_values(array_filter($widths, function($w) use ($originalWidth) {
+        return $w > 0 && $w <= $originalWidth;
+    }));
+    if (empty($usableWidths)) return null;
+    $fallbackSrcset = [];
+    $webpSrcset = [];
+    foreach ($usableWidths as $width) {
+        $fallback = ensureDerivedImage($filename, $width, 'jpg');
+        if ($fallback) {
+            $fallbackSrcset[] = $fallback . ' ' . $width . 'w';
+        }
+        $webp = ensureDerivedImage($filename, $width, 'webp');
+        if ($webp) {
+            $webpSrcset[] = $webp . ' ' . $width . 'w';
+        }
+    }
+    if (empty($fallbackSrcset) && empty($webpSrcset)) return null;
+    return [
+        'fallback' => implode(', ', $fallbackSrcset),
+        'webp' => implode(', ', $webpSrcset)
+    ];
+}
+
+function ensureDerivedImage($filename, $targetWidth, $format) {
+    $sourcePath = getUploadsDir() . '/' . $filename;
+    if (!file_exists($sourcePath)) return null;
+    if (!function_exists('getimagesize')) return null;
+    if ($format === 'webp' && !function_exists('imagewebp')) return null;
+
+    $info = @getimagesize($sourcePath);
+    if (!$info) return null;
+    $sourceWidth = (int)$info[0];
+    $sourceHeight = (int)$info[1];
+    if ($targetWidth <= 0 || $targetWidth >= $sourceWidth) return null;
+
+    $derivedDir = getUploadsDir() . '/derived';
+    if (!is_dir($derivedDir)) {
+        @mkdir($derivedDir, 0755, true);
+    }
+
+    $name = pathinfo($filename, PATHINFO_FILENAME);
+    $targetName = $name . '_w' . $targetWidth . '.' . $format;
+    $targetPath = $derivedDir . '/' . $targetName;
+
+    if (file_exists($targetPath) && filemtime($targetPath) >= filemtime($sourcePath)) {
+        return '/uploads/derived/' . $targetName;
+    }
+
+    $type = $info[2];
+    $sourceImage = null;
+    if ($type === IMAGETYPE_JPEG) {
+        $sourceImage = @imagecreatefromjpeg($sourcePath);
+    } elseif ($type === IMAGETYPE_PNG) {
+        $sourceImage = @imagecreatefrompng($sourcePath);
+    } elseif ($type === IMAGETYPE_WEBP && function_exists('imagecreatefromwebp')) {
+        $sourceImage = @imagecreatefromwebp($sourcePath);
+    }
+    if (!$sourceImage) return null;
+
+    $targetHeight = (int)round($sourceHeight * ($targetWidth / $sourceWidth));
+    $targetImage = imagecreatetruecolor($targetWidth, $targetHeight);
+
+    if ($type === IMAGETYPE_PNG || $type === IMAGETYPE_WEBP) {
+        imagealphablending($targetImage, false);
+        imagesavealpha($targetImage, true);
+        $transparent = imagecolorallocatealpha($targetImage, 0, 0, 0, 127);
+        imagefilledrectangle($targetImage, 0, 0, $targetWidth, $targetHeight, $transparent);
+    }
+
+    imagecopyresampled($targetImage, $sourceImage, 0, 0, 0, 0, $targetWidth, $targetHeight, $sourceWidth, $sourceHeight);
+
+    $saved = false;
+    if ($format === 'webp') {
+        $saved = imagewebp($targetImage, $targetPath, 80);
+    } else {
+        $saved = imagejpeg($targetImage, $targetPath, 82);
+    }
+
+    imagedestroy($sourceImage);
+    imagedestroy($targetImage);
+
+    if (!$saved) return null;
+    return '/uploads/derived/' . $targetName;
 }
 
 /**
