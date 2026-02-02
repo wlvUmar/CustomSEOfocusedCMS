@@ -8,8 +8,7 @@ $seo = $seo ?? [];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PREVIEW: <?= e($page["title_$lang"]) ?></title>
-    <link rel="preload" href="<?= BASE_URL ?>/css/pages.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css"></noscript>
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/preview.css">
 </head>
 <body class="preview-mode">
@@ -74,17 +73,24 @@ $seo = $seo ?? [];
         <div class="container">
             <nav>
                 <a href="<?= BASE_URL ?>" class="logo-link">
-                    <img
-                        src="<?= BASE_URL ?>/css/logo-48.png"
-                        srcset="<?= BASE_URL ?>/css/logo-48.png 48w, <?= BASE_URL ?>/css/logo-96.png 96w"
-                        sizes="48px"
-                        width="48"
-                        height="48"
-                        class="logo"
-                        alt="<?= e($seo["site_name_$lang"]) ?>"
-                        loading="eager"
-                        decoding="async"
-                    >
+                    <picture>
+                        <source
+                            type="image/webp"
+                            srcset="<?= BASE_URL ?>/css/logo-48.webp 48w, <?= BASE_URL ?>/css/logo-96.webp 96w"
+                            sizes="48px"
+                        >
+                        <img
+                            src="<?= BASE_URL ?>/css/logo-48.png"
+                            srcset="<?= BASE_URL ?>/css/logo-48.png 48w, <?= BASE_URL ?>/css/logo-96.png 96w"
+                            sizes="48px"
+                            width="48"
+                            height="48"
+                            class="logo"
+                            alt="<?= e($seo["site_name_$lang"]) ?>"
+                            loading="eager"
+                            decoding="async"
+                        >
+                    </picture>
                     <span class="site-name"><?= e($seo["site_name_$lang"]) ?></span>
                 </a>
                 

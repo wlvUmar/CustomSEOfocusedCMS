@@ -114,7 +114,10 @@ $applianceNameForSEO = $applianceName ?? '';
                     data-to="<?= e($link['slug']) ?>"
                 >
                     <div class="link-widget-icon">
-                        <i data-feather="arrow-right"></i>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="13 6 19 12 13 18"></polyline>
+                        </svg>
                     </div>
 
                     <div class="link-widget-content">
