@@ -35,8 +35,16 @@ class GlobalJsonLdGenerator {
                     } elseif (is_array($orgSchema['logo']) && !empty($orgSchema['logo']['url'])) {
                         $orgSchema['logo']['url'] = absoluteUrl($orgSchema['logo']['url'], $baseUrl);
                     }
+                    if (is_array($orgSchema['logo'])) {
+                        $logoDims = getPublicImageDimensions($orgSchema['logo']['url'] ?? '');
+                        if ($logoDims) {
+                            $orgSchema['logo']['width'] = $logoDims['width'];
+                            $orgSchema['logo']['height'] = $logoDims['height'];
+                        }
+                    }
                 }
 
+                unset($orgSchema['@context']);
                 return $orgSchema;
             }
         }
@@ -89,6 +97,12 @@ class GlobalJsonLdGenerator {
             $schema['sameAs'] = $sameAs;
         }
 
+        $logoDims = getPublicImageDimensions($schema['logo']['url'] ?? '');
+        if ($logoDims) {
+            $schema['logo']['width'] = $logoDims['width'];
+            $schema['logo']['height'] = $logoDims['height'];
+        }
+
         return $schema;
     }
 
@@ -105,6 +119,7 @@ class GlobalJsonLdGenerator {
                  $siteSchema['@id'] = $baseUrl . '#website';
                  $siteSchema['url'] = $baseUrl;
                  $siteSchema['publisher'] = ['@id' => $baseUrl . '#organization'];
+                 unset($siteSchema['@context']);
                  return $siteSchema;
              }
         }
@@ -148,6 +163,16 @@ class GlobalJsonLdGenerator {
         }
 
         return trim(implode(' ', $out));
+    }
+
+    private static function cleanSchemaDescription($text) {
+        $text = self::cleanText($text);
+        if ($text === '') return $text;
+        // Remove phone numbers and call-to-action fragments.
+        $text = preg_replace('/\\+?\\d[\\d\\s\\-\\(\\)]{7,}\\d/u', '', $text);
+        $text = preg_replace('/(?:звоните|позвоните|call us?|телефон)[\\s:!\\.—\\-]*(?:\\s|$)/ui', '', $text);
+        $text = preg_replace('/\\s{2,}/', ' ', trim($text));
+        return $text;
     }
 
     /**
@@ -207,7 +232,7 @@ class GlobalJsonLdGenerator {
             '@id' => $pageUrl . '#service', // Unique per page
             'serviceType' => $serviceType,
             'name' => $title,
-            'description' => self::cleanText($description),
+            'description' => self::cleanSchemaDescription($description),
             'inLanguage' => $lang === 'ru' ? 'ru-RU' : 'uz-UZ',
             'provider' => [
                 '@id' => $baseUrl . '#organization'

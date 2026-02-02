@@ -94,7 +94,7 @@ class ArticleJsonLdGenerator {
         ];
 
         $schema = [
-            '@type' => 'Article',
+            '@type' => 'BlogPosting',
             '@id' => $articleUrl . '#article',
             'headline' => $article["title_$lang"] ?? '',
             'description' => $article["meta_description_$lang"] ?? $article["excerpt_$lang"] ?? '',
@@ -221,6 +221,12 @@ class ArticleJsonLdGenerator {
             'caption' => $article["title_$lang"] ?? '',
             'description' => $article["meta_description_$lang"] ?? $article["excerpt_$lang"] ?? ''
         ];
+
+        $dims = getPublicImageDimensions($imageUrl);
+        if ($dims) {
+            $schema['width'] = $dims['width'];
+            $schema['height'] = $dims['height'];
+        }
         
         return $schema;
     }

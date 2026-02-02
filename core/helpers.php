@@ -954,6 +954,35 @@ function getImageDimensions($filename) {
     return ['width' => $info[0], 'height' => $info[1]];
 }
 
+function getPublicImageDimensions($url) {
+    $url = trim((string)($url ?? ''));
+    if ($url === '') return null;
+
+    $path = '';
+    if (strpos($url, '/') === 0) {
+        $path = $url;
+    } else {
+        $parsed = @parse_url($url);
+        if (!is_array($parsed) || empty($parsed['path'])) return null;
+        $base = siteBaseUrl();
+        $baseHost = parse_url($base, PHP_URL_HOST);
+        $urlHost = $parsed['host'] ?? '';
+        if ($urlHost && $baseHost && strcasecmp($urlHost, $baseHost) !== 0) {
+            return null;
+        }
+        $path = $parsed['path'];
+    }
+
+    if ($path === '' || $path[0] !== '/') return null;
+    if (!defined('PUBLIC_PATH')) return null;
+
+    $fullPath = rtrim(PUBLIC_PATH, '/\\') . str_replace('/', DIRECTORY_SEPARATOR, $path);
+    if (!file_exists($fullPath)) return null;
+    $info = @getimagesize($fullPath);
+    if (!$info) return null;
+    return ['width' => $info[0], 'height' => $info[1]];
+}
+
 function buildResponsiveImageSources($filename, $widths) {
     $path = getUploadsDir() . '/' . $filename;
     if (!file_exists($path)) return null;

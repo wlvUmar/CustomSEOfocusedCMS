@@ -289,6 +289,13 @@ class PageController extends Controller {
         if (!empty($heroImage['height'])) {
             $imageData['height'] = $heroImage['height'];
         }
+        if (empty($imageData['width']) || empty($imageData['height'])) {
+            $dims = getPublicImageDimensions($heroImageUrl);
+            if ($dims) {
+                $imageData['width'] = $dims['width'];
+                $imageData['height'] = $dims['height'];
+            }
+        }
         
         return JsonLdGenerator::generateImage($imageData);
     }
