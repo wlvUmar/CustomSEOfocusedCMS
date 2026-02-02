@@ -27,6 +27,14 @@ class SitemapController extends Controller {
         header('Pragma: public');
         
         $baseUrl = $this->getAbsoluteBaseUrl();
+        $pageTemplateTs = $this->getPageTemplateTimestamp();
+        $articleTemplateTs = $this->getArticleTemplateTimestamp();
+        $pages = $this->pageModel->getAll(false); 
+        $templateLastmodTs = $this->getPageTemplateTimestamp();
+        $articles = $this->articleModel->getAll(true);
+        $pagesLastmodTs = $this->getMaxEntityLastmod($pages, $pageTemplateTs);
+        $articlesLastmodTs = $this->getMaxEntityLastmod($articles, $articleTemplateTs);
+        $indexLastmodTs = max($pagesLastmodTs, $articlesLastmodTs, time());
         
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
@@ -34,13 +42,13 @@ class SitemapController extends Controller {
         // Pages sitemap
         echo '  <sitemap>' . "\n";
         echo '    <loc>' . $baseUrl . '/sitemap-pages.xml</loc>' . "\n";
-        echo '    <lastmod>' . date('Y-m-d') . '</lastmod>' . "\n";
+        echo '    <lastmod>' . date('Y-m-d', $pagesLastmodTs ?: $indexLastmodTs) . '</lastmod>' . "\n";
         echo '  </sitemap>' . "\n";
         
         // Articles sitemap
         echo '  <sitemap>' . "\n";
         echo '    <loc>' . $baseUrl . '/sitemap-articles.xml</loc>' . "\n";
-        echo '    <lastmod>' . date('Y-m-d') . '</lastmod>' . "\n";
+        echo '    <lastmod>' . date('Y-m-d', $articlesLastmodTs ?: $indexLastmodTs) . '</lastmod>' . "\n";
         echo '  </sitemap>' . "\n";
         
         echo '</sitemapindex>';
@@ -72,6 +80,7 @@ class SitemapController extends Controller {
         foreach ($pages as $page) {
             $slug = $page['slug'];
             $updated = $page['updated_at'];
+            $lastmodTs = $this->mergeLastmodTimestamps($updated, $templateLastmodTs);
             
             $isHome = in_array($slug, ['home', 'main'], true);
             $priority = $isHome ? '1.0' : '0.8';
@@ -96,7 +105,7 @@ class SitemapController extends Controller {
 
             echo '  <url>' . "\n";
             echo '    <loc>' . $ruLoc . '</loc>' . "\n";
-            echo '    <lastmod>' . date('Y-m-d', strtotime($updated)) . '</lastmod>' . "\n";
+            echo '    <lastmod>' . date('Y-m-d', $lastmodTs) . '</lastmod>' . "\n";
             echo '    <changefreq>' . $changefreq . '</changefreq>' . "\n";
             echo '    <priority>' . $priority . '</priority>' . "\n";
             echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . $ruLoc . '" />' . "\n";
@@ -105,7 +114,7 @@ class SitemapController extends Controller {
             
             echo '  <url>' . "\n";
             echo '    <loc>' . $uzLoc . '</loc>' . "\n";
-            echo '    <lastmod>' . date('Y-m-d', strtotime($updated)) . '</lastmod>' . "\n";
+            echo '    <lastmod>' . date('Y-m-d', $lastmodTs) . '</lastmod>' . "\n";
             echo '    <changefreq>' . $changefreq . '</changefreq>' . "\n";
             echo '    <priority>' . $priority . '</priority>' . "\n";
             echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . $ruLoc . '" />' . "\n";
@@ -131,6 +140,7 @@ class SitemapController extends Controller {
         
         $baseUrl = $this->getAbsoluteBaseUrl();
         $articles = $this->articleModel->getAll(true); // Published only
+        $templateLastmodTs = $this->getArticleTemplateTimestamp();
         
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
@@ -139,6 +149,7 @@ class SitemapController extends Controller {
         foreach ($articles as $article) {
             $id = $article['id'];
             $updated = $article['updated_at'];
+            $lastmodTs = $this->mergeLastmodTimestamps($updated, $templateLastmodTs);
             
             // Articles have medium priority and monthly changefreq
             $priority = '0.7';
@@ -147,7 +158,7 @@ class SitemapController extends Controller {
             // Russian version
             echo '  <url>' . "\n";
             echo '    <loc>' . $baseUrl . '/articles/' . $id . '</loc>' . "\n";
-            echo '    <lastmod>' . date('Y-m-d', strtotime($updated)) . '</lastmod>' . "\n";
+            echo '    <lastmod>' . date('Y-m-d', $lastmodTs) . '</lastmod>' . "\n";
             echo '    <changefreq>' . $changefreq . '</changefreq>' . "\n";
             echo '    <priority>' . $priority . '</priority>' . "\n";
             echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . $baseUrl . '/articles/' . $id . '" />' . "\n";
@@ -157,7 +168,7 @@ class SitemapController extends Controller {
             // Uzbek version
             echo '  <url>' . "\n";
             echo '    <loc>' . $baseUrl . '/articles/' . $id . '/uz</loc>' . "\n";
-            echo '    <lastmod>' . date('Y-m-d', strtotime($updated)) . '</lastmod>' . "\n";
+            echo '    <lastmod>' . date('Y-m-d', $lastmodTs) . '</lastmod>' . "\n";
             echo '    <changefreq>' . $changefreq . '</changefreq>' . "\n";
             echo '    <priority>' . $priority . '</priority>' . "\n";
             echo '    <xhtml:link rel="alternate" hreflang="ru" href="' . $baseUrl . '/articles/' . $id . '" />' . "\n";
@@ -174,6 +185,65 @@ class SitemapController extends Controller {
      */
     private function getAbsoluteBaseUrl() {
         return siteBaseUrl();
+    }
+
+    private function mergeLastmodTimestamps($updatedAt, $templateTs) {
+        $updatedTs = $updatedAt ? strtotime($updatedAt) : 0;
+        $updatedTs = $updatedTs ?: 0;
+        $templateTs = $templateTs ?: 0;
+        $merged = max($updatedTs, $templateTs);
+        return $merged > 0 ? $merged : time();
+    }
+
+    private function getMaxEntityLastmod($items, $templateTs) {
+        $max = $templateTs ?: 0;
+        foreach ($items as $item) {
+            $updated = $item['updated_at'] ?? null;
+            $ts = $updated ? strtotime($updated) : 0;
+            if ($ts && $ts > $max) {
+                $max = $ts;
+            }
+        }
+        return $max > 0 ? $max : time();
+    }
+
+    private function getPageTemplateTimestamp() {
+        return $this->getLastModifiedTimestamp([
+            '/views/templates/header.php',
+            '/views/templates/footer.php',
+            '/views/templates/page.php',
+            '/core/helpers.php',
+            '/models/GlobalJsonLdGenerator.php',
+            '/models/JsonLdGenerator.php',
+            '/controllers/PageController.php'
+        ]);
+    }
+
+    private function getArticleTemplateTimestamp() {
+        return $this->getLastModifiedTimestamp([
+            '/views/templates/header.php',
+            '/views/templates/footer.php',
+            '/views/templates/article.php',
+            '/core/helpers.php',
+            '/models/GlobalJsonLdGenerator.php',
+            '/models/ArticleJsonLdGenerator.php',
+            '/models/JsonLdGenerator.php',
+            '/controllers/ArticleController.php'
+        ]);
+    }
+
+    private function getLastModifiedTimestamp($paths) {
+        $max = 0;
+        foreach ($paths as $path) {
+            $full = BASE_PATH . '/' . ltrim($path, '/');
+            if (file_exists($full)) {
+                $mtime = filemtime($full);
+                if ($mtime && $mtime > $max) {
+                    $max = $mtime;
+                }
+            }
+        }
+        return $max > 0 ? $max : time();
     }
 
 
