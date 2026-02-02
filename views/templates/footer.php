@@ -75,8 +75,36 @@
     <script>
         window.baseUrl = "<?= rtrim(BASE_URL, '/') ?>";
     </script>
+    <?php if (defined('GTM_ID')): ?>
+    <script>
+        (function() {
+            if (typeof window.__loadGTM !== 'function') return;
+            var load = function() {
+                window.__loadGTM();
+            };
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(load, { timeout: 3000 });
+            } else {
+                window.addEventListener('load', function() {
+                    setTimeout(load, 1500);
+                });
+            }
+        })();
+    </script>
+    <?php endif; ?>
     <script src="<?= BASE_URL ?>/js/link-tracking.js" defer></script>
-    <script src="https://unpkg.com/feather-icons"></script>
-    <script>feather.replace();</script>
+    <script src="<?= BASE_URL ?>/js/feather.min.js" defer></script>
+    <script>
+        const initFeather = () => {
+            if (window.feather) {
+                feather.replace();
+            }
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initFeather);
+        } else {
+            initFeather();
+        }
+    </script>
 </body>
 </html>

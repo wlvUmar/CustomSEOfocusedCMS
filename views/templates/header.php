@@ -60,12 +60,22 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
 <html lang="<?= $lang ?>">
 <head>
     <?php if (defined('GTM_ID')): ?>
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','<?= GTM_ID ?>');</script>
+    <!-- Google Tag Manager (lazy load) -->
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+        window.__gtmLoaded = false;
+        window.__loadGTM = function() {
+            if (window.__gtmLoaded) return;
+            window.__gtmLoaded = true;
+            var d = document;
+            var s = d.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtm.js?id=<?= GTM_ID ?>';
+            var f = d.getElementsByTagName('script')[0];
+            f.parentNode.insertBefore(s, f);
+        };
+    </script>
     <!-- End Google Tag Manager -->
     <?php endif; ?>
     <meta charset="UTF-8">
@@ -104,7 +114,8 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.css">
+    <link rel="preload" href="<?= BASE_URL ?>/css/pages.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css"></noscript>
     
     <?php
     $allSchemas = [];
@@ -276,7 +287,17 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
         <div class="container">
             <nav>
                 <a href="<?= $baseUrl ?>/" class="logo-link">
-                    <img src="<?= BASE_URL ?>/css/logo.png" class="logo" alt="<?= e($seo["site_name_$lang"]) ?>">
+                    <img
+                        src="<?= BASE_URL ?>/css/logo-48.png"
+                        srcset="<?= BASE_URL ?>/css/logo-48.png 48w, <?= BASE_URL ?>/css/logo-96.png 96w"
+                        sizes="48px"
+                        width="48"
+                        height="48"
+                        class="logo"
+                        alt="<?= e($seo["site_name_$lang"]) ?>"
+                        loading="eager"
+                        decoding="async"
+                    >
                     <span class="site-name"><?= e($seo["site_name_$lang"]) ?></span>
                 </a>
                 

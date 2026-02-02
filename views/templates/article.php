@@ -67,7 +67,8 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
     <meta name="twitter:image" content="<?= e($ogImage) ?>">
     
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.css">
+    <link rel="preload" href="<?= BASE_URL ?>/css/pages.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css"></noscript>
     
     <!-- Sitewide JSON-LD Schemas (Organization + WebSite) -->
     <?php if (!empty($sitewideSchema)): ?>
@@ -137,7 +138,17 @@ $brandAuthor = $seo["org_name_$lang"] ?? $seo["site_name_$lang"] ?? ($seo["site_
         <div class="container">
             <nav>
                 <a href="<?= $baseUrl ?>/" class="logo-link">
-                    <img src="<?= BASE_URL ?>/css/logo.png" class="logo" alt="<?= e($seo["site_name_$lang"]) ?>">
+                    <img
+                        src="<?= BASE_URL ?>/css/logo-48.png"
+                        srcset="<?= BASE_URL ?>/css/logo-48.png 48w, <?= BASE_URL ?>/css/logo-96.png 96w"
+                        sizes="48px"
+                        width="48"
+                        height="48"
+                        class="logo"
+                        alt="<?= e($seo["site_name_$lang"]) ?>"
+                        loading="eager"
+                        decoding="async"
+                    >
                     <span class="site-name"><?= e($seo["site_name_$lang"]) ?></span>
                 </a>
                 

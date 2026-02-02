@@ -8,7 +8,8 @@ $seo = $seo ?? [];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PREVIEW: <?= e($page["title_$lang"]) ?></title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.css">
+    <link rel="preload" href="<?= BASE_URL ?>/css/pages.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css"></noscript>
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/preview.css">
 </head>
 <body class="preview-mode">
@@ -73,7 +74,17 @@ $seo = $seo ?? [];
         <div class="container">
             <nav>
                 <a href="<?= BASE_URL ?>" class="logo-link">
-                    <img src="<?= BASE_URL ?>/css/logo.png" class="logo" alt="<?= e($seo["site_name_$lang"]) ?>">
+                    <img
+                        src="<?= BASE_URL ?>/css/logo-48.png"
+                        srcset="<?= BASE_URL ?>/css/logo-48.png 48w, <?= BASE_URL ?>/css/logo-96.png 96w"
+                        sizes="48px"
+                        width="48"
+                        height="48"
+                        class="logo"
+                        alt="<?= e($seo["site_name_$lang"]) ?>"
+                        loading="eager"
+                        decoding="async"
+                    >
                     <span class="site-name"><?= e($seo["site_name_$lang"]) ?></span>
                 </a>
                 
@@ -131,7 +142,18 @@ $seo = $seo ?? [];
     </script>
     <script src="<?= BASE_URL ?>/js/admin/preview.js"></script>
     
-    <script src="https://unpkg.com/feather-icons"></script>
-    <script>feather.replace();</script>
+    <script src="<?= BASE_URL ?>/js/feather.min.js" defer></script>
+    <script>
+        const initFeather = () => {
+            if (window.feather) {
+                feather.replace();
+            }
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initFeather);
+        } else {
+            initFeather();
+        }
+    </script>
 </body>
 </html>
