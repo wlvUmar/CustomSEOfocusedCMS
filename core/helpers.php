@@ -377,6 +377,33 @@ function trackingRateLimit(string $action, int $maxAttempts, int $windowSeconds)
     return $state['count'] <= $maxAttempts;
 }
 
+function shouldCountVisitThisSession(string $slug, string $language): bool
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) return true;
+
+    $slug = (string)$slug;
+    $language = normalizeTrackingLanguage($language);
+
+    $key = 'trk_visit_pages';
+    $today = date('Y-m-d');
+    $state = $_SESSION[$key] ?? ['date' => $today, 'visited' => []];
+    if (!is_array($state) || !isset($state['date'], $state['visited']) || !is_array($state['visited'])) {
+        $state = ['date' => $today, 'visited' => []];
+    }
+    if ($state['date'] !== $today) {
+        $state = ['date' => $today, 'visited' => []];
+    }
+
+    $visitKey = $slug . '|' . $language;
+    if (!empty($state['visited'][$visitKey])) {
+        return false;
+    }
+
+    $state['visited'][$visitKey] = time();
+    $_SESSION[$key] = $state;
+
+    return true;
+}
 
 function getClientIp(): ?string
 {
@@ -461,6 +488,10 @@ function trackVisit($slug, $language) {
 
     if (isBot()) {
         trackBotVisit($slug, $language);
+        return;
+    }
+
+    if (!shouldCountVisitThisSession($slug, $language)) {
         return;
     }
 
