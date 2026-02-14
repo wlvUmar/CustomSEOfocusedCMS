@@ -30,7 +30,6 @@ class SitemapController extends Controller {
         $pageTemplateTs = $this->getPageTemplateTimestamp();
         $articleTemplateTs = $this->getArticleTemplateTimestamp();
         $pages = $this->pageModel->getAll(false); 
-        $templateLastmodTs = $this->getPageTemplateTimestamp();
         $articles = $this->articleModel->getAll(true);
         $pagesLastmodTs = $this->getMaxEntityLastmod($pages, $pageTemplateTs);
         $articlesLastmodTs = $this->getMaxEntityLastmod($articles, $articleTemplateTs);
@@ -69,6 +68,8 @@ class SitemapController extends Controller {
         
         $baseUrl = $this->getAbsoluteBaseUrl();
         $pages = $this->pageModel->getAll(false); 
+        $templateLastmodTs = $this->getPageTemplateTimestamp();
+        $rotationMonthTs = strtotime(date('Y-m-01'));
         
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
@@ -81,6 +82,9 @@ class SitemapController extends Controller {
             $slug = $page['slug'];
             $updated = $page['updated_at'];
             $lastmodTs = $this->mergeLastmodTimestamps($updated, $templateLastmodTs);
+            if (!empty($page['enable_rotation']) && $rotationMonthTs) {
+                $lastmodTs = max($lastmodTs, $rotationMonthTs);
+            }
             
             $isHome = in_array($slug, ['home', 'main'], true);
             $priority = $isHome ? '1.0' : '0.8';
@@ -202,6 +206,12 @@ class SitemapController extends Controller {
             $ts = $updated ? strtotime($updated) : 0;
             if ($ts && $ts > $max) {
                 $max = $ts;
+            }
+            if (!empty($item['enable_rotation'])) {
+                $rotationMonthTs = strtotime(date('Y-m-01'));
+                if ($rotationMonthTs && $rotationMonthTs > $max) {
+                    $max = $rotationMonthTs;
+                }
             }
         }
         return $max > 0 ? $max : time();
