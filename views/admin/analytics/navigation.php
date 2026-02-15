@@ -73,10 +73,149 @@
     </div>
 </div>
 
-<!-- Trend Chart -->
-<div class="chart-box">
-    <h2><i data-feather="activity"></i> Internal Link Clicks Trend</h2>
-    <canvas id="trendChart" height="100"></canvas>
+<!-- User Behavior Insights -->
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
+    <?php
+    // Calculate insights
+    $totalClicks = 0;
+    $totalVisits = 0;
+    $bestLink = null;
+    $worstLink = null;
+    
+    foreach ($link_effectiveness as $link) {
+        $totalClicks += $link['link_clicks'];
+        $totalVisits += $link['from_page_visits'];
+        
+        if (!$bestLink || $link['click_through_rate'] > $bestLink['click_through_rate']) {
+            $bestLink = $link;
+        }
+        if (!$worstLink || $link['click_through_rate'] < $worstLink['click_through_rate']) {
+            $worstLink = $link;
+        }
+    }
+    
+    $avgCtr = count($link_effectiveness) > 0 
+        ? round(array_sum(array_column($link_effectiveness, 'click_through_rate')) / count($link_effectiveness), 2)
+        : 0;
+    
+    $topDestination = [];
+    if (!empty($link_effectiveness)) {
+        foreach ($link_effectiveness as $link) {
+            if (!isset($topDestination[$link['to_slug']])) {
+                $topDestination[$link['to_slug']] = 0;
+            }
+            $topDestination[$link['to_slug']] += $link['link_clicks'];
+        }
+        arsort($topDestination);
+    }
+    
+    $topSource = [];
+    if (!empty($link_effectiveness)) {
+        foreach ($link_effectiveness as $link) {
+            if (!isset($topSource[$link['from_slug']])) {
+                $topSource[$link['from_slug']] = 0;
+            }
+            $topSource[$link['from_slug']] += $link['link_clicks'];
+        }
+        arsort($topSource);
+    }
+    
+    $topSourceName = count($topSource) > 0 ? key($topSource) : 'N/A';
+    $topDestName = count($topDestination) > 0 ? key($topDestination) : 'N/A';
+    ?>
+    
+    <!-- Insight 1: Average CTR -->
+    <div class="chart-box" style="margin: 0; padding: 20px;">
+        <div style="text-align: center;">
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-transform: uppercase; font-weight: 600;">Average Link CTR</div>
+            <div style="font-size: 32px; font-weight: 700; color: #1e293b; margin-bottom: 8px;"><?= $avgCtr ?>%</div>
+            <div style="font-size: 12px; color: #94a3b8;">Across <?= count($link_effectiveness) ?> links</div>
+        </div>
+    </div>
+    
+    <!-- Insight 2: Best Performing Link -->
+    <div class="chart-box" style="margin: 0; padding: 20px;">
+        <div style="text-align: center;">
+            <div style="font-size: 11px; color: #10b981; margin-bottom: 8px; text-transform: uppercase; font-weight: 600;">✓ Best Link</div>
+            <div style="font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">
+                <?= e($bestLink ? $bestLink['from_slug'] : 'N/A') ?> → <?= e($bestLink ? $bestLink['to_slug'] : 'N/A') ?>
+            </div>
+            <div style="font-size: 24px; font-weight: 700; color: #10b981;">
+                <?= $bestLink ? $bestLink['click_through_rate'] : '0' ?>%
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                <?= $bestLink ? number_format($bestLink['link_clicks']) : '0' ?> clicks
+            </div>
+        </div>
+    </div>
+    
+    <!-- Insight 3: Worst Performing Link -->
+    <div class="chart-box" style="margin: 0; padding: 20px;">
+        <div style="text-align: center;">
+            <div style="font-size: 11px; color: #ef4444; margin-bottom: 8px; text-transform: uppercase; font-weight: 600;">⚠ Needs Work</div>
+            <div style="font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">
+                <?= e($worstLink ? $worstLink['from_slug'] : 'N/A') ?> → <?= e($worstLink ? $worstLink['to_slug'] : 'N/A') ?>
+            </div>
+            <div style="font-size: 24px; font-weight: 700; color: #ef4444;">
+                <?= $worstLink ? $worstLink['click_through_rate'] : '0' ?>%
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                <?= $worstLink ? number_format($worstLink['link_clicks']) : '0' ?> clicks
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Journey Insights -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+    <!-- Most Popular Source Page -->
+    <div class="chart-box">
+        <h2><i data-feather="send"></i> Pages Users Navigate FROM</h2>
+        <div style="padding: 20px 0;">
+            <?php if (!empty($topSource)): 
+                $topSourceClicks = reset($topSource);
+                $maxSourceClicks = max($topSource);
+            ?>
+                <?php foreach (array_slice($topSource, 0, 5) as $slug => $clicks): ?>
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-weight: 500; font-size: 13px;"><?= e($slug) ?></span>
+                        <span style="color: #64748b; font-size: 12px;"><?= number_format($clicks) ?> clicks</span>
+                    </div>
+                    <div style="background: #f1f5f9; height: 6px; border-radius: 3px; overflow: hidden;">
+                        <div style="background: #3b82f6; height: 100%; width: <?= ($clicks / $maxSourceClicks) * 100 ?>%; border-radius: 3px;"></div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <p style="text-align: center; color: #94a3b8; padding: 20px;">No data available</p>
+            <?php endif; ?>
+        </div>
+    </div>
+    
+    <!-- Most Popular Destination Page -->
+    <div class="chart-box">
+        <h2><i data-feather="arrow-right"></i> Pages Users Navigate TO</h2>
+        <div style="padding: 20px 0;">
+            <?php if (!empty($topDestination)): 
+                $maxDestClicks = max($topDestination);
+            ?>
+                <?php foreach (array_slice($topDestination, 0, 5) as $slug => $clicks): ?>
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-weight: 500; font-size: 13px;"><?= e($slug) ?></span>
+                        <span style="color: #64748b; font-size: 12px;"><?= number_format($clicks) ?> clicks</span>
+                    </div>
+                    <div style="background: #f1f5f9; height: 6px; border-radius: 3px; overflow: hidden;">
+                        <div style="background: #10b981; height: 100%; width: <?= ($clicks / $maxDestClicks) * 100 ?>%; border-radius: 3px;"></div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <p style="text-align: center; color: #94a3b8; padding: 20px;">No data available</p>
+            <?php endif; ?>
+        </div>
+    </div>
 </div>
 
 <!-- Detailed Data (Collapsible) -->
@@ -123,7 +262,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     feather.replace();
     
-    // CTR Chart
+    // CTR Distribution Chart
     const ctrCtx = document.getElementById('ctrChart');
     if (ctrCtx && <?= !empty($link_stats) ? 'true' : 'false' ?>) {
         new Chart(ctrCtx, {
@@ -145,37 +284,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 responsive: true,
                 plugins: {
                     legend: { position: 'bottom' }
-                }
-            }
-        });
-    }
-    
-    // Trend Chart
-    const trendCtx = document.getElementById('trendChart');
-    const trendData = <?= json_encode($navigation_trends ?? ['labels' => [], 'values' => []]) ?>;
-    
-    if (trendCtx && trendData.labels.length > 0) {
-        new Chart(trendCtx, {
-            type: 'line',
-            data: {
-                labels: trendData.labels,
-                datasets: [{
-                    label: 'Internal Link Clicks',
-                    data: trendData.values,
-                    borderColor: '#8b5cf6',
-                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: { beginAtZero: true }
                 }
             }
         });
