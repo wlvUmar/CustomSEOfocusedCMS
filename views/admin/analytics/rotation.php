@@ -115,11 +115,9 @@
             <?php endforeach; ?>
         </div>
         
-        <div class="card-summary">
-            <div style="position: relative; padding-bottom: 45px;">
-                <div style="position: absolute; top: 0; right: 0; cursor: pointer; padding: 8px 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; z-index: 10;" onclick="toggleChart(this)">
-                    <i data-feather="chevron-down" style="width: 18px; height: 18px;"></i>
-                </div>
+        <div class="card-summary" style="position: relative;">
+            <div style="position: absolute; top: 12px; right: 12px; cursor: pointer; padding: 8px 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; z-index: 10; display: flex; align-items: center;" onclick="toggleChart(event)">
+                <i data-feather="chevron-down" style="width: 18px; height: 18px;"></i>
             </div>
             <?php
             // Prepare chart data
@@ -214,9 +212,10 @@
 <?php endif; ?>
 
 <script>
-function toggleChart(element) {
-    const container = element.closest('.card-summary').querySelector('.chart-container');
-    const icon = element.querySelector('i');
+function toggleChart(event) {
+    const button = event.currentTarget;
+    const container = button.closest('.card-summary').querySelector('.chart-container');
+    const icon = button.querySelector('i');
     
     if (icon && container) {
         if (container.style.maxHeight === '0px' || container.style.maxHeight === '') {
@@ -232,12 +231,9 @@ function toggleChart(element) {
     }
 }
 
-// Initialize icons on page load
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.card-summary').forEach(card => {
-        const btn = card.querySelector('[onclick*="toggleChart"]');
-        const icon = btn ? btn.querySelector('i') : null;
-        if (icon) {
+    document.querySelectorAll('[data-feather="chevron-down"]').forEach(icon => {
+        if (icon.closest('[onclick*="toggleChart"]')) {
             icon.style.transition = 'transform 0.3s ease';
             icon.style.transform = 'rotate(-90deg)';
         }
