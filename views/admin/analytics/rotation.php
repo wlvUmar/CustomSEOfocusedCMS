@@ -115,7 +115,10 @@
             <?php endforeach; ?>
         </div>
         
-        <div class="card-summary">
+        <div class="card-summary" style="position: relative; min-height: 500px;">
+            <div style="position: absolute; top: 0; right: 0; cursor: pointer; padding: 12px 16px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; z-index: 10;" onclick="toggleChart(this)">
+                <i data-feather="chevron-down" style="width: 18px; height: 18px;"></i>
+            </div>
             <?php
             // Prepare chart data
             $chartMonths = [];
@@ -131,15 +134,10 @@
             }
             $chartId = 'chart_' . str_replace(' ', '_', $slug);
             ?>
-            <div style="margin-bottom: 20px;">
-                <div style="display: flex; align-items: center; cursor: pointer; padding: 12px; background: #f9fafb; border-radius: 6px; margin-bottom: 12px;" onclick="toggleChart(this)">
-                    <i data-feather="chevron-down" style="width: 18px; height: 18px; margin-right: 8px;"></i>
-                    <span style="font-weight: 600; color: #374151;">Performance Trend</span>
-                </div>
-                <div class="chart-container" style="display: none; width: 100%;">
-                    <canvas id="<?= $chartId ?>" height="400" style="width: 100% !important;"></canvas>
-                </div>
+            <div class="chart-container" style="display: none; width: 100%; height: 450px; padding-top: 40px;">
+                <canvas id="<?= $chartId ?>" style="width: 100% !important; height: 100% !important;"></canvas>
             </div>
+        </div>
             
             <script>
             document.addEventListener('DOMContentLoaded', function() {
@@ -211,15 +209,18 @@
 
 <?php endif; ?>
 
-
 <script>
 function toggleChart(element) {
-    const container = element.nextElementSibling;
+    const container = element.parentElement.querySelector('.chart-container');
     const icon = element.querySelector('i');
     
     if (container.style.display === 'none') {
         container.style.display = 'block';
         icon.style.transform = 'rotate(0deg)';
+        // Trigger chart resize after display change
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 100);
     } else {
         container.style.display = 'none';
         icon.style.transform = 'rotate(-90deg)';
@@ -228,8 +229,9 @@ function toggleChart(element) {
 
 // Add smooth transition to icon
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[onclick="toggleChart(this)"] i').forEach(icon => {
+    document.querySelectorAll('.card-summary > div[onclick="toggleChart(this)"] i').forEach(icon => {
         icon.style.transition = 'transform 0.3s ease';
+        icon.style.transform = 'rotate(-90deg)';
     });
 });
 </script>
