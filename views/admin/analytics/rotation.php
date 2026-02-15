@@ -136,8 +136,8 @@
                     <i data-feather="chevron-down" style="width: 18px; height: 18px; margin-right: 8px;"></i>
                     <span style="font-weight: 600; color: #374151;">Performance Trend</span>
                 </div>
-                <div class="chart-container" style="display: block; width: 100%;">
-                    <canvas id="<?= $chartId ?>" height="120"></canvas>
+                <div class="chart-container" style="display: none; width: 100%;">
+                    <canvas id="<?= $chartId ?>" height="400" style="width: 100% !important;"></canvas>
                 </div>
             </div>
             
