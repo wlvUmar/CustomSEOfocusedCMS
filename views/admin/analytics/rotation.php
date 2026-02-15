@@ -131,8 +131,14 @@
             }
             $chartId = 'chart_' . str_replace(' ', '_', $slug);
             ?>
-            <div style="width: 100%; margin-bottom: 20px;">
-                <canvas id="<?= $chartId ?>" height="120"></canvas>
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; cursor: pointer; padding: 12px; background: #f9fafb; border-radius: 6px; margin-bottom: 12px;" onclick="toggleChart(this)">
+                    <i data-feather="chevron-down" style="width: 18px; height: 18px; margin-right: 8px;"></i>
+                    <span style="font-weight: 600; color: #374151;">Performance Trend</span>
+                </div>
+                <div class="chart-container" style="display: block; width: 100%;">
+                    <canvas id="<?= $chartId ?>" height="120"></canvas>
+                </div>
             </div>
             
             <script>
@@ -205,5 +211,27 @@
 
 <?php endif; ?>
 
+
+<script>
+function toggleChart(element) {
+    const container = element.nextElementSibling;
+    const icon = element.querySelector('i');
+    
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+        icon.style.transform = 'rotate(0deg)';
+    } else {
+        container.style.display = 'none';
+        icon.style.transform = 'rotate(-90deg)';
+    }
+}
+
+// Add smooth transition to icon
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[onclick="toggleChart(this)"] i').forEach(icon => {
+        icon.style.transition = 'transform 0.3s ease';
+    });
+});
+</script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
