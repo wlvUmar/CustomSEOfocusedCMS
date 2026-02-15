@@ -14,8 +14,8 @@ if (IS_PRODUCTION) {
 }
 $csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://www.googletagmanager.com",
-    "script-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://www.googletagmanager.com",
+    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://www.googletagmanager.com",
+    "script-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://www.googletagmanager.com",
 
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
     "style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
@@ -23,7 +23,7 @@ $csp = [
     "img-src 'self' data: blob: https: https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com",
     "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
 
-    "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com",
+    "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com",
 
     "frame-src 'self' https://www.googletagmanager.com",
     "frame-ancestors 'self'",

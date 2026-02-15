@@ -117,10 +117,6 @@
         
         <div class="card-summary">
             <?php
-            $totalShown = array_sum(array_column($data['rotations'], 'times_shown'));
-            $avgPerMonth = count($data['rotations']) > 0 ? round($totalShown / count($data['rotations'])) : 0;
-            $monthsCovered = count($data['rotations']);
-            
             // Prepare chart data
             $chartMonths = [];
             $chartVisits = [];
@@ -135,24 +131,8 @@
             }
             $chartId = 'chart_' . str_replace(' ', '_', $slug);
             ?>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                <div>
-                    <div class="summary-stat">
-                        <span class="stat-label"><i data-feather="eye"></i> Total Times Shown:</span>
-                        <span class="stat-value"><?= number_format($totalShown) ?></span>
-                    </div>
-                    <div class="summary-stat">
-                        <span class="stat-label"><i data-feather="bar-chart-2"></i> Avg per Month:</span>
-                        <span class="stat-value"><?= number_format($avgPerMonth) ?></span>
-                    </div>
-                    <div class="summary-stat">
-                        <span class="stat-label"><i data-feather="calendar"></i> Months Covered:</span>
-                        <span class="stat-value"><?= $monthsCovered ?>/12</span>
-                    </div>
-                </div>
-                <div>
-                    <canvas id="<?= $chartId ?>" height="120"></canvas>
-                </div>
+            <div style="width: 100%; margin-bottom: 20px;">
+                <canvas id="<?= $chartId ?>" height="120"></canvas>
             </div>
             
             <script>
