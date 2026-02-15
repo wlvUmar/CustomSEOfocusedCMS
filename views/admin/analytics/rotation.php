@@ -115,9 +115,11 @@
             <?php endforeach; ?>
         </div>
         
-        <div class="card-summary" style="position: relative; min-height: 500px;">
-            <div style="position: absolute; top: 0; right: 0; cursor: pointer; padding: 12px 16px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; z-index: 10;" onclick="toggleChart(this)">
-                <i data-feather="chevron-down" style="width: 18px; height: 18px;"></i>
+        <div class="card-summary">
+            <div style="position: relative; padding-bottom: 45px;">
+                <div style="position: absolute; top: 0; right: 0; cursor: pointer; padding: 8px 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; z-index: 10;" onclick="toggleChart(this)">
+                    <i data-feather="chevron-down" style="width: 18px; height: 18px;"></i>
+                </div>
             </div>
             <?php
             // Prepare chart data
@@ -134,8 +136,10 @@
             }
             $chartId = 'chart_' . str_replace(' ', '_', $slug);
             ?>
-            <div class="chart-container" style="display: none; width: 100%; height: 450px; padding-top: 40px;">
-                <canvas id="<?= $chartId ?>" style="width: 100% !important; height: 100% !important;"></canvas>
+            <div class="chart-container" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease; width: 100%;">
+                <div style="height: 450px; width: 100%;">
+                    <canvas id="<?= $chartId ?>" style="width: 100% !important; height: 100% !important;"></canvas>
+                </div>
             </div>
         </div>
             
@@ -211,25 +215,26 @@
 
 <script>
 function toggleChart(element) {
-    const container = element.parentElement.querySelector('.chart-container');
+    const container = element.closest('.card-summary').querySelector('.chart-container');
     const icon = element.querySelector('i');
     
-    if (container.style.display === 'none') {
-        container.style.display = 'block';
+    if (container.style.maxHeight === '0px' || container.style.maxHeight === '') {
+        container.style.maxHeight = '500px';
         icon.style.transform = 'rotate(0deg)';
         // Trigger chart resize after display change
         setTimeout(() => {
             window.dispatchEvent(new Event('resize'));
         }, 100);
     } else {
-        container.style.display = 'none';
+        container.style.maxHeight = '0px';
         icon.style.transform = 'rotate(-90deg)';
     }
 }
 
 // Add smooth transition to icon
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.card-summary > div[onclick="toggleChart(this)"] i').forEach(icon => {
+    document.querySelectorAll('[onclick="toggleChart(this)"]').forEach(btn => {
+        const icon = btn.querySelector('i');
         icon.style.transition = 'transform 0.3s ease';
         icon.style.transform = 'rotate(-90deg)';
     });
