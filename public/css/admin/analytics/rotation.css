@@ -73,9 +73,10 @@
 }
 
 .rotation-item {
-    background: white;
-    padding: 16px;
-    transition: all 0.2s;
+    background: #ffffff;
+    margin: 8px 4px;
+    border-radius: 10px;
+    box-shadow: 1px 2px 4px 0.5px #0000001c;
 }
 
 .rotation-item:hover {
