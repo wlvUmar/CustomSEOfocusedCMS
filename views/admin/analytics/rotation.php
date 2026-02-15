@@ -218,25 +218,29 @@ function toggleChart(element) {
     const container = element.closest('.card-summary').querySelector('.chart-container');
     const icon = element.querySelector('i');
     
-    if (container.style.maxHeight === '0px' || container.style.maxHeight === '') {
-        container.style.maxHeight = '500px';
-        icon.style.transform = 'rotate(0deg)';
-        // Trigger chart resize after display change
-        setTimeout(() => {
-            window.dispatchEvent(new Event('resize'));
-        }, 100);
-    } else {
-        container.style.maxHeight = '0px';
-        icon.style.transform = 'rotate(-90deg)';
+    if (icon && container) {
+        if (container.style.maxHeight === '0px' || container.style.maxHeight === '') {
+            container.style.maxHeight = '500px';
+            icon.style.transform = 'rotate(0deg)';
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        } else {
+            container.style.maxHeight = '0px';
+            icon.style.transform = 'rotate(-90deg)';
+        }
     }
 }
 
-// Add smooth transition to icon
+// Initialize icons on page load
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[onclick="toggleChart(this)"]').forEach(btn => {
-        const icon = btn.querySelector('i');
-        icon.style.transition = 'transform 0.3s ease';
-        icon.style.transform = 'rotate(-90deg)';
+    document.querySelectorAll('.card-summary').forEach(card => {
+        const btn = card.querySelector('[onclick*="toggleChart"]');
+        const icon = btn ? btn.querySelector('i') : null;
+        if (icon) {
+            icon.style.transition = 'transform 0.3s ease';
+            icon.style.transform = 'rotate(-90deg)';
+        }
     });
 });
 </script>
