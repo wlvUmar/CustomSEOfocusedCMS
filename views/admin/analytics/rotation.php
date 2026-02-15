@@ -116,7 +116,7 @@
         </div>
         
         <div class="card-summary" style="position: relative;">
-            <div style="position: absolute; top: 12px; right: 12px; cursor: pointer; padding: 8px 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; z-index: 10; display: flex; align-items: center;" onclick="toggleChart(event)">
+            <div class="chart-toggle-btn" style="position: absolute; top: 12px; right: 12px; cursor: pointer; padding: 8px 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; z-index: 10; display: flex; align-items: center;">
                 <i data-feather="chevron-down" style="width: 18px; height: 18px;"></i>
             </div>
             <?php
@@ -212,31 +212,28 @@
 <?php endif; ?>
 
 <script>
-function toggleChart(event) {
-    const button = event.currentTarget;
-    const container = button.closest('.card-summary').querySelector('.chart-container');
-    const icon = button.querySelector('i');
-    
-    if (icon && container) {
-        if (container.style.maxHeight === '0px' || container.style.maxHeight === '') {
-            container.style.maxHeight = '500px';
-            icon.style.transform = 'rotate(0deg)';
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-            }, 100);
-        } else {
-            container.style.maxHeight = '0px';
-            icon.style.transform = 'rotate(-90deg)';
-        }
-    }
-}
-
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-feather="chevron-down"]').forEach(icon => {
-        if (icon.closest('[onclick*="toggleChart"]')) {
+    document.querySelectorAll('.chart-toggle-btn').forEach(btn => {
+        const icon = btn.querySelector('i');
+        if (icon) {
             icon.style.transition = 'transform 0.3s ease';
             icon.style.transform = 'rotate(-90deg)';
         }
+        
+        btn.addEventListener('click', function() {
+            const card = this.closest('.card-summary');
+            const container = card.querySelector('.chart-container');
+            const icon = this.querySelector('i');
+            
+            if (container.style.maxHeight === '0px' || container.style.maxHeight === '') {
+                container.style.maxHeight = '500px';
+                icon.style.transform = 'rotate(0deg)';
+                setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+            } else {
+                container.style.maxHeight = '0px';
+                icon.style.transform = 'rotate(-90deg)';
+            }
+        });
     });
 });
 </script>
