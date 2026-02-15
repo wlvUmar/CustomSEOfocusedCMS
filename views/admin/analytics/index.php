@@ -113,16 +113,16 @@ function updateAnalyticsFilters() {
     $totalVisits = $stats['total']['total_visits'] ?? 0;
     $totalClicks = $stats['total']['total_clicks'] ?? 0;
     $totalPhones = $stats['total']['total_phone_calls'] ?? 0;
-    $overallCtr = $totalVisits > 0 ? round((($totalClicks + $totalPhones) / $totalVisits) * 100, 2) : 0;
+    $overallCtr = $totalVisits > 0 ? round(($totalPhones / $totalVisits) * 100, 2) : 0;
     
     $scorecards = [
         ['label' => 'Total Visits', 'icon' => 'eye', 'value' => $totalVisits, 'class' => 'visits', 'metric' => 'visits'],
         ['label' => 'Total Clicks', 'icon' => 'mouse-pointer', 'value' => $totalClicks, 'class' => 'clicks', 'metric' => 'clicks'],
         ['label' => 'Phone Calls', 'icon' => 'phone', 'value' => $totalPhones, 'class' => 'phones', 'metric' => 'phone_calls'],
-        ['label' => 'Average CTR', 'icon' => 'percent', 'value' => $overallCtr . '%', 'class' => 'ctr', 'metric' => 'ctr']
+        ['label' => 'Phone Call CTR', 'icon' => 'percent', 'value' => $overallCtr . '%', 'class' => 'ctr', 'metric' => 'ctr']
     ];
     
-    foreach ($scorecards as $sc): 
+    foreach ($scorecards as $sc):
         $change = $stats['trends']['changes'][$sc['metric']] ?? 0;
     ?>
     <div class="performance-scorecard active <?= $sc['class'] ?>" data-metric="<?= $sc['metric'] ?>">
@@ -232,8 +232,7 @@ function updateAnalyticsFilters() {
             <?php foreach ($topPerformers as $index => $page):
                 $visits = (int)($page['visits'] ?? 0);
                 $clicks = (int)($page['clicks'] ?? 0);
-                $phones = (int)($page['phone_calls'] ?? 0);
-                $ctr = $visits > 0 ? round((($clicks + $phones) / $visits) * 100, 2) : 0;
+                $ctr = $visits > 0 ? round(($clicks / $visits) * 100, 2) : 0;
                 $visitsWidth = $maxVisits > 0 ? ($visits / $maxVisits) * 100 : 0;
                 $clicksWidth = $maxClicks > 0 ? ($clicks / $maxClicks) * 100 : 0;
             ?>
@@ -347,3 +346,4 @@ if (window.DEBUG) {
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
+

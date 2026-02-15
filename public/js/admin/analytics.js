@@ -63,10 +63,10 @@ function initPerformanceChart() {
 
     const data = window.performanceChartData || { labels: [], visits: [], clicks: [], phones: [] };
 
-    // Calculate CTR array
+    // Calculate CTR based on phone calls only
     const ctrData = data.visits.map((v, i) => {
-        const c = (data.clicks[i] || 0) + (data.phones[i] || 0);
-        return v > 0 ? parseFloat(((c / v) * 100).toFixed(2)) : 0;
+        const phones = (data.phones[i] || 0);
+        return v > 0 ? parseFloat(((phones / v) * 100).toFixed(2)) : 0;
     });
 
     performanceChartInstance = new Chart(canvas, {
@@ -210,13 +210,12 @@ window.updatePerformanceChart = async function (aggregation) {
             performanceChartInstance.data.datasets[1].data = Object.values(data.clicks);
             performanceChartInstance.data.datasets[2].data = Object.values(data.phone_calls);
 
-            // Recalculate CTR
+            // Recalculate CTR based on phone calls only
             const visitsArr = Object.values(data.visits);
-            const clicksArr = Object.values(data.clicks);
             const phonesArr = Object.values(data.phone_calls);
             const newCtr = visitsArr.map((v, i) => {
-                const c = (clicksArr[i] || 0) + (phonesArr[i] || 0);
-                return v > 0 ? parseFloat(((c / v) * 100).toFixed(2)) : 0;
+                const phones = (phonesArr[i] || 0);
+                return v > 0 ? parseFloat(((phones / v) * 100).toFixed(2)) : 0;
             });
             performanceChartInstance.data.datasets[3].data = newCtr;
 

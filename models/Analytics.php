@@ -543,7 +543,7 @@ class Analytics {
                     SUM(total_visits) as visits,
                     SUM(total_clicks) as clicks,
                     SUM(total_phone_calls) as phone_calls,
-                    ROUND(((SUM(total_clicks) + SUM(total_phone_calls)) / NULLIF(SUM(total_visits), 0)) * 100, 2) as ctr,
+                    ROUND((SUM(total_phone_calls) / NULLIF(SUM(total_visits), 0)) * 100, 2) as ctr,
                     COUNT(DISTINCT CONCAT(year, '-', month)) as active_months
                 FROM analytics_monthly
                 WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
@@ -561,7 +561,7 @@ class Analytics {
                     SUM(visits) as visits,
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls,
-                    ROUND(((SUM(clicks) + SUM(phone_calls)) / NULLIF(SUM(visits), 0)) * 100, 2) as ctr
+                    ROUND((SUM(phone_calls) / NULLIF(SUM(visits), 0)) * 100, 2) as ctr
                 FROM analytics
                 WHERE date BETWEEN ? AND ?
                 GROUP BY page_slug
@@ -849,10 +849,10 @@ class Analytics {
     public function getRotationImpact($months = 3) {
         $months = (int)$months;
         
-        // Get CTR for pages WITH rotation enabled
+        // Get phone call CTR for pages WITH rotation enabled
         $rotationCtrSql = "SELECT 
                 AVG(CASE WHEN am.total_visits > 0 
-                    THEN ((am.total_clicks + am.total_phone_calls) / am.total_visits) * 100 
+                    THEN (am.total_phone_calls / am.total_visits) * 100 
                     ELSE 0 END) as avg_ctr,
                 COUNT(DISTINCT am.page_slug) as pages_count
             FROM analytics_monthly am
@@ -862,10 +862,10 @@ class Analytics {
         
         $rotationData = $this->db->fetchOne($rotationCtrSql, [$months]);
         
-        // Get CTR for pages WITHOUT rotation (for comparison)
+        // Get phone call CTR for pages WITHOUT rotation (for comparison)
         $noRotationCtrSql = "SELECT 
                 AVG(CASE WHEN am.total_visits > 0 
-                    THEN ((am.total_clicks + am.total_phone_calls) / am.total_visits) * 100 
+                    THEN (am.total_phone_calls / am.total_visits) * 100 
                     ELSE 0 END) as avg_ctr
             FROM analytics_monthly am
             JOIN pages p ON am.page_slug = p.slug

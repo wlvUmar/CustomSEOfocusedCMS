@@ -63,9 +63,8 @@
                 $currentYear = date('Y');
                 $isCurrentMonth = ($rotation['rotation_month'] == $currentMonth && $year == $currentYear);
                 $total_visits = $rotation['total_visits'] ?? 0;
-                $total_clicks = $rotation['total_clicks'] ?? 0;
                 $total_phones = $rotation['total_phone_calls'] ?? 0;
-                $ctr = $total_visits > 0 ? round((($total_clicks + $total_phones) / $total_visits) * 100, 2) : 0;
+                $ctr = $total_visits > 0 ? round(($total_phones / $total_visits) * 100, 2) : 0;
             ?>
             
             <div class="rotation-item <?= $isCurrentMonth ? 'current' : '' ?>">
@@ -121,19 +120,103 @@
             $totalShown = array_sum(array_column($data['rotations'], 'times_shown'));
             $avgPerMonth = count($data['rotations']) > 0 ? round($totalShown / count($data['rotations'])) : 0;
             $monthsCovered = count($data['rotations']);
+            
+            // Prepare chart data
+            $chartMonths = [];
+            $chartVisits = [];
+            $chartCtr = [];
+            foreach ($data['rotations'] as $rot) {
+                $chartMonths[] = date('M', mktime(0, 0, 0, $rot['rotation_month'], 1));
+                $chartVisits[] = (int)($rot['total_visits'] ?? 0);
+                $visitsVal = (int)($rot['total_visits'] ?? 0);
+                $phonesVal = (int)($rot['total_phone_calls'] ?? 0);
+                $ctrVal = $visitsVal > 0 ? round(($phonesVal / $visitsVal) * 100, 2) : 0;
+                $chartCtr[] = $ctrVal;
+            }
+            $chartId = 'chart_' . str_replace(' ', '_', $slug);
             ?>
-            <div class="summary-stat">
-                <span class="stat-label"><i data-feather="eye"></i> Total Times Shown:</span>
-                <span class="stat-value"><?= number_format($totalShown) ?></span>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <div class="summary-stat">
+                        <span class="stat-label"><i data-feather="eye"></i> Total Times Shown:</span>
+                        <span class="stat-value"><?= number_format($totalShown) ?></span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="stat-label"><i data-feather="bar-chart-2"></i> Avg per Month:</span>
+                        <span class="stat-value"><?= number_format($avgPerMonth) ?></span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="stat-label"><i data-feather="calendar"></i> Months Covered:</span>
+                        <span class="stat-value"><?= $monthsCovered ?>/12</span>
+                    </div>
+                </div>
+                <div>
+                    <canvas id="<?= $chartId ?>" height="120"></canvas>
+                </div>
             </div>
-            <div class="summary-stat">
-                <span class="stat-label"><i data-feather="bar-chart-2"></i> Avg per Month:</span>
-                <span class="stat-value"><?= number_format($avgPerMonth) ?></span>
-            </div>
-            <div class="summary-stat">
-                <span class="stat-label"><i data-feather="calendar"></i> Months Covered:</span>
-                <span class="stat-value"><?= $monthsCovered ?>/12</span>
-            </div>
+            
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const ctx = document.getElementById('<?= $chartId ?>');
+                if (ctx) {
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: <?= json_encode($chartMonths) ?>,
+                            datasets: [
+                                {
+                                    label: 'Visits',
+                                    data: <?= json_encode($chartVisits) ?>,
+                                    borderColor: '#3b82f6',
+                                    backgroundColor: '#3b82f610',
+                                    tension: 0.4,
+                                    yAxisID: 'y',
+                                    fill: true
+                                },
+                                {
+                                    label: 'Phone Call CTR %',
+                                    data: <?= json_encode($chartCtr) ?>,
+                                    borderColor: '#f59e0b',
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 2,
+                                    tension: 0.4,
+                                    yAxisID: 'y1',
+                                    pointRadius: 4,
+                                    pointBackgroundColor: '#f59e0b'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: { 
+                                    display: true,
+                                    position: 'top',
+                                    labels: { font: { size: 11 }, boxWidth: 12 }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    title: { display: true, text: 'Visits', font: { size: 11 } }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    title: { display: true, text: 'CTR %', font: { size: 11 } },
+                                    grid: { drawOnChartArea: false }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+            </script>
         </div>
     </div>
     

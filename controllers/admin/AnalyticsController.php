@@ -228,11 +228,11 @@ class AnalyticsController extends Controller {
         $output = fopen('php://output', 'w');
         
         // Headers
-        fputcsv($output, ['Page', 'Language', 'Visits', 'Clicks', 'Phone Calls', 'CTR %', 'Period']);
+        fputcsv($output, ['Page', 'Language', 'Visits', 'Clicks', 'Phone Calls', 'Phone Call CTR %', 'Period']);
         
         // Data
         foreach ($stats as $row) {
-            $ctr = $row['visits'] > 0 ? round((($row['clicks'] + $row['phone_calls']) / $row['visits']) * 100, 2) : 0;
+            $ctr = $row['visits'] > 0 ? round(($row['phone_calls'] / $row['visits']) * 100, 2) : 0;
             fputcsv($output, [
                 $row['page_slug'],
                 strtoupper($row['language']),
