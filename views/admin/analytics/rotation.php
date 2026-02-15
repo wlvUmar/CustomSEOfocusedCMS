@@ -64,7 +64,8 @@
                 $isCurrentMonth = ($rotation['rotation_month'] == $currentMonth && $year == $currentYear);
                 $total_visits = $rotation['total_visits'] ?? 0;
                 $total_clicks = $rotation['total_clicks'] ?? 0;
-                $ctr = $total_visits > 0 ? round(($total_clicks / $total_visits) * 100, 2) : 0;
+                $total_phones = $rotation['total_phone_calls'] ?? 0;
+                $ctr = $total_visits > 0 ? round((($total_clicks + $total_phones) / $total_visits) * 100, 2) : 0;
             ?>
             
             <div class="rotation-item <?= $isCurrentMonth ? 'current' : '' ?>">

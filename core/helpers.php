@@ -405,6 +405,64 @@ function shouldCountVisitThisSession(string $slug, string $language): bool
     return true;
 }
 
+function shouldCountClickThisSession(string $slug, string $language, int $cooldownSeconds = 5): bool
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) return true;
+
+    $slug = (string)$slug;
+    $language = normalizeTrackingLanguage($language);
+
+    $key = 'trk_clicks';
+    $state = $_SESSION[$key] ?? [];
+    if (!is_array($state)) {
+        $state = [];
+    }
+
+    $clickKey = $slug . '|' . $language;
+    $now = time();
+
+    if (isset($state[$clickKey])) {
+        $lastClickTime = $state[$clickKey];
+        if (($now - $lastClickTime) < $cooldownSeconds) {
+            return false;
+        }
+    }
+
+    $state[$clickKey] = $now;
+    $_SESSION[$key] = $state;
+
+    return true;
+}
+
+function shouldCountPhoneCallThisSession(string $slug, string $language, int $cooldownSeconds = 5): bool
+{
+    if (session_status() !== PHP_SESSION_ACTIVE) return true;
+
+    $slug = (string)$slug;
+    $language = normalizeTrackingLanguage($language);
+
+    $key = 'trk_phone_calls';
+    $state = $_SESSION[$key] ?? [];
+    if (!is_array($state)) {
+        $state = [];
+    }
+
+    $callKey = $slug . '|' . $language;
+    $now = time();
+
+    if (isset($state[$callKey])) {
+        $lastCallTime = $state[$callKey];
+        if (($now - $lastCallTime) < $cooldownSeconds) {
+            return false;
+        }
+    }
+
+    $state[$callKey] = $now;
+    $_SESSION[$key] = $state;
+
+    return true;
+}
+
 function getClientIp(): ?string
 {
     if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
@@ -568,6 +626,10 @@ function trackClick($slug, $language) {
     if (shouldSkipTracking()) return;
     if (isBot()) return;
 
+    if (!shouldCountClickThisSession($slug, $language)) {
+        return;
+    }
+
     try {
         $db = Database::getInstance();
         $date = date('Y-m-d');
@@ -590,6 +652,10 @@ function trackClick($slug, $language) {
 function trackPhoneCall($slug, $language) {
     if (shouldSkipTracking()) return;
     if (isBot()) return;
+
+    if (!shouldCountPhoneCallThisSession($slug, $language)) {
+        return;
+    }
 
     try {
         $db = Database::getInstance();

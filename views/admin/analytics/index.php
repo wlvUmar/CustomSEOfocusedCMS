@@ -232,7 +232,8 @@ function updateAnalyticsFilters() {
             <?php foreach ($topPerformers as $index => $page):
                 $visits = (int)($page['visits'] ?? 0);
                 $clicks = (int)($page['clicks'] ?? 0);
-                $ctr = $visits > 0 ? round(($clicks / $visits) * 100, 2) : 0;
+                $phones = (int)($page['phone_calls'] ?? 0);
+                $ctr = $visits > 0 ? round((($clicks + $phones) / $visits) * 100, 2) : 0;
                 $visitsWidth = $maxVisits > 0 ? ($visits / $maxVisits) * 100 : 0;
                 $clicksWidth = $maxClicks > 0 ? ($clicks / $maxClicks) * 100 : 0;
             ?>
