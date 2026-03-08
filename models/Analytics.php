@@ -862,30 +862,9 @@ class Analytics {
         
         $rotationData = $this->db->fetchOne($rotationCtrSql, [$months]);
         
-        // Get phone call CTR for pages WITHOUT rotation (for comparison)
-        $noRotationCtrSql = "SELECT 
-                AVG(CASE WHEN am.total_visits > 0 
-                    THEN (am.total_phone_calls / am.total_visits) * 100 
-                    ELSE 0 END) as avg_ctr
-            FROM analytics_monthly am
-            JOIN pages p ON am.page_slug = p.slug
-            WHERE p.enable_rotation = 0
-            AND DATE(CONCAT(am.year, '-', am.month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
-        
-        $noRotationData = $this->db->fetchOne($noRotationCtrSql, [$months]);
-        
         $rotationCtr = $rotationData['avg_ctr'] ?? 0;
-        $noRotationCtr = $noRotationData['avg_ctr'] ?? 0;
-        
-        // Only calculate improvement when the baseline is meaningful (>=0.1% CTR).
-        // Comparing rotation service pages against near-zero-CTR content pages produces
-        // absurdly large percentages (e.g. 18000%) that are meaningless.
-        $improvement = ($noRotationCtr >= 0.1)
-            ? round((($rotationCtr - $noRotationCtr) / $noRotationCtr) * 100, 1)
-            : null;
-        
+
         return [
-            'ctr_improvement' => $improvement,
             'pages_with_rotation' => $rotationData['pages_count'] ?? 0,
             'avg_engagement' => round($rotationCtr, 1)
         ];

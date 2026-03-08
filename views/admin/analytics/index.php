@@ -154,11 +154,7 @@ function updateAnalyticsFilters() {
         </div>
         <div>
             <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Rotation</div>
-            <?php if ($rotationImpact['ctr_improvement'] !== null): ?>
-            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $rotationImpact['ctr_improvement'] > 0 ? '+' : '' ?><?= $rotationImpact['ctr_improvement'] ?>% vs non-rotation</div>
-            <?php else: ?>
             <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $rotationImpact['avg_engagement'] ?>% avg CTR</div>
-            <?php endif; ?>
         </div>
     </a>
     
