@@ -204,7 +204,6 @@
             });
             </script>
         </div>
-    </div>
     
     <?php endforeach; ?>
 </div>

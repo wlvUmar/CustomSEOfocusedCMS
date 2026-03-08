@@ -77,11 +77,14 @@ if (!isset($_SESSION['last_regeneration'])) {
     $_SESSION['last_regeneration'] = time();
 }
 
-$timeout = 1800;
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $timeout) {
-    session_unset();
-    session_destroy();
-    header('Location: ' . BASE_URL . '/admin/login?timeout=1');
-    exit;
+// Session timeout only applies to authenticated admin sessions
+if (!empty($_SESSION['user_id'])) {
+    $timeout = 1800;
+    if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $timeout) {
+        session_unset();
+        session_destroy();
+        header('Location: ' . BASE_URL . '/admin/login?timeout=1');
+        exit;
+    }
+    $_SESSION['last_activity'] = time();
 }
-$_SESSION['last_activity'] = time();

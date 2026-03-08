@@ -314,6 +314,11 @@ function shouldSkipTracking(): bool
         return true;
     }
 
+    // Skip tracking for logged-in admins browsing the front-end
+    if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_id'])) {
+        return true;
+    }
+
     $clientIp = getClientIp();
     $skipIps = [
         '213.230.80.213',
@@ -493,12 +498,12 @@ function bumpMonthlySummary($slug, $language, $deltaVisits, $deltaClicks, $delta
 
         $sql = "INSERT INTO analytics_monthly
                     (page_slug, language, year, month, total_visits, total_clicks, total_phone_calls, unique_days)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?) AS new_row
                 ON DUPLICATE KEY UPDATE
-                    total_visits = total_visits + VALUES(total_visits),
-                    total_clicks = total_clicks + VALUES(total_clicks),
-                    total_phone_calls = total_phone_calls + VALUES(total_phone_calls),
-                    unique_days = unique_days + VALUES(unique_days)";
+                    total_visits = total_visits + new_row.total_visits,
+                    total_clicks = total_clicks + new_row.total_clicks,
+                    total_phone_calls = total_phone_calls + new_row.total_phone_calls,
+                    unique_days = unique_days + new_row.unique_days";
 
         $db->query($sql, [$slug, $language, $year, $month, $deltaVisits, $deltaClicks, $deltaPhoneCalls, $deltaDays]);
     } catch (Exception $e) {
@@ -663,15 +668,14 @@ function trackPhoneCall($slug, $language) {
         $language = normalizeTrackingLanguage($language);
         if (!isValidAnalyticsSlug($slug)) return;
 
-        // Note: Phone calls are counted as BOTH a click and a phone_call
         $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, date) 
-                VALUES (?, ?, 0, 1, 1, ?) 
-                ON DUPLICATE KEY UPDATE clicks = clicks + 1, phone_calls = phone_calls + 1";
+                VALUES (?, ?, 0, 0, 1, ?) 
+                ON DUPLICATE KEY UPDATE phone_calls = phone_calls + 1";
 
         $stmt = $db->query($sql, [$slug, $language, $date]);
         $isNewDay = ($stmt && $stmt->rowCount() === 1);
-        bumpMonthlySummary($slug, $language, 0, 1, 1, $isNewDay);
-        bumpHourlySummary($slug, $language, 0, 1, 1);
+        bumpMonthlySummary($slug, $language, 0, 0, 1, $isNewDay);
+        bumpHourlySummary($slug, $language, 0, 0, 1);
     } catch (Exception $e) {
         error_log("Phone call tracking error: " . $e->getMessage());
     }

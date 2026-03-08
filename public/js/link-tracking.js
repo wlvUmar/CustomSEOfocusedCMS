@@ -44,23 +44,6 @@
         });
     }
 
-    function trackPhoneCall() {
-        const slug = getCurrentSlug();
-        const lang = getCurrentLanguage();
-        const body = new URLSearchParams({ slug, lang });
-
-        if (navigator.sendBeacon) {
-            navigator.sendBeacon(window.baseUrl + '/track-phone-call', body);
-        } else {
-            fetch(window.baseUrl + '/track-phone-call', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: body.toString(),
-                keepalive: true
-            }).catch(e => console.debug('Phone tracking failed:', e));
-        }
-    }
-
     function extractSlugFromHref(href) {
         try {
             const url = new URL(href, window.location.origin);
@@ -83,9 +66,9 @@
 
             if (!link || !link.href) return;
 
-            // Track phone calls
+            // Phone calls are tracked via the onclick handler on the tel: link itself.
+            // Do NOT track here to avoid double-counting.
             if (link.href.startsWith('tel:')) {
-                trackPhoneCall();
                 return;
             }
 

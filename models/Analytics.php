@@ -877,10 +877,12 @@ class Analytics {
         $rotationCtr = $rotationData['avg_ctr'] ?? 0;
         $noRotationCtr = $noRotationData['avg_ctr'] ?? 0;
         
-        // Calculate improvement
-        $improvement = $noRotationCtr > 0 
+        // Only calculate improvement when the baseline is meaningful (>=0.1% CTR).
+        // Comparing rotation service pages against near-zero-CTR content pages produces
+        // absurdly large percentages (e.g. 18000%) that are meaningless.
+        $improvement = ($noRotationCtr >= 0.1)
             ? round((($rotationCtr - $noRotationCtr) / $noRotationCtr) * 100, 1)
-            : 0;
+            : null;
         
         return [
             'ctr_improvement' => $improvement,
