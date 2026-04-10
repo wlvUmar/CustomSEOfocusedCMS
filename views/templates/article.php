@@ -29,6 +29,7 @@ $brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"]
     })(window,document,'script','dataLayer','<?= GTM_ID ?>');</script>
     <!-- End Google Tag Manager -->
     <?php endif; ?>
+    <?= renderMetaPixelHead() ?>
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -121,6 +122,7 @@ $brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"]
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
     <?php endif; ?>
+    <?= renderMetaPixelNoscript() ?>
     
     <?php if ($isAdmin): ?>
     <div class="admin-toolbar">
@@ -288,38 +290,13 @@ $brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"]
     </footer>
     
     <script>
-    function postTracking(endpoint, params) {
-        try {
-            fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams(params).toString(),
-                keepalive: true
-            }).catch(() => {});
-        } catch (e) {}
-    }
-
-    function maybeAskForReview() {
+        window.baseUrl = "<?= rtrim(BASE_URL, '/') ?>";
         <?php if (!empty($seo['google_review_url'])): ?>
-        setTimeout(function() {
-            if (confirm('<?= $lang === 'ru' ? 'Спасибо! Не могли бы вы оставить отзыв о нашем сервисе?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?' ?>')) {
-                window.open('<?= e($seo['google_review_url']) ?>', '_blank');
-            }
-        }, 3000);
+        window.googleReviewUrl = '<?= e($seo['google_review_url']) ?>';
+        window.googleReviewPrompt = <?= json_encode($lang === 'ru' ? 'Спасибо! Не могли бы вы оставить отзыв о нашем сервисе?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?') ?>;
         <?php endif; ?>
-    }
-
-    function trackClick(slug, lang) {
-        postTracking('/track-click', { slug, lang });
-        maybeAskForReview();
-    }
-
-    function trackPhoneCall(slug, lang) {
-        postTracking('/track-phone-call', { slug, lang });
-        maybeAskForReview();
-    }
-
     </script>
+    <script src="<?= BASE_URL ?>/js/link-tracking.js" defer></script>
     
     <style>
     /* Article Page Specific Styles */

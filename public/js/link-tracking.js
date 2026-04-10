@@ -15,33 +15,58 @@
         return lastPart === 'uz' ? 'uz' : 'ru';
     }
 
+    function postTracking(endpoint, params) {
+        try {
+            const body = new URLSearchParams(params);
+
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon((window.baseUrl || '') + endpoint, body);
+                return;
+            }
+
+            fetch((window.baseUrl || '') + endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: body.toString(),
+                keepalive: true
+            }).catch(function () {});
+        } catch (e) {}
+    }
+
     function trackInternalLink(toSlug) {
         const fromSlug = getCurrentSlug();
         const lang = getCurrentLanguage();
 
         if (fromSlug === toSlug) return;
-
-        const body = new URLSearchParams({
+        postTracking('/track-internal-link', {
             from: fromSlug,
             to: toSlug,
             lang: lang
         });
+    }
 
-        if (navigator.sendBeacon) {
-            navigator.sendBeacon(window.baseUrl + '/track-internal-link', body);
-            return;
-        }
-
-        fetch(window.baseUrl + '/track-internal-link', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: body.toString(),
-            keepalive: true
-        }).catch(function (err) {
-            console.debug('Link tracking failed:', err);
+    function trackClick() {
+        postTracking('/track-click', {
+            slug: getCurrentSlug(),
+            lang: getCurrentLanguage()
         });
+    }
+
+    function trackPhoneCall() {
+        postTracking('/track-phone-call', {
+            slug: getCurrentSlug(),
+            lang: getCurrentLanguage()
+        });
+
+        if (window.googleReviewUrl) {
+            setTimeout(function () {
+                if (confirm(window.googleReviewPrompt || 'Thanks! Would you like to leave a review?')) {
+                    window.open(window.googleReviewUrl, '_blank');
+                }
+            }, 3000);
+        }
     }
 
     function extractSlugFromHref(href) {
@@ -66,10 +91,13 @@
 
             if (!link || !link.href) return;
 
-            // Phone calls are tracked via the onclick handler on the tel: link itself.
-            // Do NOT track here to avoid double-counting.
             if (link.href.startsWith('tel:')) {
+                trackPhoneCall();
                 return;
+            }
+
+            if (link.classList.contains('floating-telegram') || link.matches('[data-track-click="1"]')) {
+                trackClick();
             }
 
             // Track internal links

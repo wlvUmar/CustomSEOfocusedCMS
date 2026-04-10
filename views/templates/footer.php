@@ -74,6 +74,10 @@
 
     <script>
         window.baseUrl = "<?= rtrim(BASE_URL, '/') ?>";
+        <?php if (!empty($seo['google_review_url'])): ?>
+        window.googleReviewUrl = '<?= e($seo['google_review_url']) ?>';
+        window.googleReviewPrompt = <?= json_encode($lang === 'ru' ? 'Спасибо! Не могли бы вы оставить отзыв о нашем сервисе?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?') ?>;
+        <?php endif; ?>
     </script>
     <?php if (defined('GTM_ID')): ?>
     <script>
