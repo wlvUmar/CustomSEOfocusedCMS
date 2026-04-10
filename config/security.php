@@ -14,8 +14,8 @@ if (IS_PRODUCTION) {
 }
 $csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net",
-    "script-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net",
+    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net https://www.facebook.com",
+    "script-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net https://www.facebook.com",
 
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
     "style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
