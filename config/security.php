@@ -25,10 +25,10 @@ $csp = [
 
     "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com",
 
-    "frame-src 'self' https://www.googletagmanager.com",
+    "frame-src 'self' https://www.googletagmanager.com https://www.facebook.com",
     "frame-ancestors 'self'",
     "worker-src 'self' blob:",
-    "child-src 'self' blob:"
+    "child-src 'self' blob: https://www.facebook.com"
 ];
 
 header('Content-Security-Policy: ' . implode('; ', $csp));
