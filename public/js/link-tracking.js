@@ -61,11 +61,9 @@
         });
 
         if (window.googleReviewUrl) {
-            setTimeout(function () {
-                if (confirm(window.googleReviewPrompt || 'Thanks! Would you like to leave a review?')) {
-                    window.open(window.googleReviewUrl, '_blank');
-                }
-            }, 3000);
+            if (confirm(window.googleReviewPrompt || 'Thanks! Would you like to leave a review?')) {
+                window.open(window.googleReviewUrl, '_blank', 'noopener,noreferrer');
+            }
         }
     }
 
