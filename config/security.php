@@ -23,7 +23,7 @@ $csp = [
     "img-src 'self' data: blob: https: https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com",
     "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
 
-    "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com",
+    "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://graph.facebook.com",
 
     "frame-src 'self' https://www.googletagmanager.com https://www.facebook.com",
     "frame-ancestors 'self'",
