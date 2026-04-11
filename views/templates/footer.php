@@ -88,11 +88,8 @@
             </p>
             <div class="review-modal__actions">
                 <button type="button" class="review-modal__btn review-modal__btn--secondary" data-review-modal-close>
-                    <?= $lang === 'ru' ? 'Закрыть' : 'Yopish' ?>
+                   <i data-feather="x"></i>
                 </button>
-                <a href="#" class="review-modal__btn review-modal__btn--primary" data-review-call>
-                    <?= $lang === 'ru' ? 'Позвонить' : 'Qo\'ng\'iroq qilish' ?>
-                </a>
                 <?php if (!empty($seo['google_review_url'])): ?>
                 <a href="<?= e($seo['google_review_url']) ?>" class="review-modal__btn review-modal__btn--review" target="_blank" rel="noopener noreferrer" data-review-open>
                     <?= $lang === 'ru' ? 'Оставить отзыв' : 'Sharh qoldirish' ?>
@@ -172,16 +169,19 @@
         font: inherit;
     }
     .review-modal__btn--secondary {
-        background: #f8fafc;
-        color: #334155;
-        border-color: #e2e8f0;
+            position: absolute;
+            background: none;
+            color: #000000;
+            top: 0;
+            right: 6px;
+}
     }
     .review-modal__btn--primary {
         background: #2563eb;
         color: #fff;
     }
     .review-modal__btn--review {
-        background: #16a34a;
+        background: #3f3f44;
         color: #fff;
     }
     body.review-modal-open {
