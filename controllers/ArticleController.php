@@ -36,6 +36,7 @@ class ArticleController extends Controller {
         $seoSettings = $this->seoModel->getSettings();
         
         // Track visit
+        trackSiteVisit($currentLang);
         trackVisit('article-' . $id, $currentLang);
         
         // Get related articles

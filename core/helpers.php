@@ -426,21 +426,103 @@ function trackingRateLimit(string $action, int $maxAttempts, int $windowSeconds)
     return $state['count'] <= $maxAttempts;
 }
 
-function shouldCountVisitThisSession(string $slug, string $language): bool
+function getTrackingCookieValue(string $name): array
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) return true;
+    $raw = $_COOKIE[$name] ?? '';
+    if (!is_string($raw) || $raw === '') {
+        return [];
+    }
 
+    $decoded = json_decode($raw, true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function setTrackingCookieValue(string $name, array $value, int $ttlSeconds = 2592000): void
+{
+    $expires = time() + max(60, $ttlSeconds);
+    $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $options = [
+        'expires' => $expires,
+        'path' => '/',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+
+    setcookie($name, $encoded, $options);
+    $_COOKIE[$name] = $encoded;
+}
+
+function getOrCreateTrackingVisitorId(): string
+{
+    $cookieName = 'trk_visitor_id';
+    $visitorId = trim((string)($_COOKIE[$cookieName] ?? ''));
+    if ($visitorId !== '') {
+        return $visitorId;
+    }
+
+    $visitorId = bin2hex(random_bytes(16));
+    $options = [
+        'expires' => time() + (365 * 24 * 60 * 60),
+        'path' => '/',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+    setcookie($cookieName, $visitorId, $options);
+    $_COOKIE[$cookieName] = $visitorId;
+
+    return $visitorId;
+}
+
+function ensureAnalyticsSiteVisitsTable(): void
+{
+    static $initialized = false;
+    if ($initialized) {
+        return;
+    }
+
+    $db = Database::getInstance();
+    $sql = "CREATE TABLE IF NOT EXISTS " . SITE_VISIT_TABLE . " (
+                visitor_id VARCHAR(64) NOT NULL PRIMARY KEY,
+                language VARCHAR(8) NOT NULL,
+                first_visit_at DATETIME NOT NULL,
+                last_visit_at DATETIME NOT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+    $db->query($sql);
+    $initialized = true;
+}
+
+function shouldCountSiteVisit(string $language): bool
+{
+    $visitorId = getOrCreateTrackingVisitorId();
+    $cookieName = 'trk_site_visit';
+    $state = getTrackingCookieValue($cookieName);
+
+    if (!isset($state['visitor_id'], $state['counted']) || $state['visitor_id'] !== $visitorId) {
+        $state = ['visitor_id' => $visitorId, 'counted' => false];
+    }
+
+    if (!empty($state['counted'])) {
+        return false;
+    }
+
+    $state['counted'] = true;
+    setTrackingCookieValue($cookieName, $state, 365 * 24 * 60 * 60);
+
+    return true;
+}
+
+function shouldCountVisitThisBrowser(string $slug, string $language): bool
+{
     $slug = (string)$slug;
     $language = normalizeTrackingLanguage($language);
+    $visitorId = getOrCreateTrackingVisitorId();
+    $cookieName = 'trk_visit_pages';
 
-    $key = 'trk_visit_pages';
-    $today = date('Y-m-d');
-    $state = $_SESSION[$key] ?? ['date' => $today, 'visited' => []];
-    if (!is_array($state) || !isset($state['date'], $state['visited']) || !is_array($state['visited'])) {
-        $state = ['date' => $today, 'visited' => []];
-    }
-    if ($state['date'] !== $today) {
-        $state = ['date' => $today, 'visited' => []];
+    $state = getTrackingCookieValue($cookieName);
+    if (!isset($state['visitor_id'], $state['visited']) || !is_array($state['visited']) || $state['visitor_id'] !== $visitorId) {
+        $state = ['visitor_id' => $visitorId, 'visited' => []];
     }
 
     $visitKey = $slug . '|' . $language;
@@ -449,9 +531,39 @@ function shouldCountVisitThisSession(string $slug, string $language): bool
     }
 
     $state['visited'][$visitKey] = time();
-    $_SESSION[$key] = $state;
+    if (count($state['visited']) > 100) {
+        $state['visited'] = array_slice($state['visited'], -100, null, true);
+    }
+    setTrackingCookieValue($cookieName, $state, 365 * 24 * 60 * 60);
 
     return true;
+}
+
+function trackSiteVisit($language) {
+    if (shouldSkipTracking()) return;
+    if (isBot()) return;
+
+    $language = normalizeTrackingLanguage($language);
+    if (!shouldCountSiteVisit($language)) {
+        return;
+    }
+
+    try {
+        ensureAnalyticsSiteVisitsTable();
+        $db = Database::getInstance();
+        $visitorId = getOrCreateTrackingVisitorId();
+        $now = date('Y-m-d H:i:s');
+
+        $sql = "INSERT INTO " . SITE_VISIT_TABLE . " (visitor_id, language, first_visit_at, last_visit_at)
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    language = VALUES(language),
+                    last_visit_at = VALUES(last_visit_at)";
+
+        $db->query($sql, [$visitorId, $language, $now, $now]);
+    } catch (Exception $e) {
+        error_log("Site visit tracking error: " . $e->getMessage());
+    }
 }
 
 function shouldCountClickThisSession(string $slug, string $language, int $cooldownSeconds = 5): bool
@@ -598,7 +710,7 @@ function trackVisit($slug, $language) {
         return;
     }
 
-    if (!shouldCountVisitThisSession($slug, $language)) {
+    if (!shouldCountVisitThisBrowser($slug, $language)) {
         return;
     }
 

@@ -204,6 +204,7 @@ class PageController extends Controller {
             '@graph' => $graph
         ];
         
+        trackSiteVisit($currentLang);
         trackVisit($slug, $currentLang);
         $templateData = [
             'page' => [

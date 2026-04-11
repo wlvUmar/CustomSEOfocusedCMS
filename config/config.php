@@ -41,5 +41,6 @@ define('SUPPORTED_LANGUAGES', ['ru', 'uz']);
 define('DEFAULT_LANGUAGE', 'ru');
 define('GTM_ID', 'GTM-PRK222HD');
 define('META_PIXEL_ID', getenv('META_PIXEL_ID') ?: '5989856197701126');
+define('SITE_VISIT_TABLE', 'analytics_site_visits');
 
 date_default_timezone_set('Asia/Tashkent');

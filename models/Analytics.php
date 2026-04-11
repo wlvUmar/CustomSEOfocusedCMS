@@ -97,6 +97,110 @@ class Analytics {
         return $result;
     }
 
+    public function getSitewideChartData($months = 6) {
+        $months = (int)$months;
+
+        $sql = "SELECT
+                    YEAR(first_visit_at) as year,
+                    MONTH(first_visit_at) as month,
+                    COUNT(*) as visits
+                FROM " . SITE_VISIT_TABLE . "
+                WHERE first_visit_at >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY year, month
+                ORDER BY year ASC, month ASC";
+
+        $data = $this->db->fetchAll($sql, [$months]);
+
+        $result = [];
+        foreach ($data as $row) {
+            $monthName = date('M Y', strtotime("{$row['year']}-{$row['month']}-01"));
+            $result[$monthName] = (int)($row['visits'] ?? 0);
+        }
+
+        return $result;
+    }
+
+    public function getSitewideWeeklyChartData($months = 3) {
+        $months = (int)$months;
+
+        $sql = "SELECT
+                    DATE(DATE_SUB(first_visit_at, INTERVAL WEEKDAY(first_visit_at) DAY)) as week_start,
+                    COUNT(*) as visits
+                FROM " . SITE_VISIT_TABLE . "
+                WHERE first_visit_at >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY week_start
+                ORDER BY week_start ASC";
+
+        $data = $this->db->fetchAll($sql, [$months]);
+
+        $result = [];
+        foreach ($data as $row) {
+            $weekLabel = date('M j', strtotime($row['week_start']));
+            $result[$weekLabel] = (int)($row['visits'] ?? 0);
+        }
+
+        return $result;
+    }
+
+    public function getSitewideRangeChartData($startDate, $endDate, $labelMode = 'date') {
+        $sql = "SELECT
+                    DATE(first_visit_at) as visit_date,
+                    COUNT(*) as value
+                FROM " . SITE_VISIT_TABLE . "
+                WHERE first_visit_at BETWEEN ? AND ?
+                GROUP BY visit_date
+                ORDER BY visit_date ASC";
+
+        $data = $this->db->fetchAll($sql, [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+        $result = [];
+        $cursor = new DateTime($startDate);
+        $end = new DateTime($endDate);
+        while ($cursor <= $end) {
+            $label = $labelMode === 'weekday'
+                ? $cursor->format('D')
+                : $cursor->format('M j');
+            $result[$label] = 0;
+            $cursor->modify('+1 day');
+        }
+
+        foreach ($data as $row) {
+            $dateObj = new DateTime($row['visit_date']);
+            $dateLabel = $labelMode === 'weekday'
+                ? $dateObj->format('D')
+                : $dateObj->format('M j');
+            $result[$dateLabel] = (int)($row['value'] ?? 0);
+        }
+
+        return $result;
+    }
+
+    public function getSitewideHourlyChartDataForDate($date) {
+        $sql = "SELECT
+                    HOUR(first_visit_at) as hour,
+                    COUNT(*) as visits
+                FROM " . SITE_VISIT_TABLE . "
+                WHERE DATE(first_visit_at) = ?
+                GROUP BY hour
+                ORDER BY hour ASC";
+
+        $data = $this->db->fetchAll($sql, [$date]);
+
+        $result = [];
+        for ($hour = 0; $hour <= 23; $hour++) {
+            $label = str_pad((string)$hour, 2, '0', STR_PAD_LEFT) . ':00';
+            $result[$label] = 0;
+        }
+
+        foreach ($data as $row) {
+            $hour = (int)($row['hour'] ?? 0);
+            $label = str_pad((string)$hour, 2, '0', STR_PAD_LEFT) . ':00';
+            $result[$label] = (int)($row['visits'] ?? 0);
+        }
+
+        return $result;
+    }
+
     public function getRangeChartData($type, $startDate, $endDate, $labelMode = 'date') {
         $field = ($type === 'visits') ? 'visits' : (($type === 'phone_calls') ? 'phone_calls' : 'clicks');
         $sql = "SELECT 

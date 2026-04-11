@@ -38,8 +38,8 @@ class AnalyticsController extends Controller {
                 'current_month' => $this->analyticsModel->getCurrentMonthStats(),
                 'page_stats' => $this->analyticsModel->getRangePageStats($start, $end),
                 'visits_chart' => $isSingleDay
-                    ? $this->analyticsModel->getHourlyChartDataForDate('visits', $start)
-                    : $this->analyticsModel->getRangeChartData('visits', $start, $end, $isWeeklyRange ? 'weekday' : 'date'),
+                    ? $this->analyticsModel->getSitewideHourlyChartDataForDate($start)
+                    : $this->analyticsModel->getSitewideRangeChartData($start, $end, $isWeeklyRange ? 'weekday' : 'date'),
                 'clicks_chart' => $isSingleDay
                     ? $this->analyticsModel->getHourlyChartDataForDate('clicks', $start)
                     : $this->analyticsModel->getRangeChartData('clicks', $start, $end, $isWeeklyRange ? 'weekday' : 'date'),
@@ -63,8 +63,8 @@ class AnalyticsController extends Controller {
                 'current_month' => $this->analyticsModel->getCurrentMonthStats(),
                 'page_stats' => $this->analyticsModel->getPageStats($months),
                 'visits_chart' => $chartAggregation === 'weekly'
-                    ? $this->analyticsModel->getWeeklyChartData('visits', $months)
-                    : $this->analyticsModel->getChartData('visits', $months),
+                    ? $this->analyticsModel->getSitewideWeeklyChartData($months)
+                    : $this->analyticsModel->getSitewideChartData($months),
                 'clicks_chart' => $chartAggregation === 'weekly'
                     ? $this->analyticsModel->getWeeklyChartData('clicks', $months)
                     : $this->analyticsModel->getChartData('clicks', $months),
