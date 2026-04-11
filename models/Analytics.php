@@ -99,13 +99,13 @@ class Analytics {
 
     public function getSitewideChartData($months = 6) {
         $months = (int)$months;
-
         $sql = "SELECT
-                    YEAR(first_visit_at) as year,
-                    MONTH(first_visit_at) as month,
-                    COUNT(*) as visits
-                FROM " . SITE_VISIT_TABLE . "
-                WHERE first_visit_at >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                    YEAR(date) as year,
+                    MONTH(date) as month,
+                    SUM(visits) as visits
+                FROM analytics_hourly
+                WHERE page_slug = '__site__'
+                  AND date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
                 GROUP BY year, month
                 ORDER BY year ASC, month ASC";
 
@@ -122,12 +122,12 @@ class Analytics {
 
     public function getSitewideWeeklyChartData($months = 3) {
         $months = (int)$months;
-
         $sql = "SELECT
-                    DATE(DATE_SUB(first_visit_at, INTERVAL WEEKDAY(first_visit_at) DAY)) as week_start,
-                    COUNT(*) as visits
-                FROM " . SITE_VISIT_TABLE . "
-                WHERE first_visit_at >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                    DATE(DATE_SUB(date, INTERVAL WEEKDAY(date) DAY)) as week_start,
+                    SUM(visits) as visits
+                FROM analytics_hourly
+                WHERE page_slug = '__site__'
+                  AND date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
                 GROUP BY week_start
                 ORDER BY week_start ASC";
 
@@ -144,14 +144,15 @@ class Analytics {
 
     public function getSitewideRangeChartData($startDate, $endDate, $labelMode = 'date') {
         $sql = "SELECT
-                    DATE(first_visit_at) as visit_date,
-                    COUNT(*) as value
-                FROM " . SITE_VISIT_TABLE . "
-                WHERE first_visit_at BETWEEN ? AND ?
+                    date as visit_date,
+                    SUM(visits) as value
+                FROM analytics_hourly
+                WHERE page_slug = '__site__'
+                  AND date BETWEEN ? AND ?
                 GROUP BY visit_date
                 ORDER BY visit_date ASC";
 
-        $data = $this->db->fetchAll($sql, [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+        $data = $this->db->fetchAll($sql, [$startDate, $endDate]);
 
         $result = [];
         $cursor = new DateTime($startDate);
@@ -177,10 +178,11 @@ class Analytics {
 
     public function getSitewideHourlyChartDataForDate($date) {
         $sql = "SELECT
-                    HOUR(first_visit_at) as hour,
-                    COUNT(*) as visits
-                FROM " . SITE_VISIT_TABLE . "
-                WHERE DATE(first_visit_at) = ?
+                    hour,
+                    SUM(visits) as visits
+                FROM analytics_hourly
+                WHERE page_slug = '__site__'
+                  AND date = ?
                 GROUP BY hour
                 ORDER BY hour ASC";
 

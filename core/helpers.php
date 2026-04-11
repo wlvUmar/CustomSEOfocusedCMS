@@ -475,24 +475,6 @@ function getOrCreateTrackingVisitorId(): string
     return $visitorId;
 }
 
-function ensureAnalyticsSiteVisitsTable(): void
-{
-    static $initialized = false;
-    if ($initialized) {
-        return;
-    }
-
-    $db = Database::getInstance();
-    $sql = "CREATE TABLE IF NOT EXISTS " . SITE_VISIT_TABLE . " (
-                visitor_id VARCHAR(64) NOT NULL PRIMARY KEY,
-                language VARCHAR(8) NOT NULL,
-                first_visit_at DATETIME NOT NULL,
-                last_visit_at DATETIME NOT NULL
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-    $db->query($sql);
-    $initialized = true;
-}
-
 function shouldCountSiteVisit(string $language): bool
 {
     $visitorId = getOrCreateTrackingVisitorId();
@@ -549,18 +531,15 @@ function trackSiteVisit($language) {
     }
 
     try {
-        ensureAnalyticsSiteVisitsTable();
         $db = Database::getInstance();
-        $visitorId = getOrCreateTrackingVisitorId();
-        $now = date('Y-m-d H:i:s');
+        $date = date('Y-m-d');
+        $hour = (int)date('G');
 
-        $sql = "INSERT INTO " . SITE_VISIT_TABLE . " (visitor_id, language, first_visit_at, last_visit_at)
-                VALUES (?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                    language = VALUES(language),
-                    last_visit_at = VALUES(last_visit_at)";
+        $sql = "INSERT INTO analytics_hourly (page_slug, language, date, hour, visits, clicks, phone_calls)
+                VALUES ('__site__', ?, ?, ?, 1, 0, 0)
+                ON DUPLICATE KEY UPDATE visits = visits + 1";
 
-        $db->query($sql, [$visitorId, $language, $now, $now]);
+        $db->query($sql, [$language, $date, $hour]);
     } catch (Exception $e) {
         error_log("Site visit tracking error: " . $e->getMessage());
     }
