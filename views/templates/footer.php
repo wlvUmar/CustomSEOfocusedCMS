@@ -88,7 +88,7 @@
             </p>
             <div class="review-modal__actions">
                 <button type="button" class="review-modal__btn review-modal__btn--secondary" data-review-modal-close>
-                   <i data-feather="x"></i>
+                    x
                 </button>
                 <?php if (!empty($seo['google_review_url'])): ?>
                 <a href="<?= e($seo['google_review_url']) ?>" class="review-modal__btn review-modal__btn--review" target="_blank" rel="noopener noreferrer" data-review-open>
