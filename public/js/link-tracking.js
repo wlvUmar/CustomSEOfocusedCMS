@@ -35,6 +35,91 @@
         } catch (e) {}
     }
 
+    function getReviewModal() {
+        return document.getElementById('review-modal');
+    }
+
+    function getPendingReviewKey() {
+        return 'pending_review_prompt';
+    }
+
+    function setPendingReview(callHref) {
+        try {
+            sessionStorage.setItem(getPendingReviewKey(), JSON.stringify({
+                href: callHref,
+                slug: getCurrentSlug(),
+                lang: getCurrentLanguage(),
+                ts: Date.now(),
+                shown: false
+            }));
+        } catch (e) {}
+    }
+
+    function getPendingReview() {
+        try {
+            const raw = sessionStorage.getItem(getPendingReviewKey());
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function clearPendingReview() {
+        try {
+            sessionStorage.removeItem(getPendingReviewKey());
+        } catch (e) {}
+    }
+
+    function openReviewModal(callHref) {
+        const modal = getReviewModal();
+        if (!modal) {
+            return;
+        }
+
+        const callBtn = modal.querySelector('[data-review-call]');
+        const reviewBtn = modal.querySelector('[data-review-open]');
+        const message = modal.querySelector('[data-review-message]');
+
+        if (message) {
+            message.textContent = window.googleReviewPrompt || 'Thanks! Would you like to leave a review?';
+        }
+        if (callBtn) {
+            callBtn.href = callHref;
+        }
+        if (reviewBtn) {
+            reviewBtn.href = window.googleReviewUrl || '#';
+            reviewBtn.hidden = !window.googleReviewUrl;
+        }
+
+        modal.hidden = false;
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('review-modal-open');
+    }
+
+    function closeReviewModal() {
+        const modal = getReviewModal();
+        if (!modal) return;
+        modal.hidden = true;
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('review-modal-open');
+        clearPendingReview();
+    }
+
+    function maybeShowPendingReview() {
+        const pending = getPendingReview();
+        if (!pending || pending.shown) return;
+        if (document.visibilityState !== 'visible') return;
+        if ((Date.now() - pending.ts) < 1500) return;
+
+        pending.shown = true;
+        try {
+            sessionStorage.setItem(getPendingReviewKey(), JSON.stringify(pending));
+        } catch (e) {}
+        openReviewModal(pending.href || 'tel:');
+    }
+
     function trackInternalLink(toSlug) {
         const fromSlug = getCurrentSlug();
         const lang = getCurrentLanguage();
@@ -59,12 +144,6 @@
             slug: getCurrentSlug(),
             lang: getCurrentLanguage()
         });
-
-        if (window.googleReviewUrl) {
-            if (confirm(window.googleReviewPrompt || 'Thanks! Would you like to leave a review?')) {
-                window.open(window.googleReviewUrl, '_blank', 'noopener,noreferrer');
-            }
-        }
     }
 
     function extractSlugFromHref(href) {
@@ -89,8 +168,13 @@
 
             if (!link || !link.href) return;
 
+            if (link.matches('[data-review-call]')) {
+                return;
+            }
+
             if (link.href.startsWith('tel:')) {
                 trackPhoneCall();
+                setPendingReview(link.href);
                 return;
             }
 
@@ -111,4 +195,34 @@
     } else {
         setupTracking();
     }
+
+    document.addEventListener('visibilitychange', maybeShowPendingReview);
+    window.addEventListener('focus', maybeShowPendingReview);
+    window.addEventListener('pageshow', maybeShowPendingReview);
+
+    document.addEventListener('click', function (e) {
+        const modal = getReviewModal();
+        if (!modal || modal.hidden) return;
+
+        if (e.target.closest('[data-review-modal-close]')) {
+            closeReviewModal();
+            return;
+        }
+
+        if (e.target.closest('[data-review-open]')) {
+            clearPendingReview();
+            closeReviewModal();
+            return;
+        }
+
+        if (e.target === modal) {
+            closeReviewModal();
+        }
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeReviewModal();
+        }
+    });
 })();

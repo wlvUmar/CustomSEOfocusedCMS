@@ -79,6 +79,28 @@
         window.googleReviewPrompt = <?= json_encode($lang === 'ru' ? 'Спасибо! Не могли бы вы оставить отзыв о нашем сервисе?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?') ?>;
         <?php endif; ?>
     </script>
+    <div id="review-modal" class="review-modal" hidden aria-hidden="true">
+        <div class="review-modal__backdrop" data-review-modal-close></div>
+        <div class="review-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="review-modal-title">
+            <h3 id="review-modal-title"><?= $lang === 'ru' ? 'Оставить отзыв?' : 'Sharh qoldirasizmi?' ?></h3>
+            <p id="review-modal-message" data-review-message>
+                <?= $lang === 'ru' ? 'Спасибо! Не могли бы вы оставить отзыв о нашем сервисе?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?' ?>
+            </p>
+            <div class="review-modal__actions">
+                <button type="button" class="review-modal__btn review-modal__btn--secondary" data-review-modal-close>
+                    <?= $lang === 'ru' ? 'Закрыть' : 'Yopish' ?>
+                </button>
+                <a href="#" class="review-modal__btn review-modal__btn--primary" data-review-call>
+                    <?= $lang === 'ru' ? 'Позвонить' : 'Qo\'ng\'iroq qilish' ?>
+                </a>
+                <?php if (!empty($seo['google_review_url'])): ?>
+                <a href="<?= e($seo['google_review_url']) ?>" class="review-modal__btn review-modal__btn--review" target="_blank" rel="noopener noreferrer" data-review-open>
+                    <?= $lang === 'ru' ? 'Оставить отзыв' : 'Sharh qoldirish' ?>
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
     <?php if (defined('GTM_ID')): ?>
     <script>
         (function() {
@@ -97,5 +119,74 @@
     </script>
     <?php endif; ?>
     <script src="<?= BASE_URL ?>/js/link-tracking.js" defer></script>
+    <style>
+    .review-modal[hidden] { display: none !important; }
+    .review-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .review-modal__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+    }
+    .review-modal__dialog {
+        position: relative;
+        z-index: 1;
+        width: min(100%, 520px);
+        background: #fff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    }
+    .review-modal__dialog h3 {
+        margin: 0 0 8px;
+        font-size: 20px;
+    }
+    .review-modal__dialog p {
+        margin: 0 0 18px;
+        color: #475569;
+        line-height: 1.6;
+    }
+    .review-modal__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    .review-modal__btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        text-decoration: none;
+        border: 1px solid transparent;
+        cursor: pointer;
+        font: inherit;
+    }
+    .review-modal__btn--secondary {
+        background: #f8fafc;
+        color: #334155;
+        border-color: #e2e8f0;
+    }
+    .review-modal__btn--primary {
+        background: #2563eb;
+        color: #fff;
+    }
+    .review-modal__btn--review {
+        background: #16a34a;
+        color: #fff;
+    }
+    body.review-modal-open {
+        overflow: hidden;
+    }
+    </style>
 </body>
 </html>
