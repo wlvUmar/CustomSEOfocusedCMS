@@ -574,31 +574,28 @@ function shouldCountClickThisSession(string $slug, string $language, int $cooldo
     return true;
 }
 
-function shouldCountPhoneCallThisSession(string $slug, string $language, int $cooldownSeconds = 5): bool
+function shouldCountPhoneCallThisBrowser(string $slug, string $language): bool
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) return true;
-
     $slug = (string)$slug;
     $language = normalizeTrackingLanguage($language);
+    $visitorId = getOrCreateTrackingVisitorId();
+    $cookieName = 'trk_phone_calls';
 
-    $key = 'trk_phone_calls';
-    $state = $_SESSION[$key] ?? [];
-    if (!is_array($state)) {
-        $state = [];
+    $state = getTrackingCookieValue($cookieName);
+    if (!isset($state['visitor_id'], $state['visited']) || !is_array($state['visited']) || $state['visitor_id'] !== $visitorId) {
+        $state = ['visitor_id' => $visitorId, 'visited' => []];
     }
 
-    $callKey = $slug . '|' . $language;
-    $now = time();
-
-    if (isset($state[$callKey])) {
-        $lastCallTime = $state[$callKey];
-        if (($now - $lastCallTime) < $cooldownSeconds) {
-            return false;
-        }
+    $visitKey = $slug . '|' . $language;
+    if (!empty($state['visited'][$visitKey])) {
+        return false;
     }
 
-    $state[$callKey] = $now;
-    $_SESSION[$key] = $state;
+    $state['visited'][$visitKey] = time();
+    if (count($state['visited']) > 100) {
+        $state['visited'] = array_slice($state['visited'], -100, null, true);
+    }
+    setTrackingCookieValue($cookieName, $state, 365 * 24 * 60 * 60);
 
     return true;
 }
@@ -793,7 +790,7 @@ function trackPhoneCall($slug, $language) {
     if (shouldSkipTracking()) return;
     if (isBot()) return;
 
-    if (!shouldCountPhoneCallThisSession($slug, $language)) {
+    if (!shouldCountPhoneCallThisBrowser($slug, $language)) {
         return;
     }
 
