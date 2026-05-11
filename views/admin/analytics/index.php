@@ -224,15 +224,15 @@ function updateAnalyticsFilters() {
         $maxPhones = max(array_column($topPerformers, 'phone_calls'));
     ?>
     
-    <table style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
+    <table id="top-performers-table" style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
         <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
             <tr>
                 <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">#</th>
-                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">Page</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Visits</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Clicks</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Phone Calls</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">CTR</th>
+                <th data-sort-key="page_slug" style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Page <span class="sort-indicator">↕</span></th>
+                <th data-sort-key="visits" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Visits <span class="sort-indicator">↕</span></th>
+                <th data-sort-key="clicks" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Clicks <span class="sort-indicator">↕</span></th>
+                <th data-sort-key="phone_calls" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Phone Calls <span class="sort-indicator">↕</span></th>
+                <th data-sort-key="ctr" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">CTR <span class="sort-indicator">↕</span></th>
             </tr>
         </thead>
         <tbody>
@@ -247,8 +247,15 @@ function updateAnalyticsFilters() {
                 $clicksWidth = $maxClicks > 0 ? ($clicks / $maxClicks) * 100 : 0;
                 $phonesWidth = $maxPhones > 0 ? ($phoneCalls / $maxPhones) * 100 : 0;
             ?>
-            <tr style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 600; color: #94a3b8; font-size: 14px;">
+            <tr
+                data-page-slug="<?= e((string)($page['page_slug'] ?? '')) ?>"
+                data-visits="<?= $visits ?>"
+                data-clicks="<?= $clicks ?>"
+                data-phone-calls="<?= $phoneCalls ?>"
+                data-ctr="<?= $ctr ?>"
+                style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);"
+            >
+                <td data-rank-cell style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 600; color: #94a3b8; font-size: 14px;">
                     <?= $index + 1 ?>
                 </td>
                 <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
@@ -362,6 +369,78 @@ if (window.DEBUG) {
         }, 100);
     });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const table = document.getElementById('top-performers-table');
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
+    const sortableHeaders = table.querySelectorAll('thead [data-sort-key]');
+    if (!tbody || !sortableHeaders.length) return;
+
+    const sortState = { key: '', dir: 'desc' };
+
+    const getValue = (row, key) => {
+        if (key === 'page_slug') return String(row.dataset.pageSlug || '').toLowerCase();
+        if (key === 'visits') return Number(row.dataset.visits || 0);
+        if (key === 'clicks') return Number(row.dataset.clicks || 0);
+        if (key === 'phone_calls') return Number(row.dataset.phoneCalls || 0);
+        if (key === 'ctr') return Number(row.dataset.ctr || 0);
+        return 0;
+    };
+
+    const updateIndicators = () => {
+        sortableHeaders.forEach((header) => {
+            const indicator = header.querySelector('.sort-indicator');
+            if (!indicator) return;
+            if (header.dataset.sortKey === sortState.key) {
+                indicator.textContent = sortState.dir === 'asc' ? '▲' : '▼';
+            } else {
+                indicator.textContent = '↕';
+            }
+        });
+    };
+
+    const applySort = () => {
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort((a, b) => {
+            const aVal = getValue(a, sortState.key);
+            const bVal = getValue(b, sortState.key);
+
+            if (typeof aVal === 'string' && typeof bVal === 'string') {
+                const cmp = aVal.localeCompare(bVal);
+                return sortState.dir === 'asc' ? cmp : -cmp;
+            }
+
+            const cmp = aVal - bVal;
+            return sortState.dir === 'asc' ? cmp : -cmp;
+        });
+
+        rows.forEach((row, index) => {
+            const rankCell = row.querySelector('[data-rank-cell]');
+            if (rankCell) rankCell.textContent = String(index + 1);
+            tbody.appendChild(row);
+        });
+
+        updateIndicators();
+    };
+
+    sortableHeaders.forEach((header) => {
+        header.addEventListener('click', function () {
+            const key = this.dataset.sortKey;
+            if (!key) return;
+
+            if (sortState.key === key) {
+                sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.key = key;
+                sortState.dir = key === 'page_slug' ? 'asc' : 'desc';
+            }
+
+            applySort();
+        });
+    });
+});
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
