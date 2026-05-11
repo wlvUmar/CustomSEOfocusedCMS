@@ -630,12 +630,12 @@ function bumpMonthlySummary($slug, $language, $deltaVisits, $deltaClicks, $delta
 
         $sql = "INSERT INTO analytics_monthly
                     (page_slug, language, year, month, total_visits, total_clicks, total_phone_calls, unique_days)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?) AS new_row
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
-                    total_visits = total_visits + new_row.total_visits,
-                    total_clicks = total_clicks + new_row.total_clicks,
-                    total_phone_calls = total_phone_calls + new_row.total_phone_calls,
-                    unique_days = unique_days + new_row.unique_days";
+                    total_visits = total_visits + VALUES(total_visits),
+                    total_clicks = total_clicks + VALUES(total_clicks),
+                    total_phone_calls = total_phone_calls + VALUES(total_phone_calls),
+                    unique_days = unique_days + VALUES(unique_days)";
 
         $db->query($sql, [$slug, $language, $year, $month, $deltaVisits, $deltaClicks, $deltaPhoneCalls, $deltaDays]);
     } catch (Exception $e) {
