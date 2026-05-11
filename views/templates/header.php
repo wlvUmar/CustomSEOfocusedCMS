@@ -21,6 +21,13 @@ $floatingCta = $contactUi['floating_cta'] ?? [
     'url' => 'https://t.me/azimjumayev',
     'label' => $defaultFloatingLabel
 ];
+$floatingType = $floatingCta['type'] ?? 'telegram';
+$floatingClass = 'floating-telegram';
+if ($floatingType === 'instagram') {
+    $floatingClass .= ' floating-telegram--instagram';
+} elseif ($floatingType === 'custom') {
+    $floatingClass .= ' floating-telegram--custom';
+}
 
 $templateData = [
     'page' => $page,
@@ -123,6 +130,16 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css">
+    <style>
+    .floating-telegram.floating-telegram--instagram {
+        background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+        box-shadow: 0 4px 16px rgba(214, 36, 159, 0.45);
+    }
+    .floating-telegram.floating-telegram--instagram:hover {
+        background: radial-gradient(circle at 30% 107%, #f9e35b 0%, #f9e35b 5%, #f84a3d 45%, #c01f8f 60%, #1f4fd4 90%);
+        box-shadow: 0 6px 20px rgba(214, 36, 159, 0.55);
+    }
+    </style>
     
     <?php
     $allSchemas = [];
@@ -353,7 +370,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
 
     <?php if (($floatingCta['type'] ?? 'none') !== 'none' && !empty($floatingCta['url'])): ?>
     <a href="<?= e($floatingCta['url']) ?>"
-       class="floating-telegram"
+       class="<?= e($floatingClass) ?>"
        target="_blank"
        rel="noopener noreferrer"
        title="<?= e($floatingCta['label'] ?? $defaultFloatingLabel) ?>"

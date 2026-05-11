@@ -209,6 +209,11 @@ function updateAnalyticsFilters() {
 <!-- Top Pages Performance -->
 <div class="chart-box">
     <h2><i data-feather="trending-up"></i> Top 10 Performing Pages</h2>
+    <?php if (!empty($stats['range_label'])): ?>
+    <div style="margin-top: -8px; margin-bottom: 16px; color: #64748b; font-size: 13px;">
+        Period: <?= e($stats['range_label']) ?>
+    </div>
+    <?php endif; ?>
     
     <?php
     $topPerformers = array_slice($stats['top_performers'] ?? [], 0, 10);
@@ -216,6 +221,7 @@ function updateAnalyticsFilters() {
         // Find max values for scaling
         $maxVisits = max(array_column($topPerformers, 'visits'));
         $maxClicks = max(array_column($topPerformers, 'clicks'));
+        $maxPhones = max(array_column($topPerformers, 'phone_calls'));
     ?>
     
     <table style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
@@ -225,6 +231,7 @@ function updateAnalyticsFilters() {
                 <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">Page</th>
                 <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Visits</th>
                 <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Clicks</th>
+                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Phone Calls</th>
                 <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">CTR</th>
             </tr>
         </thead>
@@ -232,9 +239,13 @@ function updateAnalyticsFilters() {
             <?php foreach ($topPerformers as $index => $page):
                 $visits = (int)($page['visits'] ?? 0);
                 $clicks = (int)($page['clicks'] ?? 0);
-                $ctr = $visits > 0 ? round(($clicks / $visits) * 100, 2) : 0;
+                $phoneCalls = (int)($page['phone_calls'] ?? 0);
+                $ctr = isset($page['ctr'])
+                    ? (float)$page['ctr']
+                    : ($visits > 0 ? round(($phoneCalls / $visits) * 100, 2) : 0);
                 $visitsWidth = $maxVisits > 0 ? ($visits / $maxVisits) * 100 : 0;
                 $clicksWidth = $maxClicks > 0 ? ($clicks / $maxClicks) * 100 : 0;
+                $phonesWidth = $maxPhones > 0 ? ($phoneCalls / $maxPhones) * 100 : 0;
             ?>
             <tr style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                 <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 600; color: #94a3b8; font-size: 14px;">
@@ -259,6 +270,14 @@ function updateAnalyticsFilters() {
                     </div>
                     <div style="background: #d1fae5; height: 6px; border-radius: 3px; overflow: hidden;">
                         <div style="background: #10b981; height: 100%; width: <?= $clicksWidth ?>%; border-radius: 3px;"></div>
+                    </div>
+                </td>
+                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #f59e0b;">
+                        <?= number_format($phoneCalls) ?>
+                    </div>
+                    <div style="background: #fef3c7; height: 6px; border-radius: 3px; overflow: hidden;">
+                        <div style="background: #f59e0b; height: 100%; width: <?= $phonesWidth ?>%; border-radius: 3px;"></div>
                     </div>
                 </td>
                 <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-top-right-radius: 8px; border-bottom-right-radius: 8px; text-align: center;">
@@ -346,4 +365,3 @@ if (window.DEBUG) {
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
-
