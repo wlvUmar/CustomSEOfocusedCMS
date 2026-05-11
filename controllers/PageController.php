@@ -8,6 +8,7 @@ require_once BASE_PATH . '/models/ContentRotation.php';
 require_once BASE_PATH . '/models/Analytics.php';
 require_once BASE_PATH . '/models/JsonLdGenerator.php'; 
 require_once BASE_PATH . '/models/BlogSchema.php';
+require_once BASE_PATH . '/models/PageContactOverride.php';
 
 class PageController extends Controller {
     private $pageModel;
@@ -16,6 +17,7 @@ class PageController extends Controller {
     private $rotationModel;
     private $analyticsModel;
     private $blogSchemaModel;
+    private $contactOverrideModel;
 
     public function __construct() {
         parent::__construct();
@@ -25,6 +27,7 @@ class PageController extends Controller {
         $this->rotationModel = new ContentRotation();
         $this->analyticsModel = new Analytics();
         $this->blogSchemaModel = new BlogSchema();
+        $this->contactOverrideModel = new PageContactOverride();
     }
 
     public function show($slug = 'home', $lang = null) {
@@ -81,6 +84,7 @@ class PageController extends Controller {
         }
         
         $seoSettings = $this->seoModel->getSettings();
+        $contactUi = $this->buildContactUi($page['id'], $currentLang, $seoSettings);
         $faqs = $this->faqModel->getBySlug($slug);
         $blogSchema = $this->blogSchemaModel->get($slug);
         
@@ -215,8 +219,8 @@ class PageController extends Controller {
                 'meta_description' => $page["meta_description_$currentLang"],
             ],
             'global' => [
-                'phone' => $seoSettings['phone'] ?? '',
-                'email' => $seoSettings['email'] ?? '',
+                'phone' => $contactUi['phone'] ?? ($seoSettings['phone'] ?? ''),
+                'email' => $contactUi['email'] ?? ($seoSettings['email'] ?? ''),
                 'address' => $seoSettings["address_$currentLang"] ?? '',
                 'working_hours' => $seoSettings["working_hours_$currentLang"] ?? '',
                 'site_name' => $seoSettings["site_name_$currentLang"] ?? '',
@@ -246,11 +250,84 @@ class PageController extends Controller {
             'blogSchema' => $blogSchema,
             'heroImageSchema' => '', // Cleared because it is now in sitewideSchema
             'sitewideSchema' => $sitewideSchema,
+            'contactUi' => $contactUi,
             'lang' => $currentLang,
             'templateData' => $templateData
         ];
         
         $this->view('templates/page', $data);
+    }
+
+    private function buildContactUi($pageId, $lang, $seoSettings) {
+        $override = $this->contactOverrideModel->getByPageId($pageId);
+
+        $defaultPhone = $seoSettings['phone'] ?? '';
+        $defaultEmail = $seoSettings['email'] ?? '';
+        $defaultTelegramUrl = 'https://t.me/azimjumayev';
+        $defaultInstagramUrl = trim((string)($seoSettings['social_instagram'] ?? ''));
+
+        $phone = $defaultPhone;
+        $email = $defaultEmail;
+
+        if ($override) {
+            $overridePhone = trim((string)($override['phone'] ?? ''));
+            $overrideEmail = trim((string)($override['email'] ?? ''));
+            if ($overridePhone !== '') {
+                $phone = $overridePhone;
+            }
+            if ($overrideEmail !== '') {
+                $email = $overrideEmail;
+            }
+        }
+
+        $floatingType = 'telegram';
+        $floatingUrl = $defaultTelegramUrl;
+
+        if ($override) {
+            $candidateType = trim((string)($override['floating_cta_type'] ?? 'default'));
+            $candidateUrl = trim((string)($override['floating_cta_url'] ?? ''));
+
+            if ($candidateType === 'none') {
+                $floatingType = 'none';
+                $floatingUrl = '';
+            } elseif ($candidateType === 'instagram') {
+                $floatingType = 'instagram';
+                $floatingUrl = $candidateUrl !== '' ? $candidateUrl : $defaultInstagramUrl;
+            } elseif ($candidateType === 'custom') {
+                $floatingType = 'custom';
+                $floatingUrl = $candidateUrl;
+            } elseif ($candidateType === 'telegram') {
+                $floatingType = 'telegram';
+                $floatingUrl = $candidateUrl !== '' ? $candidateUrl : $defaultTelegramUrl;
+            }
+        }
+
+        if ($floatingType !== 'none' && $floatingUrl === '') {
+            $floatingType = 'telegram';
+            $floatingUrl = $defaultTelegramUrl;
+        }
+
+        $defaultLabel = $lang === 'ru' ? 'Написать в Telegram' : 'Telegramda yozish';
+        if ($floatingType === 'instagram') {
+            $defaultLabel = $lang === 'ru' ? 'Написать в Instagram' : 'Instagramda yozish';
+        } elseif ($floatingType === 'custom') {
+            $defaultLabel = $lang === 'ru' ? 'Открыть ссылку' : 'Havolani ochish';
+        }
+
+        $overrideLabel = '';
+        if ($override) {
+            $overrideLabel = trim((string)($override["floating_cta_label_$lang"] ?? ''));
+        }
+
+        return [
+            'phone' => $phone,
+            'email' => $email,
+            'floating_cta' => [
+                'type' => $floatingType,
+                'url' => $floatingUrl,
+                'label' => $overrideLabel !== '' ? $overrideLabel : $defaultLabel
+            ]
+        ];
     }
 
     /**
