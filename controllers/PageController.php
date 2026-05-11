@@ -259,7 +259,7 @@ class PageController extends Controller {
     }
 
     private function buildContactUi($pageId, $lang, $seoSettings) {
-        $override = $this->contactOverrideModel->getByPageId($pageId);
+        $override = $this->findInheritedContactOverride($pageId);
 
         $defaultPhone = $seoSettings['phone'] ?? '';
         $defaultEmail = $seoSettings['email'] ?? '';
@@ -328,6 +328,35 @@ class PageController extends Controller {
                 'label' => $overrideLabel !== '' ? $overrideLabel : $defaultLabel
             ]
         ];
+    }
+
+    private function findInheritedContactOverride($pageId) {
+        $currentPageId = (int)$pageId;
+        $visited = [];
+        $maxDepth = 20;
+        $depth = 0;
+
+        while ($currentPageId > 0 && $depth < $maxDepth) {
+            if (isset($visited[$currentPageId])) {
+                break;
+            }
+            $visited[$currentPageId] = true;
+
+            $override = $this->contactOverrideModel->getByPageId($currentPageId);
+            if ($override) {
+                return $override;
+            }
+
+            $page = $this->pageModel->getById($currentPageId);
+            if (!$page || empty($page['parent_id'])) {
+                break;
+            }
+
+            $currentPageId = (int)$page['parent_id'];
+            $depth++;
+        }
+
+        return null;
     }
 
     /**
