@@ -43,3 +43,5 @@ INDEXNOW_IMPLEMENTATION.md
 reports/seo-schema-report.md
 config/service-accounts/google-service-account.json
 database/schema.sql
+watcher.log
+watcher.py
