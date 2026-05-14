@@ -25,6 +25,12 @@ require_once BASE_PATH . '/models/Analytics.php';
             <?php endforeach; ?>
         </select>
         
+        <select id="aggregationSelector" onchange="updateAggregation(this.value)" class="btn">
+            <option value="daily" selected>Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+        </select>
+        
         <select onchange="updateMonthsFilter(this.value)" class="btn">
             <option value="1" <?= $months == 1 ? 'selected' : '' ?>>Last Month</option>
             <option value="3" <?= $months == 3 ? 'selected' : '' ?>>Last 3 Months</option>
@@ -184,51 +190,106 @@ foreach ($selectedPageData as $day) {
 <?php endif; ?>
 
 <script>
-// Store all pages data with slug as key
-const pagesData = <?= json_encode(
+// Store all pages data with slug and aggregation as key
+let pagesData = {};
+let currentAggregation = 'daily';
+const months = <?= $months ?>;
+
+// Helper function to format dates
+function formatDate(dateStr, aggregation) {
+    const date = new Date(dateStr);
+    if (aggregation === 'daily') {
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } else if (aggregation === 'weekly') {
+        return 'W' + Math.ceil(date.getDate() / 7) + ' ' + date.toLocaleDateString('en-US', { month: 'short' });
+    } else if (aggregation === 'monthly') {
+        return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    }
+    return dateStr;
+}
+
+// Load data for all aggregation levels
+<?php
+$allSlugs = array_unique(array_map(function($row) { return $row['page_slug']; }, $effectiveness));
+foreach (['daily', 'weekly', 'monthly'] as $agg):
+    $daysOrMonths = $agg === 'daily' ? ($months * 30) : $months;
+?>
+pagesData['<?= $agg ?>'] = <?= json_encode(
     array_reduce(
-        array_unique(array_map(function($row) { return $row['page_slug']; }, $effectiveness)),
-        function($carry, $slug) use ($analyticsModel) {
-            $data = $analyticsModel->getRotationDailyDataLast($slug, 30);
+        $allSlugs,
+        function($carry, $slug) use ($analyticsModel, $agg, $daysOrMonths) {
+            if ($agg === 'daily') {
+                $data = $analyticsModel->getRotationDailyDataLast($slug, $daysOrMonths);
+            } elseif ($agg === 'weekly') {
+                $data = $analyticsModel->getRotationWeeklyDataLast($slug, $daysOrMonths);
+            } else {
+                $data = $analyticsModel->getRotationMonthlyDataLast($slug, $daysOrMonths);
+            }
+            
             $dates = [];
             $visits = [];
             $clicks = [];
             $calls = [];
             $ctr = [];
-            foreach ($data as $day) {
-                $dates[] = date('M d', strtotime($day['date']));
-                $visits[] = (int)($day['visits'] ?? 0);
-                $clicks[] = (int)($day['clicks'] ?? 0);
-                $calls[] = (int)($day['phone_calls'] ?? 0);
-                $visitsVal = (int)($day['visits'] ?? 0);
-                $callsVal = (int)($day['phone_calls'] ?? 0);
+            
+            foreach ($data as $row) {
+                $dateKey = $agg === 'daily' ? $row['date'] : ($agg === 'weekly' ? $row['week_start'] : $row['month_start']);
+                $dates[] = $dateKey;
+                $visits[] = (int)($row['visits'] ?? 0);
+                $clicks[] = (int)($row['clicks'] ?? 0);
+                $calls[] = (int)($row['phone_calls'] ?? 0);
+                $visitsVal = (int)($row['visits'] ?? 0);
+                $callsVal = (int)($row['phone_calls'] ?? 0);
                 $ctrVal = $visitsVal > 0 ? round(($callsVal / $visitsVal) * 100, 2) : 0;
                 $ctr[] = $ctrVal;
             }
+            
             $carry[$slug] = ['dates' => $dates, 'visits' => $visits, 'clicks' => $clicks, 'calls' => $calls, 'ctr' => $ctr];
             return $carry;
         },
         []
     )
 ) ?>;
+<?php endforeach; ?>
 
 let mainChart = null;
 
 function updateChartPage(pageSlug) {
-    if (!pageSlug || !pagesData[pageSlug]) {
-        console.warn('Page slug not found in pagesData:', pageSlug, Object.keys(pagesData));
+    if (!pageSlug || !pagesData[currentAggregation][pageSlug]) {
+        console.warn('Page slug not found:', pageSlug);
         return;
     }
     
-    const data = pagesData[pageSlug];
+    const data = pagesData[currentAggregation][pageSlug];
     
     if (mainChart) {
-        mainChart.data.labels = data.dates;
+        // Format dates based on aggregation
+        const formattedDates = data.dates.map(d => formatDate(d, currentAggregation));
+        mainChart.data.labels = formattedDates;
         mainChart.data.datasets[0].data = data.visits;
         mainChart.data.datasets[1].data = data.clicks;
         mainChart.data.datasets[2].data = data.calls;
         mainChart.data.datasets[3].data = data.ctr;
         mainChart.update();
+    }
+}
+
+function updateAggregation(aggregation) {
+    currentAggregation = aggregation;
+    
+    // Get currently selected page
+    const pageSelector = document.getElementById('pageSelector');
+    const selectedPage = pageSelector.value;
+    
+    if (selectedPage) {
+        updateChartPage(selectedPage);
+    } else {
+        // Update with first page
+        const firstPage = Object.keys(pagesData[aggregation])[0];
+        if (firstPage) {
+            pageSelector.value = firstPage;
+            updateChartPage(firstPage);
+        }
     }
 }
 
@@ -239,18 +300,23 @@ function updateMonthsFilter(months) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    const firstPageKey = Object.keys(pagesData)[0];
-    const firstData = pagesData[firstPageKey];
+    const firstPageKey = Object.keys(pagesData['daily'])[0];
+    const firstData = pagesData['daily'][firstPageKey];
+    
+    if (!firstData) return;
+    
+    // Format dates for display
+    const formattedDates = firstData.dates.map(d => formatDate(d, 'daily'));
     
     const ctx = document.getElementById('mainChart');
     if (ctx && firstData) {
         mainChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: firstData.dates,
+                labels: formattedDates,
                 datasets: [
                     {
-                        label: 'Daily Visits',
+                        label: 'Visits',
                         data: firstData.visits,
                         borderColor: '#3b82f6',
                         backgroundColor: '#3b82f610',
@@ -279,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         borderWidth: 2
                     },
                     {
-                        label: 'Phone Call CTR %',
+                        label: 'CTR %',
                         data: firstData.ctr,
                         borderColor: '#f59e0b',
                         backgroundColor: 'transparent',
@@ -303,11 +369,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 },
                 scales: {
+                    x: {
+                        ticks: { maxRotation: 45, minRotation: 0 }
+                    },
                     y: {
                         type: 'linear',
                         display: true,
                         position: 'left',
-                        title: { display: true, text: 'Daily Visits', font: { size: 12 } }
+                        title: { display: true, text: 'Count', font: { size: 12 } }
                     },
                     y1: {
                         type: 'linear',
@@ -319,6 +388,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+        
+        // Set first page as selected
+        const pageSelector = document.getElementById('pageSelector');
+        pageSelector.value = firstPageKey;
     }
 });
 </script>

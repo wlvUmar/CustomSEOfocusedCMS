@@ -412,6 +412,51 @@ class Analytics {
     }
 
     /**
+     * Get weekly rotation data for charts (last N months)
+     */
+    public function getRotationWeeklyDataLast($pageSlug, $months = 3) {
+        $months = (int)$months;
+        $pageSlug = (string)$pageSlug;
+
+        $sql = "SELECT 
+                    DATE(DATE_SUB(a.date, INTERVAL DAYOFWEEK(a.date)-1 DAY)) as week_start,
+                    SUM(a.visits) as visits,
+                    SUM(a.clicks) as clicks,
+                    SUM(a.phone_calls) as phone_calls
+                FROM analytics a
+                WHERE a.page_slug = ?
+                    AND a.date >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
+                GROUP BY YEARWEEK(a.date)
+                ORDER BY week_start ASC";
+
+        return $this->db->fetchAll($sql, [$pageSlug]);
+    }
+
+    /**
+     * Get monthly rotation data for charts (last N months)
+     */
+    public function getRotationMonthlyDataLast($pageSlug, $months = 12) {
+        $months = (int)$months;
+        $pageSlug = (string)$pageSlug;
+
+        $sql = "SELECT 
+                    DATE_FORMAT(a.date, '%Y-%m-01') as month_start,
+                    YEAR(a.date) as year,
+                    MONTH(a.date) as month,
+                    SUM(a.visits) as visits,
+                    SUM(a.clicks) as clicks,
+                    SUM(a.phone_calls) as phone_calls
+                FROM analytics a
+                WHERE a.page_slug = ?
+                    AND a.date >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
+                GROUP BY YEAR(a.date), MONTH(a.date)
+                ORDER BY a.date ASC";
+
+        return $this->db->fetchAll($sql, [$pageSlug]);
+    }
+
+
+    /**
      * Get crawl frequency per slug from BOT visits only
      */
     public function getCrawlFrequency($days = 30) {
