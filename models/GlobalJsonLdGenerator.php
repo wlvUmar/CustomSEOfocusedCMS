@@ -1,4 +1,4 @@
-<?php
+<?php 
 // path: ./models/GlobalJsonLdGenerator.php
 
 class GlobalJsonLdGenerator {
@@ -51,7 +51,7 @@ class GlobalJsonLdGenerator {
 
         // Fallback to generating from fields
         $schema = [
-            '@type' => $seoSettings['org_type'] ?? 'Organization',
+            '@type' => 'LocalBusiness',
             '@id' => $baseUrl . '#organization',
             'name' => $seoSettings["org_name_$lang"] ?? $seoSettings["site_name_$lang"] ?? 'Site Name',
             'url' => $baseUrl,
@@ -129,6 +129,7 @@ class GlobalJsonLdGenerator {
             '@id' => $baseUrl . '#website',
             'url' => $baseUrl,
             'name' => $seoSettings["site_name_$lang"] ?? '',
+            'inLanguage' => $lang === 'ru' ? 'ru-RU' : 'uz-UZ',
             'publisher' => [
                 '@id' => $baseUrl . '#organization'
             ]
@@ -233,7 +234,6 @@ class GlobalJsonLdGenerator {
             'serviceType' => $serviceType,
             'name' => $title,
             'description' => self::cleanSchemaDescription($description),
-            'inLanguage' => $lang === 'ru' ? 'ru-RU' : 'uz-UZ',
             'provider' => [
                 '@id' => $baseUrl . '#organization'
             ],
@@ -246,15 +246,6 @@ class GlobalJsonLdGenerator {
                 'name' => $seo['city'] ?? 'Tashkent'
             ]
         ];
-
-        // Validating price - remove if '$$' or invalid
-        if (!empty($seo['price_range']) && $seo['price_range'] !== '$$' && strlen($seo['price_range']) > 1) {
-            $schema['offers'] = [
-                '@type' => 'Offer',
-                'priceCurrency' => 'UZS',
-                'price' => $seo['price_range']
-            ];
-        }
 
         return $schema;
     }
@@ -298,5 +289,99 @@ class GlobalJsonLdGenerator {
         }
 
         return $schema;
+    }
+
+    /**
+     * Generate ImageObject schemas for page media
+     */
+    public static function generateMediaImageSchemas($pageId, $lang, $baseUrl) {
+        require_once BASE_PATH . '/models/PageMedia.php';
+        $pageMediaModel = new PageMedia();
+        $mediaItems = $pageMediaModel->getPageMedia($pageId);
+        
+        $imageSchemas = [];
+        $baseIndex = 0;
+        
+        foreach ($mediaItems as $index => $media) {
+            if (empty($media['filename'])) continue;
+            
+            $imageUrl = absoluteUrl('/uploads/' . $media['filename'], $baseUrl);
+            $caption = $media["caption_$lang"] ?? '';
+            $altText = $media["alt_text_$lang"] ?? '';
+            
+            $schema = [
+                '@type' => 'ImageObject',
+                '@id' => $baseUrl . '/uploads/' . $media['filename'] . '#image-' . ($baseIndex + 1),
+                'url' => $imageUrl,
+                'contentUrl' => $imageUrl
+            ];
+            
+            if (!empty($caption)) {
+                $schema['caption'] = $caption;
+            }
+            
+            if (!empty($altText)) {
+                $schema['description'] = $altText;
+            } elseif (!empty($caption)) {
+                $schema['description'] = $caption;
+            }
+            
+            $dims = getPublicImageDimensions($imageUrl);
+            if ($dims) {
+                $schema['width'] = $dims['width'];
+                $schema['height'] = $dims['height'];
+            }
+            
+            $imageSchemas[] = $schema;
+            $baseIndex++;
+        }
+        
+        return $imageSchemas;
+    }
+
+    /**
+     * Generate SiteNavigationElement schemas for sitelinks (limited to major sections only)
+     */
+    public static function generateSitelinksSchema($pageId, $lang, $baseUrl, $pageUrl) {
+        require_once BASE_PATH . '/models/LinkWidget.php';
+        $linkWidgetModel = new LinkWidget();
+        $links = $linkWidgetModel->getLinksForPage($pageId);
+        
+        if (empty($links)) {
+            return null;
+        }
+        
+        // Keep only top 7 links to avoid navigation spam
+        // Filter out very deeply nested pages (depth > 2)
+        $filteredLinks = [];
+        foreach ($links as $link) {
+            if (count($filteredLinks) >= 7) {
+                break;
+            }
+            // Skip pages with very deep nesting (minor subsections)
+            $depth = substr_count($link['slug'] ?? '', '/');
+            if ($depth <= 2) {
+                $filteredLinks[] = $link;
+            }
+        }
+        
+        if (empty($filteredLinks)) {
+            return null;
+        }
+        
+        $navigationElements = [];
+        foreach ($filteredLinks as $index => $link) {
+            $linkUrl = canonicalUrlForPage($link['slug'] ?? '', $lang);
+            $navigationElements[] = [
+                '@type' => 'SiteNavigationElement',
+                '@id' => $linkUrl . '#sitenavigation',
+                'name' => $link["title_$lang"] ?? '',
+                'url' => $linkUrl,
+                'position' => $index + 1
+            ];
+        }
+        
+        // Return array of SiteNavigationElement schemas to be added individually to graph
+        return $navigationElements;
     }
 }

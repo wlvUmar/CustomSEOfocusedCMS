@@ -1,5 +1,5 @@
 <?php
-// path: ./controllers/PageController.php
+// path: ./controllers/PageController.php 
 
 require_once BASE_PATH . '/models/Page.php';
 require_once BASE_PATH . '/models/SEO.php';
@@ -46,7 +46,46 @@ class PageController extends Controller {
         $rotationUsed = false;
         $activeMonth = null;
         
-        if ($page['enable_rotation']) {
+        // Handle rotation based on mode
+        if ($page['rotation_mode'] === 'manual' && $page['selected_rotation_id']) {
+            // Manual mode: use selected rotation (only if selected_rotation_id is set)
+            $rotationContent = $this->rotationModel->getRotationById($page['selected_rotation_id']);
+            if ($rotationContent) {
+                if (!empty($rotationContent["title_$currentLang"])) {
+                    $page["title_$currentLang"] = $rotationContent["title_$currentLang"];
+                }
+                
+                $page["content_$currentLang"] = $rotationContent["content_$currentLang"];
+                
+                $rotationUsed = true;
+                $activeMonth = $rotationContent['active_month'];
+                
+                $seoFields = [
+                    'meta_title', 'meta_description', 'meta_keywords',
+                    'og_title', 'og_description', 'og_image',
+                    'jsonld'
+                ];
+                
+                foreach ($seoFields as $field) {
+                    if ($field === 'og_image') {
+                        if (!empty($rotationContent[$field])) {
+                            $page[$field] = $rotationContent[$field];
+                        }
+                    } else {
+                        $fieldWithLang = "{$field}_{$currentLang}";
+                        if (!empty($rotationContent[$fieldWithLang])) {
+                            $page[$fieldWithLang] = $rotationContent[$fieldWithLang];
+                        }
+                    }
+                }
+                
+                if (!shouldSkipTracking() && !isBot()) {
+                    $this->analyticsModel->trackRotationShown($slug, $activeMonth, $currentLang);
+                }
+            }
+            // If manual mode but no rotation selected, fall through to use base content
+        } elseif ($page['rotation_mode'] === 'auto') {
+            // Auto mode: use monthly rotation (original behavior)
             $rotationContent = $this->rotationModel->getCurrentMonth($page['id']);
             if ($rotationContent) {
                 if (!empty($rotationContent["title_$currentLang"])) {
@@ -82,6 +121,7 @@ class PageController extends Controller {
                 }
             }
         }
+        // If rotation_mode === 'disabled', no rotation is applied (use base page content)
         
         $seoSettings = $this->seoModel->getSettings();
         $contactUi = $this->buildContactUi($page['id'], $currentLang, $seoSettings);
@@ -201,6 +241,20 @@ class PageController extends Controller {
         // Add FAQPage to graph
         if ($faqSchemaArray) {
             $graph[] = $faqSchemaArray;
+        }
+
+        // Add Media ImageObject schemas to graph
+        $mediaImageSchemas = GlobalJsonLdGenerator::generateMediaImageSchemas($page['id'], $currentLang, $baseUrl);
+        foreach ($mediaImageSchemas as $imageSchema) {
+            $graph[] = $imageSchema;
+        }
+
+        // Add Sitelinks (related pages) schema to graph
+        $sitelinksSchemas = GlobalJsonLdGenerator::generateSitelinksSchema($page['id'], $currentLang, $baseUrl, $pageCanonicalUrl);
+        if ($sitelinksSchemas) {
+            foreach ($sitelinksSchemas as $sitelinkSchema) {
+                $graph[] = $sitelinkSchema;
+            }
         }
 
         $sitewideSchema = [

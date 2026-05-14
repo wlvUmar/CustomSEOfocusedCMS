@@ -1,7 +1,7 @@
 <?php
 // path: ./models/ArticleJsonLdGenerator.php
 // ARTICLE-SPECIFIC JSON-LD GENERATOR - COMPLETELY SEPARATE FROM PAGE LOGIC
-
+ 
 class ArticleJsonLdGenerator {
 
     private static function computeWordCountFromHtml($html) {
@@ -34,7 +34,7 @@ class ArticleJsonLdGenerator {
     
     /**
      * Generate complete @graph structure for an article
-     * Includes: Article, WebPage, BreadcrumbList, ImageObject, Organization reference
+     * Includes: Article, WebPage, BreadcrumbList, ImageObject, Organization reference, Media ImageObjects
      */
     public static function generateArticleGraph($article, $lang, $seo, $faqs = [], $datePublished = null, $dateModified = null, $author = null) {
         $baseUrl = self::getBaseUrl();
@@ -69,6 +69,12 @@ class ArticleJsonLdGenerator {
         if (!empty($faqs)) {
             $faqSchema = self::generateFAQSchema($faqs, $lang, $articleUrl);
             $graph[] = $faqSchema;
+        }
+
+        // 6. Media ImageObject schemas (additional images attached to article)
+        $mediaImageSchemas = self::generateMediaImageSchemas($article['id'] ?? null, $lang, $baseUrl);
+        foreach ($mediaImageSchemas as $imageSchema) {
+            $graph[] = $imageSchema;
         }
         
         $result = [
@@ -266,12 +272,23 @@ class ArticleJsonLdGenerator {
         $schema = [
             '@type' => 'FAQPage',
             '@id' => $articleUrl . '#faq',
+            'inLanguage' => $lang === 'ru' ? 'ru-RU' : 'uz-UZ',
             'mainEntity' => $faqItems
         ];
         
         return $schema;
     }
     
+    /**
+     * Generate ImageObject schemas for article media
+     * Note: Articles use featured image only. For page-style media attachments, extend ArticleMedia model.
+     */
+    public static function generateMediaImageSchemas($articleId, $lang, $baseUrl) {
+        // Articles currently don't have media attachments like pages
+        // They use a single featured image (stored in 'image' column)
+        // To extend: create ArticleMedia table and model following PageMedia pattern
+        return [];
+    }
 
     
     /**

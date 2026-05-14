@@ -1,6 +1,6 @@
 <?php
 // path: ./models/Page.php
-
+ 
 class Page {
     private $db;
 
@@ -34,8 +34,15 @@ class Page {
                     meta_description_ru, meta_description_uz, 
                     og_title_ru, og_title_uz, og_description_ru, og_description_uz, og_image,
                     canonical_url, jsonld_ru, jsonld_uz, 
-                    is_published, enable_rotation, sort_order, parent_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    is_published, enable_rotation, rotation_mode, selected_rotation_id, sort_order, parent_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        $rotationMode = $data['rotation_mode'] ?? 'auto';
+        if ($data['enable_rotation'] ?? 0) {
+            $rotationMode = 'auto';
+        } else {
+            $rotationMode = 'disabled';
+        }
         
         $this->db->query($sql, [
             $data['slug'],
@@ -59,6 +66,8 @@ class Page {
             $data['jsonld_uz'] ?? null,
             $data['is_published'] ?? 1,
             $data['enable_rotation'] ?? 0,
+            $rotationMode,
+            $data['selected_rotation_id'] ?? null,
             $data['sort_order'] ?? 0,
             $data['parent_id'] ?? null
         ]);
@@ -81,6 +90,9 @@ class Page {
             throw new Exception('Invalid parent: circular reference detected');
         }
         
+        // Use explicit rotation_mode if provided, otherwise keep current
+        $rotationMode = $data['rotation_mode'] ?? ($currentPage['rotation_mode'] ?? 'auto');
+        
         $sql = "UPDATE pages SET 
                     slug = ?, title_ru = ?, title_uz = ?, 
                     content_ru = ?, content_uz = ?, 
@@ -91,7 +103,7 @@ class Page {
                     og_description_ru = ?, og_description_uz = ?, 
                     og_image = ?, canonical_url = ?,
                     jsonld_ru = ?, jsonld_uz = ?, 
-                    is_published = ?, enable_rotation = ?, sort_order = ?,
+                    is_published = ?, rotation_mode = ?, selected_rotation_id = ?, sort_order = ?,
                     parent_id = ?
                 WHERE id = ?";
         
@@ -116,7 +128,8 @@ class Page {
             $data['jsonld_ru'] ?? null,
             $data['jsonld_uz'] ?? null,
             $data['is_published'] ?? 1,
-            $data['enable_rotation'] ?? 0,
+            $rotationMode,
+            $data['selected_rotation_id'] ?? null,
             $data['sort_order'] ?? 0,
             $newParentId,
             $id

@@ -32,7 +32,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <div class="form-group">
             <label>Parent Page (Optional - for hierarchy)</label>
             <select name="parent_id" class="form-control">
-                <option value="">— Root Level (No Parent) —</option>
+                <option value="" <?= (!isset($page) || !$page || !($page['parent_id'] ?? null)) ? 'selected' : '' ?>>— Root Level (No Parent) —</option>
                 <?php if (!empty($allPages)): ?>
                     <?php 
                     function renderParentPageOptions($pages, $currentPageId = null, $parentId = 0, $depth = 0, $maxDepth = 3) {
@@ -104,14 +104,57 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     Published
                 </label>
             </div>
-            
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="enable_rotation" <?= ($page['enable_rotation'] ?? 0) ? 'checked' : '' ?>>
-                    Enable Monthly Rotation
-                </label>
-            </div>
         </div>
+
+        <div class="form-group">
+            <label for="rotation_mode">Content Rotation Mode</label>
+            <select id="rotation_mode" name="rotation_mode" class="form-control">
+                <option value="disabled" <?= ($page['rotation_mode'] ?? 'auto') == 'disabled' ? 'selected' : '' ?>>
+                    Disabled - No rotation, use base content
+                </option>
+                <option value="auto" <?= ($page['rotation_mode'] ?? 'auto') == 'auto' ? 'selected' : '' ?>>
+                    Auto - Monthly rotation (traditional)
+                </option>
+                <option value="manual" <?= ($page['rotation_mode'] ?? 'auto') == 'manual' ? 'selected' : '' ?>>
+                    Manual - Choose which rotation to display
+                </option>
+            </select>
+            <small class="help-subtext">
+                <strong>Disabled:</strong> Page shows base content only, no monthly changes.<br>
+                <strong>Auto:</strong> Content changes monthly automatically (original behavior).<br>
+                <strong>Manual:</strong> You select which month's content to display (best for SEO).
+            </small>
+        </div>
+
+        <?php if ($page): ?>
+        <div id="rotation_selection_group" class="form-group" style="display: <?= ($page['rotation_mode'] ?? 'auto') == 'manual' ? 'block' : 'none' ?>;">
+            <label for="selected_rotation_id">Select Rotation to Display</label>
+            <?php 
+            $availableRotations = $availableRotations ?? [];
+            if (!empty($availableRotations)): 
+            ?>
+                <select id="selected_rotation_id" name="selected_rotation_id" class="form-control">
+                    <option value="">— No rotation selected —</option>
+                    <?php foreach ($availableRotations as $rotation): ?>
+                    <option value="<?= $rotation['id'] ?>" 
+                        <?= ($page['selected_rotation_id'] ?? null) == $rotation['id'] ? 'selected' : '' ?>>
+                        <?= e($months[$rotation['active_month']] ?? 'Month ' . $rotation['active_month']) ?> 
+                        - <?= e(substr($rotation['title_ru'], 0, 50)) ?> 
+                        <?= !$rotation['is_active'] ? '(Inactive)' : '' ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <small class="help-subtext">Select which month's rotation content to display. Leave empty to use base page content.</small>
+            <?php else: ?>
+                <div class="alert alert-info">
+                    No rotations available yet. 
+                    <a href="<?= BASE_URL ?>/admin/rotations/manage/<?= $page['id'] ?>" class="btn btn-sm">
+                        Create rotations first
+                    </a>
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
         
         <?php if ($page): ?>
         <div class="form-actions form-actions-secondary">
@@ -231,6 +274,20 @@ tinymce.init({
     plugins: 'fullscreen code',
     toolbar: 'fullscreen code',
     content_css: '<?= BASE_URL ?>/css/pages.css'
+});
+
+// Handle rotation mode toggle
+document.addEventListener('DOMContentLoaded', function() {
+    const rotationModeSelect = document.getElementById('rotation_mode');
+    const rotationSelectionGroup = document.getElementById('rotation_selection_group');
+    
+    if (rotationModeSelect) {
+        rotationModeSelect.addEventListener('change', function() {
+            if (rotationSelectionGroup) {
+                rotationSelectionGroup.style.display = this.value === 'manual' ? 'block' : 'none';
+            }
+        });
+    }
 });
 </script>
 

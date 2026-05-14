@@ -1,5 +1,5 @@
 <?php
-// path: ./models/ContentRotation.php
+// path: ./models/ContentRotation.php 
 // Replace the entire file with this
 
 class ContentRotation {
@@ -23,6 +23,39 @@ class ContentRotation {
         $month = date('n');
         $sql = "SELECT * FROM content_rotations WHERE page_id = ? AND active_month = ? AND is_active = 1 LIMIT 1";
         return $this->db->fetchOne($sql, [$pageId, $month]);
+    }
+
+    /**
+     * Get rotation by ID (for manual mode)
+     */
+    public function getRotationById($rotationId) {
+        $sql = "SELECT * FROM content_rotations WHERE id = ? AND is_active = 1 LIMIT 1";
+        return $this->db->fetchOne($sql, [$rotationId]);
+    }
+
+    /**
+     * Set manual rotation for a page
+     */
+    public function setManualRotation($pageId, $rotationId) {
+        require_once BASE_PATH . '/models/Page.php';
+        $pageModel = new Page();
+        
+        // Verify rotation belongs to this page
+        $rotation = $this->getRotationById($rotationId);
+        if (!$rotation || $rotation['page_id'] != $pageId) {
+            return false;
+        }
+        
+        $sql = "UPDATE pages SET selected_rotation_id = ? WHERE id = ?";
+        return $this->db->query($sql, [$rotationId, $pageId]);
+    }
+
+    /**
+     * Clear manual rotation (back to auto)
+     */
+    public function clearManualRotation($pageId) {
+        $sql = "UPDATE pages SET selected_rotation_id = NULL WHERE id = ?";
+        return $this->db->query($sql, [$pageId]);
     }
 
     public function createDefaultFromPage($pageId, $month) {

@@ -1,5 +1,5 @@
 <?php
-// path: ./controllers/admin/RotationAdminController.php
+// path: ./controllers/admin/RotationAdminController.php 
 
 require_once BASE_PATH . '/models/ContentRotation.php';
 require_once BASE_PATH . '/models/Page.php';
@@ -172,6 +172,114 @@ class RotationAdminController extends Controller {
         }
         
 
+        
+        $this->redirect('/admin/rotations/manage/' . $pageId);
+    }
+
+    /**
+     * Set rotation mode for a page
+     */
+    public function setRotationMode() {
+        $this->requireAuth();
+        
+        $pageId = intval($_POST['page_id'] ?? 0);
+        $mode = $_POST['rotation_mode'] ?? 'auto';
+        
+        if (!$pageId || !in_array($mode, ['auto', 'manual', 'disabled'])) {
+            $_SESSION['error'] = 'Invalid parameters';
+            $this->redirect('/admin/pages');
+            return;
+        }
+        
+        $page = $this->pageModel->getById($pageId);
+        if (!$page) {
+            $_SESSION['error'] = 'Page not found';
+            $this->redirect('/admin/pages');
+            return;
+        }
+        
+        // Update rotation mode
+        $enable = ($mode !== 'disabled') ? 1 : 0;
+        $data = $page;
+        $data['enable_rotation'] = $enable;
+        $data['rotation_mode'] = $mode;
+        
+        if ($this->pageModel->update($pageId, $data)) {
+            $_SESSION['success'] = 'Rotation mode updated to: ' . ucfirst($mode);
+        } else {
+            $_SESSION['error'] = 'Failed to update rotation mode';
+        }
+        
+        $this->redirect('/admin/rotations/manage/' . $pageId);
+    }
+
+    /**
+     * Select manual rotation for a page
+     */
+    public function selectRotation() {
+        $this->requireAuth();
+        
+        $pageId = intval($_POST['page_id'] ?? 0);
+        $rotationId = intval($_POST['rotation_id'] ?? 0);
+        
+        if (!$pageId || !$rotationId) {
+            $_SESSION['error'] = 'Invalid parameters';
+            $this->redirect('/admin/pages');
+            return;
+        }
+        
+        $page = $this->pageModel->getById($pageId);
+        if (!$page) {
+            $_SESSION['error'] = 'Page not found';
+            $this->redirect('/admin/pages');
+            return;
+        }
+        
+        // Verify rotation belongs to this page
+        $rotation = $this->rotationModel->getRotationById($rotationId);
+        if (!$rotation || $rotation['page_id'] != $pageId) {
+            $_SESSION['error'] = 'Invalid rotation selection';
+            $this->redirect('/admin/rotations/manage/' . $pageId);
+            return;
+        }
+        
+        // Update selected rotation
+        if ($this->rotationModel->setManualRotation($pageId, $rotationId)) {
+            $monthName = $this->rotationModel->getMonthNameRu($rotation['active_month']);
+            $_SESSION['success'] = "Rotation set to: $monthName";
+        } else {
+            $_SESSION['error'] = 'Failed to set rotation';
+        }
+        
+        $this->redirect('/admin/rotations/manage/' . $pageId);
+    }
+
+    /**
+     * Clear manual selection (go back to auto if enabled)
+     */
+    public function clearManualSelection() {
+        $this->requireAuth();
+        
+        $pageId = intval($_POST['page_id'] ?? 0);
+        
+        if (!$pageId) {
+            $_SESSION['error'] = 'Invalid parameters';
+            $this->redirect('/admin/pages');
+            return;
+        }
+        
+        $page = $this->pageModel->getById($pageId);
+        if (!$page) {
+            $_SESSION['error'] = 'Page not found';
+            $this->redirect('/admin/pages');
+            return;
+        }
+        
+        if ($this->rotationModel->clearManualRotation($pageId)) {
+            $_SESSION['success'] = 'Manual selection cleared. Rotation mode returned to auto.';
+        } else {
+            $_SESSION['error'] = 'Failed to clear manual selection';
+        }
         
         $this->redirect('/admin/rotations/manage/' . $pageId);
     }

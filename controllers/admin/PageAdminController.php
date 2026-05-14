@@ -3,10 +3,12 @@
 
 require_once BASE_PATH . '/models/Page.php';
 require_once BASE_PATH . '/models/IndexNow.php';
+require_once BASE_PATH . '/models/ContentRotation.php';
 
 
 class PageAdminController extends Controller {
     private $pageModel;
+    private $rotationModel;
 
 
     private function sanitizeSlug($slug) {
@@ -25,7 +27,7 @@ class PageAdminController extends Controller {
     public function __construct() {
         parent::__construct();
         $this->pageModel = new Page();
-
+        $this->rotationModel = new ContentRotation();
     }
 
     public function index() {
@@ -39,12 +41,21 @@ class PageAdminController extends Controller {
         $this->requireAuth();
         
         $page = null;
+        $availableRotations = [];
+        $months = [
+            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+        ];
+        
         if ($id) {
             $page = $this->pageModel->getById($id);
             if (!$page) {
                 $_SESSION['error'] = 'Page not found';
                 $this->redirect('/admin/pages');
             }
+            // Load available rotations for this page
+            $availableRotations = $this->rotationModel->getByPageId($id);
         }
         
         // Get all pages for parent selector, excluding self and descendants
@@ -62,7 +73,7 @@ class PageAdminController extends Controller {
             $allPages = $this->pageModel->getAll(true);
         }
         
-        $this->view('admin/pages/edit', ['page' => $page, 'allPages' => $allPages]);
+        $this->view('admin/pages/edit', ['page' => $page, 'allPages' => $allPages, 'availableRotations' => $availableRotations, 'months' => $months]);
     }
 
     public function save() {
@@ -74,6 +85,14 @@ class PageAdminController extends Controller {
         }
         
         $id = $_POST['id'] ?? null;
+        
+        // parent_id: if not sent or empty string, set to null (root level)
+        // otherwise convert to int
+        $parentId = null;
+        if (!empty($_POST['parent_id'])) {
+            $parentId = intval($_POST['parent_id']);
+        }
+        
         $data = [
             'slug' => $this->sanitizeSlug($_POST['slug']),
             'title_ru' => trim($_POST['title_ru']),
@@ -95,9 +114,10 @@ class PageAdminController extends Controller {
             'jsonld_ru' => trim($_POST['jsonld_ru']) ?: null,
             'jsonld_uz' => trim($_POST['jsonld_uz']) ?: null,
             'is_published' => isset($_POST['is_published']) ? 1 : 0,
-            'enable_rotation' => isset($_POST['enable_rotation']) ? 1 : 0,
+            'rotation_mode' => $_POST['rotation_mode'] ?? 'auto',
+            'selected_rotation_id' => !empty($_POST['selected_rotation_id']) ? intval($_POST['selected_rotation_id']) : null,
             'sort_order' => intval($_POST['sort_order'] ?? 0),
-            'parent_id' => !empty($_POST['parent_id']) ? intval($_POST['parent_id']) : null
+            'parent_id' => $parentId
         ];
         
         if ($id) {
