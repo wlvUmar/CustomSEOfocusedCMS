@@ -1,9 +1,31 @@
-<?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
-
+<?php 
+require BASE_PATH . '/views/admin/layout/header.php';
+require_once BASE_PATH . '/models/Analytics.php';
+?>
+ 
 <div class="page-header">
     <h1>Content Rotation Analytics</h1>
     <div class="header-actions">
-        <select onchange="window.location='?months='+this.value" class="btn">
+        <select id="pageSelector" onchange="updateChartPage(this.value)" class="btn">
+            <option value="">-- Select Page --</option>
+            <?php
+            $analyticsModel = new Analytics();
+            $groupedData = [];
+            foreach ($effectiveness as $row) {
+                $pageSlug = $row['page_slug'];
+                if (!isset($groupedData[$pageSlug])) {
+                    $groupedData[$pageSlug] = [
+                        'title' => $row['title_ru'],
+                    ]; 
+                }
+            }
+            foreach ($groupedData as $slug => $data):
+            ?>
+            <option value="<?= e($slug) ?>"><?= e($data['title']) ?></option>
+            <?php endforeach; ?>
+        </select>
+        
+        <select onchange="updateMonthsFilter(this.value)" class="btn">
             <option value="1" <?= $months == 1 ? 'selected' : '' ?>>Last Month</option>
             <option value="3" <?= $months == 3 ? 'selected' : '' ?>>Last 3 Months</option>
             <option value="6" <?= $months == 6 ? 'selected' : '' ?>>Last 6 Months</option>
@@ -32,6 +54,48 @@
     </div>
 <?php else: ?>
 
+<!-- Main Chart Section -->
+<div class="chart-card" style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h3 style="margin-top: 0; margin-bottom: 20px;">Daily Performance Trend</h3>
+    <div style="height: 400px; width: 100%; position: relative;">
+        <canvas id="mainChart" style="width: 100% !important; height: 100% !important;"></canvas>
+    </div>
+</div>
+
+<?php
+// Get all pages and prepare initial data
+$allPages = [];
+$firstPageSlug = null;
+foreach ($effectiveness as $row) {
+    $slug = $row['page_slug'];
+    if (!in_array($slug, $allPages)) {
+        $allPages[] = $slug;
+        if ($firstPageSlug === null) {
+            $firstPageSlug = $slug;
+        }
+    }
+}
+
+// Get daily data for first page (or selected page from query param)
+$selectedPageSlug = $_GET['page'] ?? $firstPageSlug;
+$selectedPageData = $analyticsModel->getRotationDailyDataLast($selectedPageSlug, 30);
+
+// Prepare chart data
+$chartDates = [];
+$chartVisits = [];
+$chartCtr = [];
+
+foreach ($selectedPageData as $day) {
+    $chartDates[] = date('M d', strtotime($day['date']));
+    $chartVisits[] = (int)($day['visits'] ?? 0);
+    $visitsVal = (int)($day['visits'] ?? 0);
+    $callsVal = (int)($day['phone_calls'] ?? 0);
+    $ctrVal = $visitsVal > 0 ? round(($callsVal / $visitsVal) * 100, 2) : 0;
+    $chartCtr[] = $ctrVal;
+}
+?>
+
+<!-- Rotation Items Grid -->
 <div class="rotation-effectiveness-grid">
     <?php
     $groupedData = [];
@@ -86,22 +150,20 @@
                         <span class="metric-value"><?= $rotation['unique_days'] ?></span>
                     </div>
                     
-                    <?php if ($total_visits > 0): ?>
                     <div class="metric-row">
                         <span class="metric-label"><i data-feather="bar-chart"></i> Visits:</span>
                         <span class="metric-value"><?= number_format($total_visits) ?></span>
                     </div>
                     
                     <div class="metric-row">
-                        <span class="metric-label"><i data-feather="mouse-pointer"></i> Clicks:</span>
-                        <span class="metric-value"><?= number_format($total_clicks) ?></span>
+                        <span class="metric-label"><i data-feather="phone"></i> Calls:</span>
+                        <span class="metric-value"><?= number_format($total_phones) ?></span>
                     </div>
                     
                     <div class="metric-row">
                         <span class="metric-label"><i data-feather="percent"></i> CTR:</span>
                         <span class="metric-value highlight"><?= $ctr ?>%</span>
                     </div>
-                    <?php endif; ?>
                 </div>
                 
                 <div class="rotation-actions">
@@ -114,96 +176,7 @@
             
             <?php endforeach; ?>
         </div>
-        
-        <div class="card-summary" style="position: relative;">
-            <div class="chart-toggle-btn" style="position: absolute; top: 0; right: 0; cursor: pointer; padding: 8px 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; z-index: 10; display: flex; align-items: center;">
-                <i data-feather="chevron-down" style="width: 18px; height: 18px;"></i>
-            </div>
-            <?php
-            // Prepare chart data
-            $chartMonths = [];
-            $chartVisits = [];
-            $chartCtr = [];
-            foreach ($data['rotations'] as $rot) {
-                $chartMonths[] = date('M', mktime(0, 0, 0, $rot['rotation_month'], 1));
-                $chartVisits[] = (int)($rot['total_visits'] ?? 0);
-                $visitsVal = (int)($rot['total_visits'] ?? 0);
-                $phonesVal = (int)($rot['total_phone_calls'] ?? 0);
-                $ctrVal = $visitsVal > 0 ? round(($phonesVal / $visitsVal) * 100, 2) : 0;
-                $chartCtr[] = $ctrVal;
-            }
-            $chartId = 'chart_' . str_replace(' ', '_', $slug);
-            ?>
-            <div class="chart-container" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease; width: 100%;">
-                <div style="height: 450px; width: 100%;">
-                    <canvas id="<?= $chartId ?>" style="width: 100% !important; height: 100% !important;"></canvas>
-                </div>
-            </div>
-        </div>
-            
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const ctx = document.getElementById('<?= $chartId ?>');
-                if (ctx) {
-                    new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: <?= json_encode($chartMonths) ?>,
-                            datasets: [
-                                {
-                                    label: 'Visits',
-                                    data: <?= json_encode($chartVisits) ?>,
-                                    borderColor: '#3b82f6',
-                                    backgroundColor: '#3b82f610',
-                                    tension: 0.4,
-                                    yAxisID: 'y',
-                                    fill: true
-                                },
-                                {
-                                    label: 'Phone Call CTR %',
-                                    data: <?= json_encode($chartCtr) ?>,
-                                    borderColor: '#f59e0b',
-                                    backgroundColor: 'transparent',
-                                    borderWidth: 2,
-                                    tension: 0.4,
-                                    yAxisID: 'y1',
-                                    pointRadius: 4,
-                                    pointBackgroundColor: '#f59e0b'
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: true,
-                            interaction: { mode: 'index', intersect: false },
-                            plugins: {
-                                legend: { 
-                                    display: true,
-                                    position: 'top',
-                                    labels: { font: { size: 11 }, boxWidth: 12 }
-                                }
-                            },
-                            scales: {
-                                y: {
-                                    type: 'linear',
-                                    display: true,
-                                    position: 'left',
-                                    title: { display: true, text: 'Visits', font: { size: 11 } }
-                                },
-                                y1: {
-                                    type: 'linear',
-                                    display: true,
-                                    position: 'right',
-                                    title: { display: true, text: 'CTR %', font: { size: 11 } },
-                                    grid: { drawOnChartArea: false }
-                                }
-                            }
-                        }
-                    });
-                }
-            });
-            </script>
-        </div>
+    </div>
     
     <?php endforeach; ?>
 </div>
@@ -211,31 +184,142 @@
 <?php endif; ?>
 
 <script>
+// Store all pages data with slug as key
+const pagesData = <?= json_encode(
+    array_reduce(
+        array_unique(array_map(function($row) { return $row['page_slug']; }, $effectiveness)),
+        function($carry, $slug) use ($analyticsModel) {
+            $data = $analyticsModel->getRotationDailyDataLast($slug, 30);
+            $dates = [];
+            $visits = [];
+            $clicks = [];
+            $calls = [];
+            $ctr = [];
+            foreach ($data as $day) {
+                $dates[] = date('M d', strtotime($day['date']));
+                $visits[] = (int)($day['visits'] ?? 0);
+                $clicks[] = (int)($day['clicks'] ?? 0);
+                $calls[] = (int)($day['phone_calls'] ?? 0);
+                $visitsVal = (int)($day['visits'] ?? 0);
+                $callsVal = (int)($day['phone_calls'] ?? 0);
+                $ctrVal = $visitsVal > 0 ? round(($callsVal / $visitsVal) * 100, 2) : 0;
+                $ctr[] = $ctrVal;
+            }
+            $carry[$slug] = ['dates' => $dates, 'visits' => $visits, 'clicks' => $clicks, 'calls' => $calls, 'ctr' => $ctr];
+            return $carry;
+        },
+        []
+    )
+) ?>;
+
+let mainChart = null;
+
+function updateChartPage(pageSlug) {
+    if (!pageSlug || !pagesData[pageSlug]) {
+        console.warn('Page slug not found in pagesData:', pageSlug, Object.keys(pagesData));
+        return;
+    }
+    
+    const data = pagesData[pageSlug];
+    
+    if (mainChart) {
+        mainChart.data.labels = data.dates;
+        mainChart.data.datasets[0].data = data.visits;
+        mainChart.data.datasets[1].data = data.clicks;
+        mainChart.data.datasets[2].data = data.calls;
+        mainChart.data.datasets[3].data = data.ctr;
+        mainChart.update();
+    }
+}
+
+function updateMonthsFilter(months) {
+    // Simple string-based URL update
+    const basePath = window.location.pathname;
+    window.location.href = basePath + '?months=' + encodeURIComponent(months);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.chart-toggle-btn').forEach(btn => {
-        const icon = btn.querySelector('i');
-        if (icon) {
-            icon.style.transition = 'transform 0.3s ease';
-            icon.style.transform = 'rotate(-90deg)';
-        }
-        
-        btn.addEventListener('click', function() {
-            const card = this.closest('.card-summary');
-            const container = card ? card.querySelector('.chart-container') : null;
-            const icon = this.querySelector('i');
-            
-            if (!container) return;
-            
-            if (container.style.maxHeight === '0px' || container.style.maxHeight === '') {
-                container.style.maxHeight = '500px';
-                if (icon) icon.style.transform = 'rotate(0deg)';
-                setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
-            } else {
-                container.style.maxHeight = '0px';
-                if (icon) icon.style.transform = 'rotate(-90deg)';
+    const firstPageKey = Object.keys(pagesData)[0];
+    const firstData = pagesData[firstPageKey];
+    
+    const ctx = document.getElementById('mainChart');
+    if (ctx && firstData) {
+        mainChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: firstData.dates,
+                datasets: [
+                    {
+                        label: 'Daily Visits',
+                        data: firstData.visits,
+                        borderColor: '#3b82f6',
+                        backgroundColor: '#3b82f610',
+                        tension: 0.4,
+                        yAxisID: 'y',
+                        fill: true
+                    },
+                    {
+                        label: 'Clicks',
+                        data: firstData.clicks,
+                        borderColor: '#10b981',
+                        backgroundColor: '#10b98110',
+                        tension: 0.4,
+                        yAxisID: 'y',
+                        fill: false,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Phone Calls',
+                        data: firstData.calls,
+                        borderColor: '#ef4444',
+                        backgroundColor: '#ef444410',
+                        tension: 0.4,
+                        yAxisID: 'y',
+                        fill: false,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Phone Call CTR %',
+                        data: firstData.ctr,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        yAxisID: 'y1',
+                        pointRadius: 4,
+                        pointBackgroundColor: '#f59e0b'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        labels: { font: { size: 12 }, boxWidth: 14 }
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'Daily Visits', font: { size: 12 } }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'CTR %', font: { size: 12 } },
+                        grid: { drawOnChartArea: false }
+                    }
+                }
             }
         });
-    });
+    }
 });
 </script>
 

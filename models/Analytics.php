@@ -1,12 +1,12 @@
 <?php
-// path: ./models/Analytics.php
+// path: ./models/Analytics.php 
 
 class Analytics {
     private $db;
 
     public function __construct() {
         $this->db = Database::getInstance();
-    }
+    } 
 
     public function getMonthlyData($months = 6) {
         $months = (int)$months;
@@ -333,6 +333,7 @@ class Analytics {
                     ar.unique_days,
                     COALESCE(am.total_visits, 0) as total_visits,
                     COALESCE(am.total_clicks, 0) as total_clicks,
+                    COALESCE(am.total_phone_calls, 0) as total_phone_calls,
                     p.title_ru,
                     p.id as page_id
                 FROM (
@@ -352,7 +353,8 @@ class Analytics {
                         year,
                         month,
                         SUM(total_visits) as total_visits,
-                        SUM(total_clicks) as total_clicks
+                        SUM(total_clicks) as total_clicks,
+                        SUM(total_phone_calls) as total_phone_calls
                     FROM analytics_monthly
                     GROUP BY page_slug, year, month
                 ) am ON 
@@ -363,6 +365,50 @@ class Analytics {
                 ORDER BY ar.year DESC, ar.rotation_month DESC, ar.times_shown DESC";
 
         return $this->db->fetchAll($sql);
+    }
+
+    /**
+     * Get daily rotation data for charts (within a specific month)
+     */
+    public function getRotationDailyData($pageSlug, $year, $month) {
+        $year = (int)$year;
+        $month = (int)$month;
+        $pageSlug = (string)$pageSlug;
+
+        $sql = "SELECT 
+                    a.date,
+                    SUM(a.visits) as visits,
+                    SUM(a.clicks) as clicks,
+                    SUM(a.phone_calls) as phone_calls
+                FROM analytics a
+                WHERE a.page_slug = ?
+                    AND YEAR(a.date) = ?
+                    AND MONTH(a.date) = ?
+                GROUP BY a.date
+                ORDER BY a.date ASC";
+
+        return $this->db->fetchAll($sql, [$pageSlug, $year, $month]);
+    }
+
+    /**
+     * Get daily rotation data for charts (last N days)
+     */
+    public function getRotationDailyDataLast($pageSlug, $days = 30) {
+        $days = (int)$days;
+        $pageSlug = (string)$pageSlug;
+
+        $sql = "SELECT 
+                    a.date,
+                    SUM(a.visits) as visits,
+                    SUM(a.clicks) as clicks,
+                    SUM(a.phone_calls) as phone_calls
+                FROM analytics a
+                WHERE a.page_slug = ?
+                    AND a.date >= DATE_SUB(CURDATE(), INTERVAL $days DAY)
+                GROUP BY a.date
+                ORDER BY a.date ASC";
+
+        return $this->db->fetchAll($sql, [$pageSlug]);
     }
 
     /**
