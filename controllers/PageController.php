@@ -144,7 +144,7 @@ class PageController extends Controller {
         // Generate Global Schema (Organization + WebSite)
         require_once BASE_PATH . '/models/GlobalJsonLdGenerator.php';
         $baseUrl = GlobalJsonLdGenerator::getBaseUrl();
-        $orgSchema = GlobalJsonLdGenerator::generateOrganizationSchema($seoSettings, $currentLang, $baseUrl);
+        $orgSchema = GlobalJsonLdGenerator::generateOrganizationSchema($seoSettings, $currentLang, $baseUrl, $page['id']);
         $webSiteSchema = GlobalJsonLdGenerator::generateWebSiteSchema($seoSettings, $currentLang, $baseUrl);
         
         // Prepare FAQ Data (if any)

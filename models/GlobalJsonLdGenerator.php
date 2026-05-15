@@ -11,65 +11,77 @@ class GlobalJsonLdGenerator {
 
     /**
      * Generate Organization schema
+     * @param $seoSettings - SEO settings from database
+     * @param $lang - Language code
+     * @param $baseUrl - Base URL of the site
+     * @param $pageId - Optional page ID to fetch associated images
      */
-    public static function generateOrganizationSchema($seoSettings, $lang, $baseUrl) {
+    public static function generateOrganizationSchema($seoSettings, $lang, $baseUrl, $pageId = null) {
         // If hardcoded schema exists in settings, prioritize it but ensure ID is correct
         if (!empty($seoSettings['organization_schema'])) {
-            $orgSchema = json_decode($seoSettings['organization_schema'], true);
-            if (is_array($orgSchema)) {
-                $orgSchema = self::sanitizeUrlValues($orgSchema, $baseUrl);
-                // Clean description
-                // Enforce a single clean RU description everywhere (avoid typos/duplication from DB).
-                $orgSchema['description'] = self::cleanText(self::unifiedOrganizationDescriptionRu());
+           $orgSchema = json_decode($seoSettings['organization_schema'], true);
+           if (is_array($orgSchema)) {
+               $orgSchema = self::sanitizeUrlValues($orgSchema, $baseUrl);
+               // Clean description
+               // Enforce a single clean RU description everywhere (avoid typos/duplication from DB).
+               $orgSchema['description'] = self::cleanText(self::unifiedOrganizationDescriptionRu());
                 
-                // STRICT ENFORCEMENT: Override any host/ids from DB to avoid localhost leakage.
-                $orgSchema['@id'] = $baseUrl . '#organization';
-                $orgSchema['url'] = $baseUrl;
+               // STRICT ENFORCEMENT: Override any host/ids from DB to avoid localhost leakage.
+               $orgSchema['@id'] = $baseUrl . '#organization';
+               $orgSchema['url'] = $baseUrl;
 
-                if (!empty($orgSchema['logo'])) {
-                    if (is_string($orgSchema['logo'])) {
-                        $orgSchema['logo'] = [
-                            '@type' => 'ImageObject',
-                            'url' => absoluteUrl($orgSchema['logo'], $baseUrl),
-                        ];
-                    } elseif (is_array($orgSchema['logo']) && !empty($orgSchema['logo']['url'])) {
-                        $orgSchema['logo']['url'] = absoluteUrl($orgSchema['logo']['url'], $baseUrl);
-                    }
-                    if (is_array($orgSchema['logo'])) {
-                        $logoDims = getPublicImageDimensions($orgSchema['logo']['url'] ?? '');
-                        if ($logoDims) {
-                            $orgSchema['logo']['width'] = $logoDims['width'];
-                            $orgSchema['logo']['height'] = $logoDims['height'];
-                        }
-                    }
-                }
+               if (!empty($orgSchema['logo'])) {
+                   if (is_string($orgSchema['logo'])) {
+                       $orgSchema['logo'] = [
+                           '@type' => 'ImageObject',
+                           'url' => absoluteUrl($orgSchema['logo'], $baseUrl),
+                       ];
+                   } elseif (is_array($orgSchema['logo']) && !empty($orgSchema['logo']['url'])) {
+                       $orgSchema['logo']['url'] = absoluteUrl($orgSchema['logo']['url'], $baseUrl);
+                   }
+                   if (is_array($orgSchema['logo'])) {
+                       $logoDims = getPublicImageDimensions($orgSchema['logo']['url'] ?? '');
+                       if ($logoDims) {
+                           $orgSchema['logo']['width'] = $logoDims['width'];
+                           $orgSchema['logo']['height'] = $logoDims['height'];
+                       }
+                   }
+               }
 
-                unset($orgSchema['@context']);
-                return $orgSchema;
-            }
+               // Add page image if available
+               if (!empty($pageId)) {
+                   $pageImage = self::getPageImageForSchema($pageId, $baseUrl);
+                   if ($pageImage) {
+                       $orgSchema['image'] = $pageImage;
+                   }
+               }
+
+               unset($orgSchema['@context']);
+               return $orgSchema;
+           }
         }
 
         // Fallback to generating from fields
         $schema = [
-            '@type' => 'LocalBusiness',
-            '@id' => $baseUrl . '#organization',
-            'name' => $seoSettings["org_name_$lang"] ?? $seoSettings["site_name_$lang"] ?? 'Site Name',
-            'url' => $baseUrl,
-            'logo' => [
-                '@type' => 'ImageObject',
-                'url' => absoluteUrl($seoSettings['org_logo'] ?? ($baseUrl . '/css/logo.png'), $baseUrl)
-            ]
+           '@type' => 'LocalBusiness',
+           '@id' => $baseUrl . '#organization',
+           'name' => $seoSettings["org_name_$lang"] ?? $seoSettings["site_name_$lang"] ?? 'Site Name',
+           'url' => $baseUrl,
+           'logo' => [
+               '@type' => 'ImageObject',
+               'url' => absoluteUrl($seoSettings['org_logo'] ?? ($baseUrl . '/css/logo.png'), $baseUrl)
+           ]
         ];
 
         $schema['description'] = self::cleanText(self::unifiedOrganizationDescriptionRu());
 
         if (!empty($seoSettings['phone'])) {
-            $schema['telephone'] = $seoSettings['phone'];
+           $schema['telephone'] = $seoSettings['phone'];
         }
         
         // Add address if available
         if (!empty($seoSettings["address_$lang"])) {
-           $schema['address'] = [
+          $schema['address'] = [
                '@type' => 'PostalAddress',
                'streetAddress' => $seoSettings["address_$lang"],
                'addressCountry' => $seoSettings['country'] ?? 'UZ'
@@ -83,24 +95,32 @@ class GlobalJsonLdGenerator {
         $sameAs = [];
         $socials = ['social_facebook', 'social_instagram', 'social_twitter', 'social_youtube'];
         foreach ($socials as $social) {
-            if (!empty($seoSettings[$social])) {
-                $sameAs[] = $seoSettings[$social];
-            }
+           if (!empty($seoSettings[$social])) {
+               $sameAs[] = $seoSettings[$social];
+           }
         }
         
         if (!empty($seoSettings['org_sameas_extra'])) {
-             $extras = array_map('trim', explode(',', $seoSettings['org_sameas_extra']));
-             $sameAs = array_merge($sameAs, $extras);
+            $extras = array_map('trim', explode(',', $seoSettings['org_sameas_extra']));
+            $sameAs = array_merge($sameAs, $extras);
         }
         
         if (!empty($sameAs)) {
-            $schema['sameAs'] = $sameAs;
+           $schema['sameAs'] = $sameAs;
         }
 
         $logoDims = getPublicImageDimensions($schema['logo']['url'] ?? '');
         if ($logoDims) {
-            $schema['logo']['width'] = $logoDims['width'];
-            $schema['logo']['height'] = $logoDims['height'];
+           $schema['logo']['width'] = $logoDims['width'];
+           $schema['logo']['height'] = $logoDims['height'];
+        }
+
+        // Add page image if available
+        if (!empty($pageId)) {
+           $pageImage = self::getPageImageForSchema($pageId, $baseUrl);
+           if ($pageImage) {
+               $schema['image'] = $pageImage;
+           }
         }
 
         return $schema;
@@ -164,6 +184,53 @@ class GlobalJsonLdGenerator {
         }
 
         return trim(implode(' ', $out));
+    }
+
+    /**
+     * Get page image for schema.org representation
+     * Retrieves the first image attached to a page and formats it as ImageObject
+     */
+    private static function getPageImageForSchema($pageId, $baseUrl) {
+        if (empty($pageId)) {
+            return null;
+        }
+
+        require_once BASE_PATH . '/models/PageMedia.php';
+        $pageMediaModel = new PageMedia();
+        $mediaItems = $pageMediaModel->getPageMedia($pageId);
+        
+        if (empty($mediaItems)) {
+            return null;
+        }
+        
+        // Get the first image
+        $firstMedia = reset($mediaItems);
+        
+        if (empty($firstMedia['filename'])) {
+            return null;
+        }
+        
+        $imageUrl = absoluteUrl('/uploads/' . $firstMedia['filename'], $baseUrl);
+        $imageObject = [
+            '@type' => 'ImageObject',
+            'url' => $imageUrl,
+            'contentUrl' => $imageUrl
+        ];
+        
+        // Add dimensions if available
+        $dims = getPublicImageDimensions($imageUrl);
+        if ($dims) {
+            $imageObject['width'] = $dims['width'];
+            $imageObject['height'] = $dims['height'];
+        }
+        
+        // Add alt text if available
+        $altText = $firstMedia['alt_text_ru'] ?? $firstMedia['alt_text_uz'] ?? '';
+        if (!empty($altText)) {
+            $imageObject['description'] = $altText;
+        }
+        
+        return $imageObject;
     }
 
     private static function cleanSchemaDescription($text) {
