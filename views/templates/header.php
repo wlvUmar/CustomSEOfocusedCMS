@@ -21,12 +21,36 @@ $floatingCta = $contactUi['floating_cta'] ?? [
     'url' => 'https://t.me/azimjumayev',
     'label' => $defaultFloatingLabel
 ];
+
+// Handle URL phone parameter for floating button
+if (!empty($_GET['phone'])) {
+    $urlPhone = trim($_GET['phone']);
+    $urlPhone = str_replace(' ', '', $urlPhone);  // Remove spaces (+ becomes space in URL)
+    $urlPhone = preg_replace('/[^\d+]/', '', $urlPhone);  // Keep only + and digits
+    
+    // Ensure + prefix exists
+    if (!empty($urlPhone) && strpos($urlPhone, '+') === false) {
+        $urlPhone = '+' . $urlPhone;
+    }
+    
+    // If phone param is not empty, override floating CTA to call button
+    if (!empty($urlPhone)) {
+        $floatingCta = [
+            'type' => 'phone',
+            'url' => 'tel:' . $urlPhone,
+            'label' => $lang === 'ru' ? 'Позвонить' : 'Qo\'ng\'iroq qilish'
+        ];
+    }
+}
+
 $floatingType = $floatingCta['type'] ?? 'telegram';
 $floatingClass = 'floating-telegram';
 if ($floatingType === 'instagram') {
     $floatingClass .= ' floating-telegram--instagram';
 } elseif ($floatingType === 'custom') {
     $floatingClass .= ' floating-telegram--custom';
+} elseif ($floatingType === 'phone') {
+    $floatingClass = 'floating-call';
 }
 
 $templateData = [
@@ -368,13 +392,24 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     </a>
     <?php endif; ?>
 
-    <?php if (($floatingCta['type'] ?? 'none') !== 'none' && !empty($floatingCta['url'])): ?>
+    <?php if ($floatingType === 'phone'): ?>
+    <!-- Phone button from URL param -->
     <a href="<?= e($floatingCta['url']) ?>"
-       class="<?= e($floatingClass) ?>"
-       target="_blank"
-       rel="noopener noreferrer"
-       title="<?= e($floatingCta['label'] ?? $defaultFloatingLabel) ?>"
-       aria-label="<?= e($floatingCta['label'] ?? $defaultFloatingLabel) ?>">
+      class="<?= e($floatingClass) ?>"
+      title="<?= e($floatingCta['label']) ?>"
+      aria-label="<?= e($floatingCta['label']) ?>">
+       <svg fill="currentColor" viewBox="0 0 20 20">
+           <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+       </svg>
+    </a>
+    <?php elseif (($floatingCta['type'] ?? 'none') !== 'none' && !empty($floatingCta['url'])): ?>
+    <!-- Regular floating CTA (Telegram, Instagram, Custom) -->
+    <a href="<?= e($floatingCta['url']) ?>"
+      class="<?= e($floatingClass) ?>"
+      target="_blank"
+      rel="noopener noreferrer"
+      title="<?= e($floatingCta['label'] ?? $defaultFloatingLabel) ?>"
+      aria-label="<?= e($floatingCta['label'] ?? $defaultFloatingLabel) ?>">
         <?php if (($floatingCta['type'] ?? 'telegram') === 'instagram'): ?>
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zm0 1.8A3.95 3.95 0 0 0 3.8 7.75v8.5a3.95 3.95 0 0 0 3.95 3.95h8.5a3.95 3.95 0 0 0 3.95-3.95v-8.5a3.95 3.95 0 0 0-3.95-3.95h-8.5zm8.95 1.35a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 1.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 0 0 12 8.8z"/>

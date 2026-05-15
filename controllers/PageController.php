@@ -322,6 +322,14 @@ class PageController extends Controller {
 
         $phone = $defaultPhone;
         $email = $defaultEmail;
+        
+        // Check for phone parameter in URL
+        if (!empty($_GET['phone'])) {
+            $urlPhone = $this->sanitizePhone($_GET['phone']);
+            if ($urlPhone !== '') {
+                $phone = $urlPhone;
+            }
+        }
 
         if ($override) {
             $overridePhone = trim((string)($override['phone'] ?? ''));
@@ -411,6 +419,28 @@ class PageController extends Controller {
         }
 
         return null;
+    }
+
+    /**
+     * Sanitize phone number from URL parameter
+     * Expected format: +9989XXXXXXXX
+     */
+    private function sanitizePhone($phone) {
+        $phone = (string)($phone ?? '');
+        $phone = trim($phone);
+        
+        // Remove spaces (+ in URLs becomes space)
+        $phone = str_replace(' ', '', $phone);
+        
+        // Keep only + and digits
+        $phone = preg_replace('/[^\d+]/', '', $phone);
+        
+        // Ensure + prefix exists
+        if (!empty($phone) && strpos($phone, '+') === false) {
+            $phone = '+' . $phone;
+        }
+        
+        return $phone;
     }
 
     /**
