@@ -119,23 +119,6 @@
             </div>
         </div>
     </div>
-    <?php if (defined('GTM_ID')): ?>
-    <script>
-        (function() {
-            if (typeof window.__loadGTM !== 'function') return;
-            var triggered = false;
-            var load = function() {
-                if (triggered) return;
-                triggered = true;
-                window.__loadGTM();
-            };
-            var events = ['pointerdown', 'keydown', 'touchstart', 'scroll', 'wheel'];
-            events.forEach(function(evt) {
-                window.addEventListener(evt, load, { once: true, passive: true });
-            });
-        })();
-    </script>
-    <?php endif; ?>
     <script src="<?= BASE_URL ?>/js/link-tracking.js" defer></script>
     <style>
     .review-modal[hidden] { display: none !important; }
