@@ -97,6 +97,25 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
 <head>
+    <?php if (defined('GTM_ID')): ?>
+    <!-- Google Tag Manager (lazy load) -->
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+        window.__gtmLoaded = false;
+        window.__loadGTM = function() {
+            if (window.__gtmLoaded) return;
+            window.__gtmLoaded = true;
+            var d = document;
+            var s = d.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtm.js?id=<?= GTM_ID ?>';
+            var f = d.getElementsByTagName('script')[0];
+            f.parentNode.insertBefore(s, f);
+        };
+    </script>
+    <!-- End Google Tag Manager -->
+    <?php endif; ?>
     <?= renderMetaPixelHead() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
