@@ -72,6 +72,25 @@
         } catch (e) {}
     }
 
+    // Simple de-duplication helpers using sessionStorage with TTL
+    function isRecentlyTracked(key, ttlMs) {
+        try {
+            const raw = sessionStorage.getItem(key);
+            if (!raw) return false;
+            const ts = parseInt(raw, 10);
+            if (isNaN(ts)) return false;
+            return (Date.now() - ts) < (ttlMs || 15000);
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function markTracked(key) {
+        try {
+            sessionStorage.setItem(key, String(Date.now()));
+        } catch (e) {}
+    }
+
     function openReviewModal(callHref) {
         const modal = getReviewModal();
         if (!modal) {
@@ -125,6 +144,9 @@
         const lang = getCurrentLanguage();
 
         if (fromSlug === toSlug) return;
+        const key = 'tracked_internal_' + fromSlug + '_' + toSlug;
+        if (isRecentlyTracked(key, 10000)) return;
+        markTracked(key);
         postTracking('/track-internal-link', {
             from: fromSlug,
             to: toSlug,
@@ -132,14 +154,20 @@
         });
     }
 
-    function trackClick() {
+    function trackClick(href) {
+        var key = 'tracked_click_' + (href || getCurrentSlug());
+        if (isRecentlyTracked(key, 8000)) return;
+        markTracked(key);
         postTracking('/track-click', {
             slug: getCurrentSlug(),
             lang: getCurrentLanguage()
         });
     }
 
-    function trackPhoneCall() {
+    function trackPhoneCall(href) {
+        var key = 'tracked_phone_' + (href || getCurrentSlug());
+        if (isRecentlyTracked(key, 15000)) return;
+        markTracked(key);
         postTracking('/track-phone-call', {
             slug: getCurrentSlug(),
             lang: getCurrentLanguage()
@@ -173,13 +201,13 @@
             }
 
             if (link.href.startsWith('tel:')) {
-                trackPhoneCall();
+                trackPhoneCall(link.href);
                 setPendingReview(link.href);
                 return;
             }
 
             if (link.classList.contains('floating-telegram') || link.matches('[data-track-click="1"]')) {
-                trackClick();
+                trackClick(link.href);
             }
 
             // Track internal links

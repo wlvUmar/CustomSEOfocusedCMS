@@ -20,10 +20,10 @@ $csp = [
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
     "style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
 
-    "img-src 'self' data: blob: https: https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com",
+    "img-src 'self' data: blob: https: https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://stats.g.doubleclick.net",
     "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
 
-    "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://graph.facebook.com https://www.google.com/measurement/conversion",
+    "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://graph.facebook.com https://www.google.com/measurement/conversion https://stats.g.doubleclick.net",
 
     "frame-src 'self' https://www.googletagmanager.com https://www.facebook.com",
     "frame-ancestors 'self'",
