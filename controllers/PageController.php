@@ -494,6 +494,7 @@ class PageController extends Controller {
     public function trackClick() {
         $slug = trim((string)($_POST['slug'] ?? ''));
         $lang = normalizeTrackingLanguage($_POST['lang'] ?? getCurrentLanguage());
+        $utmSource = trim((string)($_POST['utm_source'] ?? ''));
 
         if (!trackingRateLimit('click', 200, 300)) {
             $this->json(['success' => false, 'message' => 'Rate limit'], 429);
@@ -503,7 +504,7 @@ class PageController extends Controller {
             $this->json(['success' => false, 'message' => 'Invalid slug'], 400);
         }
 
-        trackClick($slug, $lang);
+        trackClick($slug, $lang, $utmSource);
         $this->json(['success' => true]);
     }
 
@@ -530,6 +531,7 @@ class PageController extends Controller {
     public function trackPhoneCall() {
         $slug = trim((string)($_POST['slug'] ?? ''));
         $lang = normalizeTrackingLanguage($_POST['lang'] ?? getCurrentLanguage());
+        $utmSource = trim((string)($_POST['utm_source'] ?? ''));
 
         if (!trackingRateLimit('phone_call', 50, 300)) {
             $this->json(['success' => false, 'message' => 'Rate limit'], 429);
@@ -539,7 +541,7 @@ class PageController extends Controller {
             $this->json(['success' => false, 'message' => 'Invalid slug'], 400);
         }
 
-        trackPhoneCall($slug, $lang);
+        trackPhoneCall($slug, $lang, $utmSource);
         $this->json(['success' => true]);
     }
     

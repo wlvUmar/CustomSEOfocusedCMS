@@ -316,6 +316,17 @@ footer a:hover {
     height: 26px;
 }
 
+/* Instagram variant of floating button */
+.floating-telegram.floating-telegram--instagram {
+    background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+    box-shadow: 0 4px 16px rgba(214, 36, 159, 0.4);
+}
+
+.floating-telegram.floating-telegram--instagram:hover {
+    background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+    box-shadow: 0 6px 20px rgba(214, 36, 159, 0.6);
+}
+
 
 @keyframes pulse {
     0%, 100% { 

@@ -281,6 +281,7 @@ $brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"]
         window.googleReviewPrompt = <?= json_encode($lang === 'ru' ? 'Спасибо! Не могли бы вы оставить отзыв о нашем сервисе?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?') ?>;
         <?php endif; ?>
     </script>
+    <script src="<?= BASE_URL ?>/js/param-persistence.js" defer></script>
     <script src="<?= BASE_URL ?>/js/link-tracking.js" defer></script>
     
     <style>

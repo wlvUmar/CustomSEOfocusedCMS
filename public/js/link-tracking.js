@@ -158,20 +158,46 @@
         var key = 'tracked_click_' + (href || getCurrentSlug());
         if (isRecentlyTracked(key, 8000)) return;
         markTracked(key);
-        postTracking('/track-click', {
+        
+        // Get utm_source from sessionStorage if available
+        var utmSource = '';
+        try {
+            utmSource = sessionStorage.getItem('persist_param_utm_source') || '';
+        } catch (e) {}
+        
+        var params = {
             slug: getCurrentSlug(),
             lang: getCurrentLanguage()
-        });
+        };
+        
+        if (utmSource) {
+            params.utm_source = utmSource;
+        }
+        
+        postTracking('/track-click', params);
     }
 
     function trackPhoneCall(href) {
         var key = 'tracked_phone_' + (href || getCurrentSlug());
         if (isRecentlyTracked(key, 15000)) return;
         markTracked(key);
-        postTracking('/track-phone-call', {
+        
+        // Get utm_source from sessionStorage if available
+        var utmSource = '';
+        try {
+            utmSource = sessionStorage.getItem('persist_param_utm_source') || '';
+        } catch (e) {}
+        
+        var params = {
             slug: getCurrentSlug(),
             lang: getCurrentLanguage()
-        });
+        };
+        
+        if (utmSource) {
+            params.utm_source = utmSource;
+        }
+        
+        postTracking('/track-phone-call', params);
     }
 
     function extractSlugFromHref(href) {

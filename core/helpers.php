@@ -39,6 +39,43 @@ function logInfo($message) {
     }
 }
 
+// Ensure database schema includes utm_source columns (one-time setup)
+function ensureUtmSourceSchema() {
+    static $schemaChecked = false;
+    if ($schemaChecked) return;
+    $schemaChecked = true;
+
+    try {
+        $db = Database::getInstance();
+        
+        // Add utm_source column to analytics table if it doesn't exist
+        $db->query("ALTER TABLE analytics ADD COLUMN utm_source VARCHAR(255) NULL AFTER phone_calls");
+    } catch (Exception $e) {
+        // Column likely already exists, silently ignore
+    }
+
+    try {
+        $db = Database::getInstance();
+        
+        // Add utm_source column to analytics_hourly table if it doesn't exist
+        $db->query("ALTER TABLE analytics_hourly ADD COLUMN utm_source VARCHAR(255) NULL AFTER phone_calls");
+    } catch (Exception $e) {
+        // Column likely already exists, silently ignore
+    }
+
+    try {
+        $db = Database::getInstance();
+        
+        // Add utm_source column to analytics_monthly table if it doesn't exist
+        $db->query("ALTER TABLE analytics_monthly ADD COLUMN utm_source VARCHAR(255) NULL AFTER total_phone_calls");
+    } catch (Exception $e) {
+        // Column likely already exists, silently ignore
+    }
+}
+
+// Call once on app initialization
+ensureUtmSourceSchema();
+
 /**
  * Resolve the absolute canonical site base URL used for SEO/meta and JSON-LD.
  *
@@ -616,7 +653,7 @@ function getClientIp(): ?string
     return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : null;
 }
 
-function bumpMonthlySummary($slug, $language, $deltaVisits, $deltaClicks, $deltaPhoneCalls, $isNewDay): void
+function bumpMonthlySummary($slug, $language, $deltaVisits, $deltaClicks, $deltaPhoneCalls, $isNewDay, $utmSource = ''): void
 {
     try {
         $db = Database::getInstance();
@@ -627,23 +664,24 @@ function bumpMonthlySummary($slug, $language, $deltaVisits, $deltaClicks, $delta
         $deltaClicks = (int)$deltaClicks;
         $deltaPhoneCalls = (int)$deltaPhoneCalls;
         $deltaDays = $isNewDay ? 1 : 0;
+        $utmSource = trim((string)$utmSource) ?: null;
 
         $sql = "INSERT INTO analytics_monthly
-                    (page_slug, language, year, month, total_visits, total_clicks, total_phone_calls, unique_days)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (page_slug, language, year, month, total_visits, total_clicks, total_phone_calls, utm_source, unique_days)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                     total_visits = total_visits + VALUES(total_visits),
                     total_clicks = total_clicks + VALUES(total_clicks),
                     total_phone_calls = total_phone_calls + VALUES(total_phone_calls),
                     unique_days = unique_days + VALUES(unique_days)";
 
-        $db->query($sql, [$slug, $language, $year, $month, $deltaVisits, $deltaClicks, $deltaPhoneCalls, $deltaDays]);
+        $db->query($sql, [$slug, $language, $year, $month, $deltaVisits, $deltaClicks, $deltaPhoneCalls, $utmSource, $deltaDays]);
     } catch (Exception $e) {
         error_log("Monthly summary error: " . $e->getMessage());
     }
 }
 
-function bumpHourlySummary($slug, $language, $deltaVisits, $deltaClicks, $deltaPhoneCalls): void
+function bumpHourlySummary($slug, $language, $deltaVisits, $deltaClicks, $deltaPhoneCalls, $utmSource = ''): void
 {
     try {
         $db = Database::getInstance();
@@ -653,16 +691,17 @@ function bumpHourlySummary($slug, $language, $deltaVisits, $deltaClicks, $deltaP
         $deltaVisits = (int)$deltaVisits;
         $deltaClicks = (int)$deltaClicks;
         $deltaPhoneCalls = (int)$deltaPhoneCalls;
+        $utmSource = trim((string)$utmSource) ?: null;
 
         $sql = "INSERT INTO analytics_hourly
-                    (page_slug, language, date, hour, visits, clicks, phone_calls)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (page_slug, language, date, hour, visits, clicks, phone_calls, utm_source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                     visits = visits + VALUES(visits),
                     clicks = clicks + VALUES(clicks),
                     phone_calls = phone_calls + VALUES(phone_calls)";
 
-        $db->query($sql, [$slug, $language, $date, $hour, $deltaVisits, $deltaClicks, $deltaPhoneCalls]);
+        $db->query($sql, [$slug, $language, $date, $hour, $deltaVisits, $deltaClicks, $deltaPhoneCalls, $utmSource]);
     } catch (Exception $e) {
         error_log("Hourly summary error: " . $e->getMessage());
     }
@@ -759,7 +798,7 @@ function trackBotVisit($slug, $language) {
     }
 }
 
-function trackClick($slug, $language) {
+function trackClick($slug, $language, $utmSource = '') {
     if (shouldSkipTracking()) return;
     if (isBot()) return;
 
@@ -773,20 +812,22 @@ function trackClick($slug, $language) {
         $language = normalizeTrackingLanguage($language);
         if (!isValidAnalyticsSlug($slug)) return;
 
-        $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, date)
-                VALUES (?, ?, 0, 1, 0, ?)
+        $utmSource = trim((string)$utmSource) ?: null;
+
+        $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, utm_source, date)
+                VALUES (?, ?, 0, 1, 0, ?, ?)
                 ON DUPLICATE KEY UPDATE clicks = clicks + 1";
 
-        $stmt = $db->query($sql, [$slug, $language, $date]);
+        $stmt = $db->query($sql, [$slug, $language, $utmSource, $date]);
         $isNewDay = ($stmt && $stmt->rowCount() === 1);
-        bumpMonthlySummary($slug, $language, 0, 1, 0, $isNewDay);
-        bumpHourlySummary($slug, $language, 0, 1, 0);
+        bumpMonthlySummary($slug, $language, 0, 1, 0, $isNewDay, $utmSource);
+        bumpHourlySummary($slug, $language, 0, 1, 0, $utmSource);
     } catch (Exception $e) {
         error_log("Click tracking error: " . $e->getMessage());
     }
 }
 
-function trackPhoneCall($slug, $language) {
+function trackPhoneCall($slug, $language, $utmSource = '') {
     if (shouldSkipTracking()) return;
     if (isBot()) return;
 
@@ -800,14 +841,16 @@ function trackPhoneCall($slug, $language) {
         $language = normalizeTrackingLanguage($language);
         if (!isValidAnalyticsSlug($slug)) return;
 
-        $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, date) 
-                VALUES (?, ?, 0, 0, 1, ?) 
+        $utmSource = trim((string)$utmSource) ?: null;
+
+        $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, utm_source, date) 
+                VALUES (?, ?, 0, 0, 1, ?, ?) 
                 ON DUPLICATE KEY UPDATE phone_calls = phone_calls + 1";
 
-        $stmt = $db->query($sql, [$slug, $language, $date]);
+        $stmt = $db->query($sql, [$slug, $language, $utmSource, $date]);
         $isNewDay = ($stmt && $stmt->rowCount() === 1);
-        bumpMonthlySummary($slug, $language, 0, 0, 1, $isNewDay);
-        bumpHourlySummary($slug, $language, 0, 0, 1);
+        bumpMonthlySummary($slug, $language, 0, 0, 1, $isNewDay, $utmSource);
+        bumpHourlySummary($slug, $language, 0, 0, 1, $utmSource);
     } catch (Exception $e) {
         error_log("Phone call tracking error: " . $e->getMessage());
     }

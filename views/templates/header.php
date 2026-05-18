@@ -43,6 +43,30 @@ if (!empty($_GET['phone'])) {
     }
 }
 
+// Handle URL instagram parameter for floating button
+if (!empty($_GET['instagram'])) {
+    $urlInstagram = trim($_GET['instagram']);
+    if (!empty($urlInstagram)) {
+        $floatingCta = [
+            'type' => 'instagram',
+            'url' => $urlInstagram,
+            'label' => $lang === 'ru' ? 'Написать в Instagram' : 'Instagramda yozish'
+        ];
+    }
+}
+
+// Handle URL telegram parameter for floating button
+if (!empty($_GET['telegram'])) {
+    $urlTelegram = trim($_GET['telegram']);
+    if (!empty($urlTelegram)) {
+        $floatingCta = [
+            'type' => 'telegram',
+            'url' => $urlTelegram,
+            'label' => $lang === 'ru' ? 'Написать в Telegram' : 'Telegramda yozish'
+        ];
+    }
+}
+
 $floatingType = $floatingCta['type'] ?? 'telegram';
 $floatingClass = 'floating-telegram';
 if ($floatingType === 'instagram') {
