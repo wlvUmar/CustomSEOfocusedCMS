@@ -45,3 +45,6 @@ config/service-accounts/google-service-account.json
 database/schema.sql
 watcher.log
 watcher.py
+/node_modules
+package.json
+package-lock.json

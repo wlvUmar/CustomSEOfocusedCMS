@@ -141,6 +141,52 @@ function updateAnalyticsFilters() {
     <?php endforeach; ?>
 </div>
 
+<!-- UTM Source Indicator Cards -->
+<?php if (!empty($stats['utm_stats'])): ?>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px;">
+    <?php 
+    $totalUtmClicks = array_sum(array_column($stats['utm_stats'], 'clicks'));
+    $totalUtmCalls = array_sum(array_column($stats['utm_stats'], 'phone_calls'));
+    $maxUtmValue = max(array_map(function($s) { return max($s['clicks'], $s['phone_calls']); }, $stats['utm_stats'])) ?: 1;
+    
+    foreach ($stats['utm_stats'] as $source): 
+        $sourceName = !empty($source['utm_source']) ? $source['utm_source'] : 'direct';
+        $clicks = (int)($source['clicks'] ?? 0);
+        $calls = (int)($source['phone_calls'] ?? 0);
+        $total = $clicks + $calls;
+        $percentage = $totalUtmClicks + $totalUtmCalls > 0 ? round(($total / ($totalUtmClicks + $totalUtmCalls)) * 100, 1) : 0;
+        
+        $colors = [
+            'direct' => ['bg' => '#f0f9ff', 'color' => '#0284c7', 'icon' => 'arrow-right'],
+            'instagram' => ['bg' => '#fef2f2', 'color' => '#dc2626', 'icon' => 'camera'],
+            'facebook' => ['bg' => '#eff6ff', 'color' => '#1d4ed8', 'icon' => 'facebook'],
+            'google' => ['bg' => '#f3e8ff', 'color' => '#7c3aed', 'icon' => 'search'],
+            'telegram' => ['bg' => '#ecfdf5', 'color' => '#059669', 'icon' => 'send'],
+        ];
+        
+        $config = $colors[$sourceName] ?? ['bg' => '#fafafa', 'color' => '#64748b', 'icon' => 'link'];
+    ?>
+    <div style="background: <?= $config['bg'] ?>; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+        <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: <?= $config['color'] ?>;">
+            <i data-feather="<?= $config['icon'] ?>" style="width: 14px; height: 14px;"></i>
+            <span style="font-size: 12px; text-transform: capitalize;"><?= e($sourceName) ?></span>
+        </div>
+        <div style="font-size: 16px; font-weight: 700; color: #1e293b;">
+            <?= number_format($total) ?>
+        </div>
+        <div style="display: flex; gap: 8px; font-size: 11px;">
+            <span style="color: #10b981; font-weight: 600;">📊 <?= number_format($clicks) ?> clicks</span>
+            <span style="color: #f59e0b; font-weight: 600;">📞 <?= number_format($calls) ?> calls</span>
+        </div>
+        <div style="background: rgba(0,0,0,0.05); height: 4px; border-radius: 2px; overflow: hidden;">
+            <div style="background: <?= $config['color'] ?>; height: 100%; width: <?= $percentage ?>%;"></div>
+        </div>
+        <div style="font-size: 11px; color: #64748b; font-weight: 500;"><?= $percentage ?>% of traffic</div>
+    </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <!-- Insight Mini-Cards -->
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px;">
     <?php
@@ -208,15 +254,32 @@ function updateAnalyticsFilters() {
 
 <!-- Top Pages Performance -->
 <div class="chart-box">
-    <h2><i data-feather="trending-up"></i> Top 10 Performing Pages</h2>
-    <?php if (!empty($stats['range_label'])): ?>
-    <div style="margin-top: -8px; margin-bottom: 16px; color: #64748b; font-size: 13px;">
-        Period: <?= e($stats['range_label']) ?>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+            <h2><i data-feather="trending-up"></i> Performing Pages</h2>
+            <?php if (!empty($stats['range_label'])): ?>
+            <div style="margin-top: -8px; color: #64748b; font-size: 13px;">
+                Period: <?= e($stats['range_label']) ?>
+            </div>
+            <?php endif; ?>
+        </div>
+        <select id="utmSourceFilter" onchange="filterPagesByUtmSource(this.value)" class="btn" style="width: auto; margin-bottom: 0;">
+            <option value="">All UTM Sources</option>
+            <option value="direct">Direct</option>
+            <?php 
+            if (!empty($stats['utm_sources'])) {
+                foreach ($stats['utm_sources'] as $source) {
+                    if ($source !== 'direct' && !empty($source)) {
+                        echo '<option value="' . e($source) . '">' . e($source) . '</option>';
+                    }
+                }
+            }
+            ?>
+        </select>
     </div>
-    <?php endif; ?>
     
     <?php
-    $topPerformers = array_slice($stats['top_performers'] ?? [], 0, 10);
+    $topPerformers = $stats['top_performers'] ?? [];
     if (!empty($topPerformers)):
         // Find max values for scaling
         $maxVisits = max(array_column($topPerformers, 'visits'));
@@ -229,6 +292,7 @@ function updateAnalyticsFilters() {
             <tr>
                 <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">#</th>
                 <th data-sort-key="page_slug" style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Page <span class="sort-indicator">↕</span></th>
+                <th data-sort-key="utm_source" style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Source <span class="sort-indicator">↕</span></th>
                 <th data-sort-key="visits" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Visits <span class="sort-indicator">↕</span></th>
                 <th data-sort-key="clicks" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Clicks <span class="sort-indicator">↕</span></th>
                 <th data-sort-key="phone_calls" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Phone Calls <span class="sort-indicator">↕</span></th>
@@ -240,15 +304,20 @@ function updateAnalyticsFilters() {
                 $visits = (int)($page['visits'] ?? 0);
                 $clicks = (int)($page['clicks'] ?? 0);
                 $phoneCalls = (int)($page['phone_calls'] ?? 0);
+                $utmSource = !empty($page['utm_source']) ? $page['utm_source'] : 'direct';
                 $ctr = isset($page['ctr'])
                     ? (float)$page['ctr']
                     : ($visits > 0 ? round(($phoneCalls / $visits) * 100, 2) : 0);
-                $visitsWidth = $maxVisits > 0 ? ($visits / $maxVisits) * 100 : 0;
-                $clicksWidth = $maxClicks > 0 ? ($clicks / $maxClicks) * 100 : 0;
-                $phonesWidth = $maxPhones > 0 ? ($phoneCalls / $maxPhones) * 100 : 0;
+                $maxVisits = max(array_column($topPerformers, 'visits')) ?: 1;
+                $maxClicks = max(array_column($topPerformers, 'clicks')) ?: 1;
+                $maxPhones = max(array_column($topPerformers, 'phone_calls')) ?: 1;
+                $visitsWidth = ($visits / $maxVisits) * 100;
+                $clicksWidth = ($clicks / $maxClicks) * 100;
+                $phonesWidth = ($phoneCalls / $maxPhones) * 100;
             ?>
             <tr
                 data-page-slug="<?= e((string)($page['page_slug'] ?? '')) ?>"
+                data-utm-source="<?= e($utmSource) ?>"
                 data-visits="<?= $visits ?>"
                 data-clicks="<?= $clicks ?>"
                 data-phone-calls="<?= $phoneCalls ?>"
@@ -262,6 +331,11 @@ function updateAnalyticsFilters() {
                     <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($page['page_slug']) ?>">
                         <?= htmlspecialchars($page['page_slug']) ?>
                     </div>
+                </td>
+                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
+                    <span style="display: inline-block; padding: 4px 8px; background: #f0f9ff; color: #0284c7; border-radius: 6px; font-size: 12px; font-weight: 600;">
+                        <?= e($utmSource) ?>
+                    </span>
                 </td>
                 <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
                     <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #3b82f6;">
@@ -304,6 +378,73 @@ function updateAnalyticsFilters() {
     </div>
     <?php endif; ?>
 </div>
+
+<!-- UTM Source Performance -->
+<?php if (!empty($stats['utm_stats'])): ?>
+<div class="chart-box">
+    <h2><i data-feather="link"></i> Traffic by UTM Source</h2>
+    <?php if (!empty($stats['range_label'])): ?>
+    <div style="margin-top: -8px; margin-bottom: 16px; color: #64748b; font-size: 13px;">
+        Period: <?= e($stats['range_label']) ?>
+    </div>
+    <?php endif; ?>
+    
+    <table style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
+        <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+            <tr>
+                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">UTM Source</th>
+                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Clicks</th>
+                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Phone Calls</th>
+                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Total Actions</th>
+                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Pages Affected</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php 
+            $totalClicks = array_sum(array_column($stats['utm_stats'], 'clicks'));
+            $totalCalls = array_sum(array_column($stats['utm_stats'], 'phone_calls'));
+            $maxActions = max(array_map(function($s) { return $s['clicks'] + $s['phone_calls']; }, $stats['utm_stats'])) ?: 1;
+            
+            foreach ($stats['utm_stats'] as $source): 
+                $clicks = (int)($source['clicks'] ?? 0);
+                $calls = (int)($source['phone_calls'] ?? 0);
+                $total = $clicks + $calls;
+                $pages = (int)($source['pages_affected'] ?? 0);
+                $width = ($total / $maxActions) * 100;
+            ?>
+            <tr style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 600; color: #1e293b;">
+                    <?= e(!empty($source['utm_source']) ? $source['utm_source'] : 'direct') ?>
+                </td>
+                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; text-align: center;">
+                    <span style="display: inline-block; padding: 4px 12px; background: #d1fae5; color: #059669; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                        <?= number_format($clicks) ?>
+                    </span>
+                </td>
+                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; text-align: center;">
+                    <span style="display: inline-block; padding: 4px 12px; background: #fef3c7; color: #d97706; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                        <?= number_format($calls) ?>
+                    </span>
+                </td>
+                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #0284c7;">
+                        <?= number_format($total) ?>
+                    </div>
+                    <div style="background: #cffafe; height: 6px; border-radius: 3px; overflow: hidden;">
+                        <div style="background: #0284c7; height: 100%; width: <?= $width ?>%; border-radius: 3px;"></div>
+                    </div>
+                </td>
+                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-top-right-radius: 8px; border-bottom-right-radius: 8px; text-align: center;">
+                    <span style="display: inline-block; padding: 4px 12px; background: #f3e8ff; color: #7c3aed; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                        <?= number_format($pages) ?>
+                    </span>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
 
 
 <?php if (!IS_PRODUCTION): ?>
@@ -382,6 +523,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const getValue = (row, key) => {
         if (key === 'page_slug') return String(row.dataset.pageSlug || '').toLowerCase();
+        if (key === 'utm_source') return String(row.dataset.utmSource || '').toLowerCase();
         if (key === 'visits') return Number(row.dataset.visits || 0);
         if (key === 'clicks') return Number(row.dataset.clicks || 0);
         if (key === 'phone_calls') return Number(row.dataset.phoneCalls || 0);
@@ -434,13 +576,37 @@ document.addEventListener('DOMContentLoaded', function () {
                 sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
             } else {
                 sortState.key = key;
-                sortState.dir = key === 'page_slug' ? 'asc' : 'desc';
+                sortState.dir = key === 'page_slug' || key === 'utm_source' ? 'asc' : 'desc';
             }
 
             applySort();
         });
     });
 });
+
+function filterPagesByUtmSource(utmSource) {
+    const table = document.getElementById('top-performers-table');
+    if (!table) return;
+    
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const rowSource = row.dataset.utmSource || 'direct';
+        if (utmSource === '' || rowSource === utmSource) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Update rank numbers after filtering
+    let rankNum = 1;
+    rows.forEach(row => {
+        if (row.style.display !== 'none') {
+            const rankCell = row.querySelector('[data-rank-cell]');
+            if (rankCell) rankCell.textContent = String(rankNum++);
+        }
+    });
+}
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

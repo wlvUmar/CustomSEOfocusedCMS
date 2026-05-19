@@ -737,6 +737,7 @@ class Analytics {
     public function getTopPerformers($months = 3, $limit = 10) {
         $sql = "SELECT 
                     page_slug,
+                    COALESCE(utm_source, 'direct') as utm_source,
                     SUM(total_visits) as visits,
                     SUM(total_clicks) as clicks,
                     SUM(total_phone_calls) as phone_calls,
@@ -744,7 +745,7 @@ class Analytics {
                     COUNT(DISTINCT CONCAT(year, '-', month)) as active_months
                 FROM analytics_monthly
                 WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
-                GROUP BY page_slug
+                GROUP BY page_slug, utm_source
                 HAVING visits > 0
                 ORDER BY ctr DESC, visits DESC
                 LIMIT ?";
@@ -755,17 +756,18 @@ class Analytics {
     public function getRangeTopPerformers($startDate, $endDate, $limit = 10) {
         $sql = "SELECT 
                     page_slug,
+                    COALESCE(utm_source, 'direct') as utm_source,
                     SUM(visits) as visits,
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls,
                     ROUND((SUM(phone_calls) / NULLIF(SUM(visits), 0)) * 100, 2) as ctr
                 FROM analytics
                 WHERE date BETWEEN ? AND ?
-                GROUP BY page_slug
+                GROUP BY page_slug, utm_source
                 HAVING visits > 0
                 ORDER BY ctr DESC, visits DESC
                 LIMIT ?";
-
+        
         return $this->db->fetchAll($sql, [$startDate, $endDate, $limit]);
     }
 
@@ -1163,5 +1165,120 @@ class Analytics {
             'top_bot' => ucfirst($data['top_bot'] ?? 'N/A'),
             'stale_pages' => $stale['stale_count'] ?? 0
         ];
+    }
+
+    /**
+     * Get clicks and phone calls by utm_source for a date range
+     */
+    public function getUtmSourceStats($startDate, $endDate) {
+        $sql = "SELECT 
+                    COALESCE(utm_source, 'direct') as utm_source,
+                    SUM(clicks) as clicks,
+                    SUM(phone_calls) as phone_calls,
+                    COUNT(DISTINCT page_slug) as pages_affected
+                FROM analytics
+                WHERE date BETWEEN ? AND ?
+                GROUP BY utm_source
+                ORDER BY (clicks + phone_calls) DESC";
+        
+        return $this->db->fetchAll($sql, [$startDate, $endDate]);
+    }
+
+    /**
+     * Get utm_source stats by page
+     */
+    public function getUtmSourceByPage($startDate, $endDate, $pageSlug = null) {
+        $params = [$startDate, $endDate];
+        $whereClause = "WHERE date BETWEEN ? AND ?";
+        
+        if ($pageSlug) {
+            $whereClause .= " AND page_slug = ?";
+            $params[] = $pageSlug;
+        }
+        
+        $sql = "SELECT 
+                    page_slug,
+                    COALESCE(utm_source, 'direct') as utm_source,
+                    language,
+                    SUM(clicks) as clicks,
+                    SUM(phone_calls) as phone_calls
+                FROM analytics
+                $whereClause
+                GROUP BY page_slug, utm_source, language
+                ORDER BY (clicks + phone_calls) DESC";
+        
+        return $this->db->fetchAll($sql, $params);
+    }
+
+    /**
+     * Get monthly utm_source trends
+     */
+    public function getUtmSourceMonthlyTrends($months = 6) {
+        $months = (int)$months;
+        
+        $sql = "SELECT 
+                    year,
+                    month,
+                    COALESCE(utm_source, 'direct') as utm_source,
+                    SUM(total_clicks) as clicks,
+                    SUM(total_phone_calls) as phone_calls
+                FROM analytics_monthly
+                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY year, month, utm_source
+                ORDER BY year DESC, month DESC, clicks DESC";
+        
+        return $this->db->fetchAll($sql, [$months]);
+    }
+
+    /**
+     * Get top utm sources for dashboard
+     */
+    public function getTopUtmSources($limit = 5, $days = 30) {
+        $days = (int)$days;
+        
+        $sql = "SELECT 
+                    COALESCE(utm_source, 'direct') as utm_source,
+                    SUM(clicks) as clicks,
+                    SUM(phone_calls) as phone_calls,
+                    COUNT(DISTINCT page_slug) as pages_affected
+                FROM analytics
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                GROUP BY utm_source
+                ORDER BY (clicks + phone_calls) DESC";
+        
+        $params = [$days];
+        
+        if (!empty($limit)) {
+            $limit = (int)$limit;
+            $sql .= " LIMIT ?";
+            $params[] = $limit;
+        }
+        
+        return $this->db->fetchAll($sql, $params);
+    }
+
+    /**
+     * Get utm_source performance comparison
+     */
+    public function getUtmSourceComparison($startDate, $endDate) {
+        $sql = "SELECT 
+                    COALESCE(utm_source, 'direct') as utm_source,
+                    SUM(visits) as visits,
+                    SUM(clicks) as clicks,
+                    SUM(phone_calls) as phone_calls,
+                    CASE 
+                        WHEN SUM(visits) > 0 THEN ROUND((SUM(clicks) / SUM(visits)) * 100, 2)
+                        ELSE 0 
+                    END as click_rate,
+                    CASE 
+                        WHEN SUM(visits) > 0 THEN ROUND((SUM(phone_calls) / SUM(visits)) * 100, 2)
+                        ELSE 0 
+                    END as phone_rate
+                FROM analytics
+                WHERE date BETWEEN ? AND ?
+                GROUP BY utm_source
+                ORDER BY phone_calls DESC";
+        
+        return $this->db->fetchAll($sql, [$startDate, $endDate]);
     }
 }

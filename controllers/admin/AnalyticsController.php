@@ -33,6 +33,9 @@ class AnalyticsController extends Controller {
             $end = $rangeInfo['end'];
 
             $isSingleDay = ($start === $end);
+            $utmStats = $this->analyticsModel->getUtmSourceStats($start, $end);
+            $utmSources = array_column($utmStats, 'utm_source');
+            
             $stats = [
                 'total' => $this->analyticsModel->getRangeTotalStats($start, $end),
                 'current_month' => $this->analyticsModel->getCurrentMonthStats(),
@@ -49,6 +52,8 @@ class AnalyticsController extends Controller {
                 'trends' => $this->analyticsModel->getPerformanceTrendsByDateRange($start, $end),
                 'top_performers' => $this->analyticsModel->getRangeTopPerformers($start, $end),
                 'language_stats' => $this->analyticsModel->getRangeLanguageStats($start, $end),
+                'utm_stats' => $utmStats,
+                'utm_sources' => $utmSources,
                 'months' => $months,
                 'view' => $view,
                 'range' => $range,
@@ -58,6 +63,9 @@ class AnalyticsController extends Controller {
             ];
         } else {
             $chartAggregation = ($months <= 1) ? 'weekly' : 'monthly';
+            $utmStats = $this->analyticsModel->getTopUtmSources(null, $months * 30);
+            $utmSources = array_column($utmStats, 'utm_source');
+            
             $stats = [
                 'total' => $this->analyticsModel->getTotalStats(),
                 'current_month' => $this->analyticsModel->getCurrentMonthStats(),
@@ -74,6 +82,8 @@ class AnalyticsController extends Controller {
                 'trends' => $this->analyticsModel->getPerformanceTrends(),
                 'top_performers' => $this->analyticsModel->getTopPerformers($months),
                 'language_stats' => $this->analyticsModel->getLanguageStats($months),
+                'utm_stats' => $utmStats,
+                'utm_sources' => $utmSources,
                 'months' => $months,
                 'aggregation' => $chartAggregation,
                 'view' => $view,
