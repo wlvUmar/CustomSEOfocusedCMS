@@ -11,21 +11,6 @@
                     <?php
                     $effectivePhone = $contactUi['phone'] ?? ($seo['phone'] ?? '');
                     
-                    // Check for phone parameter in URL
-                    if (!empty($_GET['phone'])) {
-                        $urlPhone = trim($_GET['phone']);
-                        $urlPhone = str_replace(' ', '', $urlPhone);  // Remove spaces (+ becomes space in URL)
-                        $urlPhone = preg_replace('/[^\d+]/', '', $urlPhone);  // Keep only + and digits
-                        
-                        // Ensure + prefix exists
-                        if (!empty($urlPhone) && strpos($urlPhone, '+') === false) {
-                            $urlPhone = '+' . $urlPhone;
-                        }
-                        
-                        if (!empty($urlPhone)) {
-                            $effectivePhone = $urlPhone;
-                        }
-                    }
                     
                     $effectiveEmail = $contactUi['email'] ?? ($seo['email'] ?? '');
                     ?>

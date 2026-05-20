@@ -48,7 +48,6 @@ class PageController extends Controller {
         
         // Handle rotation based on mode
         if ($page['rotation_mode'] === 'manual' && $page['selected_rotation_id']) {
-            // Manual mode: use selected rotation (only if selected_rotation_id is set)
             $rotationContent = $this->rotationModel->getRotationById($page['selected_rotation_id']);
             if ($rotationContent) {
                 if (!empty($rotationContent["title_$currentLang"])) {
@@ -83,7 +82,6 @@ class PageController extends Controller {
                     $this->analyticsModel->trackRotationShown($slug, $activeMonth, $currentLang);
                 }
             }
-            // If manual mode but no rotation selected, fall through to use base content
         } elseif ($page['rotation_mode'] === 'auto') {
             // Auto mode: use monthly rotation (original behavior)
             $rotationContent = $this->rotationModel->getCurrentMonth($page['id']);
@@ -121,17 +119,13 @@ class PageController extends Controller {
                 }
             }
         }
-        // If rotation_mode === 'disabled', no rotation is applied (use base page content)
         
         $seoSettings = $this->seoModel->getSettings();
         $contactUi = $this->buildContactUi($page['id'], $currentLang, $seoSettings);
         $faqs = $this->faqModel->getBySlug($slug);
         $blogSchema = $this->blogSchemaModel->get($slug);
         
-        // Generate hero image schema
-        // Note: generateHeroImageSchema returns JSON string for individual use, but we want the raw data or array for the graph.
-        // Let's refactor usage. generateHeroImageSchema inside PageController creates an ImageObject.
-        // We will call it, decode it, and add to graph.
+       
         $heroImageSchemaJson = $this->generateHeroImageSchema($page['id'], $currentLang);
         $heroImageSchemaArray = !empty($heroImageSchemaJson) ? json_decode($heroImageSchemaJson, true) : null;
         $primaryImageId = $heroImageSchemaArray ? ($heroImageSchemaArray['@id'] ?? null) : null;
@@ -323,12 +317,15 @@ class PageController extends Controller {
         $phone = $defaultPhone;
         $email = $defaultEmail;
         
-        // Check for phone parameter in URL
-        if (!empty($_GET['phone'])) {
-            $urlPhone = $this->sanitizePhone($_GET['phone']);
-            if ($urlPhone !== '') {
-                $phone = $urlPhone;
-            }
+        // Also allow GET params to override floating CTA type/url (params have higher priority than DB override)
+        $paramFloatingType = null;
+        $paramFloatingUrl = null;
+        if (!empty($_GET['instagram'])) {
+            $paramFloatingType = 'instagram';
+            $paramFloatingUrl = trim((string)$_GET['instagram']);
+        } elseif (!empty($_GET['telegram'])) {
+            $paramFloatingType = 'telegram';
+            $paramFloatingUrl = trim((string)$_GET['telegram']);
         }
 
         if ($override) {
@@ -369,16 +366,47 @@ class PageController extends Controller {
             $floatingUrl = $defaultTelegramUrl;
         }
 
+        // If GET param asked to override floating CTA type/url, it has higher priority than DB override
+        if (!empty($paramFloatingType)) {
+            if ($paramFloatingType === 'instagram') {
+                $floatingType = 'instagram';
+                $floatingUrl = $paramFloatingUrl !== '' ? $paramFloatingUrl : $defaultInstagramUrl;
+            } elseif ($paramFloatingType === 'telegram') {
+                $floatingType = 'telegram';
+                $floatingUrl = $paramFloatingUrl !== '' ? $paramFloatingUrl : $defaultTelegramUrl;
+            }
+        }
+
+        // Finally, if GET phone param is present it must override any DB phone (param has higher priority than DB)
+        if (!empty($_GET['phone'])) {
+            $urlPhone = $this->sanitizePhone($_GET['phone']);
+            if ($urlPhone !== '') {
+                $phone = $urlPhone;
+            }
+        }
+
         $defaultLabel = $lang === 'ru' ? 'Написать в Telegram' : 'Telegramda yozish';
         if ($floatingType === 'instagram') {
             $defaultLabel = $lang === 'ru' ? 'Написать в Instagram' : 'Instagramda yozish';
         } elseif ($floatingType === 'custom') {
             $defaultLabel = $lang === 'ru' ? 'Открыть ссылку' : 'Havolani ochish';
+        } elseif ($floatingType === 'phone') {
+            $defaultLabel = $lang === 'ru' ? 'Позвонить' : 'Qo\'ng\'iroq qilish';
         }
 
         $overrideLabel = '';
         if ($override) {
             $overrideLabel = trim((string)($override["floating_cta_label_$lang"] ?? ''));
+        }
+
+        // Also compute floating class for frontend convenience
+        $floatingClass = 'floating-telegram';
+        if ($floatingType === 'instagram') {
+            $floatingClass .= ' floating-telegram--instagram';
+        } elseif ($floatingType === 'custom') {
+            $floatingClass .= ' floating-telegram--custom';
+        } elseif ($floatingType === 'phone') {
+            $floatingClass = 'floating-call';
         }
 
         return [
@@ -387,7 +415,8 @@ class PageController extends Controller {
             'floating_cta' => [
                 'type' => $floatingType,
                 'url' => $floatingUrl,
-                'label' => $overrideLabel !== '' ? $overrideLabel : $defaultLabel
+                'label' => $overrideLabel !== '' ? $overrideLabel : $defaultLabel,
+                'class' => $floatingClass
             ]
         ];
     }

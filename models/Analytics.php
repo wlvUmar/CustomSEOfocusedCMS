@@ -1173,13 +1173,14 @@ class Analytics {
     public function getUtmSourceStats($startDate, $endDate) {
         $sql = "SELECT 
                     COALESCE(utm_source, 'direct') as utm_source,
+                    SUM(visits) as visits,
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls,
                     COUNT(DISTINCT page_slug) as pages_affected
                 FROM analytics
                 WHERE date BETWEEN ? AND ?
                 GROUP BY utm_source
-                ORDER BY (clicks + phone_calls) DESC";
+                ORDER BY SUM(visits) DESC";
         
         return $this->db->fetchAll($sql, [$startDate, $endDate]);
     }
@@ -1238,13 +1239,14 @@ class Analytics {
         
         $sql = "SELECT 
                     COALESCE(utm_source, 'direct') as utm_source,
+                    SUM(visits) as visits,
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls,
                     COUNT(DISTINCT page_slug) as pages_affected
                 FROM analytics
                 WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
                 GROUP BY utm_source
-                ORDER BY (clicks + phone_calls) DESC";
+                ORDER BY SUM(visits) DESC";
         
         $params = [$days];
         

@@ -143,45 +143,29 @@ function updateAnalyticsFilters() {
 
 <!-- UTM Source Indicator Cards -->
 <?php if (!empty($stats['utm_stats'])): ?>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px;">
     <?php 
-    $totalUtmClicks = array_sum(array_column($stats['utm_stats'], 'clicks'));
-    $totalUtmCalls = array_sum(array_column($stats['utm_stats'], 'phone_calls'));
-    $maxUtmValue = max(array_map(function($s) { return max($s['clicks'], $s['phone_calls']); }, $stats['utm_stats'])) ?: 1;
-    
     foreach ($stats['utm_stats'] as $source): 
         $sourceName = !empty($source['utm_source']) ? $source['utm_source'] : 'direct';
-        $clicks = (int)($source['clicks'] ?? 0);
-        $calls = (int)($source['phone_calls'] ?? 0);
-        $total = $clicks + $calls;
-        $percentage = $totalUtmClicks + $totalUtmCalls > 0 ? round(($total / ($totalUtmClicks + $totalUtmCalls)) * 100, 1) : 0;
+        $visits = (int)($source['visits'] ?? 0);
         
         $colors = [
-            'direct' => ['bg' => '#f0f9ff', 'color' => '#0284c7', 'icon' => 'arrow-right'],
-            'instagram' => ['bg' => '#fef2f2', 'color' => '#dc2626', 'icon' => 'camera'],
-            'facebook' => ['bg' => '#eff6ff', 'color' => '#1d4ed8', 'icon' => 'facebook'],
-            'google' => ['bg' => '#f3e8ff', 'color' => '#7c3aed', 'icon' => 'search'],
-            'telegram' => ['bg' => '#ecfdf5', 'color' => '#059669', 'icon' => 'send'],
+            'direct' => '#0284c7',
+            'instagram' => '#dc2626',
+            'facebook' => '#1d4ed8',
+            'google' => '#7c3aed',
+            'telegram' => '#059669',
         ];
         
-        $config = $colors[$sourceName] ?? ['bg' => '#fafafa', 'color' => '#64748b', 'icon' => 'link'];
+        $color = $colors[$sourceName] ?? '#64748b';
     ?>
-    <div style="background: <?= $config['bg'] ?>; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
-        <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: <?= $config['color'] ?>;">
-            <i data-feather="<?= $config['icon'] ?>" style="width: 14px; height: 14px;"></i>
-            <span style="font-size: 12px; text-transform: capitalize;"><?= e($sourceName) ?></span>
+    <div style="background: white; border: 2px solid <?= $color ?>; border-radius: 12px; padding: 20px; text-align: center; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
+        <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: capitalize; margin-bottom: 8px;">
+            <?= e($sourceName) ?>
         </div>
-        <div style="font-size: 16px; font-weight: 700; color: #1e293b;">
-            <?= number_format($total) ?>
+        <div style="font-size: 32px; font-weight: 700; color: <?= $color ?>;">
+            <?= number_format($visits) ?>
         </div>
-        <div style="display: flex; gap: 8px; font-size: 11px;">
-            <span style="color: #10b981; font-weight: 600;">📊 <?= number_format($clicks) ?> clicks</span>
-            <span style="color: #f59e0b; font-weight: 600;">📞 <?= number_format($calls) ?> calls</span>
-        </div>
-        <div style="background: rgba(0,0,0,0.05); height: 4px; border-radius: 2px; overflow: hidden;">
-            <div style="background: <?= $config['color'] ?>; height: 100%; width: <?= $percentage ?>%;"></div>
-        </div>
-        <div style="font-size: 11px; color: #64748b; font-weight: 500;"><?= $percentage ?>% of traffic</div>
     </div>
     <?php endforeach; ?>
 </div>

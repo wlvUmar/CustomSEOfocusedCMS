@@ -402,7 +402,7 @@ function shouldSkipTracking(): bool
 
     $clientIp = getClientIp();
     $skipIps = [
-        '213.230.80.213',
+        '213.230.80.212',
     ];
 
     if ($clientIp && in_array($clientIp, $skipIps, true)) {
@@ -732,15 +732,16 @@ function trackVisit($slug, $language) {
     try {
         $db = Database::getInstance();
         $date = date('Y-m-d');
+        $utmSource = trim((string)($_GET['utm_source'] ?? ''));
 
-        $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, date) 
-                VALUES (?, ?, 1, 0, ?) 
+        $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, utm_source, date) 
+                VALUES (?, ?, 1, 0, ?, ?) 
                 ON DUPLICATE KEY UPDATE visits = visits + 1";
 
-        $stmt = $db->query($sql, [$slug, $language, $date]);
+        $stmt = $db->query($sql, [$slug, $language, $utmSource ?: NULL, $date]);
         $isNewDay = ($stmt && $stmt->rowCount() === 1);
-        bumpMonthlySummary($slug, $language, 1, 0, 0, $isNewDay);
-        bumpHourlySummary($slug, $language, 1, 0, 0);
+        bumpMonthlySummary($slug, $language, 1, 0, 0, $isNewDay, $utmSource);
+        bumpHourlySummary($slug, $language, 1, 0, 0, $utmSource);
     } catch (Exception $e) {
         error_log("Analytics error: " . $e->getMessage());
     }

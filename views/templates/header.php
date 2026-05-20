@@ -15,67 +15,16 @@ $ogImage = absoluteUrl($page['og_image'] ?? ($seo['org_logo'] ?? '/css/logo.png'
 
 $canonicalUrl = canonicalUrlForPage($page['slug'] ?? '', $lang);
 $effectivePhone = $contactUi['phone'] ?? ($seo['phone'] ?? '');
+// Use contact UI prepared by PageController
 $defaultFloatingLabel = $lang === 'ru' ? 'Написать в Telegram' : 'Telegramda yozish';
 $floatingCta = $contactUi['floating_cta'] ?? [
     'type' => 'telegram',
     'url' => 'https://t.me/azimjumayev',
-    'label' => $defaultFloatingLabel
+    'label' => $defaultFloatingLabel,
+    'class' => 'floating-telegram'
 ];
 
-// Handle URL phone parameter for floating button
-if (!empty($_GET['phone'])) {
-    $urlPhone = trim($_GET['phone']);
-    $urlPhone = str_replace(' ', '', $urlPhone);  // Remove spaces (+ becomes space in URL)
-    $urlPhone = preg_replace('/[^\d+]/', '', $urlPhone);  // Keep only + and digits
-    
-    // Ensure + prefix exists
-    if (!empty($urlPhone) && strpos($urlPhone, '+') === false) {
-        $urlPhone = '+' . $urlPhone;
-    }
-    
-    // If phone param is not empty, override floating CTA to call button
-    if (!empty($urlPhone)) {
-        $floatingCta = [
-            'type' => 'phone',
-            'url' => 'tel:' . $urlPhone,
-            'label' => $lang === 'ru' ? 'Позвонить' : 'Qo\'ng\'iroq qilish'
-        ];
-    }
-}
 
-// Handle URL instagram parameter for floating button
-if (!empty($_GET['instagram'])) {
-    $urlInstagram = trim($_GET['instagram']);
-    if (!empty($urlInstagram)) {
-        $floatingCta = [
-            'type' => 'instagram',
-            'url' => $urlInstagram,
-            'label' => $lang === 'ru' ? 'Написать в Instagram' : 'Instagramda yozish'
-        ];
-    }
-}
-
-// Handle URL telegram parameter for floating button
-if (!empty($_GET['telegram'])) {
-    $urlTelegram = trim($_GET['telegram']);
-    if (!empty($urlTelegram)) {
-        $floatingCta = [
-            'type' => 'telegram',
-            'url' => $urlTelegram,
-            'label' => $lang === 'ru' ? 'Написать в Telegram' : 'Telegramda yozish'
-        ];
-    }
-}
-
-$floatingType = $floatingCta['type'] ?? 'telegram';
-$floatingClass = 'floating-telegram';
-if ($floatingType === 'instagram') {
-    $floatingClass .= ' floating-telegram--instagram';
-} elseif ($floatingType === 'custom') {
-    $floatingClass .= ' floating-telegram--custom';
-} elseif ($floatingType === 'phone') {
-    $floatingClass = 'floating-call';
-}
 
 $templateData = [
     'page' => $page,
@@ -406,20 +355,10 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     </a>
     <?php endif; ?>
 
-    <?php if ($floatingType === 'phone'): ?>
-    <!-- Phone button from URL param -->
-    <a href="<?= e($floatingCta['url']) ?>"
-      class="<?= e($floatingClass) ?>"
-      title="<?= e($floatingCta['label']) ?>"
-      aria-label="<?= e($floatingCta['label']) ?>">
-       <svg fill="currentColor" viewBox="0 0 20 20">
-           <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-       </svg>
-    </a>
-    <?php elseif (($floatingCta['type'] ?? 'none') !== 'none' && !empty($floatingCta['url'])): ?>
+    <?php if (($floatingCta['type'] ?? 'none') !== 'none' && !empty($floatingCta['url'])): ?>
     <!-- Regular floating CTA (Telegram, Instagram, Custom) -->
     <a href="<?= e($floatingCta['url']) ?>"
-      class="<?= e($floatingClass) ?>"
+      class="<?= e($floatingCta['class'] ?? 'floating-telegram') ?>"
       target="_blank"
       rel="noopener noreferrer"
       title="<?= e($floatingCta['label'] ?? $defaultFloatingLabel) ?>"
