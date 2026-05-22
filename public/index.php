@@ -125,6 +125,23 @@ $router->group('/admin/media', function($router) {
     $router->post('/bulk-action', function() { requireMediaAdmin('bulkAction'); });
 });
 
+// Admin Product Requests (Telegram integration)
+$router->get('/admin/requests', function() { requireAdminController('RequestAdminController', 'index'); });
+$router->get('/admin/requests/', function() { requireAdminController('RequestAdminController', 'index'); });
+$router->get('/admin/requests/{id}', function($id) { requireAdminController('RequestAdminController', 'show', $id); });
+$router->post('/admin/requests/approve', function() { requireAdminController('RequestAdminController', 'approve'); });
+$router->post('/admin/requests/reject', function() { requireAdminController('RequestAdminController', 'reject'); });
+
+// Bot API endpoints
+$router->post('/api/bot/requests', function() {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->createRequest();
+});
+$router->get('/api/bot/requests/{id}', function($id) {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->getRequest($id);
+});
+
 // $router->group('/admin/media', function($router) {
 //     $router->get('/', function() { requireMediaAdmin('index'); });
 //     $router->post('/upload', function() { requireMediaAdmin('upload'); });
@@ -259,6 +276,21 @@ $router->get('/articles/{id}', function($id) {
     require_once BASE_PATH . '/controllers/ArticleController.php';
     setLanguage(DEFAULT_LANGUAGE);
     (new ArticleController())->show($id);
+});
+
+/*
+|--------------------------------------------------------------------------
+| API Routes (Telegram Bot Integration)
+|--------------------------------------------------------------------------
+*/
+$router->post('/api/bot/requests', function() {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->createRequest();
+});
+
+$router->get('/api/bot/requests/{id}', function($id) {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->getRequest($id);
 });
 
 // Catch-all public pages (always at the end)

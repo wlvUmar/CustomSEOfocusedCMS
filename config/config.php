@@ -33,9 +33,20 @@ if (!$publicPath) {
 }
 define('PUBLIC_PATH', $publicPath);
 
-define('UPLOAD_PATH', PUBLIC_PATH . '/uploads/');
-define('UPLOAD_URL', BASE_URL . '/uploads/');
-define('MAX_UPLOAD_SIZE', 5 * 1024 * 1024);
+$uploadPath = getenv('UPLOAD_PATH');
+if (!$uploadPath) {
+    $uploadPath = PUBLIC_PATH . '/uploads/';
+}
+// Allow deployment-specific upload directories via .env.
+define('UPLOAD_PATH', rtrim($uploadPath, '/\\') . '/');
+
+$uploadUrl = getenv('UPLOAD_URL');
+if (!$uploadUrl) {
+    $uploadUrl = BASE_URL . '/uploads/';
+}
+define('UPLOAD_URL', rtrim($uploadUrl, '/\\') . '/');
+
+define('MAX_UPLOAD_SIZE', (int)(getenv('MAX_UPLOAD_SIZE') ?: (5 * 1024 * 1024)));
 
 define('SUPPORTED_LANGUAGES', ['ru', 'uz']);
 define('DEFAULT_LANGUAGE', 'ru');

@@ -402,7 +402,7 @@ function shouldSkipTracking(): bool
 
     $clientIp = getClientIp();
     $skipIps = [
-        '213.230.80.212',
+        '144.124.192.237',
     ];
 
     if ($clientIp && in_array($clientIp, $skipIps, true)) {

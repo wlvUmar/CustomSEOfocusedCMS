@@ -6,7 +6,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel</title>
+    <title>Панель управления</title>
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/tables.css">
@@ -76,7 +76,7 @@
         <aside class="sidebar">
            
             <div class="logo">
-                <h2>Admin Panel</h2>
+                <h2>Панель управления</h2>
             </div>
             <nav class="admin-nav">
                 <a href="<?= BASE_URL ?>/admin/dashboard" class="<?= strpos($_SERVER['REQUEST_URI'], '/dashboard') !== false ? 'active' : '' ?>">
@@ -99,6 +99,9 @@
                     </a>
                     <a href="<?= BASE_URL ?>/admin/internal-links" class="<?= strpos($_SERVER['REQUEST_URI'], '/internal-links') !== false ? 'active' : '' ?>">
                         <i data-feather="link"></i> Internal Links
+                    </a>
+                    <a href="<?= BASE_URL ?>/admin/requests" class="<?= strpos($_SERVER['REQUEST_URI'], '/admin/requests') !== false ? 'active' : '' ?>">
+                        <i data-feather="message-circle"></i> Заявки на оценку
                     </a>
                     <a href="<?= BASE_URL ?>/admin/faqs" class="<?= strpos($_SERVER['REQUEST_URI'], '/faqs') !== false ? 'active' : '' ?>">
                         <i data-feather="help-circle"></i> FAQs
