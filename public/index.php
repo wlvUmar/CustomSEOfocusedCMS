@@ -282,6 +282,9 @@ $router->get('/api/bot/requests/{id}', function($id) {
     (new BotController())->getRequest($id);
 });
 
+$router->get('/api/health', function() {
+    echo "OK";
+});
 // Catch-all public pages (always at the end)
 $router->get('/{slug}/{lang}', function($slug, $lang) {
     require_once BASE_PATH . '/controllers/PageController.php';
