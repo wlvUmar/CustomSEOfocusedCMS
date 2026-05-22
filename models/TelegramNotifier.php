@@ -29,7 +29,7 @@ class TelegramNotifier {
         curl_close($ch);
 
         if ($err) {
-            error_log('[TelegramNotifier] curl error: ' . $err);
+            error_log('[TelegramNotifier] curl error: ' . $err . $endpoint);
             return false;
         }
         return $httpCode >= 200 && $httpCode < 300;
