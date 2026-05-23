@@ -100,7 +100,6 @@ elseif ($status === 'in_review') $statusClass = 'is-review';
                     <button class="btn btn-danger btn-block" type="submit">Отправить ответ</button>
                 </form>
             </div>
-
             <a class="back-link btn" href="<?= BASE_URL ?>/admin/requests">← Назад</a>
         </aside>
     </div>
