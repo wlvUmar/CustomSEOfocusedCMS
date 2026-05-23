@@ -37,14 +37,80 @@
     gap: 12px;
     flex-wrap: wrap;
 }
+/* Filter tabs */
+.filter-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.filter-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    color: #374151;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    transition: all 0.15s ease;
+}
+
+.filter-tab:hover {
+    border-color: #111827;
+    color: #111827;
+}
+
+.filter-tab.active {
+    background: #111827;
+    color: #fff;
+    border-color: #111827;
+}
+
+.filter-count {
+    background: rgba(0,0,0,0.1);
+    border-radius: 999px;
+    padding: 1px 7px;
+    font-size: 11px;
+}
+
+.filter-tab.active .filter-count {
+    background: rgba(255,255,255,0.2);
+}
+
+/* Per-status active color overrides */
+.filter-tab.status-tab-pending.active    { background: #92400e; border-color: #92400e; }
+.filter-tab.status-tab-in_review.active  { background: #1d4ed8; border-color: #1d4ed8; }
+.filter-tab.status-tab-approved.active   { background: #166534; border-color: #166534; }
+.filter-tab.status-tab-rejected.active   { background: #b91c1c; border-color: #b91c1c; }
+
+/* Delete button spacing in card */
+.request-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 120px;
+    align-items: stretch;
+}
+
+.request-actions .btn {
+    width: 100%;
+    text-align: center;
+    margin-top: 0;
+}
 
 .stat-card {
-    min-width: 120px;
+    min-width: 80px;
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 16px;
     padding: 14px 16px;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    text-align: center;
 }
 
 .stat-label {
@@ -62,6 +128,7 @@
 .request-list {
     display: grid;
     gap: 14px;
+    padding: 0;
 }
 
 .request-card {

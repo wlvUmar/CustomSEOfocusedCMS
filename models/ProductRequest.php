@@ -50,4 +50,13 @@ class ProductRequest {
         $params[] = $id;
         $this->db->query($sql, $params);
     }
+    public function deleteById($id) {
+        $this->db->query('DELETE FROM product_requests WHERE id = ?', [$id]);
+    }
+    public function getAll($limit = 200) {
+    return $this->db->fetchAll(
+        "SELECT * FROM product_requests ORDER BY created_at DESC LIMIT ?",
+        [$limit]
+    );
+}
 }

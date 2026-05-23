@@ -73,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAlertDismissal();
 
     document.querySelectorAll('form[action*="delete"]').forEach(form => {
+        if (form.hasAttribute('data-no-confirm')) return; // ← add this
         form.addEventListener('submit', e => {
             if (!confirm('Are you sure you want to delete this item?')) {
                 e.preventDefault();

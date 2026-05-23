@@ -130,6 +130,7 @@ $router->get('/admin/requests', function() { requireAdminController('RequestAdmi
 $router->get('/admin/requests/{id}', function($id) { requireAdminController('RequestAdminController', 'show', $id); });
 $router->post('/admin/requests/approve', function() { requireAdminController('RequestAdminController', 'approve'); });
 $router->post('/admin/requests/reject', function() { requireAdminController('RequestAdminController', 'reject'); });
+$router->post('/admin/requests/delete', function() { requireAdminController('RequestAdminController', 'delete'); }); 
 
 // $router->group('/admin/media', function($router) {
 //     $router->get('/', function() { requireMediaAdmin('index'); });

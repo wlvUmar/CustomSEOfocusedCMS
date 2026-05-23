@@ -21,7 +21,7 @@ class RequestAdminController extends Controller {
 
     public function index() {
         $this->requireAuth();
-        $requests = $this->prModel->getPending(200);
+        $requests = $this->prModel->getAll(200);
         foreach ($requests as &$request) {
             $request['photo_count'] = $this->imageModel->countByRequestId($request['id']);
             if (!empty($request['image_path'])) {
@@ -80,6 +80,44 @@ class RequestAdminController extends Controller {
         $this->prModel->updateStatus($id, 'rejected', null, $notes, $_SESSION['user_id'] ?? null);
         $this->notifier->notifyReviewResult($id, '');
         $_SESSION['success'] = 'Запрос обработан, клиенту отправлено сообщение';
+        $this->redirect('/admin/requests');
+    }
+    public function delete(): void
+    {
+        $this->requireAuth();  // ← use requireAuth(), not requireAdmin() — that method doesn't exist here
+
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {  // ← match how approve/reject validate CSRF
+            $this->redirect('/admin/requests');
+        }
+
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) {
+            $this->redirect('/admin/requests');
+        }
+
+        // 1. Get the main image from the request row itself
+        $req = $this->prModel->getById($id);
+        if ($req && !empty($req['image_path'])) {
+            $path = $_SERVER['DOCUMENT_ROOT'] . '/' . ltrim($req['image_path'], '/');
+            if (file_exists($path)) {
+                unlink($path);
+            }
+        }
+
+        // 2. Get and delete additional images via your existing model
+        $images = $this->imageModel->getByRequestId($id);
+        foreach ($images as $img) {
+            $path = $_SERVER['DOCUMENT_ROOT'] . '/' . ltrim($img['image_path'], '/');
+            if (file_exists($path)) {
+                unlink($path);
+            }
+        }
+
+        // 3. Delete DB records using your models, not $this->db directly
+        $this->imageModel->deleteByRequestId($id);  // add this method if it doesn't exist
+        $this->prModel->deleteById($id);            // add this method if it doesn't exist
+
+        $_SESSION['success'] = 'Заявка удалена.';  // ← match session flash style used in approve/reject
         $this->redirect('/admin/requests');
     }
 }

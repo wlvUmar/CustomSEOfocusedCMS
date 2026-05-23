@@ -30,4 +30,9 @@ class ProductRequestImage {
         );
         return (int)($row['total'] ?? 0);
     }
+    // In ProductRequestImage.php
+    public function deleteByRequestId($id) {
+        $this->db->query('DELETE FROM product_request_images WHERE request_id = ?', [$id]);
+    }
+
 }

@@ -15,20 +15,9 @@ elseif ($status === 'in_review') $statusClass = 'is-review';
 <div class="request-page request-page-detail">
     <div class="request-hero">
         <div>
-            <div class="eyebrow">Карточка заявки</div>
-            <h1>Заявка #<?= htmlspecialchars($request['id']) ?></h1>
-            <p><?= nl2br(htmlspecialchars($request['description'] ?? '')) ?></p>
+            <h1>Заявка <?= htmlspecialchars($request['id']) ?></h1>
         </div>
-        <div class="request-hero-stats">
-            <div class="stat-card">
-                <span class="stat-label">Статус</span>
-                <strong class="status-strong <?= $statusClass ?>"><?= htmlspecialchars($statusLabels[$status] ?? $status) ?></strong>
-            </div>
-            <div class="stat-card">
-                <span class="stat-label">Фото</span>
-                <strong><?= (int)($request['photo_count'] ?? 1) ?></strong>
-            </div>
-        </div>
+
     </div>
 
     <div class="review-layout">
@@ -56,15 +45,12 @@ elseif ($status === 'in_review') $statusClass = 'is-review';
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-            </div>
 
-            <div class="panel">
                 <div class="panel-head">
-                    <h2>Информация</h2>
                 </div>
 
                 <div class="info-grid">
-                    <div><span>ID</span><strong>#<?= htmlspecialchars($request['id']) ?></strong></div>
+                    <div><strong><?= nl2br(htmlspecialchars($request['description'] ?? '--')) ?></strong></div>
                     <div><span>Статус</span><strong><?= htmlspecialchars($statusLabels[$status] ?? $status) ?></strong></div>
                     <div><span>Создано</span><strong><?= htmlspecialchars($request['created_at'] ?? '') ?></strong></div>
                     <div><span>Проверено</span><strong><?= htmlspecialchars($request['reviewed_at'] ?? '—') ?></strong></div>
@@ -115,7 +101,7 @@ elseif ($status === 'in_review') $statusClass = 'is-review';
                 </form>
             </div>
 
-            <a class="back-link" href="<?= BASE_URL ?>/admin/requests">← Назад</a>
+            <a class="back-link btn" href="<?= BASE_URL ?>/admin/requests">← Назад</a>
         </aside>
     </div>
 </div>
