@@ -100,9 +100,10 @@ class RequestAdminController extends Controller {
             $this->requireAuth();
         }
         
-        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        if ($isLoggedIn && !validateCSRFToken($_POST['csrf_token'] ?? '')) {
             $this->json(['success' => false, 'message' => 'Invalid CSRF'], 403);
         }
+        
         $price = $_POST['price'] ?? '';
         $notes = $_POST['notes'] ?? '';
         $contactPhone = $_POST['contact_phone'] ?? '';
@@ -139,7 +140,7 @@ class RequestAdminController extends Controller {
             $this->requireAuth();
         }
         
-        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        if ($isLoggedIn && !validateCSRFToken($_POST['csrf_token'] ?? '')) {
             $this->json(['success' => false, 'message' => 'Invalid CSRF'], 403);
         }
         $notes = $_POST['notes'] ?? '';
