@@ -35,13 +35,13 @@
 .request-hero-stats {
     display: flex;
     gap: 12px;
-    flex-wrap: wrap;
 }
 /* Filter tabs */
 .filter-tabs {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+    flex-direction: row !important;
     margin-bottom: 20px;
 }
 
