@@ -278,6 +278,11 @@ $router->post('/api/bot/requests', function() {
     (new BotController())->createRequest();
 });
 
+$router->post('/api/bot/access-token', function() {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->createAccessToken();
+});
+
 $router->get('/api/bot/requests/{id}', function($id) {
     require_once BASE_PATH . '/controllers/BotController.php';
     (new BotController())->getRequest($id);
