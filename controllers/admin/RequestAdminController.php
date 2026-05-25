@@ -108,9 +108,19 @@ class RequestAdminController extends Controller {
         $contactPhone = $_POST['contact_phone'] ?? '';
         $this->prModel->updateStatus($id, 'approved', $price, $notes, $_SESSION['user_id'] ?? null);
         // Trigger notification
-        $this->notifier->notifyReviewResult($id, $contactPhone);
-        $_SESSION['success'] = 'Запрос обработан, клиенту отправлено сообщение';
-        $this->redirect('/admin/requests');
+        $success = $this->notifier->notifyReviewResult($id, $contactPhone);
+
+        if ($hasValidToken && !$isLoggedIn) {
+            if ($success) {
+                $_SESSION['success'] = 'Запрос обработан, клиенту отправлено сообщение';
+            } else {
+                $_SESSION['error'] = 'Статус обновлён, но уведомление не отправлено';
+            }
+            $this->redirect('/admin/requests/' . $id . '?token=' . urlencode($token));
+        } else {
+            $_SESSION['success'] = 'Запрос обработан, клиенту отправлено сообщение';
+            $this->redirect('/admin/requests');
+        }
     }
 
     public function reject() {
@@ -134,10 +144,21 @@ class RequestAdminController extends Controller {
         }
         $notes = $_POST['notes'] ?? '';
         $this->prModel->updateStatus($id, 'rejected', null, $notes, $_SESSION['user_id'] ?? null);
-        $this->notifier->notifyReviewResult($id, '');
-        $_SESSION['success'] = 'Запрос обработан, клиенту отправлено сообщение';
-        $this->redirect('/admin/requests');
+        $success = $this->notifier->notifyReviewResult($id, $contactPhone);
+
+        if ($hasValidToken && !$isLoggedIn) {
+            if ($success) {
+                $_SESSION['success'] = 'Запрос обработан, клиенту отправлено сообщение';
+            } else {
+                $_SESSION['error'] = 'Статус обновлён, но уведомление не отправлено';
+            }
+            $this->redirect('/admin/requests/' . $id . '?token=' . urlencode($token));
+        } else {
+            $_SESSION['success'] = 'Запрос обработан, клиенту отправлено сообщение';
+            $this->redirect('/admin/requests');
+        }
     }
+    
     public function delete(): void
     {
         // Check authentication: either logged in OR has valid token
