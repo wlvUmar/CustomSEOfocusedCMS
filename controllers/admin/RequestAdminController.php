@@ -41,14 +41,18 @@ class RequestAdminController extends Controller {
         $token = $_GET['token'] ?? null;
         $hasValidToken = false;
         
+        error_log("[RequestAdminController] Accessing request $id, isLoggedIn=$isLoggedIn, hasToken=" . ($token ? 'yes' : 'no'));
+        
         if (!$isLoggedIn && $token) {
             // Validate token
             $validatedRequestId = $this->tokenModel->validateToken($token);
             $hasValidToken = ($validatedRequestId === (int)$id);
+            error_log("[RequestAdminController] Token validation: validatedRequestId=$validatedRequestId, id=$id, hasValidToken=" . ($hasValidToken ? 'true' : 'false'));
         }
         
         // Require either logged in OR valid token
         if (!$isLoggedIn && !$hasValidToken) {
+            error_log("[RequestAdminController] Auth failed, redirecting to login");
             $this->requireAuth();
         }
         

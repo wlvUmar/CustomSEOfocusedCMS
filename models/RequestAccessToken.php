@@ -29,6 +29,8 @@ class RequestAccessToken {
      * Returns request_id if valid, null if expired or not found
      */
     public function validateToken($token) {
+        error_log("[TokenValidation] Checking token: " . substr($token, 0, 8) . "...");
+        
         $sql = "
             SELECT request_id 
             FROM request_access_tokens
@@ -39,6 +41,7 @@ class RequestAccessToken {
         $result = $this->db->fetchOne($sql, [$token]);
         
         if ($result) {
+            error_log("[TokenValidation] Token valid for request_id: " . $result['request_id']);
             // Increment usage count
             $updateSql = "
                 UPDATE request_access_tokens 
@@ -50,6 +53,7 @@ class RequestAccessToken {
             return $result['request_id'];
         }
         
+        error_log("[TokenValidation] Token invalid or expired: " . substr($token, 0, 8) . "...");
         return null;
     }
 
