@@ -54,6 +54,13 @@ class RequestAdminController extends Controller {
         
         $req = $this->prModel->getById($id);
         if (!$req) {
+            // If accessed via token link but request doesn't exist yet, show waiting message
+            if ($hasValidToken) {
+                $_SESSION['info'] = 'Request is being processed. Please wait...';
+                $this->view('admin/requests/waiting');
+                return;
+            }
+            
             $_SESSION['error'] = 'Request not found';
             $this->redirect('/admin/requests');
         }

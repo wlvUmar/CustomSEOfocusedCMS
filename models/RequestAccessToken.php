@@ -1,10 +1,11 @@
 <?php
+require_once BASE_PATH . '/core/Database.php';
 
 class RequestAccessToken {
-    private $pdo;
+    private $db;
 
     public function __construct() {
-        $this->pdo = require BASE_PATH . '/config/database.php';
+        $this->db = Database::getInstance();
     }
 
     /**
@@ -13,14 +14,14 @@ class RequestAccessToken {
     public function create($request_id, $token) {
         $expiresAt = date('Y-m-d H:i:s', strtotime('+3 days'));
         
-        $stmt = $this->pdo->prepare("
+        $sql = "
             INSERT INTO request_access_tokens (request_id, token, expires_at)
             VALUES (?, ?, ?)
             ON DUPLICATE KEY UPDATE expires_at = VALUES(expires_at)
-        ");
+        ";
         
-        $stmt->execute([$request_id, $token, $expiresAt]);
-        return $this->pdo->lastInsertId();
+        $this->db->query($sql, [$request_id, $token, $expiresAt]);
+        return $this->db->lastInsertId();
     }
 
     /**
@@ -28,23 +29,23 @@ class RequestAccessToken {
      * Returns request_id if valid, null if expired or not found
      */
     public function validateToken($token) {
-        $stmt = $this->pdo->prepare("
+        $sql = "
             SELECT request_id 
             FROM request_access_tokens
             WHERE token = ? AND expires_at > NOW()
             LIMIT 1
-        ");
+        ";
         
-        $stmt->execute([$token]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $result = $this->db->fetchOne($sql, [$token]);
         
         if ($result) {
             // Increment usage count
-            $this->pdo->prepare("
+            $updateSql = "
                 UPDATE request_access_tokens 
                 SET used_count = used_count + 1 
                 WHERE token = ?
-            ")->execute([$token]);
+            ";
+            $this->db->query($updateSql, [$token]);
             
             return $result['request_id'];
         }
@@ -56,17 +57,15 @@ class RequestAccessToken {
      * Get token for a request
      */
     public function getTokenByRequestId($request_id) {
-        $stmt = $this->pdo->prepare("
+        $sql = "
             SELECT token 
             FROM request_access_tokens
             WHERE request_id = ? AND expires_at > NOW()
             ORDER BY created_at DESC
             LIMIT 1
-        ");
+        ";
         
-        $stmt->execute([$request_id]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+        $result = $this->db->fetchOne($sql, [$request_id]);
         return $result ? $result['token'] : null;
     }
 
@@ -74,11 +73,11 @@ class RequestAccessToken {
      * Delete expired tokens (cleanup)
      */
     public function deleteExpired() {
-        $stmt = $this->pdo->prepare("
+        $sql = "
             DELETE FROM request_access_tokens 
             WHERE expires_at < NOW()
-        ");
+        ";
         
-        return $stmt->execute();
+        return $this->db->query($sql);
     }
 }
