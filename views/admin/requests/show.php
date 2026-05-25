@@ -79,7 +79,8 @@ elseif ($status === 'in_review') $statusClass = 'is-review';
                         <select name="contact_phone" class="form-control">
                             <option value="">Без контакта</option>
                             <option value="+998900069777" selected>+998900069777</option>
-                            <option value="+998947307704">+998947307704</option>
+                            <option value="+998947307704">Abl</option>
+                            <option value="+998704744047">Akosh</option>
                         </select>
                     </div>
                     <button class="btn btn-success btn-block" type="submit">Отправить цену</button>

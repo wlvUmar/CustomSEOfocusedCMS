@@ -84,11 +84,24 @@ class RequestAdminController extends Controller {
     }
 
     public function approve() {
-        $this->requireAuth();
+        // Check authentication: either logged in OR has valid token
+        $isLoggedIn = isset($_SESSION['user_id']);
+        $token = $_GET['token'] ?? $_POST['token'] ?? null;
+        $hasValidToken = false;
+        $id = $_POST['id'] ?? 0;
+        
+        if (!$isLoggedIn && $token) {
+            $validatedRequestId = $this->tokenModel->validateToken($token);
+            $hasValidToken = ($validatedRequestId === (int)$id);
+        }
+        
+        if (!$isLoggedIn && !$hasValidToken) {
+            $this->requireAuth();
+        }
+        
         if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
             $this->json(['success' => false, 'message' => 'Invalid CSRF'], 403);
         }
-        $id = $_POST['id'] ?? 0;
         $price = $_POST['price'] ?? '';
         $notes = $_POST['notes'] ?? '';
         $contactPhone = $_POST['contact_phone'] ?? '';
@@ -100,11 +113,24 @@ class RequestAdminController extends Controller {
     }
 
     public function reject() {
-        $this->requireAuth();
+        // Check authentication: either logged in OR has valid token
+        $isLoggedIn = isset($_SESSION['user_id']);
+        $token = $_GET['token'] ?? $_POST['token'] ?? null;
+        $hasValidToken = false;
+        $id = $_POST['id'] ?? 0;
+        
+        if (!$isLoggedIn && $token) {
+            $validatedRequestId = $this->tokenModel->validateToken($token);
+            $hasValidToken = ($validatedRequestId === (int)$id);
+        }
+        
+        if (!$isLoggedIn && !$hasValidToken) {
+            $this->requireAuth();
+        }
+        
         if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
             $this->json(['success' => false, 'message' => 'Invalid CSRF'], 403);
         }
-        $id = $_POST['id'] ?? 0;
         $notes = $_POST['notes'] ?? '';
         $this->prModel->updateStatus($id, 'rejected', null, $notes, $_SESSION['user_id'] ?? null);
         $this->notifier->notifyReviewResult($id, '');
@@ -113,13 +139,25 @@ class RequestAdminController extends Controller {
     }
     public function delete(): void
     {
-        $this->requireAuth();  // ← use requireAuth(), not requireAdmin() — that method doesn't exist here
+        // Check authentication: either logged in OR has valid token
+        $isLoggedIn = isset($_SESSION['user_id']);
+        $token = $_GET['token'] ?? $_POST['token'] ?? null;
+        $hasValidToken = false;
+        $id = (int)($_POST['id'] ?? 0);
+        
+        if (!$isLoggedIn && $token) {
+            $validatedRequestId = $this->tokenModel->validateToken($token);
+            $hasValidToken = ($validatedRequestId === (int)$id);
+        }
+        
+        if (!$isLoggedIn && !$hasValidToken) {
+            $this->requireAuth();
+        }
 
         if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {  // ← match how approve/reject validate CSRF
             $this->redirect('/admin/requests');
         }
 
-        $id = (int)($_POST['id'] ?? 0);
         if (!$id) {
             $this->redirect('/admin/requests');
         }
