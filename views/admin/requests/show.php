@@ -63,7 +63,7 @@ elseif ($status === 'in_review') $statusClass = 'is-review';
                 <div class="panel-head">
                     <h2>Оценить</h2>
                 </div>
-                <form method="post" action="<?= BASE_URL ?>/admin/requests/approve?token=<?= htmlspecialchars($token) ?>">
+                <form method="post" action="<?= BASE_URL ?>/admin/requests/approve?token=<?= htmlspecialchars($token ?? '') ?>">
                     <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
                     <input type="hidden" name="id" value="<?= htmlspecialchars($request['id']) ?>">
                     <div class="form-group">
