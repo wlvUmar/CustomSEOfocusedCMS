@@ -79,6 +79,7 @@ class RequestAdminController extends Controller {
         $this->view('admin/requests/show', [
             'request' => $req,
             'images' => $images,
+            'token' => $token,  
             'pageName' => 'requests/show'
         ]);
     }
