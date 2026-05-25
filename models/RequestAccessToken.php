@@ -41,7 +41,8 @@ class RequestAccessToken {
         $result = $this->db->fetchOne($sql, [$token]);
         
         if ($result) {
-            error_log("[TokenValidation] Token valid for request_id: " . $result['request_id']);
+            $requestId = (int)$result['request_id'];
+            error_log("[TokenValidation] Token valid for request_id: " . $requestId);
             // Increment usage count
             $updateSql = "
                 UPDATE request_access_tokens 
@@ -50,7 +51,7 @@ class RequestAccessToken {
             ";
             $this->db->query($updateSql, [$token]);
             
-            return $result['request_id'];
+            return $requestId;
         }
         
         error_log("[TokenValidation] Token invalid or expired: " . substr($token, 0, 8) . "...");
