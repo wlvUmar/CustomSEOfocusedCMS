@@ -4,6 +4,7 @@ require_once BASE_PATH . '/models/ProductRequest.php';
 require_once BASE_PATH . '/models/ProductRequestImage.php';
 require_once BASE_PATH . '/models/BotUser.php';
 require_once BASE_PATH . '/models/BotRequestMapping.php';
+require_once BASE_PATH . '/models/RequestAccessToken.php';
 
 class BotController extends Controller {
     // POST /api/bot/requests
@@ -170,5 +171,46 @@ class BotController extends Controller {
             'price' => isset($req['price']) ? (string)$req['price'] : '',
             'admin_notes' => $req['reviewer_notes'] ?? ''
         ]);
+    }
+
+    // POST /api/bot/access-token
+    public function createAccessToken() {
+        error_log("[BotController] createAccessToken() called");
+        
+        // Verify HMAC signature
+        $secret = getenv('BOT_API_SECRET') ?: '';
+        $timestamp = $_SERVER['HTTP_X_BOT_TIMESTAMP'] ?? '';
+        $signature = $_SERVER['HTTP_X_BOT_SIGNATURE'] ?? '';
+
+        $request_id = $_POST['request_id'] ?? null;
+        $token = $_POST['token'] ?? null;
+
+        error_log("[BotController] request_id=$request_id, token=" . substr($token ?? '', 0, 16) . "...");
+
+        $body_for_sig = "request_id={$request_id}&token={$token}";
+        $expected = hash_hmac('sha256', $secret . ':' . $timestamp . ':' . $body_for_sig, $secret);
+
+        if (!$secret || !$timestamp || !$signature || !hash_equals($expected, $signature) || abs(time() - (int)$timestamp) > 60) {
+            error_log("[BotController] Authorization failed for access token");
+            $this->json(['success' => false, 'message' => 'Unauthorized'], 401);
+            return;
+        }
+
+        if (!$request_id || !$token) {
+            error_log("[BotController] Missing request_id or token");
+            $this->json(['success' => false, 'message' => 'Missing parameters'], 400);
+            return;
+        }
+
+        try {
+            $tokenModel = new RequestAccessToken();
+            $tokenModel->create($request_id, $token);
+            
+            error_log("[BotController] Access token created for request $request_id");
+            $this->json(['success' => true, 'request_id' => (int)$request_id, 'token' => $token], 201);
+        } catch (Exception $e) {
+            error_log("[BotController] Failed to create access token: " . $e->getMessage());
+            $this->json(['success' => false, 'message' => 'Database error'], 500);
+        }
     }
 }

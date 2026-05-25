@@ -4,12 +4,14 @@ require_once BASE_PATH . '/models/ProductRequest.php';
 require_once BASE_PATH . '/models/ProductRequestImage.php';
 require_once BASE_PATH . '/models/BotRequestMapping.php';
 require_once BASE_PATH . '/models/NotificationService.php';
+require_once BASE_PATH . '/models/RequestAccessToken.php';
 
 class RequestAdminController extends Controller {
     private $prModel;
     private $imageModel;
     private $mappingModel;
     private $notifier;
+    private $tokenModel;
 
     public function __construct() {
         parent::__construct();
@@ -17,6 +19,7 @@ class RequestAdminController extends Controller {
         $this->imageModel = new ProductRequestImage();
         $this->mappingModel = new BotRequestMapping();
         $this->notifier = new NotificationService();
+        $this->tokenModel = new RequestAccessToken();
     }
 
     public function index() {
@@ -33,7 +36,22 @@ class RequestAdminController extends Controller {
     }
 
     public function show($id) {
-        $this->requireAuth();
+        // Check authentication: either logged in OR has valid token
+        $isLoggedIn = isset($_SESSION['user_id']);
+        $token = $_GET['token'] ?? null;
+        $hasValidToken = false;
+        
+        if (!$isLoggedIn && $token) {
+            // Validate token
+            $validatedRequestId = $this->tokenModel->validateToken($token);
+            $hasValidToken = ($validatedRequestId === (int)$id);
+        }
+        
+        // Require either logged in OR valid token
+        if (!$isLoggedIn && !$hasValidToken) {
+            $this->requireAuth();
+        }
+        
         $req = $this->prModel->getById($id);
         if (!$req) {
             $_SESSION['error'] = 'Request not found';
