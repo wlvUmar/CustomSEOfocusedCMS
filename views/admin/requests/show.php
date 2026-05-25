@@ -59,48 +59,63 @@ elseif ($status === 'in_review') $statusClass = 'is-review';
         </section>
 
         <aside class="review-side">
-            <div class="panel action-panel">
-                <div class="panel-head">
-                    <h2>Оценить</h2>
+            <?php if ($status === 'pending' || $status === 'in_review'): ?>
+                <div class="panel action-panel">
+                    <div class="panel-head">
+                        <h2>Оценить</h2>
+                    </div>
+                    <form method="post" action="<?= BASE_URL ?>/admin/requests/approve?token=<?= htmlspecialchars($token ?? '') ?>">
+                        <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                        <input type="hidden" name="id" value="<?= htmlspecialchars($request['id']) ?>">
+                        <div class="form-group">
+                            <label>Цена</label>
+                            <input type="text" name="price" class="form-control" placeholder="Например: 150000">
+                        </div>
+                        <div class="form-group">
+                            <label>Комментарий</label>
+                            <textarea name="notes" class="form-control" rows="5" placeholder="Коротко и понятно"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Телефон для звонка</label>
+                            <select name="contact_phone" class="form-control">
+                                <option value="">Без контакта</option>
+                                <option value="+998900069777" selected>+998900069777</option>
+                                <option value="+998947307704">Abl</option>
+                                <option value="+998704744047">Akosh</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-success btn-block" type="submit">Отправить цену</button>
+                    </form>
                 </div>
-                <form method="post" action="<?= BASE_URL ?>/admin/requests/approve?token=<?= htmlspecialchars($token ?? '') ?>">
-                    <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
-                    <input type="hidden" name="id" value="<?= htmlspecialchars($request['id']) ?>">
-                    <div class="form-group">
-                        <label>Цена</label>
-                        <input type="text" name="price" class="form-control" placeholder="Например: 150000">
-                    </div>
-                    <div class="form-group">
-                        <label>Комментарий</label>
-                        <textarea name="notes" class="form-control" rows="5" placeholder="Коротко и понятно"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Телефон для звонка</label>
-                        <select name="contact_phone" class="form-control">
-                            <option value="">Без контакта</option>
-                            <option value="+998900069777" selected>+998900069777</option>
-                            <option value="+998947307704">Abl</option>
-                            <option value="+998704744047">Akosh</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-success btn-block" type="submit">Отправить цену</button>
-                </form>
-            </div>
 
-            <div class="panel action-panel danger">
-                <div class="panel-head">
-                    <h2>Нет оценки</h2>
-                </div>
-                <form method="post" action="<?= BASE_URL ?>/admin/requests/reject">
-                    <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
-                    <input type="hidden" name="id" value="<?= htmlspecialchars($request['id']) ?>">
-                    <div class="form-group">
-                        <label>Комментарий</label>
-                        <textarea name="notes" class="form-control" rows="5" placeholder="Коротко и понятно"></textarea>
+                <div class="panel action-panel danger">
+                    <div class="panel-head">
+                        <h2>Нет оценки</h2>
                     </div>
-                    <button class="btn btn-danger btn-block" type="submit">Отправить ответ</button>
-                </form>
-            </div>
+                    <form method="post" action="<?= BASE_URL ?>/admin/requests/reject?token=<?= htmlspecialchars($token ?? '') ?>">
+                        <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                        <input type="hidden" name="id" value="<?= htmlspecialchars($request['id']) ?>">
+                        <div class="form-group">
+                            <label>Комментарий</label>
+                            <textarea name="notes" class="form-control" rows="5" placeholder="Коротко и понятно"></textarea>
+                        </div>
+                        <button class="btn btn-danger btn-block" type="submit">Отправить ответ</button>
+                    </form>
+                </div>
+            <?php else: ?>
+                <div class="panel action-panel">
+                    <div class="panel-head">
+                        <h2>Заявка обработана</h2>
+                    </div>
+                    <p class="muted">Статус: <strong><?= htmlspecialchars($statusLabels[$status] ?? $status) ?></strong></p>
+                    <?php if (!empty($request['price'])): ?>
+                        <p>Цена: <strong><?= htmlspecialchars($request['price']) ?></strong></p>
+                    <?php endif; ?>
+                    <?php if (!empty($request['notes'])): ?>
+                        <p>Комментарий: <strong><?= htmlspecialchars($request['notes']) ?></strong></p>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
             <a class="back-link btn" href="<?= BASE_URL ?>/admin/requests">← Назад</a>
         </aside>
     </div>
