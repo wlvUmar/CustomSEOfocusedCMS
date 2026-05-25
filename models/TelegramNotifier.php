@@ -21,7 +21,7 @@ class TelegramNotifier {
             'X-Callback-Timestamp: ' . $timestamp,
             'X-Callback-Signature: ' . $signature,
         ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
 
         $resp = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -29,7 +29,7 @@ class TelegramNotifier {
         curl_close($ch);
 
         if ($err) {
-            error_log('[TelegramNotifier] curl error: ' . $err . $endpoint);
+            error_log('[TelegramNotifier] curl error: ' . $err . ' url=' . $endpoint);
             return false;
         }
         return $httpCode >= 200 && $httpCode < 300;
