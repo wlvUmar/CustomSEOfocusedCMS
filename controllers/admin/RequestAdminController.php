@@ -102,8 +102,9 @@ class RequestAdminController extends Controller {
         
         if ($isLoggedIn && !validateCSRFToken($_POST['csrf_token'] ?? '')) {
             $this->json(['success' => false, 'message' => 'Invalid CSRF'], 403);
+            return
         }
-        
+
         $price = $_POST['price'] ?? '';
         $notes = $_POST['notes'] ?? '';
         $contactPhone = $_POST['contact_phone'] ?? '';
@@ -142,10 +143,11 @@ class RequestAdminController extends Controller {
         
         if ($isLoggedIn && !validateCSRFToken($_POST['csrf_token'] ?? '')) {
             $this->json(['success' => false, 'message' => 'Invalid CSRF'], 403);
+            return;
         }
         $notes = $_POST['notes'] ?? '';
         $this->prModel->updateStatus($id, 'rejected', null, $notes, $_SESSION['user_id'] ?? null);
-        $success = $this->notifier->notifyReviewResult($id, $contactPhone);
+        $success = $this->notifier->notifyReviewResult($id, '');
 
         if ($hasValidToken && !$isLoggedIn) {
             if ($success) {
@@ -185,19 +187,21 @@ class RequestAdminController extends Controller {
             $this->redirect('/admin/requests');
         }
 
-        // 1. Get the main image from the request row itself
         $req = $this->prModel->getById($id);
         if ($req && !empty($req['image_path'])) {
             $path = $_SERVER['DOCUMENT_ROOT'] . '/' . ltrim($req['image_path'], '/');
+            error_log('[Delete] Main image path: ' . $path . ' exists=' . (file_exists($path) ? 'yes' : 'no'));
             if (file_exists($path)) {
-                unlink($path);
+                $deleted = unlink($path);
+                error_log('[Delete] unlink result: ' . ($deleted ? 'ok' : 'FAILED'));
             }
         }
 
-        // 2. Get and delete additional images via your existing model
         $images = $this->imageModel->getByRequestId($id);
+        error_log('[Delete] Additional images count: ' . count($images));
         foreach ($images as $img) {
             $path = $_SERVER['DOCUMENT_ROOT'] . '/' . ltrim($img['image_path'], '/');
+            error_log('[Delete] Additional image path: ' . $path . ' exists=' . (file_exists($path) ? 'yes' : 'no'));
             if (file_exists($path)) {
                 unlink($path);
             }
