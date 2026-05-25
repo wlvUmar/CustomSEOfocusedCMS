@@ -102,7 +102,7 @@ class RequestAdminController extends Controller {
         
         if ($isLoggedIn && !validateCSRFToken($_POST['csrf_token'] ?? '')) {
             $this->json(['success' => false, 'message' => 'Invalid CSRF'], 403);
-            return
+            return;
         }
 
         $price = $_POST['price'] ?? '';
