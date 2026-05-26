@@ -130,6 +130,10 @@ class PageController extends Controller {
         $heroImageSchemaArray = !empty($heroImageSchemaJson) ? json_decode($heroImageSchemaJson, true) : null;
         $primaryImageId = $heroImageSchemaArray ? ($heroImageSchemaArray['@id'] ?? null) : null;
         
+
+        if ($heroImageSchemaArray && empty($page['og_image'])) {
+            $page['og_image'] = $heroImageSchemaArray['url'] ?? $heroImageSchemaArray['contentUrl'] ?? '';
+        }
         // --- PREPARE DATA FOR SCHEMA (Clean Placeholders) ---
         $pageForSchema = $page;
         $pageForSchema["title_$currentLang"] = replacePlaceholders($page["title_$currentLang"], $page, $seoSettings);
@@ -580,16 +584,12 @@ class PageController extends Controller {
         ];
         
         if (in_array($page['slug'], ['home', 'main'])) {
-            return []; // No breadcrumbs for home
+            return []; 
         }
         
         // Use Page model to get hierarchy
         $breadcrumbPages = $this->pageModel->getBreadcrumbs($page['id']);
         
-        // Reverse because getBreadcrumbs might return Leaf -> Root? Let's check model.
-        // Model getBreadcrumbs: returns [current, parent, grandparent...]. So yes, we need to reverse or iterate correctly.
-        // Wait, logic says: array_unshift($breadcrumbs, $parent); so it builds [Grandparent, Parent, Current].
-        // Let's assume it returns Root -> ... -> Current.
         
         foreach ($breadcrumbPages as $bPage) {
             if (in_array($bPage['slug'], ['home', 'main'])) continue;
