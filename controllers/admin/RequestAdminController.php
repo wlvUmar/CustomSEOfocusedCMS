@@ -2,6 +2,7 @@
 require_once BASE_PATH . '/core/Controller.php';
 require_once BASE_PATH . '/models/ProductRequest.php';
 require_once BASE_PATH . '/models/ProductRequestImage.php';
+require_once BASE_PATH . '/models/BotUser.php';
 require_once BASE_PATH . '/models/BotRequestMapping.php';
 require_once BASE_PATH . '/models/NotificationService.php';
 require_once BASE_PATH . '/models/RequestAccessToken.php';
@@ -9,6 +10,7 @@ require_once BASE_PATH . '/models/RequestAccessToken.php';
 class RequestAdminController extends Controller {
     private $prModel;
     private $imageModel;
+    private $userModel;
     private $mappingModel;
     private $notifier;
     private $tokenModel;
@@ -17,6 +19,7 @@ class RequestAdminController extends Controller {
         parent::__construct();
         $this->prModel = new ProductRequest();
         $this->imageModel = new ProductRequestImage();
+        $this->userModel = new BotUser();
         $this->mappingModel = new BotRequestMapping();
         $this->notifier = new NotificationService();
         $this->tokenModel = new RequestAccessToken();
@@ -69,6 +72,11 @@ class RequestAdminController extends Controller {
             $this->redirect('/admin/requests');
         }
         $images = $this->imageModel->getByRequestId($id);
+        $mapping = $this->mappingModel->findByRequestId($id);
+        $phone = null;
+        if ($mapping && !empty($mapping['telegram_id'])) {
+            $phone = $this->userModel->findPhoneByTelegramId($mapping['telegram_id']);
+        }
         if (!empty($req['image_path'])) {
             array_unshift($images, [
                 'image_path' => $req['image_path'],
@@ -79,6 +87,7 @@ class RequestAdminController extends Controller {
         $this->view('admin/requests/show', [
             'request' => $req,
             'images' => $images,
+            'phone' => $phone,
             'token' => $token,  
             'pageName' => 'requests/show'
         ]);

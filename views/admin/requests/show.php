@@ -52,6 +52,7 @@ elseif ($status === 'in_review') $statusClass = 'is-review';
                 <div class="info-grid">
                     <div><strong><?= nl2br(htmlspecialchars($request['description'] ?? '--')) ?></strong></div>
                     <div><span>Статус</span><strong><?= htmlspecialchars($statusLabels[$status] ?? $status) ?></strong></div>
+                    <div><span>Телефон</span><strong><?= htmlspecialchars($phone ?: '—') ?></strong></div>
                     <div><span>Создано</span><strong><?= htmlspecialchars($request['created_at'] ?? '') ?></strong></div>
                     <div><span>Проверено</span><strong><?= htmlspecialchars($request['reviewed_at'] ?? '—') ?></strong></div>
                 </div>
@@ -206,5 +207,4 @@ wrap.addEventListener('touchmove', function(e) {
 wrap.addEventListener('touchend', function() { _dragging = false; });
 </script>
 <?php require_once BASE_PATH . '/views/admin/layout/footer.php'; ?>
-
 
