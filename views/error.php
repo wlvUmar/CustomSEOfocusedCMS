@@ -117,7 +117,8 @@ $tgText  = ($lang === 'ru') ? 'Написать в Telegram' : 'Telegramda yozis
                 <a class="btn-secondary"
                    href="<?= htmlspecialchars($tgUrl) ?>"
                    target="_blank"
-                   rel="noopener noreferrer">
+                   rel="noopener noreferrer"
+                   data-track-click="1">
                     <?= htmlspecialchars($tgText) ?>
                 </a>
             </div>
