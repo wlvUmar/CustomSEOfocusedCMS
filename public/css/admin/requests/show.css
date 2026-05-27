@@ -466,5 +466,15 @@
     .rd-btns          { grid-template-columns: 1fr; }
     .rd-btn           { padding: 14px; }
     .rd-meta-strip    { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .rd-viewer        { aspect-ratio: 1/1; max-height: 300px; }
+    .rd-viewer        { aspect-ratio: 4/3; max-height: none; width:100% }
+    .rd-slide         {width: 100%; height: 100%}
+}
+
+
+@media (max-width: 768px) {
+    .rd-photo-card,
+    .rd-action-card {
+        width: 100%;
+        max-width: 100%;
+    }
 }
