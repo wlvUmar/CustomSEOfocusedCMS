@@ -15,11 +15,18 @@ class NotificationService {
     }
 
     public function notifyReviewResult($request_id, $contact_phone = '') {
+        error_log('[NotificationService] notifyReviewResult request_id=' . $request_id . ' contact_phone=' . ($contact_phone ?: 'EMPTY'));
         $mapping = $this->mappingModel->findByRequestId($request_id);
-        if (!$mapping) return false;
+        if (!$mapping) {
+            error_log('[NotificationService] mapping not found request_id=' . $request_id);
+            return false;
+        }
 
         $request = $this->requestModel->getById($request_id);
-        if (!$request) return false;
+        if (!$request) {
+            error_log('[NotificationService] request not found request_id=' . $request_id);
+            return false;
+        }
 
         $payload = [
             'request_id' => (int)$request_id,
@@ -30,9 +37,7 @@ class NotificationService {
         ];
 
         $sent = $this->notifier->sendCallback($payload);
-        if ($sent) {
-            $this->mappingModel->markNotified($request_id);
-        }
+        error_log('[NotificationService] callback result request_id=' . $request_id . ' sent=' . ($sent ? 'yes' : 'no'));
         return $sent;
     }
 }

@@ -120,7 +120,9 @@ class RequestAdminController extends Controller {
             }
             $this->redirect('/admin/requests/' . $id . '?token=' . urlencode($token));
         } else {
-            $_SESSION['success'] = 'Запрос обработан, клиенту отправлено сообщение';
+            $_SESSION['success'] = $success
+                ? 'Запрос обработан, клиенту отправлено сообщение'
+                : 'Статус обновлён, но уведомление не отправлено';
             $this->redirect('/admin/requests');
         }
     }
@@ -157,7 +159,9 @@ class RequestAdminController extends Controller {
             }
             $this->redirect('/admin/requests/' . $id . '?token=' . urlencode($token));
         } else {
-            $_SESSION['success'] = 'Запрос обработан, клиенту отправлено сообщение';
+            $_SESSION['success'] = $success
+                ? 'Запрос обработан, клиенту отправлено сообщение'
+                : 'Статус обновлён, но уведомление не отправлено';
             $this->redirect('/admin/requests');
         }
     }
