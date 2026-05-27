@@ -28,4 +28,16 @@ class BotUser {
     public function findByTelegramId($telegram_id) {
         return $this->db->fetchOne("SELECT * FROM bot_users WHERE telegram_id = ?", [$telegram_id]);
     }
+
+    public function savePhone($telegram_id, $phone) {
+        $this->db->query(
+            "UPDATE bot_users SET phone = ? WHERE telegram_id = ?",
+            [$phone, $telegram_id]
+        );
+    }
+
+    public function findPhoneByTelegramId($telegram_id) {
+        $result = $this->db->fetchOne("SELECT phone FROM bot_users WHERE telegram_id = ?", [$telegram_id]);
+        return $result ? $result['phone'] : null;
+    }
 }

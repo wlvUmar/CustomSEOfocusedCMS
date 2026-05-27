@@ -278,6 +278,56 @@ $router->post('/api/bot/requests', function() {
     (new BotController())->createRequest();
 });
 
+$router->post('/api/bot/users', function() {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->upsertUser();
+});
+
+$router->get('/api/bot/users/{telegram_id}', function($telegram_id) {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->getUser($telegram_id);
+});
+
+$router->post('/api/bot/users/{telegram_id}/phone', function($telegram_id) {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->savePhone($telegram_id);
+});
+
+$router->get('/api/bot/users/{telegram_id}/phone', function($telegram_id) {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->getPhone($telegram_id);
+});
+
+$router->post('/api/bot/mappings', function() {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->createMapping();
+});
+
+$router->get('/api/bot/mappings', function() {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->listMappings();
+});
+
+$router->get('/api/bot/mappings/{request_id}', function($request_id) {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->getMapping($request_id);
+});
+
+$router->post('/api/bot/mappings/{request_id}/notified', function($request_id) {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->markMappingNotified($request_id);
+});
+
+$router->post('/api/bot/mappings/{request_id}/claim', function($request_id) {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->claimMappingNotification($request_id);
+});
+
+$router->post('/api/bot/mappings/{request_id}/release', function($request_id) {
+    require_once BASE_PATH . '/controllers/BotController.php';
+    (new BotController())->releaseMappingNotification($request_id);
+});
+
 $router->post('/api/bot/access-token', function() {
     require_once BASE_PATH . '/controllers/BotController.php';
     (new BotController())->createAccessToken();
