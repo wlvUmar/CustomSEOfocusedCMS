@@ -1,5 +1,14 @@
 <?php require_once BASE_PATH . '/views/admin/layout/header.php'; ?>
 <?php
+// Inline critical CSS as a fallback for in-app webviews (e.g., Telegram) that may block external stylesheets.
+$cssFile = PUBLIC_PATH . '/css/admin/requests/show.css';
+if (file_exists($cssFile)) {
+    $css = file_get_contents($cssFile);
+    // Echo inside a <style> so it applies even if external CSS is blocked.
+    echo "<style>\n" . $css . "\n</style>\n";
+}
+?>
+<?php
 $status      = $request['status'] ?? 'pending';
 $statusLabels = [
     'pending'   => 'Ожидает',
