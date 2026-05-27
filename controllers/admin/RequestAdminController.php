@@ -202,7 +202,7 @@ class RequestAdminController extends Controller {
 
         $req = $this->prModel->getById($id);
         if ($req && !empty($req['image_path'])) {
-            $path = $_SERVER['DOCUMENT_ROOT'] . '/' . ltrim($req['image_path'], '/');
+            $path = $this->resolveUploadFilesystemPath($req['image_path']);
             error_log('[Delete] Main image path: ' . $path . ' exists=' . (file_exists($path) ? 'yes' : 'no'));
             if (file_exists($path)) {
                 $deleted = unlink($path);
@@ -213,7 +213,7 @@ class RequestAdminController extends Controller {
         $images = $this->imageModel->getByRequestId($id);
         error_log('[Delete] Additional images count: ' . count($images));
         foreach ($images as $img) {
-            $path = $_SERVER['DOCUMENT_ROOT'] . '/' . ltrim($img['image_path'], '/');
+            $path = $this->resolveUploadFilesystemPath($img['image_path']);
             error_log('[Delete] Additional image path: ' . $path . ' exists=' . (file_exists($path) ? 'yes' : 'no'));
             if (file_exists($path)) {
                 unlink($path);
@@ -226,5 +226,19 @@ class RequestAdminController extends Controller {
 
         $_SESSION['success'] = 'Заявка удалена.';  // ← match session flash style used in approve/reject
         $this->redirect('/admin/requests');
+    }
+
+    private function resolveUploadFilesystemPath($imagePath) {
+        if (!$imagePath) {
+            return '';
+        }
+
+        $path = parse_url($imagePath, PHP_URL_PATH);
+        if (!$path) {
+            $path = $imagePath;
+        }
+
+        $publicRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+        return $publicRoot . '/' . ltrim($path, '/');
     }
 }
