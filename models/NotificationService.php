@@ -28,6 +28,15 @@ class NotificationService {
             return false;
         }
 
+        // Defensive check: if approved but price is missing, do not send callback
+        if ($request['status'] === 'approved') {
+            $pricePresent = isset($request['price']) && trim((string)$request['price']) !== '';
+            if (!$pricePresent) {
+                error_log('[NotificationService] Approved request without price — skipping callback for request_id=' . $request_id);
+                return false;
+            }
+        }
+
         $payload = [
             'request_id' => (int)$request_id,
             'status' => $request['status'],

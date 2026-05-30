@@ -155,6 +155,7 @@ $imgCount     = count($images ?? []);
                 <!-- Action buttons -->
                 <div class="rd-btns">
                     <button type="submit"
+                            id="rdApproveBtn"
                             class="rd-btn rd-btn-green"
                             formaction="<?= BASE_URL ?>/admin/requests/approve?token=<?= htmlspecialchars($token ?? '') ?>">
                         <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 7.5l3.5 3.5 7.5-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -285,6 +286,25 @@ rdLbWrap.addEventListener('touchmove', function (e) {
     if (lbDrag && e.touches.length === 1) { lbX = e.touches[0].clientX - lbSX; lbY = e.touches[0].clientY - lbSY; rdLbApply(); }
 }, { passive: true });
 rdLbWrap.addEventListener('touchend', function () { lbDrag = false; });
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var approveBtn = document.getElementById('rdApproveBtn');
+    var form = document.getElementById('rdForm');
+    if (approveBtn && form) {
+        approveBtn.addEventListener('click', function (e) {
+            var priceEl = document.getElementById('rd-price');
+            var price = priceEl ? (priceEl.value || '').trim() : '';
+            if (price === '') {
+                e.preventDefault();
+                alert('Пожалуйста, укажите цену перед отправкой.');
+                priceEl && priceEl.focus();
+                return false;
+            }
+        });
+    }
+});
 </script>
 
 <?php require_once BASE_PATH . '/views/admin/layout/footer.php'; ?>

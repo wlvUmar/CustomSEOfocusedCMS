@@ -114,10 +114,25 @@ class RequestAdminController extends Controller {
             return;
         }
 
-        $price = $_POST['price'] ?? '';
+        $priceRaw = $_POST['price'] ?? '';
         $notes = $_POST['notes'] ?? '';
         $contactPhone = $_POST['contact_phone'] ?? '';
-        $this->prModel->updateStatus($id, 'approved', $price, $notes, $_SESSION['user_id'] ?? null);
+
+        // Sanitize price: allow digits and remove spaces, commas, dots
+        $priceClean = preg_replace('/[^0-9]/', '', (string)$priceRaw);
+        if ($priceClean === '') {
+            // Price is required for approval — do not proceed
+            $_SESSION['error'] = 'Цена обязательна при отправке оценки. Укажите сумму в поле "Цена".';
+            $redirectUrl = '/admin/requests/' . $id;
+            if (!empty($token)) {
+                $redirectUrl .= '?token=' . urlencode($token);
+            }
+            $this->redirect($redirectUrl);
+            return;
+        }
+
+        // Persist status with sanitized price
+        $this->prModel->updateStatus($id, 'approved', $priceClean, $notes, $_SESSION['user_id'] ?? null);
         // Trigger notification
         $success = $this->notifier->notifyReviewResult($id, $contactPhone);
 
