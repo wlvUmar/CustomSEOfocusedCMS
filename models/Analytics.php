@@ -753,7 +753,7 @@ class Analytics {
         return $this->db->fetchAll($sql, [$months, $limit]);
     }
 
-    public function getRangeTopPerformers($startDate, $endDate, $limit = 10) {
+    public function getRangeTopPerformers($startDate, $endDate) {
         $sql = "SELECT 
                     page_slug,
                     COALESCE(utm_source, 'direct') as utm_source,
@@ -765,10 +765,9 @@ class Analytics {
                 WHERE date BETWEEN ? AND ?
                 GROUP BY page_slug, utm_source
                 HAVING visits > 0
-                ORDER BY ctr DESC, visits DESC
-                LIMIT ?";
+                ORDER BY ctr DESC, visits DESC";
         
-        return $this->db->fetchAll($sql, [$startDate, $endDate, $limit]);
+        return $this->db->fetchAll($sql, [$startDate, $endDate]);
     }
 
     /**
