@@ -171,6 +171,8 @@
     scrollbar-width: none;
     background: #f9fafb;
     border-top: 1.5px solid #f3f4f6;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
 }
 .rd-strip::-webkit-scrollbar { display: none; }
 
@@ -184,6 +186,8 @@
     border: 2.5px solid transparent;
     opacity: .45;
     transition: border-color .15s, opacity .15s;
+    touch-action: none;
+    cursor: grab;
 }
 .rd-thumb.active { border-color: #111827; opacity: 1; }
 .rd-thumb:hover  { opacity: .82; }
