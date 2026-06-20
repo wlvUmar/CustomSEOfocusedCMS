@@ -105,22 +105,6 @@
                 window.addEventListener(evt, load, { once: true, passive: true });
             });
         })();
-        (function(){
-            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-            const l1 = document.querySelector('.site-bg__layer--1');
-            const l2 = document.querySelector('.site-bg__layer--2');
-            if (!l1) return;
-            let ticking = false;
-            function update(){
-                const y = window.scrollY;
-                l1.style.transform = 'translateY(' + (y * 0.12) + 'px)';
-                if (l2) l2.style.transform = 'translateY(' + (y * 0.05) + 'px)';
-                ticking = false;
-            }
-            window.addEventListener('scroll', function(){
-                if (!ticking){ requestAnimationFrame(update); ticking = true; }
-            }, { passive: true });
-        })();
     </script>
     <?php endif; ?>
     <script src="<?= BASE_URL ?>/js/param-persistence.js" defer></script>
