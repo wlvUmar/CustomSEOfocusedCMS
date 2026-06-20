@@ -499,7 +499,7 @@ main{
    ═══════════════════════════════════════════════════════════════════════════ */
 .content-section {
     margin: var(--section-gap) 0;
-    background: var(--surface); 
+
     opacity: 0;
     transform: translateY(28px);
     transition: opacity .55s var(--ease-out), transform .55s var(--ease-out);
@@ -573,7 +573,6 @@ main{
 
 /* ─── page-hero (fallback when no media hero) ─── */
 .page-hero {
-    background: var(--surface); 
     padding: 48px 0 32px;
     margin-bottom: 0;
 }
