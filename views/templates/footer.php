@@ -56,21 +56,7 @@
                 </div>
             </div>
 
-            <?php if (!empty($faqs)): ?>
-            <section class="footer-faq">
-                <h4><?= $lang === 'ru' ? 'FAQ' : 'Savollar' ?></h4>
-                <div class="footer-faq-list">
-                    <?php foreach ($faqs as $faq): ?>
-                    <details class="footer-faq-item">
-                        <summary><?= e($faq["question_$lang"]) ?></summary>
-                        <div class="footer-faq-answer">
-                            <p><?= nl2br(e($faq["answer_$lang"])) ?></p>
-                        </div>
-                    </details>
-                    <?php endforeach; ?>
-                </div>
-            </section>
-            <?php endif; ?>
+            <?php /* FAQ moved to a dedicated accordion section in page.php — see .faq-section */ ?>
             
             <div class="copyright">
                 <p>© <?= date('Y') ?> <?= e($seo["site_name_$lang"]) ?>. <?= $lang === 'ru' ? 'Все права защищены.' : 'Barcha huquqlar himoyalangan.' ?></p>
@@ -113,11 +99,27 @@
                 if (triggered) return;
                 triggered = true;
                 window.__loadGTM();
-            };
+            }; 
             var events = ['pointerdown', 'keydown', 'touchstart', 'scroll', 'wheel'];
             events.forEach(function(evt) {
                 window.addEventListener(evt, load, { once: true, passive: true });
             });
+        })();
+        (function(){
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const l1 = document.querySelector('.site-bg__layer--1');
+            const l2 = document.querySelector('.site-bg__layer--2');
+            if (!l1) return;
+            let ticking = false;
+            function update(){
+                const y = window.scrollY;
+                l1.style.transform = 'translateY(' + (y * 0.12) + 'px)';
+                if (l2) l2.style.transform = 'translateY(' + (y * 0.05) + 'px)';
+                ticking = false;
+            }
+            window.addEventListener('scroll', function(){
+                if (!ticking){ requestAnimationFrame(update); ticking = true; }
+            }, { passive: true });
         })();
     </script>
     <?php endif; ?>
@@ -181,7 +183,6 @@
             color: #000000;
             top: 0;
             right: 6px;
-}
     }
     .review-modal__btn--primary {
         background: #2563eb;
