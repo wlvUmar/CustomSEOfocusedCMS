@@ -222,10 +222,6 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <?php endif; ?>
 </head>
 <body<?= $isAdmin ? ' class="admin-mode"' : '' ?>>
-    <div class="site-bg" aria-hidden="true">
-        <div class="site-bg__layer site-bg__layer--1"></div>
-        <div class="site-bg__layer site-bg__layer--2"></div>
-    </div>
     <?php if (defined('GTM_ID')): ?>
     <!-- Google Tag Manager (noscript) -->
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=<?= GTM_ID ?>"
