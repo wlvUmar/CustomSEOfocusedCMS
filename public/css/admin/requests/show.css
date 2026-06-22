@@ -58,6 +58,7 @@ body:has(.rd) .sidebar-toggle {
     padding: 0 14px 36px;
     background: var(--bg);
     color: var(--ink);
+    overflow-x: hidden;
 }
 
 /* ── Header ────────────────────────────────────────── */
@@ -119,8 +120,15 @@ body:has(.rd) .sidebar-toggle {
 .rd-s-rejected  { background: var(--bad-soft); color: var(--bad); border-color: rgba(255,84,104,.25); }
 
 /* ── Photo viewer — big, edge-to-edge, swipe only ──── */
+/* Uses 100vw + centering transform instead of negative margins —
+   more robust against iOS Safari/WebKit subpixel rounding gaps
+   that can otherwise leave a hairline sliver of the page
+   background visible at the edges. */
 .rd-photo-card {
-    margin: 0 -14px 16px;
+    width: 100vw;
+    margin-left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 16px;
     background: #000;
     overflow: hidden;
     position: relative;
@@ -570,7 +578,6 @@ select.rd-ctrl {
 /* ── Slightly larger screens: a touch more breathing room ── */
 @media (min-width: 480px) {
     .rd { padding-left: 18px; padding-right: 18px; }
-    .rd-photo-card { margin-left: -18px; margin-right: -18px; }
     .rd-viewer { aspect-ratio: 16 / 11; }
     .rd-title { font-size: 24px; }
 }
