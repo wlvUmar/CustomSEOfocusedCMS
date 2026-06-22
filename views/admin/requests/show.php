@@ -92,11 +92,14 @@ $imgCount     = count($images ?? []);
         <span class="rd-tag">Текширилди: <b><?= htmlspecialchars($request['reviewed_at'] ?? '—') ?></b></span>
     </div>
 
-    <!-- ── Description — hero content block ── -->
+    <!-- ── Description — big, bold, readable (the page's main content) ── -->
     <?php if (!empty($request['description'])): ?>
+        <div class="rd-desc-eyebrow">
+            <span class="rd-desc-eyebrow-dot"></span>
+            <span>Тавсиф</span>
+        </div>
         <div class="rd-desc">
-            <div class="rd-desc-label">Тавсиф</div>
-            <div class="rd-desc-text"><?= nl2br(htmlspecialchars($request['description'])) ?></div>
+            <div class="rd-desc-text" id="rdDescText"><?= nl2br(htmlspecialchars($request['description'])) ?></div>
         </div>
     <?php endif; ?>
 
@@ -177,7 +180,7 @@ $imgCount     = count($images ?? []);
 
                 <?php if (!empty($request['price'])): ?>
                     <div class="rd-done-price">
-                        <div class="rd-desc-label">Баҳо</div>
+                        <div class="rd-action-label">Баҳо</div>
                         <div class="rd-done-price-val">
                             <?= htmlspecialchars($request['price']) ?>
                             <span>сум</span>
@@ -187,7 +190,7 @@ $imgCount     = count($images ?? []);
 
                 <?php if (!empty($request['notes'])): ?>
                     <div class="rd-done-note">
-                        <div class="rd-desc-label">Изоҳ</div>
+                        <div class="rd-action-label">Изоҳ</div>
                         <p><?= nl2br(htmlspecialchars($request['notes'])) ?></p>
                     </div>
                 <?php endif; ?>
@@ -242,6 +245,21 @@ function rdSlide(d) { rdGoTo(rdCur + d); }
         var digits = priceEl.value.replace(/[^\d]/g, '');
         priceEl.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '';
     });
+})();
+
+// ── Purely cosmetic: bold any "NUMBER сум/UZS" amounts inside the
+//    description so prices pop visually. Display-only — never touches
+//    the underlying data the server rendered. Falls back silently
+//    (does nothing) if no matches are found.
+(function () {
+    var el = document.getElementById('rdDescText');
+    if (!el) return;
+    try {
+        el.innerHTML = el.innerHTML.replace(
+            /([\d][\d\s]{2,})\s?(сум|UZS|сўм)/gi,
+            '<b>$1 $2</b>'
+        );
+    } catch (e) { /* no-op on failure */ }
 })();
 
 document.addEventListener('keydown', function (e) {
