@@ -37,7 +37,7 @@
 }
 
 /* ── Scope & reset ─────────────────────────────────── */
-.rd, .rd * { box-sizing: border-box; }
+.rd, .rd * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 /* Override the admin layout's body background so the dark theme
    reaches the edges (incl. mobile overscroll/bounce areas), not
@@ -140,6 +140,10 @@ body:has(.rd) .sidebar-toggle {
     height: 100%;
     object-fit: contain;
     display: block;
+    border: none;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
 }
 .rd-no-photo {
     position: absolute;
