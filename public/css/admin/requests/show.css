@@ -46,6 +46,11 @@ html:has(.rd), body:has(.rd) {
     background: #0e0f12;
 }
 
+/* Hide the layout's sidebar toggle on this page only */
+body:has(.rd) .sidebar-toggle {
+    display: none;
+}
+
 .rd {
     font-family: var(--font-body);
     max-width: 640px;

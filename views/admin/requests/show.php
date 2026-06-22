@@ -242,6 +242,11 @@ function rdSlide(d) { rdGoTo(rdCur + d); }
 (function () {
     document.documentElement.style.background = '#0e0f12';
     document.body.style.background = '#0e0f12';
+
+    // Hide the layout's sidebar toggle on this page (fallback for the
+    // same :has() support gap as above).
+    var toggle = document.querySelector('.sidebar-toggle');
+    if (toggle) toggle.style.display = 'none';
 })();
 
 // ── Price input: live thousands-grouping ──
