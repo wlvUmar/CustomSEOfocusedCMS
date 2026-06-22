@@ -38,13 +38,13 @@ $imgCount     = count($images ?? []);
 
     <!-- ── Photo card ── -->
     <div class="rd-photo-card">
-        <div class="rd-viewer" id="rdViewer">
+        <div class="rd-viewer" id="rdViewer" data-images='<?= htmlspecialchars(json_encode(array_map(fn($img) => $img['image_path'], $images ?? []))) ?>'>
             <?php if (!empty($images)): ?>
                 <?php foreach ($images as $i => $img): ?>
                     <div class="rd-slide <?= $i === 0 ? 'active' : '' ?>">
                         <img src="<?= htmlspecialchars($img['image_path']) ?>"
                              alt="Фото <?= $i + 1 ?>"
-                             onclick="rdLbOpen(this.src)">
+                             onclick="rdLbOpen(<?= $i ?>)">
                     </div>
                 <?php endforeach; ?>
 
@@ -123,12 +123,13 @@ $imgCount     = count($images ?? []);
                 <div class="rd-form-grid">
 
                     <!-- Price -->
-                    <div class="rd-field">
+                    <div class="rd-field rd-field-price">
                         <label for="rd-price">Цена <span class="rd-field-hint">— не нужно при отказе</span></label>
                         <div class="rd-input-wrap">
                             <span class="rd-prefix">сум</span>
                             <input type="text" id="rd-price" name="price"
-                                   class="rd-ctrl rd-ctrl-prefix" placeholder="150 000">
+                                   class="rd-ctrl rd-ctrl-prefix rd-ctrl-price" placeholder="150 000"
+                                   inputmode="numeric" autocomplete="off">
                         </div>
                     </div>
 
@@ -156,13 +157,13 @@ $imgCount     = count($images ?? []);
                 <div class="rd-btns">
                     <button type="submit"
                             id="rdApproveBtn"
-                            class="rd-btn rd-btn-green"
+                            class="rd-btn rd-btn-stamp-ok"
                             formaction="<?= BASE_URL ?>/admin/requests/approve?token=<?= htmlspecialchars($token ?? '') ?>">
                         <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 7.5l3.5 3.5 7.5-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         Отправить цену
                     </button>
                     <button type="submit"
-                            class="rd-btn rd-btn-red"
+                            class="rd-btn rd-btn-stamp-no"
                             formaction="<?= BASE_URL ?>/admin/requests/reject?token=<?= htmlspecialchars($token ?? '') ?>">
                         <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3 3l9 9M12 3L3 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
                         Без оценки
@@ -215,9 +216,16 @@ $imgCount     = count($images ?? []);
         <button onclick="rdLbZoom(.25)"  type="button">+</button>
         <button onclick="rdLbReset()"    type="button">↺</button>
     </div>
+    <button class="rd-lb-arr rd-lb-arr-l" onclick="rdLbSlide(-1)" type="button">
+        <svg width="20" height="20" viewBox="0 0 18 18" fill="none"><path d="M11 3.5L6 9l5 5.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="rd-lb-arr rd-lb-arr-r" onclick="rdLbSlide(1)" type="button">
+        <svg width="20" height="20" viewBox="0 0 18 18" fill="none"><path d="M7 3.5l5 5.5-5 5.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
     <div class="rd-lb-wrap" id="rdLbWrap">
         <img id="rdLbImg" src="" alt="">
     </div>
+    <div class="rd-lb-counter"><span id="rdLbCurr">1</span> / <span id="rdLbTotal">1</span></div>
 </div>
 
 <script>
@@ -251,9 +259,21 @@ function rdSlide(d) { rdGoTo(rdCur + d); }
     }, { passive: true });
 })();
 
+// ── Price input: live thousands-grouping + stamp-in effect ──
+(function () {
+    var priceEl = document.getElementById('rd-price');
+    if (!priceEl) return;
+    priceEl.addEventListener('input', function () {
+        var digits = priceEl.value.replace(/[^\d]/g, '');
+        priceEl.value = digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '';
+    });
+})();
+
 document.addEventListener('keydown', function (e) {
     if (document.getElementById('rdLb').classList.contains('open')) {
-        if (e.key === 'Escape') rdLbClose();
+        if (e.key === 'Escape')     rdLbClose();
+        if (e.key === 'ArrowLeft')  rdLbSlide(-1);
+        if (e.key === 'ArrowRight') rdLbSlide(1);
         return;
     }
     if (e.key === 'ArrowLeft')  rdSlide(-1);
@@ -264,9 +284,18 @@ document.addEventListener('keydown', function (e) {
 var lbScale = 1, lbX = 0, lbY = 0;
 var lbDragging = false, lbDragSX, lbDragSY;
 var pinchStartDist = 0, pinchStartScale = 1;
-var rdLbEl   = document.getElementById('rdLb');
-var rdLbImg  = document.getElementById('rdLbImg');
-var rdLbWrap = document.getElementById('rdLbWrap');
+var rdLbEl     = document.getElementById('rdLb');
+var rdLbImg    = document.getElementById('rdLbImg');
+var rdLbWrap   = document.getElementById('rdLbWrap');
+var rdLbCurrEl = document.getElementById('rdLbCurr');
+var rdLbTotalEl= document.getElementById('rdLbTotal');
+var rdLbArrL   = document.querySelector('.rd-lb-arr-l');
+var rdLbArrR   = document.querySelector('.rd-lb-arr-r');
+
+var rdLbImages = [];
+var rdLbCur    = 0;
+
+var lbSwipeSX = 0, lbSwipeSY = 0, lbSwiping = false;
 
 function lbApply() {
     rdLbImg.style.transform = 'translate(' + lbX + 'px,' + lbY + 'px) scale(' + lbScale + ')';
@@ -280,16 +309,49 @@ function lbClampPan() {
     lbY = Math.max(-maxY, Math.min(maxY, lbY));
 }
 
-function rdLbOpen(src) {
-    rdLbImg.src = src;
+function rdLbRenderCurrent() {
+    if (!rdLbImages.length) return;
+    rdLbImg.src = rdLbImages[rdLbCur];
     lbScale = 1; lbX = 0; lbY = 0;
     lbApply();
+    if (rdLbCurrEl)  rdLbCurrEl.textContent  = rdLbCur + 1;
+    if (rdLbTotalEl) rdLbTotalEl.textContent = rdLbImages.length;
+    var multi = rdLbImages.length > 1;
+    if (rdLbArrL) rdLbArrL.style.display = multi ? '' : 'none';
+    if (rdLbArrR) rdLbArrR.style.display = multi ? '' : 'none';
+    var counterEl = document.querySelector('.rd-lb-counter');
+    if (counterEl) counterEl.style.display = multi ? '' : 'none';
+}
+
+function rdLbOpen(index) {
+    var viewer = document.getElementById('rdViewer');
+    try {
+        rdLbImages = JSON.parse(viewer.getAttribute('data-images') || '[]');
+    } catch (e) {
+        rdLbImages = [];
+    }
+    rdLbCur = index || 0;
+    rdLbRenderCurrent();
     rdLbEl.classList.add('open');
     document.body.style.overflow = 'hidden';
 }
 function rdLbClose() {
     rdLbEl.classList.remove('open');
     document.body.style.overflow = '';
+}
+function rdLbSlide(d) {
+    if (!rdLbImages.length) return;
+    rdLbCur = (rdLbCur + d + rdLbImages.length) % rdLbImages.length;
+    rdLbRenderCurrent();
+}
+function rdLbZoom(delta) {
+    lbScale = Math.min(6, Math.max(1, lbScale + delta));
+    lbClampPan();
+    lbApply();
+}
+function rdLbReset() {
+    lbScale = 1; lbX = 0; lbY = 0;
+    lbApply();
 }
 
 rdLbEl.addEventListener('click', function (e) {
@@ -311,8 +373,9 @@ rdLbWrap.addEventListener('dblclick', function () {
     lbApply();
 });
 
-// Mouse drag (desktop)
+// Mouse drag (desktop) — only pans when zoomed in
 rdLbWrap.addEventListener('mousedown', function (e) {
+    if (lbScale <= 1) return;
     e.preventDefault();
     lbDragging = true;
     lbDragSX = e.clientX - lbX;
@@ -331,14 +394,23 @@ document.addEventListener('mouseup', function () {
     rdLbWrap.style.cursor = 'grab';
 });
 
-// Touch: pinch to zoom + single-finger pan
+// Touch: pinch to zoom, single-finger pan when zoomed, single-finger swipe to change image when not zoomed
 rdLbWrap.addEventListener('touchstart', function (e) {
     if (e.touches.length === 1) {
-        lbDragging = true;
-        lbDragSX = e.touches[0].clientX - lbX;
-        lbDragSY = e.touches[0].clientY - lbY;
+        if (lbScale > 1) {
+            lbDragging = true;
+            lbSwiping  = false;
+            lbDragSX = e.touches[0].clientX - lbX;
+            lbDragSY = e.touches[0].clientY - lbY;
+        } else {
+            lbDragging = false;
+            lbSwiping  = true;
+            lbSwipeSX = e.touches[0].clientX;
+            lbSwipeSY = e.touches[0].clientY;
+        }
     } else if (e.touches.length === 2) {
         lbDragging = false;
+        lbSwiping  = false;
         var dx = e.touches[0].clientX - e.touches[1].clientX;
         var dy = e.touches[0].clientY - e.touches[1].clientY;
         pinchStartDist  = Math.sqrt(dx * dx + dy * dy);
@@ -347,8 +419,8 @@ rdLbWrap.addEventListener('touchstart', function (e) {
 }, { passive: true });
 
 rdLbWrap.addEventListener('touchmove', function (e) {
-    e.preventDefault();
     if (e.touches.length === 2) {
+        e.preventDefault();
         var dx   = e.touches[0].clientX - e.touches[1].clientX;
         var dy   = e.touches[0].clientY - e.touches[1].clientY;
         var dist = Math.sqrt(dx * dx + dy * dy);
@@ -356,6 +428,7 @@ rdLbWrap.addEventListener('touchmove', function (e) {
         lbClampPan();
         lbApply();
     } else if (lbDragging && e.touches.length === 1) {
+        e.preventDefault();
         lbX = e.touches[0].clientX - lbDragSX;
         lbY = e.touches[0].clientY - lbDragSY;
         lbClampPan();
@@ -365,7 +438,17 @@ rdLbWrap.addEventListener('touchmove', function (e) {
 
 rdLbWrap.addEventListener('touchend', function (e) {
     if (e.touches.length < 2) pinchStartDist = 0;
-    if (e.touches.length === 0) lbDragging = false;
+    if (e.touches.length === 0) {
+        if (lbSwiping && rdLbImages.length > 1) {
+            var dx = (e.changedTouches[0] ? e.changedTouches[0].clientX : lbSwipeSX) - lbSwipeSX;
+            var dy = (e.changedTouches[0] ? e.changedTouches[0].clientY : lbSwipeSY) - lbSwipeSY;
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+                rdLbSlide(dx < 0 ? 1 : -1);
+            }
+        }
+        lbDragging = false;
+        lbSwiping  = false;
+    }
 }, { passive: true });
 </script>
 
