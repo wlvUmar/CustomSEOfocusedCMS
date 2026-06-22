@@ -237,6 +237,13 @@ function rdSlide(d) { rdGoTo(rdCur + d); }
     }, { passive: true });
 })();
 
+// ── Force body/html background (fallback for webviews that don't
+//    support the CSS :has() selector, e.g. older in-app browsers) ──
+(function () {
+    document.documentElement.style.background = '#0e0f12';
+    document.body.style.background = '#0e0f12';
+})();
+
 // ── Price input: live thousands-grouping ──
 (function () {
     var priceEl = document.getElementById('rd-price');

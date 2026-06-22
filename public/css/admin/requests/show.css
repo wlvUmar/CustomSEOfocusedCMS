@@ -38,6 +38,14 @@
 
 /* ── Scope & reset ─────────────────────────────────── */
 .rd, .rd * { box-sizing: border-box; }
+
+/* Override the admin layout's body background so the dark theme
+   reaches the edges (incl. mobile overscroll/bounce areas), not
+   just the .rd container itself. */
+html:has(.rd), body:has(.rd) {
+    background: #0e0f12;
+}
+
 .rd {
     font-family: var(--font-body);
     max-width: 640px;
