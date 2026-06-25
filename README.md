@@ -106,7 +106,7 @@ No ORM, no template engine dependency — views are plain PHP with a shared `hea
 
 `BotController` + `BotRequestMapping` + `RequestAccessToken` bridge this CMS to the Telegram-side product intake bot — HMAC-authenticated, token-scoped access per request rather than shared admin credentials.
 
-**Sub-project:** [ReviewRequestBot →](#) — the Python/FastAPI bot, pricer microservice, and GPT-4o-mini vision pipeline that feeds requests into this admin panel.
+**Sub-project:** [ReviewRequestBot →](https://github.com/wlvUmar/ReviewRequestBot) — the Python/FastAPI bot, pricer microservice, and GPT-4o-mini vision pipeline that feeds requests into this admin panel.
 
 ## Stack
 
