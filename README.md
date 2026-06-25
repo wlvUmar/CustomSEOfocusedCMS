@@ -95,9 +95,7 @@ No ORM, no template engine dependency — views are plain PHP with a shared `hea
 | Auth | `AuthController` | Admin session/login |
 
 ## SEO engine
-
-This is the part that isn't typical CMS boilerplate:
-
+ 
 - **JSON-LD generation** — `ArticleJsonLdGenerator` + `GlobalJsonLdGenerator` build structured data per content type, not a static template
 - **Internal link graph** — `InternalLinksController` + `LinkWidget` model manage and inject contextual internal links sitewide, trackable via `link-tracking.js`
 - **Content rotation engine** — `ContentRotation` model + `RotationAdminController` rotate featured/landing content on a schedule rather than serving it static
