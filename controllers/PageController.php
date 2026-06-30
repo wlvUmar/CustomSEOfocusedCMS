@@ -197,28 +197,35 @@ class PageController extends Controller {
             $webPageSchema['breadcrumb'] = [
                 '@id' => $pageCanonicalUrl . '#breadcrumb'
             ];
-        }
+        } 
         
         // Start graph
         $graph = [$orgSchema, $webSiteSchema];
         
         // SERVICE SCHEMA LOGIC
-        if (!in_array($slug, ['home', 'main'])) {
-             // Generate Service with Page URL for ID
+        $pageDepth = (int)($page['depth'] ?? 0);
+        if (!in_array($slug, ['home', 'main']) && $pageDepth <= 1) {
+             $parentService = null;
+             if ($pageDepth === 1) {
+                 $parentPage = $this->pageModel->getParent($page['id']);
+                 // Only chain isPartOf to the parent's Service node when the parent
+                 // actually has one (home/main pages never emit a Service schema).
+                 if ($parentPage && !in_array($parentPage['slug'], ['home', 'main'], true)) {
+                     $parentUrl = canonicalUrlForPage($parentPage['slug'], $currentLang);
+                     $parentService = ['@id' => $parentUrl . '#service'];
+                 }
+             }
+
              $serviceSchema = GlobalJsonLdGenerator::generateServiceSchema(
-                 $pageForSchema, 
-                 $currentLang, 
-                 $baseUrl, 
-                 $seoSettings, 
-                 $pageCanonicalUrl // Use canonical URL for ID base
+                 $pageForSchema,
+                 $currentLang,
+                 $baseUrl,
+                 $seoSettings,
+                 $pageCanonicalUrl,
+                 $parentService
              );
-             
-             // Link WebPage -> Service (mainEntity) via ID
-             $webPageSchema['mainEntity'] = [
-                 '@id' => $serviceSchema['@id']
-             ];
-             
-             // Add Service to graph
+
+             $webPageSchema['mainEntity'] = ['@id' => $serviceSchema['@id']];
              $graph[] = $serviceSchema;
         }
 

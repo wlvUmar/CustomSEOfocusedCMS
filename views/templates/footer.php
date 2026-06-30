@@ -53,6 +53,11 @@
                         <span><?= e($seo["working_hours_$lang"]) ?></span>
                     </div>
                     <?php endif; ?>
+                    <div class="contact-item">
+                        <a href="http://www.search.uz/eng/" title="Uzbekistan" target="_blank" rel="noopener noreferrer">
+                            Search.uz: Web Directory of Uzbekistan
+                        </a>
+                    </div>
                 </div>
             </div>
 

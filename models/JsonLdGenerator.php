@@ -375,6 +375,23 @@ class JsonLdGenerator {
                     }
                 }
             }
+
+            // Same dangling-reference check, applied to any other property that
+            // links to a node via @id (isPartOf, mainEntityOfPage, primaryImageOfPage,
+            // image, breadcrumb, hasPart). Catches the same class of bug that hit
+            // Service.isPartOf previously (a fragment built from the wrong page's URL).
+            foreach (['isPartOf', 'mainEntityOfPage', 'primaryImageOfPage', 'breadcrumb'] as $refProp) {
+                if (empty($schema[$refProp]) || !is_array($schema[$refProp])) continue;
+                $refId = $schema[$refProp]['@id'] ?? null;
+                if (empty($refId)) continue;
+                if (!empty($idAliases[$refId])) continue;
+
+                $hashPos = strpos($refId, '#');
+                $fragment = $hashPos !== false ? substr($refId, $hashPos) : null;
+                if (empty($fragment) || empty($idAliases[$fragment])) {
+                    error_log("Dangling {$refProp} @id in graph: " . $refId);
+                }
+            }
         }
         
         $merged = [

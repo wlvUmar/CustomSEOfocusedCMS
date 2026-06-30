@@ -3,6 +3,36 @@
 
 class GlobalJsonLdGenerator {
 
+    /**
+     * Build a ContactPoint enriched with areaServed and hoursAvailable,
+     * sourced only from columns that already exist in seo_settings.
+     */
+    private static function buildContactPoint($seoSettings) {
+        $contactPoint = [
+            '@type' => 'ContactPoint',
+            'telephone' => $seoSettings['phone'],
+            'contactType' => 'customer service',
+            'availableLanguage' => ['ru', 'uz']
+        ];
+
+        $areaServed = $seoSettings['area_served'] ?: ($seoSettings['city'] ?? null);
+        if (!empty($areaServed)) {
+            $contactPoint['areaServed'] = [
+                '@type' => 'City',
+                'name' => $areaServed
+            ];
+        }
+
+        if (!empty($seoSettings['opening_hours'])) {
+            $hoursLines = array_values(array_filter(array_map('trim', explode("\n", $seoSettings['opening_hours']))));
+            if (!empty($hoursLines)) {
+                $contactPoint['hoursAvailable'] = $hoursLines;
+            }
+        }
+
+        return $contactPoint;
+    }
+
     private static function unifiedOrganizationDescriptionRu() {
         // Single source of truth for brand description across all pages (RU).
         // Keep it clean, factual, and reusable for homepage/service pages/articles.
@@ -47,7 +77,30 @@ class GlobalJsonLdGenerator {
                        }
                    }
                }
+               // Opening hours
+                if (!empty($seoSettings['opening_hours'])) {
+                    $hoursLines = array_values(array_filter(array_map('trim', explode("\n", $seoSettings['opening_hours']))));
+                    if (!empty($hoursLines)) {
+                        $orgSchema['openingHours'] = $hoursLines;
+                    }
+                }
 
+                // Area served
+                $orgSchema['areaServed'] = [
+                    '@type' => 'City',
+                    'name' => $seoSettings['area_served'] ?: ($seoSettings['city'] ?? 'Tashkent')
+                ];
+
+                // Contact point
+                if (!empty($seoSettings['phone'])) {
+                    $orgSchema['contactPoint'] = self::buildContactPoint($seoSettings);
+                }
+
+                // Brand
+                $orgSchema['brand'] = [
+                    '@type' => 'Brand',
+                    'name' => $orgSchema['name'] ?? ($seoSettings["org_name_$lang"] ?? $seoSettings["site_name_$lang"] ?? '')
+                ];
                // Add page image if available
                if (!empty($pageId)) {
                    $pageImage = self::getPageImageForSchema($pageId, $baseUrl);
@@ -108,7 +161,30 @@ class GlobalJsonLdGenerator {
         if (!empty($sameAs)) {
            $schema['sameAs'] = $sameAs;
         }
+        // Opening hours
+        if (!empty($seoSettings['opening_hours'])) {
+            $hoursLines = array_values(array_filter(array_map('trim', explode("\n", $seoSettings['opening_hours']))));
+            if (!empty($hoursLines)) {
+                $schema['openingHours'] = $hoursLines;
+            }
+        }
 
+        // Area served
+        $schema['areaServed'] = [
+            '@type' => 'City',
+            'name' => $seoSettings['area_served'] ?: ($seoSettings['city'] ?? 'Tashkent')
+        ];
+
+        // Contact point
+        if (!empty($seoSettings['phone'])) {
+            $schema['contactPoint'] = self::buildContactPoint($seoSettings);
+        }
+
+        // Brand
+        $schema['brand'] = [
+            '@type' => 'Brand',
+            'name' => $schema['name']
+        ];
         $logoDims = getPublicImageDimensions($schema['logo']['url'] ?? '');
         if ($logoDims) {
            $schema['logo']['width'] = $logoDims['width'];
@@ -162,6 +238,20 @@ class GlobalJsonLdGenerator {
     public static function getBaseUrl() {
         // Delegate to the shared resolver so templates, sitemap, and JSON-LD agree.
         return siteBaseUrl();
+    }
+
+    /**
+     * Convert a MySQL timestamp (e.g. "2026-06-20 21:25:20") to ISO 8601
+     * with timezone offset, as required by schema.org datePublished/dateModified.
+     * Returns null on unparseable input instead of emitting a bad date.
+     */
+    private static function toIso8601($mysqlTimestamp) {
+        try {
+            $dt = new DateTime((string)$mysqlTimestamp, new DateTimeZone(date_default_timezone_get() ?: 'UTC'));
+            return $dt->format('c');
+        } catch (Exception $e) {
+            return null;
+        }
     }
 
     private static function cleanText($text) {
@@ -278,7 +368,7 @@ class GlobalJsonLdGenerator {
     /**
      * Generate Service schema with strict provider reference and page-unique ID
      */
-    public static function generateServiceSchema($page, $lang, $baseUrl, $seo, $pageUrl) {
+    public static function generateServiceSchema($page, $lang, $baseUrl, $seo, $pageUrl, $parentService = null) {
         $title = $page["title_$lang"] ?? '';
         $description = $page["meta_description_$lang"] ?? '';
         
@@ -294,7 +384,7 @@ class GlobalJsonLdGenerator {
         } elseif ($serviceType === 'Service') {
              $serviceType = $title; 
         }
-
+ 
         $schema = [
             '@type' => 'Service',
             '@id' => $pageUrl . '#service', // Unique per page
@@ -313,7 +403,25 @@ class GlobalJsonLdGenerator {
                 'name' => $seo['city'] ?? 'Tashkent'
             ]
         ];
+        if ($parentService) {
+            $schema['isPartOf'] = $parentService;
+        }
 
+        // Optional buyback price range (what we PAY the customer, not an Offer/price
+        // we charge — schema.org has no clean "we purchase for X-Y" property, so
+        // priceRange as a short string (e.g. "500,000 - 2,000,000 UZS") is the
+        // closest accurate fit without misusing Offer, which implies a sale TO the customer.
+        // Inert until real per-page min/max price columns exist on `pages` — never fabricated.
+        // Wire $page['price_range_min'] / $page['price_range_max'] (or similar) once those
+        // columns are added; until then this silently does nothing.
+        if (!empty($page['price_range_text'])) {
+            $schema['priceRange'] = trim((string)$page['price_range_text']);
+        } elseif (!empty($page['price_range_min']) && !empty($page['price_range_max'])) {
+            $currency = $page['price_range_currency'] ?? 'UZS';
+            $schema['priceRange'] = number_format((float)$page['price_range_min'], 0, '.', ',')
+                . ' - ' . number_format((float)$page['price_range_max'], 0, '.', ',')
+                . ' ' . $currency;
+        }
         return $schema;
     }
 
@@ -335,6 +443,21 @@ class GlobalJsonLdGenerator {
             ],
             'inLanguage' => $lang === 'ru' ? 'ru-RU' : 'uz-UZ'
         ];
+
+        // Real freshness signals, sourced directly from pages.created_at / pages.updated_at.
+        // Never fabricate these; only emit when the DB actually has them.
+        if (!empty($page['created_at'])) {
+            $datePublished = self::toIso8601($page['created_at']);
+            if ($datePublished) {
+                $schema['datePublished'] = $datePublished;
+            }
+        }
+        if (!empty($page['updated_at'])) {
+            $dateModified = self::toIso8601($page['updated_at']);
+            if ($dateModified) {
+                $schema['dateModified'] = $dateModified;
+            }
+        }
 
         // BreadcrumbList is optional; controllers can add it when present.
         
