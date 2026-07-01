@@ -422,8 +422,8 @@ function injectMediaByStructure(string $html, array $mediaBySection, string $lan
     $infoGridClass = $hasClass('info-grid');
     $processStepClass = $hasClass('process-step');
 
-    $infoGridSections = $xpath->query("//div[$contentSectionClass][.//div[$infoGridClass]]");
-    $processSections = $xpath->query("//div[$contentSectionClass][.//div[$processStepClass]]");
+    $infoGridSections = $xpath->query("//section[$contentSectionClass][.//div[$infoGridClass]]");
+    $processSections = $xpath->query("//section[$contentSectionClass][.//div[$processStepClass]]");
 
     if ($hasBanner && $infoGridSections->length > 0) {
         $target = $infoGridSections->item(0);
