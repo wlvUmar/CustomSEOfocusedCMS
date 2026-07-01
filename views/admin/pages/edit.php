@@ -276,7 +276,46 @@ tinymce.init({
     content_css: [
         '<?= BASE_URL ?>/css/pages.css',
         '<?= BASE_URL ?>/css/pages.min.css'
-    ]
+    ],
+    content_style: `
+        body {
+            background: #f8f9fa;
+            color: #0f1117;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            padding: 16px;
+        }
+        .content-section,
+        .info-card,
+        .faq-section,
+        .faq-acc-item,
+        .links-tile,
+        .review-strip,
+        .condition-item,
+        [data-animate],
+        [data-stagger] {
+            opacity: 1 !important;
+            transform: none !important;
+        }
+        .content-body,
+        .content-body p,
+        .content-body li,
+        .content-body h1,
+        .content-body h2,
+        .content-body h3,
+        .content-body h4,
+        .content-body h5,
+        .content-body h6,
+        .content-body a {
+            color: inherit;
+        }
+        .content-body a {
+            color: #0f5f6f;
+        }
+        .content-body img {
+            max-width: 100%;
+            height: auto;
+        }
+    `
 });
 
 // Handle rotation mode toggle
