@@ -93,43 +93,17 @@ $applianceNameForSEO = $applianceName ?? '';
     $content = $page["content_$lang"];
     $content = renderTemplate($content, $templateData);
     $content = enhanceContentSEO($content, $page["title_$lang"], $applianceNameForSEO);
+    $mediaBySection = [
+        'banner' => $pageMediaModel->getPageMedia($page['id'], 'banner'),
+        'content' => $pageMediaModel->getPageMedia($page['id'], 'content'),
+        'gallery' => $pageMediaModel->getPageMedia($page['id'], 'gallery'),
+    ];
 
     // Wrap the content in our layout shell so JS/CSS can target sections
     echo '<div class="content-body" id="content-body">';
-    echo $content;
+    echo injectMediaByStructure($content, $mediaBySection, $lang);
     echo '</div>';
     ?>
-
-    <?php
-    // ─── MEDIA: BANNER ───────────────────────────────────────────────────────
-    $bannerMedia = $pageMediaModel->getPageMedia($page['id'], 'banner');
-    if (!empty($bannerMedia)):
-    ?>
-    <div class="auto-banner-section">
-        <?= processMediaPlaceholders('{{media-section:banner}}', $page['id']) ?>
-    </div>
-    <?php endif; ?>
-
-    <?php
-    // ─── MEDIA: CONTENT ──────────────────────────────────────────────────────
-    $contentMedia = $pageMediaModel->getPageMedia($page['id'], 'content');
-    if (!empty($contentMedia)):
-    ?>
-    <div class="auto-content-media">
-        <?= processMediaPlaceholders('{{media-section:content}}', $page['id']) ?>
-    </div>
-    <?php endif; ?>
-
-    <?php
-    // ─── MEDIA: GALLERY ──────────────────────────────────────────────────────
-    $galleryMedia = $pageMediaModel->getPageMedia($page['id'], 'gallery');
-    if (!empty($galleryMedia)):
-    ?>
-    <div class="auto-gallery-section">
-        <div class="section-label"><?= $lang === 'ru' ? 'Галерея' : 'Galereya' ?></div>
-        <?= processMediaPlaceholders('{{media-section:gallery}}', $page['id']) ?>
-    </div>
-    <?php endif; ?>
 
     <?php
     // ─── GOOGLE REVIEW PANEL ─────────────────────────────────────────────────

@@ -336,6 +336,132 @@ function renderTemplate($text, $data = []) {
 }
 
 /**
+ * Builds the HTML fragment for a set of media rows in a given section.
+ * Returns '' if $items is empty.
+ */
+function renderPageMedia(array $items, string $section, string $lang): string {
+    if (empty($items)) return '';
+
+    $baseUrl = siteBaseUrl();
+
+    if ($section === 'banner') {
+        $m = $items[0];
+        $src = absoluteUrl('/uploads/' . $m['filename'], $baseUrl);
+        $alt = e($m['alt_text_' . $lang] ?? '');
+        return '<div class="auto-banner-section"><img src="' . $src . '" alt="' . $alt . '" class="img-full" loading="lazy"></div>';
+    }
+
+    if ($section === 'gallery') {
+        $label = $lang === 'ru' ? 'Галерея' : 'Galereya';
+        $html = '<div class="auto-gallery-section"><div class="section-label">' . $label . '</div><div class="media-gallery">';
+        foreach ($items as $m) {
+            $src = absoluteUrl('/uploads/' . $m['filename'], $baseUrl);
+            $alt = e($m['alt_text_' . $lang] ?? '');
+            $cap = e($m['caption_' . $lang] ?? '');
+            $html .= '<figure class="gallery-item"><img src="' . $src . '" alt="' . $alt . '" loading="lazy">'
+                   . ($cap ? '<figcaption>' . $cap . '</figcaption>' : '') . '</figure>';
+        }
+        return $html . '</div></div>';
+    }
+
+    if ($section === 'content') {
+        $html = '<div class="auto-content-media">';
+        foreach ($items as $m) {
+            $src = absoluteUrl('/uploads/' . $m['filename'], $baseUrl);
+            $alt = e($m['alt_text_' . $lang] ?? '');
+            $cap = e($m['caption_' . $lang] ?? '');
+            $alignment = !empty($m['alignment']) ? $m['alignment'] : 'center';
+            $alignClass = 'img-' . $alignment;
+            $style = !empty($m['width']) ? ' style="max-width:' . (int)$m['width'] . 'px"' : '';
+            $html .= '<figure><img src="' . $src . '" alt="' . $alt . '" class="' . $alignClass . '"' . $style . ' loading="lazy">'
+                   . ($cap ? '<figcaption>' . $cap . '</figcaption>' : '') . '</figure><div class="clear"></div>';
+        }
+        return $html . '</div>';
+    }
+
+    return '';
+}
+
+/**
+ * Converts an HTML fragment into a node imported into the target document.
+ */
+function htmlFragmentToNode(DOMDocument $targetDoc, string $htmlFragment): ?DOMNode {
+    if ($htmlFragment === '') return null;
+
+    $frag = new DOMDocument();
+    libxml_use_internal_errors(true);
+    $frag->loadHTML('<?xml encoding="UTF-8">' . $htmlFragment, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    libxml_clear_errors();
+
+    return $frag->documentElement ? $targetDoc->importNode($frag->documentElement, true) : null;
+}
+
+/**
+ * Parses the page HTML and inserts media at structural landmarks.
+ */
+function injectMediaByStructure(string $html, array $mediaBySection, string $lang): string {
+    $hasBanner = !empty($mediaBySection['banner']);
+    $hasContent = !empty($mediaBySection['content']);
+    $hasGallery = !empty($mediaBySection['gallery']);
+
+    if (!$hasBanner && !$hasContent && !$hasGallery) {
+        return $html;
+    }
+
+    $doc = new DOMDocument();
+    libxml_use_internal_errors(true);
+    $doc->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    libxml_clear_errors();
+    $xpath = new DOMXPath($doc);
+
+    $hasClass = function ($class) {
+        return "contains(concat(' ', normalize-space(@class), ' '), ' $class ')";
+    };
+
+    $contentSectionClass = $hasClass('content-section');
+    $infoGridClass = $hasClass('info-grid');
+    $processStepClass = $hasClass('process-step');
+
+    $infoGridSections = $xpath->query("//div[$contentSectionClass][.//div[$infoGridClass]]");
+    $processSections = $xpath->query("//div[$contentSectionClass][.//div[$processStepClass]]");
+
+    if ($hasBanner && $infoGridSections->length > 0) {
+        $target = $infoGridSections->item(0);
+        $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['banner'], 'banner', $lang));
+        if ($node) {
+            $target->parentNode->insertBefore($node, $target->nextSibling);
+        }
+    }
+
+    if ($hasContent && $processSections->length > 0) {
+        $processSection = $processSections->item(0);
+        $prev = $processSection->previousSibling;
+        while ($prev && $prev->nodeType !== XML_ELEMENT_NODE) {
+            $prev = $prev->previousSibling;
+        }
+
+        if ($prev) {
+            $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['content'], 'content', $lang));
+            if ($node) {
+                $h2 = $xpath->query('.//h2', $prev)->item(0);
+                $prev->insertBefore($node, $h2 ? $h2->nextSibling : $prev->firstChild);
+            }
+        }
+    }
+
+    if ($hasGallery && $processSections->length > 0) {
+        $target = $processSections->item(0);
+        $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['gallery'], 'gallery', $lang));
+        if ($node) {
+            $target->parentNode->insertBefore($node, $target->nextSibling);
+        }
+    }
+
+    $out = $doc->saveHTML();
+    return preg_replace('/^<\?xml[^>]*>\s*/', '', $out);
+}
+
+/**
  * Get nested value from array using dot notation
  */
 function getNestedValue($array, $key, $default = null) {
