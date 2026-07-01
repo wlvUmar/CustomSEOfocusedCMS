@@ -421,44 +421,82 @@ function injectMediaByStructure(string $html, array $mediaBySection, string $lan
         return "contains(concat(' ', normalize-space(@class), ' '), ' $class ')";
     };
 
-    $contentSectionClass = $hasClass('content-section');
     $infoGridClass = $hasClass('info-grid');
     $processStepClass = $hasClass('process-step');
+    $nodeHasClass = function ($node, string $class): bool {
+        if (!$node || $node->nodeType !== XML_ELEMENT_NODE) return false;
+        $classes = ' ' . trim((string)$node->getAttribute('class')) . ' ';
+        return strpos($classes, ' ' . $class . ' ') !== false;
+    };
+    $resolveAnchor = function ($node) use ($nodeHasClass) {
+        if (!$node || $node->nodeType !== XML_ELEMENT_NODE) {
+            return null;
+        }
 
-    $infoGridSections = $xpath->query("//*[$contentSectionClass][.//*[$infoGridClass]]");
-    $processSections = $xpath->query("//*[$contentSectionClass][.//*[$processStepClass]]");
+        $current = $node;
+        while ($current && $current->nodeType === XML_ELEMENT_NODE) {
+            $tag = strtolower((string)$current->nodeName);
+            if ($nodeHasClass($current, 'content-section') || $tag === 'section') {
+                return $current;
+            }
 
-    if ($hasBanner && $infoGridSections->length > 0) {
-        $target = $infoGridSections->item(0);
+            $parent = $current->parentNode;
+            if (!$parent || $parent->nodeType !== XML_ELEMENT_NODE) {
+                break;
+            }
+            $current = $parent;
+        }
+
+        return $node;
+    };
+
+    $infoGrid = $xpath->query("//*[$infoGridClass]")->item(0);
+    $processStep = $xpath->query("//*[$processStepClass]")->item(0);
+    $infoGridAnchor = $resolveAnchor($infoGrid);
+    $processAnchor = $resolveAnchor($processStep);
+
+    if ($hasBanner && $infoGridAnchor) {
+        $target = $infoGridAnchor;
         $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['banner'], 'banner', $lang));
-        if ($node) {
-            $target->parentNode->insertBefore($node, $target->nextSibling);
+        if ($node && $target->parentNode) {
+            if ($target->nextSibling) {
+                $target->parentNode->insertBefore($node, $target->nextSibling);
+            } else {
+                $target->parentNode->appendChild($node);
+            }
             $placedBanner = true;
         }
     }
 
-    if ($hasContent && $processSections->length > 0) {
-        $processSection = $processSections->item(0);
+    if ($hasContent && $processAnchor) {
+        $processSection = $processAnchor;
         $prev = $processSection->previousSibling;
         while ($prev && $prev->nodeType !== XML_ELEMENT_NODE) {
             $prev = $prev->previousSibling;
         }
 
-        if ($prev) {
-            $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['content'], 'content', $lang));
-            if ($node) {
+        $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['content'], 'content', $lang));
+        if ($node) {
+            if ($prev) {
                 $h2 = $xpath->query('.//h2', $prev)->item(0);
                 $prev->insertBefore($node, $h2 ? $h2->nextSibling : $prev->firstChild);
+                $placedContent = true;
+            } elseif ($processSection->parentNode) {
+                $processSection->parentNode->insertBefore($node, $processSection);
                 $placedContent = true;
             }
         }
     }
 
-    if ($hasGallery && $processSections->length > 0) {
-        $target = $processSections->item(0);
+    if ($hasGallery && $processAnchor) {
+        $target = $processAnchor;
         $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['gallery'], 'gallery', $lang));
-        if ($node) {
-            $target->parentNode->insertBefore($node, $target->nextSibling);
+        if ($node && $target->parentNode) {
+            if ($target->nextSibling) {
+                $target->parentNode->insertBefore($node, $target->nextSibling);
+            } else {
+                $target->parentNode->appendChild($node);
+            }
             $placedGallery = true;
         }
     }
