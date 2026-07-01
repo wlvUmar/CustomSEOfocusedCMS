@@ -94,6 +94,13 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <input type="url" name="google_review_url" value="<?= e($settings['google_review_url'] ?? '') ?>" 
                        placeholder="https://g.page/r/YOUR_PLACE_ID/review">
             </div>
+
+            <div class="form-group">
+                <label>Google Maps Embed URL (optional)</label>
+                <input type="url" name="google_maps_embed_url" value="<?= e($settings['google_maps_embed_url'] ?? '') ?>"
+                       placeholder="Paste the Google Maps iframe src here">
+                <small style="color: #666;">Leave blank to auto-build an embed from the address.</small>
+            </div>
             
             <h3 style="margin-top: 30px;">Global Service Settings (for auto-generated schemas)</h3>
             <p class="help-text">

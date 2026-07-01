@@ -43,8 +43,6 @@
                         </svg>
                         <span><?= e($seo["address_$lang"]) ?></span>
                     </div>
-                    <?php endif; ?>
-                    
                     <?php if ($seo["working_hours_$lang"]): ?>
                     <div class="contact-item">
                         <svg fill="currentColor" viewBox="0 0 20 20">
@@ -53,6 +51,25 @@
                         <span><?= e($seo["working_hours_$lang"]) ?></span>
                     </div>
                     <?php endif; ?>
+                    <?php
+                    $mapEmbedUrl = trim((string)($seo['google_maps_embed_url'] ?? ''));
+                    if ($mapEmbedUrl === '' && !empty($seo["address_$lang"])) {
+                        $mapEmbedUrl = 'https://www.google.com/maps?q=' . rawurlencode($seo["address_$lang"]) . '&output=embed';
+                    }
+                    ?>
+                    <?php if ($mapEmbedUrl): ?>
+                    <div class="footer-map">
+                        <iframe
+                            src="<?= e($mapEmbedUrl) ?>"
+                            title="<?= $lang === 'ru' ? 'Карта местоположения компании' : 'Kompaniya joylashuvi xaritasi' ?>"
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            aria-label="<?= $lang === 'ru' ? 'Карта местоположения компании' : 'Kompaniya joylashuvi xaritasi' ?>"></iframe>
+                    </div>
+                    <?php endif; ?>
+                    <?php endif; ?>
+                    
+
                     <div class="contact-item">
                         <a href="http://www.search.uz/eng/" title="Uzbekistan" target="_blank" rel="noopener noreferrer">
                             Search.uz: Web Directory of Uzbekistan

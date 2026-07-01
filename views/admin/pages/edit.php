@@ -273,7 +273,10 @@ tinymce.init({
     menubar: false,
     plugins: 'fullscreen code',
     toolbar: 'fullscreen code',
-    content_css: '<?= BASE_URL ?>/css/pages.css'
+    content_css: [
+        '<?= BASE_URL ?>/css/pages.css',
+        '<?= BASE_URL ?>/css/pages.min.css'
+    ]
 });
 
 // Handle rotation mode toggle

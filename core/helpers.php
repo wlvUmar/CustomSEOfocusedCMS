@@ -76,6 +76,22 @@ function ensureUtmSourceSchema() {
 // Call once on app initialization
 ensureUtmSourceSchema();
 
+// Ensure optional Google Maps embed setting exists for footer map rendering.
+function ensureSeoMapsSchema() {
+    static $schemaChecked = false;
+    if ($schemaChecked) return;
+    $schemaChecked = true;
+
+    try {
+        $db = Database::getInstance();
+        $db->query("ALTER TABLE seo_settings ADD COLUMN google_maps_embed_url TEXT NULL AFTER google_review_url");
+    } catch (Exception $e) {
+        // Column likely already exists, silently ignore
+    }
+}
+
+ensureSeoMapsSchema();
+
 /**
  * Resolve the absolute canonical site base URL used for SEO/meta and JSON-LD.
  *

@@ -37,6 +37,7 @@ class SEOController extends Controller {
             'working_hours_ru' => trim($_POST['working_hours_ru']),
             'working_hours_uz' => trim($_POST['working_hours_uz']),
             'google_review_url' => trim($_POST['google_review_url'] ?? ''),
+            'google_maps_embed_url' => trim($_POST['google_maps_embed_url'] ?? ''),
             
             // Location
             'city' => trim($_POST['city'] ?? ''),

@@ -25,7 +25,7 @@ $csp = [
 
     "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://graph.facebook.com https://www.google.com/measurement/conversion https://stats.g.doubleclick.net",
 
-    "frame-src 'self' https://www.googletagmanager.com https://www.facebook.com",
+    "frame-src 'self' https://www.googletagmanager.com https://www.facebook.com https://www.google.com https://www.google.com/maps",
     "frame-ancestors 'self'",
     "worker-src 'self' blob:",
     "child-src 'self' blob: https://www.facebook.com"

@@ -1806,6 +1806,32 @@ footer a:hover { color: #f9fafb; }
     margin-top: 3px;
 }
 
+.footer-map {
+    margin: 10px 0 14px 26px;
+    max-width: 100%;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(255,255,255,.03);
+}
+
+.footer-map iframe {
+    display: block;
+    width: 100%;
+    height: 160px;
+    border: 0;
+}
+
+@media (max-width: 480px) {
+    .footer-map {
+        margin-left: 0;
+    }
+
+    .footer-map iframe {
+        height: 140px;
+    }
+}
+
 .copyright {
     text-align: center;
     padding-top: 20px;
