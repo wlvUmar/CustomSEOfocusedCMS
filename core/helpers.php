@@ -449,6 +449,33 @@ function injectMediaByStructure(string $html, array $mediaBySection, string $lan
 
         return $node;
     };
+    $nextElementSibling = function ($node) {
+        if (!$node) return null;
+        $next = $node->nextSibling;
+        while ($next && $next->nodeType !== XML_ELEMENT_NODE) {
+            $next = $next->nextSibling;
+        }
+        return $next;
+    };
+    $insertAfter = function ($target, $node): bool {
+        if (!$target || !$node || !$target->parentNode) return false;
+        if ($target->nextSibling) {
+            $target->parentNode->insertBefore($node, $target->nextSibling);
+        } else {
+            $target->parentNode->appendChild($node);
+        }
+        return true;
+    };
+    $insertIntoSectionStart = function ($section, $node) use ($xpath): bool {
+        if (!$section || !$node || $section->nodeType !== XML_ELEMENT_NODE) return false;
+        $h2 = $xpath->query('.//h2', $section)->item(0);
+        if ($h2) {
+            $section->insertBefore($node, $h2->nextSibling);
+        } else {
+            $section->insertBefore($node, $section->firstChild);
+        }
+        return true;
+    };
 
     $infoGrid = $xpath->query("//*[$infoGridClass]")->item(0);
     $processStep = $xpath->query("//*[$processStepClass]")->item(0);
@@ -458,12 +485,7 @@ function injectMediaByStructure(string $html, array $mediaBySection, string $lan
     if ($hasBanner && $infoGridAnchor) {
         $target = $infoGridAnchor;
         $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['banner'], 'banner', $lang));
-        if ($node && $target->parentNode) {
-            if ($target->nextSibling) {
-                $target->parentNode->insertBefore($node, $target->nextSibling);
-            } else {
-                $target->parentNode->appendChild($node);
-            }
+        if ($node && $insertAfter($target, $node)) {
             $placedBanner = true;
         }
     }
@@ -478,11 +500,22 @@ function injectMediaByStructure(string $html, array $mediaBySection, string $lan
         $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['content'], 'content', $lang));
         if ($node) {
             if ($prev) {
-                $h2 = $xpath->query('.//h2', $prev)->item(0);
-                $prev->insertBefore($node, $h2 ? $h2->nextSibling : $prev->firstChild);
+                $insertIntoSectionStart($prev, $node);
                 $placedContent = true;
             } elseif ($processSection->parentNode) {
                 $processSection->parentNode->insertBefore($node, $processSection);
+                $placedContent = true;
+            }
+        }
+    }
+    if ($hasContent && !$placedContent && $infoGridAnchor) {
+        $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['content'], 'content', $lang));
+        if ($node) {
+            $nextSection = $nextElementSibling($infoGridAnchor);
+            if ($nextSection) {
+                $insertIntoSectionStart($nextSection, $node);
+                $placedContent = true;
+            } elseif ($insertAfter($infoGridAnchor, $node)) {
                 $placedContent = true;
             }
         }
@@ -491,13 +524,18 @@ function injectMediaByStructure(string $html, array $mediaBySection, string $lan
     if ($hasGallery && $processAnchor) {
         $target = $processAnchor;
         $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['gallery'], 'gallery', $lang));
-        if ($node && $target->parentNode) {
-            if ($target->nextSibling) {
-                $target->parentNode->insertBefore($node, $target->nextSibling);
-            } else {
-                $target->parentNode->appendChild($node);
-            }
+        if ($node && $insertAfter($target, $node)) {
             $placedGallery = true;
+        }
+    }
+    if ($hasGallery && !$placedGallery && $infoGridAnchor) {
+        $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['gallery'], 'gallery', $lang));
+        if ($node) {
+            $nextSection = $nextElementSibling($infoGridAnchor);
+            $target = $nextSection ?: $infoGridAnchor;
+            if ($insertAfter($target, $node)) {
+                $placedGallery = true;
+            }
         }
     }
 
