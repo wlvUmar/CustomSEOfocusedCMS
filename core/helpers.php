@@ -403,6 +403,9 @@ function injectMediaByStructure(string $html, array $mediaBySection, string $lan
     $hasBanner = !empty($mediaBySection['banner']);
     $hasContent = !empty($mediaBySection['content']);
     $hasGallery = !empty($mediaBySection['gallery']);
+    $placedBanner = false;
+    $placedContent = false;
+    $placedGallery = false;
 
     if (!$hasBanner && !$hasContent && !$hasGallery) {
         return $html;
@@ -422,14 +425,15 @@ function injectMediaByStructure(string $html, array $mediaBySection, string $lan
     $infoGridClass = $hasClass('info-grid');
     $processStepClass = $hasClass('process-step');
 
-    $infoGridSections = $xpath->query("//section[$contentSectionClass][.//div[$infoGridClass]]");
-    $processSections = $xpath->query("//section[$contentSectionClass][.//div[$processStepClass]]");
+    $infoGridSections = $xpath->query("//*[$contentSectionClass][.//*[$infoGridClass]]");
+    $processSections = $xpath->query("//*[$contentSectionClass][.//*[$processStepClass]]");
 
     if ($hasBanner && $infoGridSections->length > 0) {
         $target = $infoGridSections->item(0);
         $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['banner'], 'banner', $lang));
         if ($node) {
             $target->parentNode->insertBefore($node, $target->nextSibling);
+            $placedBanner = true;
         }
     }
 
@@ -445,6 +449,7 @@ function injectMediaByStructure(string $html, array $mediaBySection, string $lan
             if ($node) {
                 $h2 = $xpath->query('.//h2', $prev)->item(0);
                 $prev->insertBefore($node, $h2 ? $h2->nextSibling : $prev->firstChild);
+                $placedContent = true;
             }
         }
     }
@@ -454,11 +459,24 @@ function injectMediaByStructure(string $html, array $mediaBySection, string $lan
         $node = htmlFragmentToNode($doc, renderPageMedia($mediaBySection['gallery'], 'gallery', $lang));
         if ($node) {
             $target->parentNode->insertBefore($node, $target->nextSibling);
+            $placedGallery = true;
         }
     }
 
     $out = $doc->saveHTML();
-    return preg_replace('/^<\?xml[^>]*>\s*/', '', $out);
+    $out = preg_replace('/^<\?xml[^>]*>\s*/', '', $out);
+
+    if ($hasBanner && !$placedBanner) {
+        $out .= renderPageMedia($mediaBySection['banner'], 'banner', $lang);
+    }
+    if ($hasContent && !$placedContent) {
+        $out .= renderPageMedia($mediaBySection['content'], 'content', $lang);
+    }
+    if ($hasGallery && !$placedGallery) {
+        $out .= renderPageMedia($mediaBySection['gallery'], 'gallery', $lang);
+    }
+
+    return $out;
 }
 
 /**
