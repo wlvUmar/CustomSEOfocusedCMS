@@ -99,7 +99,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <link rel="alternate" hreflang="ru" href="<?= canonicalUrlForPage($page['slug'] ?? '', 'ru') ?>">
     <link rel="alternate" hreflang="uz" href="<?= canonicalUrlForPage($page['slug'] ?? '', 'uz') ?>">
     <link rel="alternate" hreflang="x-default" href="<?= canonicalUrlForPage($page['slug'] ?? '', 'ru') ?>">
-    
+     
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?= $canonicalUrl ?>">
     <meta property="og:title" content="<?= e($ogTitle) ?>">
@@ -113,7 +113,8 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <meta name="twitter:title" content="<?= e($ogTitle) ?>">
     <meta name="twitter:description" content="<?= e($ogDescription) ?>">
     <meta name="twitter:image" content="<?= e($ogImage) ?>">
-    
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628492698305234"
+     crossorigin="anonymous"></script>
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css">
