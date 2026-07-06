@@ -21,11 +21,6 @@ class BotController extends Controller {
         }
 
         $expected = hash_hmac('sha256', $secret . ':' . $timestamp . ':' . $bodyForSig, $secret);
-        error_log("BODY=[" . $bodyForSig . "]");
-        error_log("TIMESTAMP=[" . $timestamp . "]");
-        error_log("EXPECTED=[" . $expected . "]");
-        error_log("RECEIVED=[" . $signature . "]");
-        error_log("TIME_DIFF=[" . abs(time() - (int)$timestamp) . "]");
         return hash_equals($expected, $signature) && abs(time() - (int)$timestamp) <= 60;
     }
 
