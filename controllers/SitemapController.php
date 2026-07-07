@@ -289,6 +289,17 @@ class SitemapController extends Controller {
         
         exit;
     }
+    public function generateAdsTxt() {
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: text/plain; charset=utf-8');
+        header('Cache-Control: public, max-age=3600');
+
+        echo "google.com, pub-7628492698305234, DIRECT, f08c47fec0942fa0\n";
+        exit;
+    }
 
     public function adminPanel() {
         $this->requireAuth();

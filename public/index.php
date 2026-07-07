@@ -213,6 +213,12 @@ $router->get('/sitemap-articles.xml', function() {
     require_once BASE_PATH . '/controllers/SitemapController.php';
     (new SitemapController())->generateArticlesSitemap();
 });
+$router->get('/ads.txt', function() {
+    require_once BASE_PATH . '/controllers/SitemapController.php';
+    (new SitemapController())->generateAdsTxt();
+});
+
+
 $router->get('/robots.txt', function() {
     require_once BASE_PATH . '/controllers/SitemapController.php';
     (new SitemapController())->generateRobotsTxt();
