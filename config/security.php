@@ -14,20 +14,18 @@ if (IS_PRODUCTION) {
 }
 $csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net https://www.facebook.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://www.google.com https://tpc.googlesyndication.com",
-    "script-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net https://www.facebook.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://www.google.com https://tpc.googlesyndication.com",
+    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net https://www.facebook.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://www.google.com https://tpc.googlesyndication.com https://*.adtrafficquality.google",
+    "script-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://connect.facebook.net https://www.facebook.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://www.google.com https://tpc.googlesyndication.com https://*.adtrafficquality.google",
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
     "style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https:",
     "img-src 'self' data: blob: https: https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://stats.g.doubleclick.net",
     "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
-    "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://graph.facebook.com https://www.google.com/measurement/conversion https://stats.g.doubleclick.net https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://pagead2.adtrafficquality.google",
-    
-    "frame-src 'self' https://www.googletagmanager.com https://www.facebook.com https://www.google.com https://www.google.com/maps https://googleads.g.doubleclick.net https://tpc.googlesyndication.com",
+    "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://graph.facebook.com https://www.google.com/measurement/conversion https://stats.g.doubleclick.net https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.adtrafficquality.google",
+    "frame-src 'self' https://www.googletagmanager.com https://www.facebook.com https://www.google.com https://www.google.com/maps https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.adtrafficquality.google",
     "frame-ancestors 'self'",
     "worker-src 'self' blob:",
     "child-src 'self' blob: https://www.facebook.com"
 ];
-
 header('Content-Security-Policy: ' . implode('; ', $csp));
 
 

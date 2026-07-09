@@ -1,4 +1,4 @@
-// cron_bot_health_check.php — run via crontab every 30s or so
+<?php
 function checkAndCacheBotHealth(): void
 {
     $cacheFile = __DIR__ . '/cache/bot_health_cache.json';
