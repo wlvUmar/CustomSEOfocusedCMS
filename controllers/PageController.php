@@ -266,9 +266,12 @@ class PageController extends Controller {
             '@context' => 'https://schema.org',
             '@graph' => $graph
         ];
-        
+
         trackSiteVisit($currentLang);
         trackVisit($slug, $currentLang);
+    
+        $botStatus = getBotServiceStatus();
+    
         $templateData = [
             'page' => [
                 'title' => $page["title_$currentLang"],
@@ -311,7 +314,8 @@ class PageController extends Controller {
             'sitewideSchema' => $sitewideSchema,
             'contactUi' => $contactUi,
             'lang' => $currentLang,
-            'templateData' => $templateData
+            'templateData' => $templateData,
+            'botModalEnabled' => $botStatus['healthy']
         ];
         
         $this->view('templates/page', $data);

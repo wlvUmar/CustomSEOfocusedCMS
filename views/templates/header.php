@@ -372,6 +372,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     </div>
 
     <script>
+    window.BOT_MODAL_ENABLED = <?= !empty($botModalEnabled) ? 'true' : 'false' ?>;    
     var BOT_MODAL_SESSION_KEY = 'botModalShown';
 
     function closeBotModal(remember) {
@@ -411,6 +412,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     // incognito window, or run `sessionStorage.removeItem('botModalShown')`
     // in the console, to see it again.
     (function() {
+       if (!window.BOT_MODAL_ENABLED) return;
        if (sessionStorage.getItem(BOT_MODAL_SESSION_KEY)) return;
 
        let fired = false;

@@ -1768,3 +1768,58 @@ function renderContentSection($mediaItems, $lang) {
     
     return $html;
 }
+
+
+function getBotServiceStatus(int $cacheTtlSeconds = 30): array 
+{
+    $cacheFile = sys_get_temp_dir() . '/bot_health_cache.json';
+
+    if (is_file($cacheFile)) {
+        $cached = json_decode(file_get_contents($cacheFile), true);
+        if (is_array($cached) && (time() - $cached['checked_at']) < $cacheTtlSeconds) {
+            return [
+                'healthy'    => (bool) $cached['healthy'],
+                'checked_at' => (int) $cached['checked_at'],
+                'from_cache' => true,
+            ];
+        }
+    }
+
+    $callbackUrl = getenv('BOT_CALLBACK_URL') ?: '';
+    $healthy = false;
+
+    if ($callbackUrl !== '') {
+        $healthUrl = rtrim($callbackUrl, '/') . '/health';
+
+        $ch = curl_init($healthUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 1,
+            CURLOPT_TIMEOUT        => 2,
+        ]);
+        $body     = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErrno = curl_errno($ch);
+        curl_close($ch);
+
+        if ($curlErrno === 0 && $httpCode === 200 && $body !== false) {
+            $decoded = json_decode($body, true);
+            $healthy = is_array($decoded)
+                && isset($decoded['status'])
+                && $decoded['status'] === 'ok';
+        }
+    }
+
+    $checkedAt = time();
+
+    file_put_contents($cacheFile, json_encode([
+        'healthy'    => $healthy,
+        'checked_at' => $checkedAt,
+    ]));
+
+    return [
+        'healthy'    => $healthy,
+        'checked_at' => $checkedAt,
+        'from_cache' => false,
+    ];
+}
