@@ -1793,14 +1793,11 @@ function getBotServiceStatus(): array
 function getGaClientId(): ?string
 {
     $gaCookie = $_COOKIE['_ga'] ?? null;
-
     if (!$gaCookie) {
         return null;
     }
-
     if (preg_match('/^GA\d+\.\d+\.(.+)$/', $gaCookie, $matches)) {
-        return $matches[1];
+        return str_replace('.', '_', $matches[1]);
     }
-
     return null;
 }
