@@ -358,7 +358,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
                 <li class="bot-modal__step"><span class="bot-modal__step-num">2</span> <?= $lang === 'ru' ? 'Отправьте фото боту' : 'Botga rasam yuboring' ?></li>
                 <li class="bot-modal__step"><span class="bot-modal__step-num">3</span> <?= $lang === 'ru' ? 'Получите цену моментально' : 'Narxni oniy oling' ?></li>
             </ul>
-            <a href="<?= TELEGRAM_BOT_URL ?>" class="bot-modal__cta" target="_blank" rel="noopener" data-track-click="1" onclick="markBotModalSeen()">
+            <a href="<?= TELEGRAM_BOT_URL ?>?start=<?= urlencode($page["clientID"]) ?>" class="bot-modal__cta" target="_blank" rel="noopener" data-track-click="1" onclick="markBotModalSeen()">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M22.05 1.577c-.393-.016-.784.08-1.117.235-.484.186-4.92 1.902-9.41 3.64-2.26.873-4.518 1.746-6.256 2.415-1.737.67-3.045 1.168-3.114 1.192-.46.16-1.082.362-1.61.984-.133.155-.267.354-.335.628s-.038.622.095.895c.265.547.714.773 1.244.976 1.76.564 3.58 1.102 5.087 1.608.556 1.96 1.09 3.927 1.618 5.89.174.394.553.54.944.544l-.002.02s.307.03.606-.042c.3-.07.677-.244 1.02-.565.377-.354 1.4-1.36 1.98-1.928l4.37 3.226.035.02s.484.34 1.192.388c.354.024.82-.044 1.22-.337.403-.294.67-.767.795-1.307.374-1.63 2.853-13.427 3.276-15.38z"/>
                 </svg>

@@ -1788,3 +1788,19 @@ function getBotServiceStatus(): array
         'from_cache' => true,
     ];
 }
+
+
+function getGaClientId(): ?string
+{
+    $gaCookie = $_COOKIE['_ga'] ?? null;
+
+    if (!$gaCookie) {
+        return null;
+    }
+
+    if (preg_match('/^GA\d+\.\d+\.(.+)$/', $gaCookie, $matches)) {
+        return $matches[1];
+    }
+
+    return null;
+}

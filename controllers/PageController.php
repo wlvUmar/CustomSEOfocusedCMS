@@ -271,6 +271,7 @@ class PageController extends Controller {
         trackVisit($slug, $currentLang);
     
         $botStatus = getBotServiceStatus();
+        $clientID = getGaClientId()
     
         $templateData = [
             'page' => [
@@ -316,6 +317,7 @@ class PageController extends Controller {
             'lang' => $currentLang,
             'templateData' => $templateData,
             'botModalEnabled' => $botStatus['healthy']
+            'clientID' => $clientID
         ];
         
         $this->view('templates/page', $data);
