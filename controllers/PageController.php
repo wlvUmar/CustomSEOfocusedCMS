@@ -271,7 +271,6 @@ class PageController extends Controller {
         trackVisit($slug, $currentLang);
     
         $botStatus = getBotServiceStatus();
-        $clientID = getGaClientId()
     
         $templateData = [
             'page' => [
@@ -305,7 +304,7 @@ class PageController extends Controller {
         
         $page["content_$currentLang"] = renderTemplate($page["content_$currentLang"], $templateData);
         $page["content_$currentLang"] = processMediaPlaceholders($page["content_$currentLang"], $page['id']);
-        
+        $page["clientID"] = getGaClientId();
         $data = [
             'page' => $page,
             'seo' => $seoSettings,
@@ -316,8 +315,7 @@ class PageController extends Controller {
             'contactUi' => $contactUi,
             'lang' => $currentLang,
             'templateData' => $templateData,
-            'botModalEnabled' => $botStatus['healthy']
-            'clientID' => $clientID
+            'botModalEnabled' => $botStatus['healthy'],
         ];
         
         $this->view('templates/page', $data);
