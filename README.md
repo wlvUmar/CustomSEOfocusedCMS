@@ -1,5 +1,5 @@
 <div align="center">
-
+ 
 # CustomSEOfocusedCMS
 
 **Custom PHP MVC CMS with a built-in SEO engine — content rotation, internal link graph, JSON-LD generation, and crawl analytics — powering [kuplyu-tashkent.uz](https://kuplyu-tashkent.uz)**
