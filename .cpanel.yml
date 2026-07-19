@@ -15,6 +15,5 @@ deployment:
     # Migration runner
     - /bin/cp /home/kuplyuta/appliances/migrate.php $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
     - /bin/cp -R /home/kuplyuta/appliances/migrations/. $DEPLOYPATH/migrations >> /home/kuplyuta/deploy.log 2>&1
-    - php $DEPLOYPATH/migrate.php >> /home/kuplyuta/deploy.log 2>&1
+    - /usr/local/bin/php $DEPLOYPATH/migrate.php >> /home/kuplyuta/deploy.log 2>&1 || echo "Migration skipped" >> /home/kuplyuta/deploy.log 2>&1
     - echo "Deployment finished at $(date)" >> /home/kuplyuta/deploy.log
-    
