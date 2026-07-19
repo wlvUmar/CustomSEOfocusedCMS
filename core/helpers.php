@@ -39,114 +39,11 @@ function logInfo($message) {
     }
 }
 
-// Ensure database schema includes utm_source columns and proper unique keys (one-time setup)
-// The unique key must include utm_source to prevent data loss when multiple UTM sources
-// arrive for the same page+day. Each (page, language, date, utm_source) gets its own row.
-function ensureUtmSourceSchema() {
-    static $schemaChecked = false;
-    if ($schemaChecked) return;
-    $schemaChecked = true;
-
-    try {
-        $db = Database::getInstance();
-
-        // analytics: add column, make NOT NULL, add to unique key
-        $db->query("ALTER TABLE analytics ADD COLUMN utm_source VARCHAR(100) NOT NULL DEFAULT '' AFTER phone_calls");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics DROP INDEX idx_utm_source");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics DROP INDEX unique_daily");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics ADD UNIQUE KEY unique_daily (`page_slug`, `language`, `date`, `utm_source`)");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics MODIFY COLUMN `utm_source` varchar(100) NOT NULL DEFAULT ''");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-
-        // analytics_hourly: add column, make NOT NULL, add to unique key
-        $db->query("ALTER TABLE analytics_hourly ADD COLUMN utm_source VARCHAR(100) NOT NULL DEFAULT '' AFTER phone_calls");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics_hourly DROP INDEX idx_utm_source");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics_hourly DROP INDEX unique_hourly");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics_hourly ADD UNIQUE KEY unique_hourly (`page_slug`, `language`, `date`, `hour`, `utm_source`)");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics_hourly MODIFY COLUMN `utm_source` varchar(100) NOT NULL DEFAULT ''");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-
-        // analytics_monthly: add column, make NOT NULL, add to unique key
-        $db->query("ALTER TABLE analytics_monthly ADD COLUMN utm_source VARCHAR(100) NOT NULL DEFAULT '' AFTER total_phone_calls");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics_monthly DROP INDEX unique_monthly");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics_monthly ADD UNIQUE KEY unique_monthly (`page_slug`, `language`, `year`, `month`, `utm_source`)");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics_monthly MODIFY COLUMN `utm_source` varchar(100) NOT NULL DEFAULT ''");
-    } catch (Exception $e) {}
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE analytics_internal_links DROP INDEX idx_utm_source");
-    } catch (Exception $e) {}
-}
-
-// Call once on app initialization
-ensureUtmSourceSchema();
-
-// Ensure optional Google Maps embed setting exists for footer map rendering.
-function ensureSeoMapsSchema() {
-    static $schemaChecked = false;
-    if ($schemaChecked) return;
-    $schemaChecked = true;
-
-    try {
-        $db = Database::getInstance();
-        $db->query("ALTER TABLE seo_settings ADD COLUMN google_maps_embed_url TEXT NULL AFTER google_review_url");
-    } catch (Exception $e) {
-        // Column likely already exists, silently ignore
-    }
-}
-
-ensureSeoMapsSchema();
+// ─────────────────────────────────────────────────────────────
+// NOTE: Schema migrations are handled by migrate.php CLI.
+// Do NOT add ALTER TABLE / DDL in this file — see migrations/
+// directory instead.
+// ─────────────────────────────────────────────────────────────
 
 /**
  * Resolve the absolute canonical site base URL used for SEO/meta and JSON-LD.
@@ -289,7 +186,15 @@ function canonicalUrlForArticle($id, $lang) {
 function isBot() {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     
+    // Empty User-Agent is almost certainly a bot or script
+    if ($userAgent === '' || trim($userAgent) === '') {
+        return true;
+    }
+    
+    $userAgentLower = strtolower($userAgent);
+    
     $bots = [
+        // Search engines
         'googlebot',
         'google-inspectiontool',
         'google-structured-data-testing-tool',
@@ -301,10 +206,12 @@ function isBot() {
         'mediapartners-google',
         'apis-google',
         'bingbot',
-        'slurp',           // Yahoo
+        'slurp',
         'duckduckbot',
         'baiduspider',
         'yandexbot',
+        'yandeximages',
+        'yandexmetrika',
         'sogou',
         'exabot',
         'facebot',
@@ -313,14 +220,30 @@ function isBot() {
         'msnbot',
         'teoma',
         'seekbot',
+        // Crawler / spider patterns
         'spider',
         'crawler',
-        'bot',
+        'scraper',
         'archive',
-        'scraper'
+        'bot',
+        // Common CLI / scripting tools
+        'curl',
+        'wget',
+        'python',
+        'go-http-client',
+        'java/',
+        'httpclient',
+        'httpie',
+        'scrapy',
+        'masscan',
+        'zgrab',
+        'nmap',
+        'libwww',
+        'perl',
+        'ruby',
+        'lua',
+        'Lynx',
     ];
-    
-    $userAgentLower = strtolower($userAgent);
     
     foreach ($bots as $bot) {
         if (strpos($userAgentLower, $bot) !== false) {
@@ -730,124 +653,90 @@ function isValidAnalyticsInternalLinkSlug($slug): bool
 
 function trackingRateLimit(string $action, int $maxAttempts, int $windowSeconds): bool
 {
-    // Lightweight in-session limiter for public analytics endpoints.
-    // Avoid using the login-oriented RateLimiter defaults (too strict for real users).
-    if (session_status() !== PHP_SESSION_ACTIVE) return true;
-
     $maxAttempts = max(1, (int)$maxAttempts);
     $windowSeconds = max(1, (int)$windowSeconds);
-
-    $key = 'trk_' . preg_replace('/[^a-z0-9_\-]/i', '_', $action);
     $now = time();
 
-    $state = $_SESSION[$key] ?? ['count' => 0, 'ts' => $now];
-    if (!is_array($state) || !isset($state['count'], $state['ts'])) {
-        $state = ['count' => 0, 'ts' => $now];
+    // Use session if available (normal case — init.php always starts one)
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $key = 'trk_' . preg_replace('/[^a-z0-9_\-]/i', '_', $action);
+        $state = $_SESSION[$key] ?? ['count' => 0, 'ts' => $now];
+        if (!is_array($state) || !isset($state['count'], $state['ts'])) {
+            $state = ['count' => 0, 'ts' => $now];
+        }
+        if (($now - (int)$state['ts']) > $windowSeconds) {
+            $state = ['count' => 0, 'ts' => $now];
+        }
+        $state['count'] = (int)$state['count'] + 1;
+        $_SESSION[$key] = $state;
+        return $state['count'] <= $maxAttempts;
     }
 
-    if (($now - (int)$state['ts']) > $windowSeconds) {
-        $state = ['count' => 0, 'ts' => $now];
+    // Fallback: IP-based throttle using database when no session available
+    $ip = getClientIp();
+    if (!$ip) return true;
+    $throttleKey = 'trl_' . md5($action . '_' . $ip);
+    $expiresAt = date('Y-m-d H:i:s', $now + $windowSeconds);
+
+    try {
+        $db = Database::getInstance();
+        $result = $db->query(
+            "INSERT INTO analytics_throttle (throttle_key, hits, expires_at)
+             VALUES (?, 1, ?)
+             ON DUPLICATE KEY UPDATE hits = hits + 1, expires_at = IF(? > expires_at, ?, expires_at)",
+            [$throttleKey, $expiresAt, $expiresAt, $expiresAt]
+        );
+        $row = $db->fetchOne("SELECT hits, expires_at FROM analytics_throttle WHERE throttle_key = ?", [$throttleKey]);
+        if ($row) {
+            $hits = (int)$row['hits'];
+            $expires = strtotime($row['expires_at']);
+            if ($now > $expires) {
+                $db->query("DELETE FROM analytics_throttle WHERE throttle_key = ?", [$throttleKey]);
+                return true;
+            }
+            return $hits <= $maxAttempts;
+        }
+    } catch (Exception $e) {
+        error_log("Rate limit error: " . $e->getMessage());
     }
 
-    $state['count'] = (int)$state['count'] + 1;
-    $_SESSION[$key] = $state;
-
-    return $state['count'] <= $maxAttempts;
-}
-
-function getTrackingCookieValue(string $name): array
-{
-    $raw = $_COOKIE[$name] ?? '';
-    if (!is_string($raw) || $raw === '') {
-        return [];
-    }
-
-    $decoded = json_decode($raw, true);
-    return is_array($decoded) ? $decoded : [];
-}
-
-function setTrackingCookieValue(string $name, array $value, int $ttlSeconds = 2592000): void
-{
-    $expires = time() + max(60, $ttlSeconds);
-    $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    $options = [
-        'expires' => $expires,
-        'path' => '/',
-        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ];
-
-    setcookie($name, $encoded, $options);
-    $_COOKIE[$name] = $encoded;
+    return true;
 }
 
 function getOrCreateTrackingVisitorId(): string
 {
+    // 1) Try existing cookie first
     $cookieName = 'trk_visitor_id';
     $visitorId = trim((string)($_COOKIE[$cookieName] ?? ''));
     if ($visitorId !== '') {
         return $visitorId;
     }
 
+    // 2) Try Google Analytics client ID as stable cross-session identifier
+    $gaId = getGaClientId();
+    if ($gaId !== null) {
+        $visitorId = 'ga_' . $gaId;
+        setTrackingCookie($cookieName, $visitorId, 365 * 24 * 60 * 60);
+        return $visitorId;
+    }
+
+    // 3) Fall back to random ID
     $visitorId = bin2hex(random_bytes(16));
+    setTrackingCookie($cookieName, $visitorId, 30 * 24 * 60 * 60);
+    return $visitorId;
+}
+
+function setTrackingCookie(string $name, string $value, int $ttlSeconds): void
+{
     $options = [
-        'expires' => time() + (365 * 24 * 60 * 60),
+        'expires' => time() + max(60, $ttlSeconds),
         'path' => '/',
         'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'httponly' => true,
         'samesite' => 'Lax',
     ];
-    setcookie($cookieName, $visitorId, $options);
-    $_COOKIE[$cookieName] = $visitorId;
-
-    return $visitorId;
-}
-
-function shouldCountSiteVisit(string $language): bool
-{
-    $visitorId = getOrCreateTrackingVisitorId();
-    $cookieName = 'trk_site_visit';
-    $state = getTrackingCookieValue($cookieName);
-
-    if (!isset($state['visitor_id'], $state['counted']) || $state['visitor_id'] !== $visitorId) {
-        $state = ['visitor_id' => $visitorId, 'counted' => false];
-    }
-
-    if (!empty($state['counted'])) {
-        return false;
-    }
-
-    $state['counted'] = true;
-    setTrackingCookieValue($cookieName, $state, 365 * 24 * 60 * 60);
-
-    return true;
-}
-
-function shouldCountVisitThisBrowser(string $slug, string $language): bool
-{
-    $slug = (string)$slug;
-    $language = normalizeTrackingLanguage($language);
-    $visitorId = getOrCreateTrackingVisitorId();
-    $cookieName = 'trk_visit_pages';
-
-    $state = getTrackingCookieValue($cookieName);
-    if (!isset($state['visitor_id'], $state['visited']) || !is_array($state['visited']) || $state['visitor_id'] !== $visitorId) {
-        $state = ['visitor_id' => $visitorId, 'visited' => []];
-    }
-
-    $visitKey = $slug . '|' . $language;
-    if (!empty($state['visited'][$visitKey])) {
-        return false;
-    }
-
-    $state['visited'][$visitKey] = time();
-    if (count($state['visited']) > 100) {
-        $state['visited'] = array_slice($state['visited'], -100, null, true);
-    }
-    setTrackingCookieValue($cookieName, $state, 365 * 24 * 60 * 60);
-
-    return true;
+    setcookie($name, $value, $options);
+    $_COOKIE[$name] = $value;
 }
 
 function trackSiteVisit($language) {
@@ -855,15 +744,22 @@ function trackSiteVisit($language) {
     if (isBot()) return;
 
     $language = normalizeTrackingLanguage($language);
-    if (!shouldCountSiteVisit($language)) {
-        return;
-    }
+    $visitorId = getOrCreateTrackingVisitorId();
+    $date = date('Y-m-d');
 
     try {
         $db = Database::getInstance();
-        $date = date('Y-m-d');
-        $hour = (int)date('G');
 
+        // Atomic dedup: one site visit per visitor per day
+        $dedup = $db->query(
+            "INSERT IGNORE INTO analytics_dedup_site_visits (visitor_id, view_date) VALUES (?, ?)",
+            [$visitorId, $date]
+        );
+        if ($dedup->rowCount() === 0) {
+            return;
+        }
+
+        $hour = (int)date('G');
         $sql = "INSERT INTO analytics_hourly (page_slug, language, date, hour, visits, clicks, phone_calls)
                 VALUES ('__site__', ?, ?, ?, 1, 0, 0)
                 ON DUPLICATE KEY UPDATE visits = visits + 1";
@@ -876,57 +772,66 @@ function trackSiteVisit($language) {
 
 function shouldCountClickThisSession(string $slug, string $language, int $cooldownSeconds = 5): bool
 {
-    if (session_status() !== PHP_SESSION_ACTIVE) return true;
-
     $slug = (string)$slug;
     $language = normalizeTrackingLanguage($language);
-
-    $key = 'trk_clicks';
-    $state = $_SESSION[$key] ?? [];
-    if (!is_array($state)) {
-        $state = [];
-    }
-
-    $clickKey = $slug . '|' . $language;
     $now = time();
 
-    if (isset($state[$clickKey])) {
-        $lastClickTime = $state[$clickKey];
-        if (($now - $lastClickTime) < $cooldownSeconds) {
-            return false;
+    // Use session if available (normal case)
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $key = 'trk_clicks';
+        $state = $_SESSION[$key] ?? [];
+        if (!is_array($state)) {
+            $state = [];
         }
+
+        $clickKey = $slug . '|' . $language;
+
+        if (isset($state[$clickKey])) {
+            $lastClickTime = $state[$clickKey];
+            if (($now - $lastClickTime) < $cooldownSeconds) {
+                return false;
+            }
+        }
+
+        $state[$clickKey] = $now;
+        $_SESSION[$key] = $state;
+
+        return true;
     }
 
-    $state[$clickKey] = $now;
-    $_SESSION[$key] = $state;
+    // Fallback: IP-based dedup using analytics_throttle
+    $ip = getClientIp();
+    if (!$ip) return true;
+    $throttleKey = 'clk_' . md5($ip . $slug . $language);
+    $expiresAt = date('Y-m-d H:i:s', $now + $cooldownSeconds);
 
-    return true;
-}
+    try {
+        $db = Database::getInstance();
 
-function shouldCountPhoneCallThisBrowser(string $slug, string $language): bool
-{
-    $slug = (string)$slug;
-    $language = normalizeTrackingLanguage($language);
-    $visitorId = getOrCreateTrackingVisitorId();
-    $cookieName = 'trk_phone_calls';
+        // Check existing row and reset if expired (same pattern as trackingRateLimit)
+        $row = $db->fetchOne("SELECT hits, expires_at FROM analytics_throttle WHERE throttle_key = ?", [$throttleKey]);
+        if ($row) {
+            $hits = (int)$row['hits'];
+            $expires = strtotime($row['expires_at']);
+            if ($now > $expires) {
+                $db->query(
+                    "UPDATE analytics_throttle SET hits = 1, expires_at = ? WHERE throttle_key = ?",
+                    [$expiresAt, $throttleKey]
+                );
+                return true;
+            }
+            return $hits <= 1;
+        }
 
-    $state = getTrackingCookieValue($cookieName);
-    if (!isset($state['visitor_id'], $state['visited']) || !is_array($state['visited']) || $state['visitor_id'] !== $visitorId) {
-        $state = ['visitor_id' => $visitorId, 'visited' => []];
+        // First hit — insert new row
+        $db->query(
+            "INSERT INTO analytics_throttle (throttle_key, hits, expires_at) VALUES (?, 1, ?)",
+            [$throttleKey, $expiresAt]
+        );
+        return true;
+    } catch (Exception $e) {
+        return true;
     }
-
-    $visitKey = $slug . '|' . $language;
-    if (!empty($state['visited'][$visitKey])) {
-        return false;
-    }
-
-    $state['visited'][$visitKey] = time();
-    if (count($state['visited']) > 100) {
-        $state['visited'] = array_slice($state['visited'], -100, null, true);
-    }
-    setTrackingCookieValue($cookieName, $state, 365 * 24 * 60 * 60);
-
-    return true;
 }
 
 function getClientIp(): ?string
@@ -1017,20 +922,36 @@ function trackVisit($slug, $language) {
         return;
     }
 
-    if (!shouldCountVisitThisBrowser($slug, $language)) {
-        return;
+    $visitorId = getOrCreateTrackingVisitorId();
+    $date = date('Y-m-d');
+    $utmSource = trim((string)($_GET['utm_source'] ?? ''));
+
+    // Atomic dedup: MySQL PRIMARY KEY prevents concurrent double-counting
+    // Normalize utm_source so blank-tracking up to the dedup key
+    try {
+        $db = Database::getInstance();
+        $dedup = $db->query(
+            "INSERT IGNORE INTO analytics_dedup_visits (visitor_id, page_slug, language, view_date, utm_source) VALUES (?, ?, ?, ?, ?)",
+            [$visitorId, $slug, $language, $date, $utmSource]
+        );
+        if ($dedup->rowCount() === 0) {
+            return;
+        }
+    } catch (Exception $e) {
+        error_log("Visit dedup error: " . $e->getMessage());
     }
+
+    // Periodic dedup table cleanup (~1% of requests)
+    cleanupDedupTables();
 
     try {
         $db = Database::getInstance();
-        $date = date('Y-m-d');
-        $utmSource = trim((string)($_GET['utm_source'] ?? ''));
 
         $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, utm_source, date) 
                 VALUES (?, ?, 1, 0, ?, ?) 
                 ON DUPLICATE KEY UPDATE visits = visits + 1";
 
-        $stmt = $db->query($sql, [$slug, $language, $utmSource ?: '', $date]);
+        $stmt = $db->query($sql, [$slug, $language, $utmSource, $date]);
         $isNewDay = ($stmt && $stmt->rowCount() === 1);
         bumpMonthlySummary($slug, $language, 1, 0, 0, $isNewDay, $utmSource);
         bumpHourlySummary($slug, $language, 1, 0, 0, $utmSource);
@@ -1095,17 +1016,34 @@ function trackClick($slug, $language, $utmSource = '') {
     if (shouldSkipTracking()) return;
     if (isBot()) return;
 
+    // Fast-path: 5-second in-session/IP debounce (cheap, no DB write)
     if (!shouldCountClickThisSession($slug, $language)) {
         return;
     }
 
+    $language = normalizeTrackingLanguage($language);
+    if (!isValidAnalyticsSlug($slug)) return;
+
+    $visitorId = getOrCreateTrackingVisitorId();
+    $date = date('Y-m-d');
+    $utmSource = trim((string)$utmSource);
+
+    // Daily dedup: one click per visitor per page per utm_source per day
     try {
         $db = Database::getInstance();
-        $date = date('Y-m-d');
-        $language = normalizeTrackingLanguage($language);
-        if (!isValidAnalyticsSlug($slug)) return;
+        $dedup = $db->query(
+            "INSERT IGNORE INTO analytics_dedup_clicks (visitor_id, page_slug, language, view_date, utm_source) VALUES (?, ?, ?, ?, ?)",
+            [$visitorId, $slug, $language, $date, $utmSource]
+        );
+        if ($dedup->rowCount() === 0) {
+            return;
+        }
+    } catch (Exception $e) {
+        error_log("Click dedup error: " . $e->getMessage());
+    }
 
-        $utmSource = trim((string)$utmSource) ?: '';
+    try {
+        $db = Database::getInstance();
 
         $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, utm_source, date)
                 VALUES (?, ?, 0, 1, 0, ?, ?)
@@ -1124,17 +1062,29 @@ function trackPhoneCall($slug, $language, $utmSource = '') {
     if (shouldSkipTracking()) return;
     if (isBot()) return;
 
-    if (!shouldCountPhoneCallThisBrowser($slug, $language)) {
-        return;
+    $language = normalizeTrackingLanguage($language);
+    if (!isValidAnalyticsSlug($slug)) return;
+
+    $visitorId = getOrCreateTrackingVisitorId();
+    $utmSource = trim((string)$utmSource);
+
+    // Atomic dedup: one phone call per visitor per page per utm_source ever
+    try {
+        $db = Database::getInstance();
+        $dedup = $db->query(
+            "INSERT IGNORE INTO analytics_dedup_phone_calls (visitor_id, page_slug, language, utm_source) VALUES (?, ?, ?, ?)",
+            [$visitorId, $slug, $language, $utmSource]
+        );
+        if ($dedup->rowCount() === 0) {
+            return;
+        }
+    } catch (Exception $e) {
+        error_log("Phone call dedup error: " . $e->getMessage());
     }
 
     try {
         $db = Database::getInstance();
         $date = date('Y-m-d');
-        $language = normalizeTrackingLanguage($language);
-        if (!isValidAnalyticsSlug($slug)) return;
-
-        $utmSource = trim((string)$utmSource) ?: '';
 
         $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, utm_source, date) 
                 VALUES (?, ?, 0, 0, 1, ?, ?) 
@@ -1155,12 +1105,30 @@ function trackInternalLink($fromSlug, $toSlug, $language) {
     if (shouldSkipTracking()) return;
     if (isBot()) return;
 
+    $language = normalizeTrackingLanguage($language);
+    if (!isValidAnalyticsInternalLinkSlug($fromSlug)) return;
+    if (!isValidAnalyticsInternalLinkSlug($toSlug)) return;
+    if ($fromSlug === $toSlug) return;
+
+    $visitorId = getOrCreateTrackingVisitorId();
+    $date = date('Y-m-d');
+
+    // Atomic dedup: one click per visitor per path per day
     try {
         $db = Database::getInstance();
-        $date = date('Y-m-d');
-        $language = normalizeTrackingLanguage($language);
-        if (!isValidAnalyticsInternalLinkSlug($fromSlug)) return;
-        if (!isValidAnalyticsInternalLinkSlug($toSlug)) return;
+        $dedup = $db->query(
+            "INSERT IGNORE INTO analytics_dedup_internal_links (visitor_id, from_slug, to_slug, view_date) VALUES (?, ?, ?, ?)",
+            [$visitorId, $fromSlug, $toSlug, $date]
+        );
+        if ($dedup->rowCount() === 0) {
+            return;
+        }
+    } catch (Exception $e) {
+        error_log("Internal link dedup error: " . $e->getMessage());
+    }
+
+    try {
+        $db = Database::getInstance();
         
         $sql = "INSERT INTO analytics_internal_links (from_slug, to_slug, language, clicks, date) 
                 VALUES (?, ?, ?, 1, ?) 
@@ -1845,6 +1813,33 @@ function getBotServiceStatus(): array
     ];
 }
 
+
+/**
+ * Periodic cleanup of old dedup table rows.
+ * Called probabilistically (~1% of trackVisit calls).
+ * Prevents unbounded growth of analytics_dedup_* tables.
+ */
+function cleanupDedupTables(): void
+{
+    static $lastCleanup = 0;
+    $now = time();
+    // Run at most once per hour
+    if ($now - $lastCleanup < 3600) return;
+    if (random_int(1, 100) !== 1) return;
+    $lastCleanup = $now;
+
+    try {
+        $db = Database::getInstance();
+        $db->query("DELETE FROM analytics_dedup_visits WHERE view_date < DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
+        $db->query("DELETE FROM analytics_dedup_clicks WHERE view_date < DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
+        $db->query("DELETE FROM analytics_dedup_internal_links WHERE view_date < DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
+        $db->query("DELETE FROM analytics_dedup_phone_calls WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)");
+        $db->query("DELETE FROM analytics_dedup_site_visits WHERE view_date < DATE_SUB(CURDATE(), INTERVAL 90 DAY)");
+        $db->query("DELETE FROM analytics_throttle WHERE expires_at < NOW()");
+    } catch (Exception $e) {
+        error_log("Dedup cleanup error: " . $e->getMessage());
+    }
+}
 
 function getGaClientId(): ?string
 {
