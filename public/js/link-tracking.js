@@ -232,7 +232,7 @@
                 return;
             }
 
-            if (link.classList.contains('floating-telegram') || link.matches('[data-track-click="1"]')) {
+            if (link.classList.contains('hero__cta') || link.matches('[data-track-click="1"]')) {
                 trackClick(link.href);
             }
 
