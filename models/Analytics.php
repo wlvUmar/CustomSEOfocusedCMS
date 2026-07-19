@@ -737,7 +737,7 @@ class Analytics {
     public function getTopPerformers($months = 3, $limit = 10) {
         $sql = "SELECT 
                     page_slug,
-                    COALESCE(utm_source, 'direct') as utm_source,
+                    IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source,
                     SUM(total_visits) as visits,
                     SUM(total_clicks) as clicks,
                     SUM(total_phone_calls) as phone_calls,
@@ -756,7 +756,7 @@ class Analytics {
     public function getRangeTopPerformers($startDate, $endDate) {
         $sql = "SELECT 
                     page_slug,
-                    COALESCE(utm_source, 'direct') as utm_source,
+                    IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source,
                     SUM(visits) as visits,
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls,
@@ -1171,7 +1171,7 @@ class Analytics {
      */
     public function getUtmSourceStats($startDate, $endDate) {
         $sql = "SELECT 
-                    COALESCE(utm_source, 'direct') as utm_source,
+                    IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source,
                     SUM(visits) as visits,
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls,
@@ -1198,7 +1198,7 @@ class Analytics {
         
         $sql = "SELECT 
                     page_slug,
-                    COALESCE(utm_source, 'direct') as utm_source,
+                    IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source,
                     language,
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls
@@ -1219,7 +1219,7 @@ class Analytics {
         $sql = "SELECT 
                     year,
                     month,
-                    COALESCE(utm_source, 'direct') as utm_source,
+                    IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source,
                     SUM(total_clicks) as clicks,
                     SUM(total_phone_calls) as phone_calls
                 FROM analytics_monthly
@@ -1237,7 +1237,7 @@ class Analytics {
         $days = (int)$days;
         
         $sql = "SELECT 
-                    COALESCE(utm_source, 'direct') as utm_source,
+                    IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source,
                     SUM(visits) as visits,
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls,
@@ -1263,7 +1263,7 @@ class Analytics {
      */
     public function getUtmSourceComparison($startDate, $endDate) {
         $sql = "SELECT 
-                    COALESCE(utm_source, 'direct') as utm_source,
+                    IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source,
                     SUM(visits) as visits,
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls,

@@ -39,7 +39,9 @@ function logInfo($message) {
     }
 }
 
-// Ensure database schema includes utm_source columns (one-time setup)
+// Ensure database schema includes utm_source columns and proper unique keys (one-time setup)
+// The unique key must include utm_source to prevent data loss when multiple UTM sources
+// arrive for the same page+day. Each (page, language, date, utm_source) gets its own row.
 function ensureUtmSourceSchema() {
     static $schemaChecked = false;
     if ($schemaChecked) return;
@@ -47,30 +49,84 @@ function ensureUtmSourceSchema() {
 
     try {
         $db = Database::getInstance();
-        
-        // Add utm_source column to analytics table if it doesn't exist
-        $db->query("ALTER TABLE analytics ADD COLUMN utm_source VARCHAR(255) NULL AFTER phone_calls");
-    } catch (Exception $e) {
-        // Column likely already exists, silently ignore
-    }
+
+        // analytics: add column, make NOT NULL, add to unique key
+        $db->query("ALTER TABLE analytics ADD COLUMN utm_source VARCHAR(100) NOT NULL DEFAULT '' AFTER phone_calls");
+    } catch (Exception $e) {}
 
     try {
         $db = Database::getInstance();
-        
-        // Add utm_source column to analytics_hourly table if it doesn't exist
-        $db->query("ALTER TABLE analytics_hourly ADD COLUMN utm_source VARCHAR(255) NULL AFTER phone_calls");
-    } catch (Exception $e) {
-        // Column likely already exists, silently ignore
-    }
+        $db->query("ALTER TABLE analytics DROP INDEX idx_utm_source");
+    } catch (Exception $e) {}
 
     try {
         $db = Database::getInstance();
-        
-        // Add utm_source column to analytics_monthly table if it doesn't exist
-        $db->query("ALTER TABLE analytics_monthly ADD COLUMN utm_source VARCHAR(255) NULL AFTER total_phone_calls");
-    } catch (Exception $e) {
-        // Column likely already exists, silently ignore
-    }
+        $db->query("ALTER TABLE analytics DROP INDEX unique_daily");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+        $db->query("ALTER TABLE analytics ADD UNIQUE KEY unique_daily (`page_slug`, `language`, `date`, `utm_source`)");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+        $db->query("ALTER TABLE analytics MODIFY COLUMN `utm_source` varchar(100) NOT NULL DEFAULT ''");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+
+        // analytics_hourly: add column, make NOT NULL, add to unique key
+        $db->query("ALTER TABLE analytics_hourly ADD COLUMN utm_source VARCHAR(100) NOT NULL DEFAULT '' AFTER phone_calls");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+        $db->query("ALTER TABLE analytics_hourly DROP INDEX idx_utm_source");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+        $db->query("ALTER TABLE analytics_hourly DROP INDEX unique_hourly");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+        $db->query("ALTER TABLE analytics_hourly ADD UNIQUE KEY unique_hourly (`page_slug`, `language`, `date`, `hour`, `utm_source`)");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+        $db->query("ALTER TABLE analytics_hourly MODIFY COLUMN `utm_source` varchar(100) NOT NULL DEFAULT ''");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+
+        // analytics_monthly: add column, make NOT NULL, add to unique key
+        $db->query("ALTER TABLE analytics_monthly ADD COLUMN utm_source VARCHAR(100) NOT NULL DEFAULT '' AFTER total_phone_calls");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+        $db->query("ALTER TABLE analytics_monthly DROP INDEX unique_monthly");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+        $db->query("ALTER TABLE analytics_monthly ADD UNIQUE KEY unique_monthly (`page_slug`, `language`, `year`, `month`, `utm_source`)");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+        $db->query("ALTER TABLE analytics_monthly MODIFY COLUMN `utm_source` varchar(100) NOT NULL DEFAULT ''");
+    } catch (Exception $e) {}
+
+    try {
+        $db = Database::getInstance();
+        $db->query("ALTER TABLE analytics_internal_links DROP INDEX idx_utm_source");
+    } catch (Exception $e) {}
 }
 
 // Call once on app initialization
@@ -900,7 +956,7 @@ function bumpMonthlySummary($slug, $language, $deltaVisits, $deltaClicks, $delta
         $deltaClicks = (int)$deltaClicks;
         $deltaPhoneCalls = (int)$deltaPhoneCalls;
         $deltaDays = $isNewDay ? 1 : 0;
-        $utmSource = trim((string)$utmSource) ?: null;
+        $utmSource = trim((string)$utmSource) ?: '';
 
         $sql = "INSERT INTO analytics_monthly
                     (page_slug, language, year, month, total_visits, total_clicks, total_phone_calls, utm_source, unique_days)
@@ -927,7 +983,7 @@ function bumpHourlySummary($slug, $language, $deltaVisits, $deltaClicks, $deltaP
         $deltaVisits = (int)$deltaVisits;
         $deltaClicks = (int)$deltaClicks;
         $deltaPhoneCalls = (int)$deltaPhoneCalls;
-        $utmSource = trim((string)$utmSource) ?: null;
+        $utmSource = trim((string)$utmSource) ?: '';
 
         $sql = "INSERT INTO analytics_hourly
                     (page_slug, language, date, hour, visits, clicks, phone_calls, utm_source)
@@ -974,7 +1030,7 @@ function trackVisit($slug, $language) {
                 VALUES (?, ?, 1, 0, ?, ?) 
                 ON DUPLICATE KEY UPDATE visits = visits + 1";
 
-        $stmt = $db->query($sql, [$slug, $language, $utmSource ?: NULL, $date]);
+        $stmt = $db->query($sql, [$slug, $language, $utmSource ?: '', $date]);
         $isNewDay = ($stmt && $stmt->rowCount() === 1);
         bumpMonthlySummary($slug, $language, 1, 0, 0, $isNewDay, $utmSource);
         bumpHourlySummary($slug, $language, 1, 0, 0, $utmSource);
@@ -1049,7 +1105,7 @@ function trackClick($slug, $language, $utmSource = '') {
         $language = normalizeTrackingLanguage($language);
         if (!isValidAnalyticsSlug($slug)) return;
 
-        $utmSource = trim((string)$utmSource) ?: null;
+        $utmSource = trim((string)$utmSource) ?: '';
 
         $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, utm_source, date)
                 VALUES (?, ?, 0, 1, 0, ?, ?)
@@ -1078,7 +1134,7 @@ function trackPhoneCall($slug, $language, $utmSource = '') {
         $language = normalizeTrackingLanguage($language);
         if (!isValidAnalyticsSlug($slug)) return;
 
-        $utmSource = trim((string)$utmSource) ?: null;
+        $utmSource = trim((string)$utmSource) ?: '';
 
         $sql = "INSERT INTO analytics (page_slug, language, visits, clicks, phone_calls, utm_source, date) 
                 VALUES (?, ?, 0, 0, 1, ?, ?) 
