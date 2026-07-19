@@ -970,38 +970,11 @@ class Analytics {
     }
 
     public function getPageSpeed($months = 1) {
-        $months = (int)$months;
-        
-        $sql = "SELECT 
-                    page_slug,
-                    AVG(avg_time_seconds) as avg_load_time,
-                    COUNT(*) as sample_size
-                FROM analytics
-                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
-                  AND avg_time_seconds > 0
-                GROUP BY page_slug
-                ORDER BY avg_load_time DESC
-                LIMIT 10";
-        
-        return $this->db->fetchAll($sql, [$months]);
+        return [];
     }
 
     public function getBounceRates($months = 3) {
-        $months = (int)$months;
-        
-        $sql = "SELECT 
-                    page_slug,
-                    language,
-                    AVG(bounce_rate) as avg_bounce,
-                    SUM(visits) as total_visits
-                FROM analytics
-                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
-                GROUP BY page_slug, language
-                HAVING total_visits > 10
-                ORDER BY avg_bounce DESC
-                LIMIT 10";
-        
-        return $this->db->fetchAll($sql, [$months]);
+        return [];
     }
 
 

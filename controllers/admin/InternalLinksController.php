@@ -407,9 +407,9 @@ class InternalLinksController extends Controller {
     }
     
     private function getPopularPages($limit = 5) {
-        $sql = "SELECT p.id, p.slug, p.title_ru, COUNT(pv.id) as view_count
+        $sql = "SELECT p.id, p.slug, p.title_ru, COALESCE(SUM(a.visits), 0) as view_count
                 FROM pages p
-                LEFT JOIN page_views pv ON p.slug = pv.slug
+                LEFT JOIN analytics a ON p.slug = a.page_slug
                 WHERE p.is_published = 1
                 GROUP BY p.id
                 ORDER BY view_count DESC
