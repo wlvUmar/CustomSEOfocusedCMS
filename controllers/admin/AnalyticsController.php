@@ -62,7 +62,7 @@ class AnalyticsController extends Controller {
                 'pageName' => 'analytics/index'
             ];
         } else {
-            $chartAggregation = ($months <= 1) ? 'weekly' : 'monthly';
+            $chartAggregation = $months <= 1 ? 'daily' : ($months <= 3 ? 'weekly' : 'monthly');
             $utmStats = $this->analyticsModel->getTopUtmSources(null, $months * 30);
             $utmSources = array_column($utmStats, 'utm_source');
             
@@ -70,15 +70,21 @@ class AnalyticsController extends Controller {
                 'total' => $this->analyticsModel->getTotalStats(),
                 'current_month' => $this->analyticsModel->getCurrentMonthStats(),
                 'page_stats' => $this->analyticsModel->getPageStats($months),
-                'visits_chart' => $chartAggregation === 'weekly'
-                    ? $this->analyticsModel->getSitewideWeeklyChartData($months)
-                    : $this->analyticsModel->getSitewideChartData($months),
-                'clicks_chart' => $chartAggregation === 'weekly'
-                    ? $this->analyticsModel->getWeeklyChartData('clicks', $months)
-                    : $this->analyticsModel->getChartData('clicks', $months),
-                'phone_calls_chart' => $chartAggregation === 'weekly'
-                    ? $this->analyticsModel->getWeeklyChartData('phone_calls', $months)
-                    : $this->analyticsModel->getChartData('phone_calls', $months),
+                'visits_chart' => $chartAggregation === 'daily'
+                    ? $this->analyticsModel->getSitewideDailyChartData('visits', $months)
+                    : ($chartAggregation === 'weekly'
+                        ? $this->analyticsModel->getSitewideWeeklyChartData($months)
+                        : $this->analyticsModel->getSitewideChartData($months)),
+                'clicks_chart' => $chartAggregation === 'daily'
+                    ? $this->analyticsModel->getSitewideDailyChartData('clicks', $months)
+                    : ($chartAggregation === 'weekly'
+                        ? $this->analyticsModel->getWeeklyChartData('clicks', $months)
+                        : $this->analyticsModel->getChartData('clicks', $months)),
+                'phone_calls_chart' => $chartAggregation === 'daily'
+                    ? $this->analyticsModel->getSitewideDailyChartData('phone_calls', $months)
+                    : ($chartAggregation === 'weekly'
+                        ? $this->analyticsModel->getWeeklyChartData('phone_calls', $months)
+                        : $this->analyticsModel->getChartData('phone_calls', $months)),
                 'trends' => $this->analyticsModel->getPerformanceTrends(),
                 'top_performers' => $this->analyticsModel->getTopPerformers($months),
                 'language_stats' => $this->analyticsModel->getLanguageStats($months),

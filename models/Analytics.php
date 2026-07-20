@@ -120,6 +120,29 @@ class Analytics {
         return $result;
     }
 
+    public function getSitewideDailyChartData($type = 'visits', $months = 1) {
+        $months = (int)$months;
+        $field = ($type === 'visits') ? 'visits' : (($type === 'phone_calls') ? 'phone_calls' : 'clicks');
+        $sql = "SELECT
+                    date as visit_date,
+                    SUM($field) as value
+                FROM analytics_hourly
+                WHERE page_slug = '__site__'
+                  AND date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                GROUP BY visit_date
+                ORDER BY visit_date ASC";
+
+        $data = $this->db->fetchAll($sql, [$months]);
+
+        $result = [];
+        foreach ($data as $row) {
+            $label = date('M j', strtotime($row['visit_date']));
+            $result[$label] = (int)($row['value'] ?? 0);
+        }
+
+        return $result;
+    }
+
     public function getSitewideWeeklyChartData($months = 3) {
         $months = (int)$months;
         $sql = "SELECT
@@ -208,7 +231,7 @@ class Analytics {
         $sql = "SELECT 
                     date,
                     SUM($field) as value
-                FROM analytics
+                FROM analytics_hourly
                 WHERE date BETWEEN ? AND ?
                 GROUP BY date
                 ORDER BY date ASC";
@@ -275,7 +298,7 @@ class Analytics {
         $sql = "SELECT 
                     date,
                     SUM($field) as value
-                FROM analytics
+                FROM analytics_hourly
                 WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
                 GROUP BY date
                 ORDER BY date ASC";
@@ -302,7 +325,7 @@ class Analytics {
                     YEARWEEK(date, 1) as week_year,
                     DATE(DATE_SUB(date, INTERVAL WEEKDAY(date) DAY)) as week_start,
                     SUM($field) as value
-                FROM analytics
+                FROM analytics_hourly
                 WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
                 GROUP BY YEARWEEK(date, 1), week_start
                 ORDER BY week_start ASC";
