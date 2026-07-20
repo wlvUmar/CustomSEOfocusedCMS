@@ -142,10 +142,21 @@ function updateAnalyticsFilters() {
 </div>
 
 <!-- UTM Source Indicator Cards -->
-<?php if (!empty($stats['utm_stats'])): ?>
+<?php 
+$utmStats = $stats['utm_stats'] ?? [];
+$hasNonDirect = false;
+foreach ($utmStats as $source) {
+    $sourceName = !empty($source['utm_source']) ? strtolower($source['utm_source']) : 'direct';
+    if ($sourceName !== 'direct') {
+        $hasNonDirect = true;
+        break;
+    }
+}
+?>
+<?php if ($hasNonDirect): ?>
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px;">
     <?php 
-    foreach ($stats['utm_stats'] as $source): 
+    foreach ($utmStats as $source): 
         $sourceName = !empty($source['utm_source']) ? $source['utm_source'] : 'direct';
         $visits = (int)($source['visits'] ?? 0);
         
