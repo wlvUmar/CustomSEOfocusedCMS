@@ -938,9 +938,6 @@ function trackVisit($slug, $language) {
     if ($utmSource === '') {
         $utmSource = getReferrerSource();
     }
-    if ($utmSource === '') {
-        $utmSource = 'direct';
-    }
 
     // Atomic dedup: MySQL PRIMARY KEY prevents concurrent double-counting
     // Normalize utm_source so blank-tracking up to the dedup key
