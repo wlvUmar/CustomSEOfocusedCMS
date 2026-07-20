@@ -255,6 +255,16 @@ function isBot() {
     return false;
 }
 
+function getReferrerSource(): string {
+    $referer = $_SERVER['HTTP_REFERER'] ?? '';
+    if ($referer === '') return '';
+    $host = parse_url($referer, PHP_URL_HOST);
+    if (!$host) return '';
+    $host = preg_replace('/^www\./i', '', $host);
+    if (str_ends_with($host, 'kuplyu-tashkent.uz')) return '';
+    return $host;
+}
+
 function showError(int $code = 500) {
     global $router;
 
@@ -925,6 +935,12 @@ function trackVisit($slug, $language) {
     $visitorId = getOrCreateTrackingVisitorId();
     $date = date('Y-m-d');
     $utmSource = trim((string)($_GET['utm_source'] ?? ''));
+    if ($utmSource === '') {
+        $utmSource = getReferrerSource();
+    }
+    if ($utmSource === '') {
+        $utmSource = 'direct';
+    }
 
     // Atomic dedup: MySQL PRIMARY KEY prevents concurrent double-counting
     // Normalize utm_source so blank-tracking up to the dedup key
