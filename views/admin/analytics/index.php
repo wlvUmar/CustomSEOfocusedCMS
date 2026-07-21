@@ -282,9 +282,9 @@ window.currentAggregation = '<?= $stats['aggregation'] ?? 'monthly' ?>';
                 $ctr = isset($page['ctr'])
                     ? (float)$page['ctr']
                     : ($visits > 0 ? round(($phoneCalls / $visits) * 100, 2) : 0);
-                $visitsWidth = ($visits / $maxVisits) * 100;
-                $clicksWidth = ($clicks / $maxClicks) * 100;
-                $phonesWidth = ($phoneCalls / $maxPhones) * 100;
+                $visitsWidth = $maxVisits > 0 ? ($visits / $maxVisits) * 100 : 0;
+                $clicksWidth = $maxClicks > 0 ? ($clicks / $maxClicks) * 100 : 0;
+                $phonesWidth = $maxPhones > 0 ? ($phoneCalls / $maxPhones) * 100 : 0;
             ?>
             <tr
                 data-page-slug="<?= e((string)($page['page_slug'] ?? '')) ?>"
