@@ -199,7 +199,8 @@ window.updatePerformanceChart = async function (aggregation) {
     try {
         const months = getQueryParam('months') || 6;
         const rangeParam = RANGE_FILTER ? `&range=${encodeURIComponent(RANGE_FILTER)}` : '';
-        const response = await fetch(`${window.baseUrl}/admin/analytics/getData?months=${months}&aggregation=${aggregation}${rangeParam}`, {
+        const slugFilter = getQueryParam('slug') ? `&slug=${encodeURIComponent(getQueryParam('slug'))}` : '';
+        const response = await fetch(`${window.baseUrl}/admin/analytics/getData?months=${months}&aggregation=${aggregation}${rangeParam}${slugFilter}`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
         const data = await response.json();

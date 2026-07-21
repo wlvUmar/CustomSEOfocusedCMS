@@ -19,6 +19,7 @@ class AnalyticsController extends Controller {
 
         $months = isset($_GET['months']) ? intval($_GET['months']) : 6;
         $months = max(1, min(24, $months));
+        $slug = trim((string)($_GET['slug'] ?? ''));
         $range = $_GET['range'] ?? '';
         $rangeInfo = $this->resolveDateRange($range);
         $isWeeklyRange = ($range === 'last_week');
@@ -67,21 +68,21 @@ class AnalyticsController extends Controller {
             $utmSources = array_column($utmStats, 'utm_source');
             
             $stats = [
-                'total' => $this->analyticsModel->getTotalStats(),
+                'total' => $this->analyticsModel->getTotalStats($months),
                 'current_month' => $this->analyticsModel->getCurrentMonthStats(),
                 'page_stats' => $this->analyticsModel->getPageStats($months),
                 'visits_chart' => $chartAggregation === 'daily'
-                    ? $this->analyticsModel->getSitewideDailyChartData('visits', $months)
+                    ? $this->analyticsModel->getSitewideDailyChartData('visits', $months, $slug)
                     : ($chartAggregation === 'weekly'
-                        ? $this->analyticsModel->getSitewideWeeklyChartData($months)
-                        : $this->analyticsModel->getSitewideChartData($months)),
+                        ? $this->analyticsModel->getSitewideWeeklyChartData($months, $slug)
+                        : $this->analyticsModel->getSitewideChartData($months, $slug)),
                 'clicks_chart' => $chartAggregation === 'daily'
-                    ? $this->analyticsModel->getSitewideDailyChartData('clicks', $months)
+                    ? $this->analyticsModel->getSitewideDailyChartData('clicks', $months, $slug)
                     : ($chartAggregation === 'weekly'
                         ? $this->analyticsModel->getWeeklyChartData('clicks', $months)
                         : $this->analyticsModel->getChartData('clicks', $months)),
                 'phone_calls_chart' => $chartAggregation === 'daily'
-                    ? $this->analyticsModel->getSitewideDailyChartData('phone_calls', $months)
+                    ? $this->analyticsModel->getSitewideDailyChartData('phone_calls', $months, $slug)
                     : ($chartAggregation === 'weekly'
                         ? $this->analyticsModel->getWeeklyChartData('phone_calls', $months)
                         : $this->analyticsModel->getChartData('phone_calls', $months)),
@@ -95,6 +96,7 @@ class AnalyticsController extends Controller {
                 'view' => $view,
                 'range' => '',
                 'range_label' => '',
+                'slug' => $slug,
                 'pageName' => 'analytics/index'
             ];
         }
@@ -174,6 +176,7 @@ class AnalyticsController extends Controller {
         
         $months = $_GET['months'] ?? 6;
         $aggregation = $_GET['aggregation'] ?? 'monthly';
+        $slug = trim((string)($_GET['slug'] ?? ''));
         $range = $_GET['range'] ?? '';
         $rangeInfo = $this->resolveDateRange($range);
         
@@ -197,18 +200,18 @@ class AnalyticsController extends Controller {
         } else {
             switch ($aggregation) {
                 case 'daily':
-                    $visits = $this->analyticsModel->getDailyChartData('visits', $months);
-                    $clicks = $this->analyticsModel->getDailyChartData('clicks', $months);
-                    $phone_calls = $this->analyticsModel->getDailyChartData('phone_calls', $months);
+                    $visits = $this->analyticsModel->getSitewideDailyChartData('visits', $months, $slug);
+                    $clicks = $this->analyticsModel->getSitewideDailyChartData('clicks', $months, $slug);
+                    $phone_calls = $this->analyticsModel->getSitewideDailyChartData('phone_calls', $months, $slug);
                     break;
                 case 'weekly':
-                    $visits = $this->analyticsModel->getWeeklyChartData('visits', $months);
+                    $visits = $this->analyticsModel->getSitewideWeeklyChartData($months, $slug);
                     $clicks = $this->analyticsModel->getWeeklyChartData('clicks', $months);
                     $phone_calls = $this->analyticsModel->getWeeklyChartData('phone_calls', $months);
                     break;
                 case 'monthly':
                 default:
-                    $visits = $this->analyticsModel->getChartData('visits', $months);
+                    $visits = $this->analyticsModel->getSitewideChartData($months, $slug);
                     $clicks = $this->analyticsModel->getChartData('clicks', $months);
                     $phone_calls = $this->analyticsModel->getChartData('phone_calls', $months);
                     break;

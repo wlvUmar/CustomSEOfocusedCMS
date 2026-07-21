@@ -47,15 +47,21 @@ class Analytics {
         return $this->db->fetchAll($sql, [$startDate, $endDate]);
     }
 
-    public function getTotalStats() {
+    public function getTotalStats($months = null) {
         $sql = "SELECT 
                     SUM(total_visits) as total_visits,
                     SUM(total_clicks) as total_clicks,
                     SUM(total_phone_calls) as total_phone_calls,
                     COUNT(DISTINCT page_slug) as unique_pages
                 FROM analytics_monthly";
+        $params = [];
+        if ($months !== null) {
+            $months = (int)$months;
+            $sql .= " WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
+            $params[] = $months;
+        }
         
-        return $this->db->fetchOne($sql);
+        return $this->db->fetchOne($sql, $params);
     }
 
     public function getRangeTotalStats($startDate, $endDate) {
@@ -97,19 +103,21 @@ class Analytics {
         return $result;
     }
 
-    public function getSitewideChartData($months = 6) {
+    public function getSitewideChartData($months = 6, $pageSlug = '__site__') {
         $months = (int)$months;
+        $pageSlug = trim((string)$pageSlug) ?: '__site__';
         $sql = "SELECT
                     YEAR(date) as year,
                     MONTH(date) as month,
                     SUM(visits) as visits
                 FROM analytics_hourly
-                WHERE page_slug = '__site__'
+                WHERE page_slug = ?
                   AND date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
                 GROUP BY year, month
                 ORDER BY year ASC, month ASC";
+        $params = [$pageSlug, $months];
 
-        $data = $this->db->fetchAll($sql, [$months]);
+        $data = $this->db->fetchAll($sql, $params);
 
         $result = [];
         foreach ($data as $row) {
@@ -120,19 +128,21 @@ class Analytics {
         return $result;
     }
 
-    public function getSitewideDailyChartData($type = 'visits', $months = 1) {
+    public function getSitewideDailyChartData($type = 'visits', $months = 1, $pageSlug = '__site__') {
         $months = (int)$months;
+        $pageSlug = trim((string)$pageSlug) ?: '__site__';
         $field = ($type === 'visits') ? 'visits' : (($type === 'phone_calls') ? 'phone_calls' : 'clicks');
         $sql = "SELECT
                     date as visit_date,
                     SUM($field) as value
                 FROM analytics_hourly
-                WHERE page_slug = '__site__'
+                WHERE page_slug = ?
                   AND date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
                 GROUP BY visit_date
                 ORDER BY visit_date ASC";
+        $params = [$pageSlug, $months];
 
-        $data = $this->db->fetchAll($sql, [$months]);
+        $data = $this->db->fetchAll($sql, $params);
 
         $result = [];
         foreach ($data as $row) {
@@ -143,18 +153,20 @@ class Analytics {
         return $result;
     }
 
-    public function getSitewideWeeklyChartData($months = 3) {
+    public function getSitewideWeeklyChartData($months = 3, $pageSlug = '__site__') {
         $months = (int)$months;
+        $pageSlug = trim((string)$pageSlug) ?: '__site__';
         $sql = "SELECT
                     DATE(DATE_SUB(date, INTERVAL WEEKDAY(date) DAY)) as week_start,
                     SUM(visits) as visits
                 FROM analytics_hourly
-                WHERE page_slug = '__site__'
+                WHERE page_slug = ?
                   AND date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
                 GROUP BY week_start
                 ORDER BY week_start ASC";
+        $params = [$pageSlug, $months];
 
-        $data = $this->db->fetchAll($sql, [$months]);
+        $data = $this->db->fetchAll($sql, $params);
 
         $result = [];
         foreach ($data as $row) {
@@ -757,7 +769,7 @@ class Analytics {
     /**
      * Get top performing pages by conversion rate
      */
-    public function getTopPerformers($months = 3, $limit = 10) {
+    public function getTopPerformers($months = 3, $limit = 500) {
         $sql = "SELECT 
                     page_slug,
                     IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source,
@@ -784,7 +796,7 @@ class Analytics {
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls,
                     ROUND((SUM(phone_calls) / NULLIF(SUM(visits), 0)) * 100, 2) as ctr
-                FROM analytics
+                FROM analytics_hourly
                 WHERE date BETWEEN ? AND ?
                 GROUP BY page_slug, utm_source
                 HAVING visits > 0

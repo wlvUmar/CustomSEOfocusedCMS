@@ -224,6 +224,30 @@ foreach ($utmStats as $source) {
 <div class="chart-box">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2 style="margin: 0;"><i data-feather="activity"></i> Performance Overview</h2>
+
+        <?php
+        $allSlugs = [];
+        if (!empty($stats['page_stats'])) {
+            foreach ($stats['page_stats'] as $ps) {
+                $allSlugs[$ps['page_slug']] = true;
+            }
+        }
+        $currentSlug = $stats['slug'] ?? '';
+        ?>
+        <select onchange="filterChartByPage(this.value)" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
+            <option value="">All pages</option>
+            <?php foreach (array_keys($allSlugs) as $s): ?>
+            <option value="<?= e($s) ?>" <?= $currentSlug === $s ? 'selected' : '' ?>><?= e($s) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <script>
+        function filterChartByPage(slug) {
+            const params = new URLSearchParams(window.location.search);
+            if (slug) { params.set('slug', slug); }
+            else { params.delete('slug'); }
+            window.location = '?' + params.toString();
+        }
+        </script>
         
         <?php if (empty($stats['range'])): ?>
         <?php $activeAgg = $stats['aggregation'] ?? (($stats['months'] ?? 3) >= 3 ? 'monthly' : 'weekly'); ?>
