@@ -21,7 +21,7 @@ class AnalyticsController extends Controller {
         $months = max(1, min(24, $months));
         $slug = trim((string)($_GET['slug'] ?? ''));
         $utmSource = trim((string)($_GET['utm_source'] ?? ''));
-        $range = $_GET['range'] ?? '';
+        $range = $_GET['range'] ?? 'today';
         $rangeInfo = $this->resolveDateRange($range);
         $isWeeklyRange = ($range === 'last_week');
         
