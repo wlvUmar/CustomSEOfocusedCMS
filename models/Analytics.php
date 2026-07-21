@@ -61,6 +61,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -110,6 +112,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -338,6 +342,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -382,6 +388,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -423,6 +431,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -459,6 +469,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -760,6 +772,9 @@ class Analytics {
             $wherePrevious[] = "page_slug = ?";
             $paramsCurrent[] = $pageSlug;
             $paramsPrevious[] = $pageSlug;
+        } else {
+            $whereCurrent[] = "page_slug != '__site__'";
+            $wherePrevious[] = "page_slug != '__site__'";
         }
 
         if ($utmSource !== '') {
@@ -841,6 +856,9 @@ class Analytics {
             $wherePrevious[] = "page_slug = ?";
             $paramsCurrent[] = $pageSlug;
             $paramsPrevious[] = $pageSlug;
+        } else {
+            $whereCurrent[] = "page_slug != '__site__'";
+            $wherePrevious[] = "page_slug != '__site__'";
         }
 
         if ($utmSource !== '') {
@@ -935,6 +953,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -963,6 +983,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -991,6 +1013,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -1013,6 +1037,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -1022,7 +1048,6 @@ class Analytics {
 
         return $this->db->fetchAll($sql, $params);
     }
-
 
 
     /**
@@ -1379,6 +1404,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -1454,6 +1481,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";
@@ -1494,6 +1523,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             $sql .= " AND utm_source = ?";

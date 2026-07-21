@@ -205,7 +205,7 @@ function updateScorecards(data) {
             el.className = 'sc-change ' + (change >= 0 ? 'positive' : 'negative');
         }
     });
-    if (typeof feather !== 'undefined') feather.replace();
+    try { if (typeof feather !== 'undefined') feather.replace(); } catch (e) {}
 }
 
 function updateChartFromResponse(data) {
@@ -355,18 +355,17 @@ function attachSortListeners(tbody) {
 }
 
 function updateUtmStatsTable(data) {
-    const container = document.querySelector('.chart-box:has(#top-performers-table) ~ .chart-box');
+    const container = document.getElementById('utmStatsContainer');
+    if (!container) return;
     const utmStats = data.utm_stats || [];
-    const heading = document.querySelector('.chart-box:has(#top-performers-table) ~ .chart-box h2');
-    if (!heading) return;
 
     if (utmStats.length === 0) {
-        heading.closest('.chart-box').style.display = 'none';
+        container.style.display = 'none';
         return;
     }
-    heading.closest('.chart-box').style.display = '';
+    container.style.display = '';
 
-    const tbody = heading.closest('.chart-box').querySelector('table tbody');
+    const tbody = document.getElementById('utmStatsBody');
     if (!tbody) return;
 
     const totalClicks = utmStats.reduce((s, r) => s + Number(r.clicks || 0), 0);
@@ -410,7 +409,7 @@ function escapeHtml(str) {
 // Main dashboard update function
 window.updateDashboard = async function (aggregation) {
     if (!aggregation) {
-        aggregation = RANGE_FILTER ? 'daily' : (currentAggregation || 'monthly');
+        aggregation = RANGE_FILTER ? 'daily' : (window.currentAggregation || 'monthly');
     }
     if (RANGE_FILTER && aggregation !== 'daily') {
         return;
@@ -425,7 +424,7 @@ window.updateDashboard = async function (aggregation) {
         activeBtn.style.background = '#3b82f6'; activeBtn.style.color = 'white'; activeBtn.style.borderColor = '#3b82f6';
     }
 
-    currentAggregation = aggregation;
+    window.currentAggregation = aggregation;
 
     const months = getQueryParam('months') || 6;
     const rangeParam = RANGE_FILTER ? `&range=${encodeURIComponent(RANGE_FILTER)}` : '';

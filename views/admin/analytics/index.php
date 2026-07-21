@@ -51,7 +51,7 @@ function updateAnalyticsFilters() {
 }
 </script>
 <script>
-let currentAggregation = '<?= $stats['aggregation'] ?? 'monthly' ?>';
+window.currentAggregation = '<?= $stats['aggregation'] ?? 'monthly' ?>';
 </script>
 
 <!-- Performance Scorecards (GSC Style) -->
@@ -70,7 +70,7 @@ let currentAggregation = '<?= $stats['aggregation'] ?? 'monthly' ?>';
         phones: Object.values(phonesChartData || {})
     };
 </script>
-<script src="<?= BASE_URL ?>/js/admin/analytics.js"></script>
+<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=2"></script>
 
 <style>
     .performance-scorecards {
