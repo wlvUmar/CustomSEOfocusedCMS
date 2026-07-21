@@ -185,14 +185,14 @@ function canonicalUrlForArticle($id, $lang) {
 
 function isBot() {
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    
+
     // Empty User-Agent is almost certainly a bot or script
     if ($userAgent === '' || trim($userAgent) === '') {
         return true;
     }
-    
+
     $userAgentLower = strtolower($userAgent);
-    
+
     $bots = [
         // Search engines
         'googlebot',
@@ -220,6 +220,109 @@ function isBot() {
         'msnbot',
         'teoma',
         'seekbot',
+        // Social media / messenger preview bots
+        'facebookexternalhit',
+        'whatsapp',
+        'skypeuripreview',
+        'viber',
+        'pinterest',
+        'discord',
+        'slack',
+        'telegram',
+        // AI / LLM scrapers
+        'claude',
+        'anthropic-ai',
+        'cohere-ai',
+        'perplexitybot',
+        'diffbot',
+        'gptbot',
+        'chatgpt-user',
+        'bytespider',
+        'omili',
+        // SEO crawler tools
+        'semrush',
+        'majestic',
+        'ahrefsbot',
+        'dotbot',
+        'blexbot',
+        'seznambot',
+        'serpstatbot',
+        'seokicks',
+        'trendkite-akashic',
+        // Monitoring & uptime tools
+        'pingdom',
+        'statuscake',
+        'newrelic',
+        'uptimerobot',
+        'site24x7',
+        'freshping',
+        'uptime',
+        'datadogagent',
+        // Dev tools & HTTP libraries
+        'postman',
+        'insomnia',
+        'okhttp',
+        'axios',
+        'guzzle',
+        'aiohttp',
+        'httpx',
+        'requests',
+        'urllib',
+        'httplib',
+        'dart',
+        'node-fetch',
+        'php-curl-class',
+        // Browser automation
+        'headless',
+        'phantomjs',
+        'selenium',
+        'puppeteer',
+        'playwright',
+        'cypress',
+        'htmlunit',
+        // Cloud / infrastructure scanners
+        'netcraft',
+        'censys',
+        'shodan',
+        'zoomeye',
+        'fofa',
+        'onyphe',
+        'binaryedge',
+        'threatscan',
+        // Performance & validation tools
+        'pagespeed',
+        'lighthouse',
+        'webpagetest',
+        'google-web-light',
+        'validator',
+        'w3c_unicorn',
+        'nu-html-checker',
+        // Common bot-like platforms
+        'amazonbot',
+        'applebot',
+        'apple-pubsub',
+        'petalbot',
+        'iaskspider',
+        'jobboerse',
+        'proximic',
+        'blekkobot',
+        'grapeshot',
+        'netseer',
+        'linkfluence',
+        'iframely',
+        'paperlibot',
+        'nuzzel',
+        'flipboard',
+        'screaming frog',
+        'deepcrawl',
+        'sitebulb',
+        'netsystemsresearch',
+        'zoominfo',
+        'discoveryengine',
+        'ccbot',
+        'evc-batch',
+        'tweetedtimes',
+        'tinEye',
         // Crawler / spider patterns
         'spider',
         'crawler',
@@ -242,16 +345,16 @@ function isBot() {
         'perl',
         'ruby',
         'lua',
-        'Lynx',
+        'lynx',
     ];
-    
+
     foreach ($bots as $bot) {
         if (strpos($userAgentLower, $bot) !== false) {
             logDebug("[IS_BOT] Bot detected! Type: $bot, UA: $userAgent");
             return true;
         }
     }
-    
+
     return false;
 }
 
@@ -751,9 +854,14 @@ function setTrackingCookie(string $name, string $value, int $ttlSeconds): void
 
 function trackSiteVisit($language) {
     if (shouldSkipTracking()) return;
-    if (isBot()) return;
 
     $language = normalizeTrackingLanguage($language);
+
+    if (isBot()) {
+        trackBotVisit('__site__', $language);
+        return;
+    }
+
     $visitorId = getOrCreateTrackingVisitorId();
     $date = date('Y-m-d');
 
