@@ -47,7 +47,8 @@ function updateAnalyticsFilters() {
         params.delete('range');
     }
 
-    window.location = `?${params.toString()}`;
+    history.pushState(null, '', '?' + params.toString());
+    updateDashboard();
 }
 </script>
 <script>
@@ -70,7 +71,7 @@ window.currentAggregation = '<?= $stats['aggregation'] ?? 'monthly' ?>';
         phones: Object.values(phonesChartData || {})
     };
 </script>
-<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=2"></script>
+<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=3"></script>
 
 <style>
     .performance-scorecards {

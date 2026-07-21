@@ -24,7 +24,9 @@ function getQueryParam(name) {
     return '';
 }
 
-const RANGE_FILTER = getQueryParam('range');
+function getRangeFilter() {
+    return getQueryParam('range');
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     const performanceCanvas = document.getElementById('performanceChart');
@@ -32,7 +34,8 @@ document.addEventListener('DOMContentLoaded', function () {
         initPerformanceChart();
         setupScorecardToggles();
     }
-    if (RANGE_FILTER) {
+    const range = getRangeFilter();
+    if (range) {
         const weeklyBtn = document.getElementById('btn-weekly');
         const monthlyBtn = document.getElementById('btn-monthly');
         if (weeklyBtn) { weeklyBtn.disabled = true; weeklyBtn.style.opacity = '0.5'; weeklyBtn.style.cursor = 'not-allowed'; }
@@ -408,10 +411,11 @@ function escapeHtml(str) {
 
 // Main dashboard update function
 window.updateDashboard = async function (aggregation) {
+    const rangeFilter = getRangeFilter();
     if (!aggregation) {
-        aggregation = RANGE_FILTER ? 'daily' : (window.currentAggregation || 'monthly');
+        aggregation = rangeFilter ? 'daily' : (window.currentAggregation || 'monthly');
     }
-    if (RANGE_FILTER && aggregation !== 'daily') {
+    if (rangeFilter && aggregation !== 'daily') {
         return;
     }
 
@@ -426,8 +430,14 @@ window.updateDashboard = async function (aggregation) {
 
     window.currentAggregation = aggregation;
 
+    // Enable/disable aggregation buttons based on range mode
+    const weeklyBtn = document.getElementById('btn-weekly');
+    const monthlyBtn = document.getElementById('btn-monthly');
+    if (weeklyBtn) { weeklyBtn.disabled = !!rangeFilter; weeklyBtn.style.opacity = rangeFilter ? '0.5' : ''; weeklyBtn.style.cursor = rangeFilter ? 'not-allowed' : ''; }
+    if (monthlyBtn) { monthlyBtn.disabled = !!rangeFilter; monthlyBtn.style.opacity = rangeFilter ? '0.5' : ''; monthlyBtn.style.cursor = rangeFilter ? 'not-allowed' : ''; }
+
     const months = getQueryParam('months') || 6;
-    const rangeParam = RANGE_FILTER ? `&range=${encodeURIComponent(RANGE_FILTER)}` : '';
+    const rangeParam = rangeFilter ? `&range=${encodeURIComponent(rangeFilter)}` : '';
     const slug = document.getElementById('pageSlugFilter') ? document.getElementById('pageSlugFilter').value : '';
     const utmSource = document.getElementById('utmSourceFilter') ? document.getElementById('utmSourceFilter').value : '';
 

@@ -20,8 +20,12 @@ class Analytics {
             $params[] = $slug;
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY year, month ORDER BY year DESC, month DESC";
 
@@ -40,8 +44,12 @@ class Analytics {
             $params[] = $slug;
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY page_slug, language ORDER BY visits DESC";
 
@@ -65,8 +73,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY page_slug, language ORDER BY visits DESC";
 
@@ -93,8 +105,12 @@ class Analytics {
             $needsPrefix = false;
         }
         if ($utmSource !== '') {
-            $sql .= ($needsPrefix ? " WHERE" : " AND") . " utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= ($needsPrefix ? " WHERE" : " AND") . " (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= ($needsPrefix ? " WHERE" : " AND") . " utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         
         return $this->db->fetchOne($sql, $params);
@@ -116,8 +132,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
 
         return $this->db->fetchOne($sql, $params);
@@ -168,8 +188,12 @@ class Analytics {
             $params[] = $pageSlug;
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY year, month
                 ORDER BY year ASC, month ASC";
@@ -203,8 +227,12 @@ class Analytics {
             $params[] = $pageSlug;
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY visit_date
                 ORDER BY visit_date ASC";
@@ -237,8 +265,12 @@ class Analytics {
             $params[] = $pageSlug;
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY week_start
                 ORDER BY week_start ASC";
@@ -266,8 +298,12 @@ class Analytics {
             $params[] = $slug;
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY visit_date
                 ORDER BY visit_date ASC";
@@ -308,8 +344,12 @@ class Analytics {
             $params[] = $slug;
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY hour
                 ORDER BY hour ASC";
@@ -346,8 +386,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY date
                 ORDER BY date ASC";
@@ -392,8 +436,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY hour
                 ORDER BY hour ASC";
@@ -435,8 +483,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY date
                 ORDER BY date ASC";
@@ -473,8 +525,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY YEARWEEK(date, 1), week_start
                 ORDER BY week_start ASC";
@@ -778,10 +834,15 @@ class Analytics {
         }
 
         if ($utmSource !== '') {
-            $whereCurrent[] = "utm_source = ?";
-            $wherePrevious[] = "utm_source = ?";
-            $paramsCurrent[] = $utmSource;
-            $paramsPrevious[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $whereCurrent[] = "(utm_source = '' OR utm_source IS NULL)";
+                $wherePrevious[] = "(utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $whereCurrent[] = "utm_source = ?";
+                $wherePrevious[] = "utm_source = ?";
+                $paramsCurrent[] = $utmSource;
+                $paramsPrevious[] = $utmSource;
+            }
         }
 
         $whereCurrent[] = "YEAR(date) = ?";
@@ -862,10 +923,15 @@ class Analytics {
         }
 
         if ($utmSource !== '') {
-            $whereCurrent[] = "utm_source = ?";
-            $wherePrevious[] = "utm_source = ?";
-            $paramsCurrent[] = $utmSource;
-            $paramsPrevious[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $whereCurrent[] = "(utm_source = '' OR utm_source IS NULL)";
+                $wherePrevious[] = "(utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $whereCurrent[] = "utm_source = ?";
+                $wherePrevious[] = "utm_source = ?";
+                $paramsCurrent[] = $utmSource;
+                $paramsPrevious[] = $utmSource;
+            }
         }
 
         $sql = "
@@ -957,8 +1023,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY page_slug, utm_source
                 HAVING visits > 0
@@ -987,8 +1057,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY page_slug, utm_source
                 HAVING visits > 0
@@ -1017,8 +1091,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY language";
         
@@ -1041,8 +1119,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY language";
 
@@ -1408,8 +1490,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY utm_source
                 ORDER BY SUM(visits) DESC";
@@ -1485,8 +1571,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY utm_source
                 ORDER BY SUM(visits) DESC";
@@ -1527,8 +1617,12 @@ class Analytics {
             $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
-            $sql .= " AND utm_source = ?";
-            $params[] = $utmSource;
+            if ($utmSource === 'direct') {
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
+            } else {
+                $sql .= " AND utm_source = ?";
+                $params[] = $utmSource;
+            }
         }
         $sql .= " GROUP BY utm_source
                 ORDER BY phone_calls DESC";
