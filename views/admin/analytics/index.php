@@ -71,7 +71,7 @@ window.currentAggregation = '<?= $stats['aggregation'] ?? 'monthly' ?>';
         phones: Object.values(phonesChartData || {})
     };
 </script>
-<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=3"></script>
+<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=4"></script>
 
 <style>
     .performance-scorecards {

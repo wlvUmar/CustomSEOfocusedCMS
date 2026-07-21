@@ -402,6 +402,36 @@ function updateUtmStatsTable(data) {
     }).join('');
 }
 
+function updateSlugDropdown(pageStats) {
+    const select = document.getElementById('pageSlugFilter');
+    if (!select) return;
+    const currentValue = select.value;
+    const slugs = {};
+    (pageStats || []).forEach(ps => { if (ps.page_slug) slugs[ps.page_slug] = true; });
+    const sorted = Object.keys(slugs).sort();
+    select.innerHTML = '<option value="">All pages</option>' +
+        sorted.map(s => `<option value="${escapeHtml(s)}" ${currentValue === s ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('');
+}
+
+function updateUtmDropdown(utmStats) {
+    const select = document.getElementById('utmSourceFilter');
+    if (!select) return;
+    const currentValue = select.value;
+    const sources = {};
+    (utmStats || []).forEach(s => {
+        const name = s.utm_source || 'direct';
+        sources[name] = true;
+    });
+    const sorted = Object.keys(sources).sort();
+    let html = '<option value="">All UTM Sources</option>';
+    html += '<option value="direct" ' + (currentValue === 'direct' ? 'selected' : '') + '>Direct</option>';
+    sorted.forEach(name => {
+        if (name === 'direct') return;
+        html += `<option value="${escapeHtml(name)}" ${currentValue === name ? 'selected' : ''}>${escapeHtml(name)}</option>`;
+    });
+    select.innerHTML = html;
+}
+
 function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
@@ -452,6 +482,8 @@ window.updateDashboard = async function (aggregation) {
         updateChartFromResponse(data);
         updatePerformingPagesTable(data);
         updateUtmStatsTable(data);
+        updateSlugDropdown(data.page_stats);
+        updateUtmDropdown(data.utm_stats);
     } catch (error) {
         console.error('Error fetching dashboard data:', error);
     }
