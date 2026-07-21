@@ -12,6 +12,10 @@ class Database {
                 PDO::ATTR_EMULATE_PREPARES => false,
             ];
             $this->pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+            $tz = date('P');
+            if ($tz) {
+                $this->pdo->exec("SET time_zone = '$tz'");
+            }
         } catch (PDOException $e) {
             die("Database connection failed: " . $e->getMessage());
         }

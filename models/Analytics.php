@@ -186,6 +186,8 @@ class Analytics {
         } elseif ($pageSlug !== '__site__') {
             $sql .= " AND page_slug = ?";
             $params[] = $pageSlug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             if ($utmSource === 'direct') {
@@ -225,6 +227,8 @@ class Analytics {
         } elseif ($pageSlug !== '__site__') {
             $sql .= " AND page_slug = ?";
             $params[] = $pageSlug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             if ($utmSource === 'direct') {
@@ -263,6 +267,8 @@ class Analytics {
         } elseif ($pageSlug !== '__site__') {
             $sql .= " AND page_slug = ?";
             $params[] = $pageSlug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             if ($utmSource === 'direct') {
@@ -296,6 +302,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             if ($utmSource === 'direct') {
@@ -342,6 +350,8 @@ class Analytics {
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             if ($utmSource === 'direct') {

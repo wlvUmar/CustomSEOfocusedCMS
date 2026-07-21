@@ -833,8 +833,9 @@ function getOrCreateTrackingVisitorId(): string
         return $visitorId;
     }
 
-    // 3) Fall back to random ID
-    $visitorId = bin2hex(random_bytes(16));
+    // 3) Fall back to IP-stable ID (same IP = same visitor, prevents bot dedup bypass)
+    $ip = getClientIp() ?: '0.0.0.0';
+    $visitorId = 'ip_' . hash('sha256', $ip);
     setTrackingCookie($cookieName, $visitorId, 30 * 24 * 60 * 60);
     return $visitorId;
 }
@@ -859,6 +860,10 @@ function trackSiteVisit($language) {
 
     if (isBot()) {
         trackBotVisit('__site__', $language);
+        return;
+    }
+
+    if (!trackingRateLimit('site_visit', 60, 3600)) {
         return;
     }
 
@@ -1040,6 +1045,10 @@ function trackVisit($slug, $language) {
         return;
     }
 
+    if (!trackingRateLimit('visit', 60, 3600)) {
+        return;
+    }
+
     $visitorId = getOrCreateTrackingVisitorId();
     $date = date('Y-m-d');
     $utmSource = trim((string)($_GET['utm_source'] ?? ''));
@@ -1114,7 +1123,17 @@ function trackBotVisit($slug, $language) {
             } elseif (preg_match('/(facebook|twitter|slack|discord|whatsapp|telegram|pinterest|linkedin)externalhit/i', $userAgent, $matches)) {
                 $botType = strtolower($matches[1]);
             } else {
-                $botType = 'other';
+                // Soft heuristics: refine 'other' with behavioral signals
+                // These are NOT used to gate visits — only to classify bot type
+                $acceptLang = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
+                $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+                if ($acceptLang === '') {
+                    $botType = 'no_accept_language';
+                } elseif ($accept === '') {
+                    $botType = 'no_accept';
+                } else {
+                    $botType = 'other';
+                }
             }
         }
         
