@@ -20,6 +20,7 @@ class AnalyticsController extends Controller {
         $months = isset($_GET['months']) ? intval($_GET['months']) : 6;
         $months = max(1, min(24, $months));
         $slug = trim((string)($_GET['slug'] ?? ''));
+        $utmSource = trim((string)($_GET['utm_source'] ?? ''));
         $range = $_GET['range'] ?? '';
         $rangeInfo = $this->resolveDateRange($range);
         $isWeeklyRange = ($range === 'last_week');
@@ -34,25 +35,25 @@ class AnalyticsController extends Controller {
             $end = $rangeInfo['end'];
 
             $isSingleDay = ($start === $end);
-            $utmStats = $this->analyticsModel->getUtmSourceStats($start, $end);
+            $utmStats = $this->analyticsModel->getUtmSourceStats($start, $end, $slug, $utmSource);
             $utmSources = array_column($utmStats, 'utm_source');
             
             $stats = [
-                'total' => $this->analyticsModel->getRangeTotalStats($start, $end),
+                'total' => $this->analyticsModel->getRangeTotalStats($start, $end, $slug, $utmSource),
                 'current_month' => $this->analyticsModel->getCurrentMonthStats(),
-                'page_stats' => $this->analyticsModel->getRangePageStats($start, $end),
+                'page_stats' => $this->analyticsModel->getRangePageStats($start, $end, $slug, $utmSource),
                 'visits_chart' => $isSingleDay
-                    ? $this->analyticsModel->getSitewideHourlyChartDataForDate($start)
-                    : $this->analyticsModel->getSitewideRangeChartData($start, $end, $isWeeklyRange ? 'weekday' : 'date'),
+                    ? $this->analyticsModel->getSitewideHourlyChartDataForDate($start, $slug, $utmSource)
+                    : $this->analyticsModel->getSitewideRangeChartData($start, $end, $isWeeklyRange ? 'weekday' : 'date', $slug, $utmSource),
                 'clicks_chart' => $isSingleDay
-                    ? $this->analyticsModel->getHourlyChartDataForDate('clicks', $start)
-                    : $this->analyticsModel->getRangeChartData('clicks', $start, $end, $isWeeklyRange ? 'weekday' : 'date'),
+                    ? $this->analyticsModel->getHourlyChartDataForDate('clicks', $start, $slug, $utmSource)
+                    : $this->analyticsModel->getRangeChartData('clicks', $start, $end, $isWeeklyRange ? 'weekday' : 'date', $slug, $utmSource),
                 'phone_calls_chart' => $isSingleDay
-                    ? $this->analyticsModel->getHourlyChartDataForDate('phone_calls', $start)
-                    : $this->analyticsModel->getRangeChartData('phone_calls', $start, $end, $isWeeklyRange ? 'weekday' : 'date'),
-                'trends' => $this->analyticsModel->getPerformanceTrendsByDateRange($start, $end),
-                'top_performers' => $this->analyticsModel->getRangeTopPerformers($start, $end),
-                'language_stats' => $this->analyticsModel->getRangeLanguageStats($start, $end),
+                    ? $this->analyticsModel->getHourlyChartDataForDate('phone_calls', $start, $slug, $utmSource)
+                    : $this->analyticsModel->getRangeChartData('phone_calls', $start, $end, $isWeeklyRange ? 'weekday' : 'date', $slug, $utmSource),
+                'trends' => $this->analyticsModel->getPerformanceTrendsByDateRange($start, $end, null, $slug, $utmSource),
+                'top_performers' => $this->analyticsModel->getRangeTopPerformers($start, $end, $slug, $utmSource),
+                'language_stats' => $this->analyticsModel->getRangeLanguageStats($start, $end, $slug, $utmSource),
                 'utm_stats' => $utmStats,
                 'utm_sources' => $utmSources,
                 'months' => $months,
@@ -64,31 +65,31 @@ class AnalyticsController extends Controller {
             ];
         } else {
             $chartAggregation = $months <= 1 ? 'daily' : ($months <= 3 ? 'weekly' : 'monthly');
-            $utmStats = $this->analyticsModel->getTopUtmSources(null, $months * 30);
+            $utmStats = $this->analyticsModel->getTopUtmSources(null, $months * 30, $slug, $utmSource);
             $utmSources = array_column($utmStats, 'utm_source');
             
             $stats = [
-                'total' => $this->analyticsModel->getTotalStats($months),
+                'total' => $this->analyticsModel->getTotalStats($months, $slug, $utmSource),
                 'current_month' => $this->analyticsModel->getCurrentMonthStats(),
-                'page_stats' => $this->analyticsModel->getPageStats($months),
+                'page_stats' => $this->analyticsModel->getPageStats($months, $slug, $utmSource),
                 'visits_chart' => $chartAggregation === 'daily'
-                    ? $this->analyticsModel->getSitewideDailyChartData('visits', $months, $slug)
+                    ? $this->analyticsModel->getSitewideDailyChartData('visits', $months, $slug, '', $utmSource)
                     : ($chartAggregation === 'weekly'
-                        ? $this->analyticsModel->getSitewideWeeklyChartData($months, $slug)
-                        : $this->analyticsModel->getSitewideChartData($months, $slug)),
+                        ? $this->analyticsModel->getSitewideWeeklyChartData($months, $slug, '', $utmSource)
+                        : $this->analyticsModel->getSitewideChartData($months, $slug, '', $utmSource)),
                 'clicks_chart' => $chartAggregation === 'daily'
-                    ? $this->analyticsModel->getSitewideDailyChartData('clicks', $months, $slug)
+                    ? $this->analyticsModel->getSitewideDailyChartData('clicks', $months, $slug, '', $utmSource)
                     : ($chartAggregation === 'weekly'
-                        ? $this->analyticsModel->getWeeklyChartData('clicks', $months)
-                        : $this->analyticsModel->getChartData('clicks', $months)),
+                        ? $this->analyticsModel->getWeeklyChartData('clicks', $months, $slug, $utmSource)
+                        : $this->analyticsModel->getChartData('clicks', $months, $slug, $utmSource)),
                 'phone_calls_chart' => $chartAggregation === 'daily'
-                    ? $this->analyticsModel->getSitewideDailyChartData('phone_calls', $months, $slug)
+                    ? $this->analyticsModel->getSitewideDailyChartData('phone_calls', $months, $slug, '', $utmSource)
                     : ($chartAggregation === 'weekly'
-                        ? $this->analyticsModel->getWeeklyChartData('phone_calls', $months)
-                        : $this->analyticsModel->getChartData('phone_calls', $months)),
-                'trends' => $this->analyticsModel->getPerformanceTrends(),
-                'top_performers' => $this->analyticsModel->getTopPerformers($months),
-                'language_stats' => $this->analyticsModel->getLanguageStats($months),
+                        ? $this->analyticsModel->getWeeklyChartData('phone_calls', $months, $slug, $utmSource)
+                        : $this->analyticsModel->getChartData('phone_calls', $months, $slug, $utmSource)),
+                'trends' => $this->analyticsModel->getPerformanceTrends(null, $slug, $utmSource),
+                'top_performers' => $this->analyticsModel->getTopPerformers($months, 500, $slug, $utmSource),
+                'language_stats' => $this->analyticsModel->getLanguageStats($months, $slug, $utmSource),
                 'utm_stats' => $utmStats,
                 'utm_sources' => $utmSources,
                 'months' => $months,
@@ -97,6 +98,7 @@ class AnalyticsController extends Controller {
                 'range' => '',
                 'range_label' => '',
                 'slug' => $slug,
+                'utm_source' => $utmSource,
                 'pageName' => 'analytics/index'
             ];
         }
@@ -174,9 +176,10 @@ class AnalyticsController extends Controller {
     public function getData() {
         $this->requireAuth();
         
-        $months = $_GET['months'] ?? 6;
+        $months = (int)($_GET['months'] ?? 6);
         $aggregation = $_GET['aggregation'] ?? 'monthly';
         $slug = trim((string)($_GET['slug'] ?? ''));
+        $utmSource = trim((string)($_GET['utm_source'] ?? ''));
         $range = $_GET['range'] ?? '';
         $rangeInfo = $this->resolveDateRange($range);
         
@@ -188,40 +191,58 @@ class AnalyticsController extends Controller {
             $start = $rangeInfo['start'];
             $end = $rangeInfo['end'];
             if ($start === $end) {
-                $visits = $this->analyticsModel->getHourlyChartDataForDate('visits', $start);
-                $clicks = $this->analyticsModel->getHourlyChartDataForDate('clicks', $start);
-                $phone_calls = $this->analyticsModel->getHourlyChartDataForDate('phone_calls', $start);
+                $visits = $this->analyticsModel->getHourlyChartDataForDate('visits', $start, $slug, $utmSource);
+                $clicks = $this->analyticsModel->getHourlyChartDataForDate('clicks', $start, $slug, $utmSource);
+                $phone_calls = $this->analyticsModel->getHourlyChartDataForDate('phone_calls', $start, $slug, $utmSource);
             } else {
                 $labelMode = $range === 'last_week' ? 'weekday' : 'date';
-                $visits = $this->analyticsModel->getRangeChartData('visits', $start, $end, $labelMode);
-                $clicks = $this->analyticsModel->getRangeChartData('clicks', $start, $end, $labelMode);
-                $phone_calls = $this->analyticsModel->getRangeChartData('phone_calls', $start, $end, $labelMode);
+                $visits = $this->analyticsModel->getRangeChartData('visits', $start, $end, $labelMode, $slug, $utmSource);
+                $clicks = $this->analyticsModel->getRangeChartData('clicks', $start, $end, $labelMode, $slug, $utmSource);
+                $phone_calls = $this->analyticsModel->getRangeChartData('phone_calls', $start, $end, $labelMode, $slug, $utmSource);
             }
+            $total = $this->analyticsModel->getRangeTotalStats($start, $end, $slug, $utmSource);
+            $page_stats = $this->analyticsModel->getRangePageStats($start, $end, $slug, $utmSource);
+            $trends = $this->analyticsModel->getPerformanceTrendsByDateRange($start, $end, null, $slug, $utmSource);
+            $top_performers = $this->analyticsModel->getRangeTopPerformers($start, $end, $slug, $utmSource);
+            $language_stats = $this->analyticsModel->getRangeLanguageStats($start, $end, $slug, $utmSource);
+            $utm_stats = $this->analyticsModel->getUtmSourceStats($start, $end, $slug, $utmSource);
         } else {
             switch ($aggregation) {
                 case 'daily':
-                    $visits = $this->analyticsModel->getSitewideDailyChartData('visits', $months, $slug);
-                    $clicks = $this->analyticsModel->getSitewideDailyChartData('clicks', $months, $slug);
-                    $phone_calls = $this->analyticsModel->getSitewideDailyChartData('phone_calls', $months, $slug);
+                    $visits = $this->analyticsModel->getSitewideDailyChartData('visits', $months, $slug, '', $utmSource);
+                    $clicks = $this->analyticsModel->getSitewideDailyChartData('clicks', $months, $slug, '', $utmSource);
+                    $phone_calls = $this->analyticsModel->getSitewideDailyChartData('phone_calls', $months, $slug, '', $utmSource);
                     break;
                 case 'weekly':
-                    $visits = $this->analyticsModel->getSitewideWeeklyChartData($months, $slug);
-                    $clicks = $this->analyticsModel->getWeeklyChartData('clicks', $months);
-                    $phone_calls = $this->analyticsModel->getWeeklyChartData('phone_calls', $months);
+                    $visits = $this->analyticsModel->getSitewideWeeklyChartData($months, $slug, '', $utmSource);
+                    $clicks = $this->analyticsModel->getWeeklyChartData('clicks', $months, $slug, $utmSource);
+                    $phone_calls = $this->analyticsModel->getWeeklyChartData('phone_calls', $months, $slug, $utmSource);
                     break;
                 case 'monthly':
                 default:
-                    $visits = $this->analyticsModel->getSitewideChartData($months, $slug);
-                    $clicks = $this->analyticsModel->getChartData('clicks', $months);
-                    $phone_calls = $this->analyticsModel->getChartData('phone_calls', $months);
+                    $visits = $this->analyticsModel->getSitewideChartData($months, $slug, '', $utmSource);
+                    $clicks = $this->analyticsModel->getChartData('clicks', $months, $slug, $utmSource);
+                    $phone_calls = $this->analyticsModel->getChartData('phone_calls', $months, $slug, $utmSource);
                     break;
             }
+            $total = $this->analyticsModel->getTotalStats($months, $slug, $utmSource);
+            $page_stats = $this->analyticsModel->getPageStats($months, $slug, $utmSource);
+            $trends = $this->analyticsModel->getPerformanceTrends(null, $slug, $utmSource);
+            $top_performers = $this->analyticsModel->getTopPerformers($months, 500, $slug, $utmSource);
+            $language_stats = $this->analyticsModel->getLanguageStats($months, $slug, $utmSource);
+            $utm_stats = $this->analyticsModel->getTopUtmSources(null, $months * 30, $slug, $utmSource);
         }
         
         $this->json([
             'visits' => $visits,
             'clicks' => $clicks,
-            'phone_calls' => $phone_calls
+            'phone_calls' => $phone_calls,
+            'total' => $total,
+            'page_stats' => $page_stats,
+            'trends' => $trends,
+            'top_performers' => $top_performers,
+            'language_stats' => $language_stats,
+            'utm_stats' => $utm_stats
         ]);
     }
 

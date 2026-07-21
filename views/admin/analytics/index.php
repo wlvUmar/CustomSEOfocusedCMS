@@ -50,6 +50,9 @@ function updateAnalyticsFilters() {
     window.location = `?${params.toString()}`;
 }
 </script>
+<script>
+let currentAggregation = '<?= $stats['aggregation'] ?? 'monthly' ?>';
+</script>
 
 <!-- Performance Scorecards (GSC Style) -->
 <script>
@@ -141,46 +144,6 @@ function updateAnalyticsFilters() {
     <?php endforeach; ?>
 </div>
 
-<!-- UTM Source Indicator Cards -->
-<?php 
-$utmStats = $stats['utm_stats'] ?? [];
-$hasNonDirect = false;
-foreach ($utmStats as $source) {
-    $sourceName = !empty($source['utm_source']) ? strtolower($source['utm_source']) : 'direct';
-    if ($sourceName !== 'direct') {
-        $hasNonDirect = true;
-        break;
-    }
-}
-?>
-<?php if ($hasNonDirect): ?>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px;">
-    <?php 
-    foreach ($utmStats as $source): 
-        $sourceName = !empty($source['utm_source']) ? $source['utm_source'] : 'direct';
-        $visits = (int)($source['visits'] ?? 0);
-        
-        $colors = [
-            'direct' => '#0284c7',
-            'instagram' => '#dc2626',
-            'facebook' => '#1d4ed8',
-            'google' => '#7c3aed',
-            'telegram' => '#059669',
-        ];
-        
-        $color = $colors[$sourceName] ?? '#64748b';
-    ?>
-    <div style="background: white; border: 2px solid <?= $color ?>; border-radius: 12px; padding: 20px; text-align: center; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'">
-        <div style="font-size: 12px; color: #64748b; font-weight: 600; text-transform: capitalize; margin-bottom: 8px;">
-            <?= e($sourceName) ?>
-        </div>
-        <div style="font-size: 32px; font-weight: 700; color: <?= $color ?>;">
-            <?= number_format($visits) ?>
-        </div>
-    </div>
-    <?php endforeach; ?>
-</div>
-<?php endif; ?>
 
 <!-- Insight Mini-Cards -->
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px;">
@@ -233,35 +196,40 @@ foreach ($utmStats as $source) {
             }
         }
         $currentSlug = $stats['slug'] ?? '';
+        $currentUtm = $stats['utm_source'] ?? '';
+        $allUtmSources = $stats['utm_sources'] ?? [];
         ?>
-        <select onchange="filterChartByPage(this.value)" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
-            <option value="">All pages</option>
-            <?php foreach (array_keys($allSlugs) as $s): ?>
-            <option value="<?= e($s) ?>" <?= $currentSlug === $s ? 'selected' : '' ?>><?= e($s) ?></option>
-            <?php endforeach; ?>
-        </select>
-        <script>
-        function filterChartByPage(slug) {
-            const params = new URLSearchParams(window.location.search);
-            if (slug) { params.set('slug', slug); }
-            else { params.delete('slug'); }
-            window.location = '?' + params.toString();
-        }
-        </script>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="pageSlugFilter" onchange="updateDashboard()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
+                <option value="">All pages</option>
+                <?php foreach (array_keys($allSlugs) as $s): ?>
+                <option value="<?= e($s) ?>" <?= $currentSlug === $s ? 'selected' : '' ?>><?= e($s) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <select id="utmSourceFilter" onchange="updateDashboard()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
+                <option value="">All UTM Sources</option>
+                <option value="direct" <?= $currentUtm === 'direct' ? 'selected' : '' ?>>Direct</option>
+                <?php foreach ($allUtmSources as $source): ?>
+                    <?php if ($source !== 'direct' && !empty($source)): ?>
+                    <option value="<?= e($source) ?>" <?= $currentUtm === $source ? 'selected' : '' ?>><?= e($source) ?></option>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </select>
+        </div>
         
         <?php if (empty($stats['range'])): ?>
         <?php $activeAgg = $stats['aggregation'] ?? (($stats['months'] ?? 3) >= 3 ? 'monthly' : 'weekly'); ?>
         <div class="btn-group" style="display: flex; gap: 8px;">
             <?php if ((int)($stats['months'] ?? 3) >= 1): ?>
-            <button onclick="updatePerformanceChart('daily')" id="btn-daily" class="agg-toggle-btn <?= $activeAgg === 'daily' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'daily' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'daily' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'daily' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
+            <button onclick="updateDashboard('daily')" id="btn-daily" class="agg-toggle-btn <?= $activeAgg === 'daily' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'daily' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'daily' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'daily' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
                 Daily
             </button>
-            <button onclick="updatePerformanceChart('weekly')" id="btn-weekly" class="agg-toggle-btn <?= $activeAgg === 'weekly' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'weekly' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'weekly' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'weekly' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
+            <button onclick="updateDashboard('weekly')" id="btn-weekly" class="agg-toggle-btn <?= $activeAgg === 'weekly' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'weekly' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'weekly' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'weekly' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
                 Weekly
             </button>
             <?php endif; ?>
             <?php if ((int)($stats['months'] ?? 3) >= 3): ?>
-            <button onclick="updatePerformanceChart('monthly')" id="btn-monthly" class="agg-toggle-btn <?= $activeAgg === 'monthly' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'monthly' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'monthly' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'monthly' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
+            <button onclick="updateDashboard('monthly')" id="btn-monthly" class="agg-toggle-btn <?= $activeAgg === 'monthly' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'monthly' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'monthly' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'monthly' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
                 Monthly
             </button>
             <?php endif; ?>
@@ -282,28 +250,13 @@ foreach ($utmStats as $source) {
             </div>
             <?php endif; ?>
         </div>
-        <select id="utmSourceFilter" onchange="filterPagesByUtmSource(this.value)" class="btn" style="width: auto; margin-bottom: 0;">
-            <option value="">All UTM Sources</option>
-            <option value="direct">Direct</option>
-            <?php 
-            if (!empty($stats['utm_sources'])) {
-                foreach ($stats['utm_sources'] as $source) {
-                    if ($source !== 'direct' && !empty($source)) {
-                        echo '<option value="' . e($source) . '">' . e($source) . '</option>';
-                    }
-                }
-            }
-            ?>
-        </select>
     </div>
     
     <?php
     $topPerformers = $stats['top_performers'] ?? [];
-    if (!empty($topPerformers)):
-        // Find max values for scaling
-        $maxVisits = max(array_column($topPerformers, 'visits'));
-        $maxClicks = max(array_column($topPerformers, 'clicks'));
-        $maxPhones = max(array_column($topPerformers, 'phone_calls'));
+    $maxVisits = !empty($topPerformers) ? max(array_column($topPerformers, 'visits')) : 1;
+    $maxClicks = !empty($topPerformers) ? max(array_column($topPerformers, 'clicks')) : 1;
+    $maxPhones = !empty($topPerformers) ? max(array_column($topPerformers, 'phone_calls')) : 1;
     ?>
     
     <table id="top-performers-table" style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
@@ -319,6 +272,7 @@ foreach ($utmStats as $source) {
             </tr>
         </thead>
         <tbody>
+            <?php if (!empty($topPerformers)): ?>
             <?php foreach ($topPerformers as $index => $page):
                 $visits = (int)($page['visits'] ?? 0);
                 $clicks = (int)($page['clicks'] ?? 0);
@@ -327,9 +281,6 @@ foreach ($utmStats as $source) {
                 $ctr = isset($page['ctr'])
                     ? (float)$page['ctr']
                     : ($visits > 0 ? round(($phoneCalls / $visits) * 100, 2) : 0);
-                $maxVisits = max(array_column($topPerformers, 'visits')) ?: 1;
-                $maxClicks = max(array_column($topPerformers, 'clicks')) ?: 1;
-                $maxPhones = max(array_column($topPerformers, 'phone_calls')) ?: 1;
                 $visitsWidth = ($visits / $maxVisits) * 100;
                 $clicksWidth = ($clicks / $maxClicks) * 100;
                 $phonesWidth = ($phoneCalls / $maxPhones) * 100;
@@ -343,64 +294,39 @@ foreach ($utmStats as $source) {
                 data-ctr="<?= $ctr ?>"
                 style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);"
             >
-                <td data-rank-cell style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 600; color: #94a3b8; font-size: 14px;">
-                    <?= $index + 1 ?>
+                <td data-rank-cell style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 600; color: #94a3b8; font-size: 14px;"><?= $index + 1 ?></td>
+                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
+                    <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($page['page_slug']) ?>"><?= htmlspecialchars($page['page_slug']) ?></div>
                 </td>
                 <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
-                    <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($page['page_slug']) ?>">
-                        <?= htmlspecialchars($page['page_slug']) ?>
-                    </div>
-                </td>
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
-                    <span style="display: inline-block; padding: 4px 8px; background: #f0f9ff; color: #0284c7; border-radius: 6px; font-size: 12px; font-weight: 600;">
-                        <?= e($utmSource) ?>
-                    </span>
+                    <span style="display: inline-block; padding: 4px 8px; background: #f0f9ff; color: #0284c7; border-radius: 6px; font-size: 12px; font-weight: 600;"><?= e($utmSource) ?></span>
                 </td>
                 <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
-                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #3b82f6;">
-                        <?= number_format($visits) ?>
-                    </div>
-                    <div style="background: #e0e7ff; height: 6px; border-radius: 3px; overflow: hidden;">
-                        <div style="background: #3b82f6; height: 100%; width: <?= $visitsWidth ?>%; border-radius: 3px;"></div>
-                    </div>
+                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #3b82f6;"><?= number_format($visits) ?></div>
+                    <div style="background: #e0e7ff; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #3b82f6; height: 100%; width: <?= $visitsWidth ?>%; border-radius: 3px;"></div></div>
                 </td>
                 <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
-                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #10b981;">
-                        <?= number_format($clicks) ?>
-                    </div>
-                    <div style="background: #d1fae5; height: 6px; border-radius: 3px; overflow: hidden;">
-                        <div style="background: #10b981; height: 100%; width: <?= $clicksWidth ?>%; border-radius: 3px;"></div>
-                    </div>
+                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #10b981;"><?= number_format($clicks) ?></div>
+                    <div style="background: #d1fae5; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #10b981; height: 100%; width: <?= $clicksWidth ?>%; border-radius: 3px;"></div></div>
                 </td>
                 <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
-                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #f59e0b;">
-                        <?= number_format($phoneCalls) ?>
-                    </div>
-                    <div style="background: #fef3c7; height: 6px; border-radius: 3px; overflow: hidden;">
-                        <div style="background: #f59e0b; height: 100%; width: <?= $phonesWidth ?>%; border-radius: 3px;"></div>
-                    </div>
+                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #f59e0b;"><?= number_format($phoneCalls) ?></div>
+                    <div style="background: #fef3c7; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #f59e0b; height: 100%; width: <?= $phonesWidth ?>%; border-radius: 3px;"></div></div>
                 </td>
                 <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-top-right-radius: 8px; border-bottom-right-radius: 8px; text-align: center;">
-                    <span style="display: inline-block; padding: 4px 12px; background: <?= $ctr >= 5 ? '#d1fae5' : ($ctr >= 2 ? '#fef3c7' : '#fee2e2') ?>; color: <?= $ctr >= 5 ? '#059669' : ($ctr >= 2 ? '#d97706' : '#dc2626') ?>; border-radius: 12px; font-size: 13px; font-weight: 600;">
-                        <?= $ctr ?>%
-                    </span>
+                    <span style="display: inline-block; padding: 4px 12px; background: <?= $ctr >= 5 ? '#d1fae5' : ($ctr >= 2 ? '#fef3c7' : '#fee2e2') ?>; color: <?= $ctr >= 5 ? '#059669' : ($ctr >= 2 ? '#d97706' : '#dc2626') ?>; border-radius: 12px; font-size: 13px; font-weight: 600;"><?= $ctr ?>%</span>
                 </td>
             </tr>
             <?php endforeach; ?>
+            <?php else: ?>
+            <tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">No data available yet</td></tr>
+            <?php endif; ?>
         </tbody>
     </table>
-    
-    <?php else: ?>
-    <div style="padding: 40px; text-align: center; color: #94a3b8;">
-        <i data-feather="inbox" style="width: 48px; height: 48px; margin-bottom: 16px;"></i>
-        <div>No data available yet</div>
-    </div>
-    <?php endif; ?>
 </div>
 
 <!-- UTM Source Performance -->
-<?php if (!empty($stats['utm_stats'])): ?>
-<div class="chart-box">
+<div class="chart-box" id="utmStatsContainer"<?= empty($stats['utm_stats']) ? ' style="display:none"' : '' ?>>
     <h2><i data-feather="link"></i> Traffic by UTM Source</h2>
     <?php if (!empty($stats['range_label'])): ?>
     <div style="margin-top: -8px; margin-bottom: 16px; color: #64748b; font-size: 13px;">
@@ -418,7 +344,7 @@ foreach ($utmStats as $source) {
                 <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Pages Affected</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="utmStatsBody">
             <?php 
             $totalClicks = array_sum(array_column($stats['utm_stats'], 'clicks'));
             $totalCalls = array_sum(array_column($stats['utm_stats'], 'phone_calls'));
@@ -463,7 +389,6 @@ foreach ($utmStats as $source) {
         </tbody>
     </table>
 </div>
-<?php endif; ?>
 
 
 <?php if (!IS_PRODUCTION): ?>
@@ -603,29 +528,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-function filterPagesByUtmSource(utmSource) {
-    const table = document.getElementById('top-performers-table');
-    if (!table) return;
-    
-    const rows = table.querySelectorAll('tbody tr');
-    rows.forEach(row => {
-        const rowSource = row.dataset.utmSource || 'direct';
-        if (utmSource === '' || rowSource === utmSource) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
-    
-    // Update rank numbers after filtering
-    let rankNum = 1;
-    rows.forEach(row => {
-        if (row.style.display !== 'none') {
-            const rankCell = row.querySelector('[data-rank-cell]');
-            if (rankCell) rankCell.textContent = String(rankNum++);
-        }
-    });
-}
+
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
