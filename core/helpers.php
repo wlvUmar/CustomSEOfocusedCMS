@@ -892,11 +892,10 @@ function setTrackingCookie(string $name, string $value, int $ttlSeconds): void
 }
 
 function trackSiteVisit($language) {
-    $auditCtx = ['slug' => '__site__', 'language' => $language, 'action' => 'start'];
-    logTrackingAudit('site_visit', $auditCtx);
+    $auditCtx = ['slug' => '__site__', 'language' => $language];
 
     if (shouldSkipTracking()) {
-        logTrackingAudit('site_visit', array_merge($auditCtx, ['action' => 'skipped_shouldSkipTracking']));
+        logTrackingAudit('site_visit', array_merge($auditCtx, ['action' => 'skipped']));
         return;
     }
 
@@ -904,7 +903,7 @@ function trackSiteVisit($language) {
     $auditCtx['language'] = $language;
 
     if (isBot()) {
-        logTrackingAudit('site_visit', array_merge($auditCtx, ['action' => 'bot_redirect']));
+        logTrackingAudit('site_visit', array_merge($auditCtx, ['action' => 'bot']));
         trackBotVisit('__site__', $language);
         return;
     }
@@ -920,7 +919,6 @@ function trackSiteVisit($language) {
     try {
         $db = Database::getInstance();
 
-        // Atomic dedup: one site visit per visitor per day
         $dedup = $db->query(
             "INSERT IGNORE INTO analytics_dedup_site_visits (visitor_id, view_date) VALUES (?, ?)",
             [$visitorId, $date]
@@ -1077,11 +1075,10 @@ function bumpHourlySummary($slug, $language, $deltaVisits, $deltaClicks, $deltaP
 }
 
 function trackVisit($slug, $language) {
-    $auditCtx = ['slug' => $slug, 'language' => $language, 'action' => 'start'];
-    logTrackingAudit('visit', $auditCtx);
+    $auditCtx = ['slug' => $slug, 'language' => $language];
 
     if (shouldSkipTracking()) {
-        logTrackingAudit('visit', array_merge($auditCtx, ['action' => 'skipped_shouldSkipTracking']));
+        logTrackingAudit('visit', array_merge($auditCtx, ['action' => 'skipped']));
         return;
     }
 
@@ -1100,7 +1097,7 @@ function trackVisit($slug, $language) {
     }
 
     if (isBot()) {
-        logTrackingAudit('visit', array_merge($auditCtx, ['action' => 'bot_redirect']));
+        logTrackingAudit('visit', array_merge($auditCtx, ['action' => 'bot']));
         trackBotVisit($slug, $language);
         return;
     }
