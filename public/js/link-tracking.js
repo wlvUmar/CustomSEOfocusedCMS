@@ -6,7 +6,7 @@
 
     function getCurrentSlug() {
         const pathParts = window.location.pathname.split('/').filter(Boolean);
-        return pathParts[0] && pathParts[0].length > 2 ? pathParts[0] : 'home';
+        return pathParts[0] && pathParts[0].length > 2 ? pathParts[0] : 'main';
     }
 
     function getCurrentLanguage() {
@@ -210,7 +210,7 @@
                 if (part.length > 2) return part;
             }
 
-            return 'home';
+            return 'main';
         } catch (e) {
             return null;
         }
