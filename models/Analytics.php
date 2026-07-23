@@ -1041,7 +1041,7 @@ class Analytics {
             }
         }
         $sql .= " GROUP BY page_slug, utm_source
-                HAVING visits > 0
+                HAVING visits > 0 OR phone_calls > 0
                 ORDER BY ctr DESC, visits DESC
                 LIMIT ?";
         $params[] = $limit;
@@ -1075,7 +1075,7 @@ class Analytics {
             }
         }
         $sql .= " GROUP BY page_slug, utm_source
-                HAVING visits > 0
+                HAVING visits > 0 OR phone_calls > 0
                 ORDER BY ctr DESC, visits DESC";
         
         return $this->db->fetchAll($sql, $params);
