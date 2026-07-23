@@ -20,6 +20,14 @@ if (!file_exists($errorLogFile)) {
     chmod($errorLogFile, 0640);
 }
 
+// Tracking audit log for debugging inflated stats
+$trackingAuditLogFile = $logDir . '/tracking_audit.log';
+if (!file_exists($trackingAuditLogFile)) {
+    touch($trackingAuditLogFile);
+    chmod($trackingAuditLogFile, 0640);
+}
+define('TRACKING_AUDIT_LOG', $trackingAuditLogFile);
+
 ini_set('log_errors', 1);
 ini_set('error_log', $errorLogFile);
 ini_set('display_errors', IS_PRODUCTION ? 0 : 1);

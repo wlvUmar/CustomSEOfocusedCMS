@@ -39,6 +39,44 @@ function logInfo($message) {
     }
 }
 
+function logTrackingAudit(string $event, array $context = []): void {
+    $ts = date('Y-m-d H:i:s');
+    $ip = getClientIp() ?? 'unknown';
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'UNKNOWN';
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '-';
+    $referer = $_SERVER['HTTP_REFERER'] ?? '-';
+    $cookie = $_SERVER['HTTP_COOKIE'] ?? '-';
+    $acceptLang = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '-';
+    $accept = $_SERVER['HTTP_ACCEPT'] ?? '-';
+    $secFetchSite = $_SERVER['HTTP_SEC_FETCH_SITE'] ?? '-';
+    $secFetchMode = $_SERVER['HTTP_SEC_FETCH_MODE'] ?? '-';
+    $secFetchDest = $_SERVER['HTTP_SEC_FETCH_DEST'] ?? '-';
+    $cfIp = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '-';
+    $xForwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '-';
+
+    $line = json_encode([
+        'ts' => $ts,
+        'event' => $event,
+        'ip' => $ip,
+        'cf_ip' => $cfIp,
+        'x_forwarded' => $xForwarded,
+        'method' => $method,
+        'uri' => $uri,
+        'ua' => $ua,
+        'referer' => $referer,
+        'cookie' => $cookie,
+        'accept_lang' => $acceptLang,
+        'accept' => $accept,
+        'sec_fetch_site' => $secFetchSite,
+        'sec_fetch_mode' => $secFetchMode,
+        'sec_fetch_dest' => $secFetchDest,
+        'context' => $context,
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    error_log($line . "\n", 3, TRACKING_AUDIT_LOG);
+}
+
 // ─────────────────────────────────────────────────────────────
 // NOTE: Schema migrations are handled by migrate.php CLI.
 // Do NOT add ALTER TABLE / DDL in this file — see migrations/
@@ -854,16 +892,25 @@ function setTrackingCookie(string $name, string $value, int $ttlSeconds): void
 }
 
 function trackSiteVisit($language) {
-    if (shouldSkipTracking()) return;
+    $auditCtx = ['slug' => '__site__', 'language' => $language, 'action' => 'start'];
+    logTrackingAudit('site_visit', $auditCtx);
+
+    if (shouldSkipTracking()) {
+        logTrackingAudit('site_visit', array_merge($auditCtx, ['action' => 'skipped_shouldSkipTracking']));
+        return;
+    }
 
     $language = normalizeTrackingLanguage($language);
+    $auditCtx['language'] = $language;
 
     if (isBot()) {
+        logTrackingAudit('site_visit', array_merge($auditCtx, ['action' => 'bot_redirect']));
         trackBotVisit('__site__', $language);
         return;
     }
 
     if (!trackingRateLimit('site_visit', 60, 3600)) {
+        logTrackingAudit('site_visit', array_merge($auditCtx, ['action' => 'rate_limited']));
         return;
     }
 
@@ -879,6 +926,7 @@ function trackSiteVisit($language) {
             [$visitorId, $date]
         );
         if ($dedup->rowCount() === 0) {
+            logTrackingAudit('site_visit', array_merge($auditCtx, ['action' => 'dedup_skipped', 'visitor_id' => $visitorId, 'date' => $date]));
             return;
         }
 
@@ -888,6 +936,7 @@ function trackSiteVisit($language) {
                 ON DUPLICATE KEY UPDATE visits = visits + 1";
 
         $db->query($sql, [$language, $date, $hour]);
+        logTrackingAudit('site_visit', array_merge($auditCtx, ['action' => 'counted', 'visitor_id' => $visitorId, 'date' => $date, 'hour' => $hour]));
     } catch (Exception $e) {
         error_log("Site visit tracking error: " . $e->getMessage());
     }
@@ -1028,7 +1077,13 @@ function bumpHourlySummary($slug, $language, $deltaVisits, $deltaClicks, $deltaP
 }
 
 function trackVisit($slug, $language) {
-    if (shouldSkipTracking()) return;
+    $auditCtx = ['slug' => $slug, 'language' => $language, 'action' => 'start'];
+    logTrackingAudit('visit', $auditCtx);
+
+    if (shouldSkipTracking()) {
+        logTrackingAudit('visit', array_merge($auditCtx, ['action' => 'skipped_shouldSkipTracking']));
+        return;
+    }
 
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
     if (!IS_PRODUCTION && !empty($_GET['debug_ua']) && $_GET['debug_ua'] === '1') {
@@ -1038,14 +1093,20 @@ function trackVisit($slug, $language) {
     }
 
     $language = normalizeTrackingLanguage($language);
-    if (!isValidAnalyticsSlug($slug)) return;
+    $auditCtx['language'] = $language;
+    if (!isValidAnalyticsSlug($slug)) {
+        logTrackingAudit('visit', array_merge($auditCtx, ['action' => 'invalid_slug']));
+        return;
+    }
 
     if (isBot()) {
+        logTrackingAudit('visit', array_merge($auditCtx, ['action' => 'bot_redirect']));
         trackBotVisit($slug, $language);
         return;
     }
 
     if (!trackingRateLimit('visit', 60, 3600)) {
+        logTrackingAudit('visit', array_merge($auditCtx, ['action' => 'rate_limited']));
         return;
     }
 
@@ -1065,6 +1126,7 @@ function trackVisit($slug, $language) {
             [$visitorId, $slug, $language, $date, $utmSource]
         );
         if ($dedup->rowCount() === 0) {
+            logTrackingAudit('visit', array_merge($auditCtx, ['action' => 'dedup_skipped', 'visitor_id' => $visitorId, 'date' => $date, 'utm_source' => $utmSource]));
             return;
         }
     } catch (Exception $e) {
@@ -1085,6 +1147,7 @@ function trackVisit($slug, $language) {
         $isNewDay = ($stmt && $stmt->rowCount() === 1);
         bumpMonthlySummary($slug, $language, 1, 0, 0, $isNewDay, $utmSource);
         bumpHourlySummary($slug, $language, 1, 0, 0, $utmSource);
+        logTrackingAudit('visit', array_merge($auditCtx, ['action' => 'counted', 'visitor_id' => $visitorId, 'date' => $date, 'utm_source' => $utmSource, 'is_new_day' => $isNewDay]));
     } catch (Exception $e) {
         error_log("Analytics error: " . $e->getMessage());
     }
