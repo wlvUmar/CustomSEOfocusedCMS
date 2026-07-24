@@ -856,10 +856,13 @@ function trackingRateLimit(string $action, int $maxAttempts, int $windowSeconds)
 
 function getOrCreateTrackingVisitorId(): string
 {
-    // 1) Try existing cookie first
     $cookieName = 'trk_visitor_id';
+    $oneDay = 86400;
+
+    // 1) Try existing cookie first — refresh its TTL so it lives 1 day from now
     $visitorId = trim((string)($_COOKIE[$cookieName] ?? ''));
     if ($visitorId !== '') {
+        setTrackingCookie($cookieName, $visitorId, $oneDay);
         return $visitorId;
     }
 
@@ -867,14 +870,14 @@ function getOrCreateTrackingVisitorId(): string
     $gaId = getGaClientId();
     if ($gaId !== null) {
         $visitorId = 'ga_' . $gaId;
-        setTrackingCookie($cookieName, $visitorId, 365 * 24 * 60 * 60);
+        setTrackingCookie($cookieName, $visitorId, $oneDay);
         return $visitorId;
     }
 
     // 3) Fall back to IP-stable ID (same IP = same visitor, prevents bot dedup bypass)
     $ip = getClientIp() ?: '0.0.0.0';
     $visitorId = 'ip_' . hash('sha256', $ip);
-    setTrackingCookie($cookieName, $visitorId, 30 * 24 * 60 * 60);
+    setTrackingCookie($cookieName, $visitorId, $oneDay);
     return $visitorId;
 }
 

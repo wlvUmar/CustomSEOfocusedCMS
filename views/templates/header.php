@@ -349,14 +349,18 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
                 </svg>
             </div>
             <h2 class="bot-modal__title">
-                <?= $lang === 'ru' ? 'Узнайте цену онлайн' : 'Onlayn narxni bilish' ?>
+                <?= $lang === 'ru' ? 'Продайте технику онлайн' : 'Texnikani onlayn soting'?>
                 <span style="display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:11px;font-weight:700;vertical-align:middle;">Beta</span>
             </h2>
-            <p class="bot-modal__desc"><?= $lang === 'ru' ? 'Наш Telegram-бот оценит вашу технику по фото — быстро и бесплатно.' : 'Bizning Telegram-bot fotodan texnikani baholaydi — tez va bepul.' ?></p>
+            <p class="bot-modal__desc">
+                <?= $lang === 'ru'
+                    ? 'Отправьте фото, описание и желаемую цену. Если товар нам подходит, мы предложим цену покупки.'
+                    : 'Rasm, tavsif va istagan narxingizni yuboring. Agar tovar bizga mos kelsa, xarid narximizni taklif qilamiz.' ?>
+            </p>
             <ul class="bot-modal__steps">
                 <li class="bot-modal__step"><span class="bot-modal__step-num">1</span> <?= $lang === 'ru' ? 'Сфотографируйте технику' : 'Texnikaning rasmini oling' ?></li>
                 <li class="bot-modal__step"><span class="bot-modal__step-num">2</span> <?= $lang === 'ru' ? 'Отправьте фото боту' : 'Botga rasam yuboring' ?></li>
-                <li class="bot-modal__step"><span class="bot-modal__step-num">3</span> <?= $lang === 'ru' ? 'Получите цену моментально' : 'Narxni oniy oling' ?></li>
+                <li class="bot-modal__step"><span class="bot-modal__step-num">3</span> <?= $lang === 'ru' ?  'Получите ответ от нашей команды' : 'Jamoamizdan javob oling' ?></li>
             </ul>
             <a href="<?= TELEGRAM_BOT_URL ?>?start=<?= urlencode($page["clientID"] ?? "") ?>" class="bot-modal__cta" target="_blank" rel="noopener" data-track-click="1" onclick="markBotModalSeen()">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
