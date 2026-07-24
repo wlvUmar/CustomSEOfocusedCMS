@@ -213,15 +213,14 @@ function updateAnalyticsFilters() {
                     <?php endif; ?>
                 <?php endforeach; ?>
             </select>
-        </div>
-        
-        <?php if (empty($stats['range'])): ?>
+            <?php if (empty($stats['range'])): ?>
             <select id="aggregationSelect" onchange="updateDashboard(this.value)" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
                 <option value="daily" <?= ($stats['aggregation'] ?? 'monthly') === 'daily' ? 'selected' : '' ?>>Daily</option>
                 <option value="weekly" <?= ($stats['aggregation'] ?? 'monthly') === 'weekly' ? 'selected' : '' ?>>Weekly</option>
                 <option value="monthly" <?= ($stats['aggregation'] ?? 'monthly') === 'monthly' ? 'selected' : '' ?>>Monthly</option>
             </select>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
     </div>
     <canvas id="performanceChart" height="320"></canvas>
 </div>
