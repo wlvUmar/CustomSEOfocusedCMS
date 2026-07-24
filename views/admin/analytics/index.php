@@ -51,9 +51,6 @@ function updateAnalyticsFilters() {
     updateDashboard();
 }
 </script>
-<script>
-window.currentAggregation = '<?= $stats['aggregation'] ?? 'monthly' ?>';
-</script>
 
 <!-- Performance Scorecards (GSC Style) -->
 <script>
@@ -219,22 +216,11 @@ window.currentAggregation = '<?= $stats['aggregation'] ?? 'monthly' ?>';
         </div>
         
         <?php if (empty($stats['range'])): ?>
-        <?php $activeAgg = $stats['aggregation'] ?? (($stats['months'] ?? 3) >= 3 ? 'monthly' : 'weekly'); ?>
-        <div class="btn-group" style="display: flex; gap: 8px;">
-            <?php if ((int)($stats['months'] ?? 3) >= 1): ?>
-            <button onclick="updateDashboard('daily')" id="btn-daily" class="agg-toggle-btn <?= $activeAgg === 'daily' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'daily' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'daily' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'daily' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
-                Daily
-            </button>
-            <button onclick="updateDashboard('weekly')" id="btn-weekly" class="agg-toggle-btn <?= $activeAgg === 'weekly' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'weekly' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'weekly' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'weekly' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
-                Weekly
-            </button>
-            <?php endif; ?>
-            <?php if ((int)($stats['months'] ?? 3) >= 3): ?>
-            <button onclick="updateDashboard('monthly')" id="btn-monthly" class="agg-toggle-btn <?= $activeAgg === 'monthly' ? 'active' : '' ?>" style="padding: 6px 14px; border: 1px solid <?= $activeAgg === 'monthly' ? '#3b82f6' : '#e2e8f0' ?>; background: <?= $activeAgg === 'monthly' ? '#3b82f6' : 'white' ?>; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: <?= $activeAgg === 'monthly' ? 'white' : '#64748b' ?>; transition: all 0.2s;">
-                Monthly
-            </button>
-            <?php endif; ?>
-        </div>
+            <select id="aggregationSelect" onchange="updateDashboard(this.value)" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
+                <option value="daily" <?= ($stats['aggregation'] ?? 'monthly') === 'daily' ? 'selected' : '' ?>>Daily</option>
+                <option value="weekly" <?= ($stats['aggregation'] ?? 'monthly') === 'weekly' ? 'selected' : '' ?>>Weekly</option>
+                <option value="monthly" <?= ($stats['aggregation'] ?? 'monthly') === 'monthly' ? 'selected' : '' ?>>Monthly</option>
+            </select>
         <?php endif; ?>
     </div>
     <canvas id="performanceChart" height="320"></canvas>

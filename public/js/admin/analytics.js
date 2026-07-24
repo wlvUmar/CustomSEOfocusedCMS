@@ -34,13 +34,6 @@ document.addEventListener('DOMContentLoaded', function () {
         initPerformanceChart();
         setupScorecardToggles();
     }
-    const range = getRangeFilter();
-    if (range) {
-        const weeklyBtn = document.getElementById('btn-weekly');
-        const monthlyBtn = document.getElementById('btn-monthly');
-        if (weeklyBtn) { weeklyBtn.disabled = true; weeklyBtn.style.opacity = '0.5'; weeklyBtn.style.cursor = 'not-allowed'; }
-        if (monthlyBtn) { monthlyBtn.disabled = true; monthlyBtn.style.opacity = '0.5'; monthlyBtn.style.cursor = 'not-allowed'; }
-    }
     if (performanceChartInstance) {
         setTimeout(() => performanceChartInstance.resize(), 100);
     }
@@ -442,29 +435,21 @@ function escapeHtml(str) {
 // Main dashboard update function
 window.updateDashboard = async function (aggregation) {
     const rangeFilter = getRangeFilter();
-    if (!aggregation) {
-        aggregation = rangeFilter ? 'daily' : (window.currentAggregation || 'monthly');
-    }
-    if (rangeFilter && aggregation !== 'daily') {
-        return;
-    }
 
-    // Update aggregation button styles
-    document.querySelectorAll('.agg-toggle-btn').forEach(btn => {
-        btn.style.background = 'white'; btn.style.color = '#64748b'; btn.style.borderColor = '#e2e8f0';
-    });
-    const activeBtn = document.getElementById(`btn-${aggregation}`);
-    if (activeBtn) {
-        activeBtn.style.background = '#3b82f6'; activeBtn.style.color = 'white'; activeBtn.style.borderColor = '#3b82f6';
+    if (rangeFilter) {
+        aggregation = 'daily';
+    } else {
+        const select = document.getElementById('aggregationSelect');
+        if (select) {
+            if (!aggregation) {
+                aggregation = select.value;
+            } else {
+                select.value = aggregation;
+            }
+        } else {
+            aggregation = aggregation || 'monthly';
+        }
     }
-
-    window.currentAggregation = aggregation;
-
-    // Enable/disable aggregation buttons based on range mode
-    const weeklyBtn = document.getElementById('btn-weekly');
-    const monthlyBtn = document.getElementById('btn-monthly');
-    if (weeklyBtn) { weeklyBtn.disabled = !!rangeFilter; weeklyBtn.style.opacity = rangeFilter ? '0.5' : ''; weeklyBtn.style.cursor = rangeFilter ? 'not-allowed' : ''; }
-    if (monthlyBtn) { monthlyBtn.disabled = !!rangeFilter; monthlyBtn.style.opacity = rangeFilter ? '0.5' : ''; monthlyBtn.style.cursor = rangeFilter ? 'not-allowed' : ''; }
 
     const months = getQueryParam('months') || 6;
     const rangeParam = rangeFilter ? `&range=${encodeURIComponent(rangeFilter)}` : '';
