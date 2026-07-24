@@ -248,7 +248,8 @@ function updateAnalyticsFilters() {
     $maxPhones = !empty($topPerformers) ? max(array_column($topPerformers, 'phone_calls')) : 1;
     ?>
     
-    <table id="top-performers-table" style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
+    <div class="table-scroll">
+    <table id="top-performers-table" style="width: 100%; min-width: 650px; border-collapse: separate; border-spacing: 0 8px;">
         <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
             <tr>
                 <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">#</th>
@@ -312,6 +313,7 @@ function updateAnalyticsFilters() {
             <?php endif; ?>
         </tbody>
     </table>
+    </div>
 </div>
 
 <!-- UTM Source Performance -->
@@ -323,7 +325,8 @@ function updateAnalyticsFilters() {
     </div>
     <?php endif; ?>
     
-    <table style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
+    <div class="table-scroll">
+    <table style="width: 100%; min-width: 500px; border-collapse: separate; border-spacing: 0 8px;">
         <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
             <tr>
                 <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">UTM Source</th>
@@ -377,6 +380,7 @@ function updateAnalyticsFilters() {
             <?php endforeach; ?>
         </tbody>
     </table>
+    </div>
 </div>
 
 

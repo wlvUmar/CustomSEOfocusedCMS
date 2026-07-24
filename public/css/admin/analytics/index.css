@@ -643,3 +643,50 @@
         margin-bottom: 12px;
     }
 }
+
+/* Mobile responsive overrides */
+@media (max-width: 768px) {
+    .chart-box > div:first-child {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+    }
+    .chart-box > div:first-child > div {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+    .chart-box > div:first-child select {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .performance-scorecards {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .performance-scorecard {
+        padding: 14px !important;
+    }
+    div[style*="grid-template-columns: repeat(3, 1fr)"] {
+        grid-template-columns: 1fr !important;
+    }
+    .table-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -4px;
+        padding: 0 4px;
+    }
+}
+
+@media (max-width: 480px) {
+    .performance-scorecards {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .performance-scorecard {
+        padding: 12px !important;
+    }
+    .sc-value {
+        font-size: 18px !important;
+    }
+    .sc-label {
+        font-size: 11px !important;
+    }
+}
