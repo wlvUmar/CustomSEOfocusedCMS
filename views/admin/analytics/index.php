@@ -47,6 +47,11 @@ function updateAnalyticsFilters() {
         params.delete('range');
     }
 
+    const slug = document.getElementById('pageSlugFilter');
+    const utm = document.getElementById('utmSourceFilter');
+    if (slug && slug.value) params.set('slug', slug.value); else params.delete('slug');
+    if (utm && utm.value) params.set('utm_source', utm.value); else params.delete('utm_source');
+
     history.pushState(null, '', '?' + params.toString());
     updateDashboard();
 }
