@@ -34,6 +34,10 @@ document.addEventListener('DOMContentLoaded', function () {
         initPerformanceChart();
         setupScorecardToggles();
     }
+    const aggSelect = document.getElementById('aggregationSelect');
+    if (aggSelect) {
+        aggSelect.style.display = getRangeFilter() ? 'none' : '';
+    }
     if (performanceChartInstance) {
         setTimeout(() => performanceChartInstance.resize(), 100);
     }
@@ -435,16 +439,20 @@ function escapeHtml(str) {
 // Main dashboard update function
 window.updateDashboard = async function (aggregation) {
     const rangeFilter = getRangeFilter();
+    const aggSelect = document.getElementById('aggregationSelect');
+
+    if (aggSelect) {
+        aggSelect.style.display = rangeFilter ? 'none' : '';
+    }
 
     if (rangeFilter) {
         aggregation = 'daily';
     } else {
-        const select = document.getElementById('aggregationSelect');
-        if (select) {
+        if (aggSelect) {
             if (!aggregation) {
-                aggregation = select.value;
+                aggregation = aggSelect.value;
             } else {
-                select.value = aggregation;
+                aggSelect.value = aggregation;
             }
         } else {
             aggregation = aggregation || 'monthly';
