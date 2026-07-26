@@ -215,12 +215,11 @@ function updateSlugUtmFilters() {
     ?>
     
     <div class="table-scroll">
-    <table id="top-performers-table" style="width: 100%; min-width: 650px; border-collapse: separate; border-spacing: 0 8px;">
+    <table id="top-performers-table" style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
         <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
             <tr>
                 <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">#</th>
                 <th data-sort-key="page_slug" style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Page <span class="sort-indicator">↕</span></th>
-                <th data-sort-key="utm_source" style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Source <span class="sort-indicator">↕</span></th>
                 <th data-sort-key="visits" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Visits <span class="sort-indicator">↕</span></th>
                 <th data-sort-key="clicks" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Clicks <span class="sort-indicator">↕</span></th>
                 <th data-sort-key="phone_calls" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Phone Calls <span class="sort-indicator">↕</span></th>
@@ -254,28 +253,25 @@ function updateSlugUtmFilters() {
                 <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
                     <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($page['page_slug']) ?>"><?= htmlspecialchars($page['page_slug']) ?></div>
                 </td>
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
-                    <span style="display: inline-block; padding: 4px 8px; background: #f0f9ff; color: #0284c7; border-radius: 6px; font-size: 12px; font-weight: 600;"><?= e($utmSource) ?></span>
-                </td>
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+                <td data-label="Visits" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
                     <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #3b82f6;"><?= number_format($visits) ?></div>
                     <div style="background: #e0e7ff; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #3b82f6; height: 100%; width: <?= $visitsWidth ?>%; border-radius: 3px;"></div></div>
                 </td>
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+                <td data-label="Clicks" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
                     <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #10b981;"><?= number_format($clicks) ?></div>
                     <div style="background: #d1fae5; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #10b981; height: 100%; width: <?= $clicksWidth ?>%; border-radius: 3px;"></div></div>
                 </td>
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+                <td data-label="Phone Calls" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
                     <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #f59e0b;"><?= number_format($phoneCalls) ?></div>
                     <div style="background: #fef3c7; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #f59e0b; height: 100%; width: <?= $phonesWidth ?>%; border-radius: 3px;"></div></div>
                 </td>
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-top-right-radius: 8px; border-bottom-right-radius: 8px; text-align: center;">
+                <td data-label="CTR" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-top-right-radius: 8px; border-bottom-right-radius: 8px; text-align: center;">
                     <span style="display: inline-block; padding: 4px 12px; background: <?= $ctr >= 5 ? '#d1fae5' : ($ctr >= 2 ? '#fef3c7' : '#fee2e2') ?>; color: <?= $ctr >= 5 ? '#059669' : ($ctr >= 2 ? '#d97706' : '#dc2626') ?>; border-radius: 12px; font-size: 13px; font-weight: 600;"><?= $ctr ?>%</span>
                 </td>
             </tr>
             <?php endforeach; ?>
             <?php else: ?>
-            <tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">No data available yet</td></tr>
+            <tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">No data available yet</td></tr>
             <?php endif; ?>
         </tbody>
     </table>

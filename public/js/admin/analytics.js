@@ -239,7 +239,7 @@ function updatePerformingPagesTable(data) {
 
     const performers = data.top_performers || [];
     if (performers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">No data available yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">No data available yet</td></tr>';
         return;
     }
 
@@ -272,22 +272,19 @@ function updatePerformingPagesTable(data) {
             <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
                 <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(page.page_slug || '')}">${escapeHtml(page.page_slug || '')}</div>
             </td>
-            <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
-                <span style="display: inline-block; padding: 4px 8px; background: #f0f9ff; color: #0284c7; border-radius: 6px; font-size: 12px; font-weight: 600;">${escapeHtml(utmSource)}</span>
-            </td>
-            <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+            <td data-label="Visits" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
                 <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #3b82f6;">${formatNumber(visits)}</div>
                 <div style="background: #e0e7ff; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #3b82f6; height: 100%; width: ${visitsWidth}%; border-radius: 3px;"></div></div>
             </td>
-            <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+            <td data-label="Clicks" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
                 <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #10b981;">${formatNumber(clicks)}</div>
                 <div style="background: #d1fae5; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #10b981; height: 100%; width: ${clicksWidth}%; border-radius: 3px;"></div></div>
             </td>
-            <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+            <td data-label="Phone Calls" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
                 <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #f59e0b;">${formatNumber(phoneCalls)}</div>
                 <div style="background: #fef3c7; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #f59e0b; height: 100%; width: ${phonesWidth}%; border-radius: 3px;"></div></div>
             </td>
-            <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-top-right-radius: 8px; border-bottom-right-radius: 8px; text-align: center;">
+            <td data-label="CTR" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-top-right-radius: 8px; border-bottom-right-radius: 8px; text-align: center;">
                 <span style="display: inline-block; padding: 4px 12px; background: ${ctrColor}; color: ${ctrTextColor}; border-radius: 12px; font-size: 13px; font-weight: 600;">${ctr}%</span>
             </td>
         </tr>`;
