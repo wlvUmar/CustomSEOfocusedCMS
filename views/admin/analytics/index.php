@@ -22,8 +22,8 @@
         </select>
 
         <a href="<?= BASE_URL ?>/admin/analytics/export?months=<?= $stats['months'] ?><?= !empty($stats['range']) ? '&range=' . urlencode($stats['range']) : '' ?>"
-           class="btn btn-secondary">
-            <i data-feather="download"></i> Export CSV
+           class="btn btn-secondary" title="Export CSV" aria-label="Export CSV">
+            <i data-feather="download"></i>
         </a>
     </div>
 </div>
@@ -155,45 +155,6 @@ function updateSlugUtmFilters() {
         <?php endif; ?>
     </div>
     <?php endforeach; ?>
-</div>
-
-
-<!-- Insight Mini-Cards -->
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px;">
-    <?php
-    $rotationImpact = $this->getAnalyticsModel()->getRotationImpact($stats['months']);
-    $navStats = $this->getAnalyticsModel()->getNavigationStats($stats['months']);
-    $crawlStats = $this->getAnalyticsModel()->getCrawlInsights(7);
-    ?>
-    <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
-        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #fff7ed; color: #f59e0b; border-radius: 10px; margin-right: 12px;">
-            <i data-feather="repeat"></i>
-        </div>
-        <div>
-            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Rotation</div>
-            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $rotationImpact['avg_engagement'] ?>% avg CTR</div>
-        </div>
-    </a>
-    
-    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
-        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #e0e7ff; color: #3b82f6; border-radius: 10px; margin-right: 12px;">
-            <i data-feather="git-branch"></i>
-        </div>
-        <div>
-            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Navigation</div>
-            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= number_format($navStats['total_clicks'] ?? 0) ?> link clicks</div>
-        </div>
-    </a>
-    
-    <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
-        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #d1fae5; color: #10b981; border-radius: 10px; margin-right: 12px;">
-            <i data-feather="activity"></i>
-        </div>
-        <div>
-            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Crawl</div>
-            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $crawlStats['pages_crawled'] ?? 0 ?> pages (7d)</div>
-        </div>
-    </a>
 </div>
 
 <!-- Performance Line Graph (GSC-style) -->
@@ -386,6 +347,45 @@ function updateSlugUtmFilters() {
         </tbody>
     </table>
     </div>
+</div>
+
+
+<!-- Insight Mini-Cards -->
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px;">
+    <?php
+    $rotationImpact = $this->getAnalyticsModel()->getRotationImpact($stats['months']);
+    $navStats = $this->getAnalyticsModel()->getNavigationStats($stats['months']);
+    $crawlStats = $this->getAnalyticsModel()->getCrawlInsights(7);
+    ?>
+    <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
+        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #fff7ed; color: #f59e0b; border-radius: 10px; margin-right: 12px;">
+            <i data-feather="repeat"></i>
+        </div>
+        <div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Rotation</div>
+            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $rotationImpact['avg_engagement'] ?>% avg CTR</div>
+        </div>
+    </a>
+    
+    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
+        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #e0e7ff; color: #3b82f6; border-radius: 10px; margin-right: 12px;">
+            <i data-feather="git-branch"></i>
+        </div>
+        <div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Navigation</div>
+            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= number_format($navStats['total_clicks'] ?? 0) ?> link clicks</div>
+        </div>
+    </a>
+    
+    <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
+        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #d1fae5; color: #10b981; border-radius: 10px; margin-right: 12px;">
+            <i data-feather="activity"></i>
+        </div>
+        <div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Crawl</div>
+            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $crawlStats['pages_crawled'] ?? 0 ?> pages (7d)</div>
+        </div>
+    </a>
 </div>
 
 

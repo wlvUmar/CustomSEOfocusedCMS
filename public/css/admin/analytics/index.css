@@ -450,13 +450,15 @@
 /* Mobile Responsive Analytics */
 @media (max-width: 768px) {
     .header-actions {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: wrap;
         width: 100%;
         gap: 8px;
     }
 
     .header-actions .btn {
-        width: 100%;
+        flex: 1 1 auto;
+        min-width: 0;
     }
 
     .trend-cards {
