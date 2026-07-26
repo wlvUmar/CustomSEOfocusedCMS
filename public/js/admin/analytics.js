@@ -400,9 +400,8 @@ function updateSlugDropdown(allSlugs) {
     const select = document.getElementById('pageSlugFilter');
     if (!select) return;
     const currentValue = select.value;
-    const sorted = (allSlugs || []).sort();
     select.innerHTML = '<option value="">All pages</option>' +
-        sorted.map(s => `<option value="${escapeHtml(s)}" ${currentValue === s ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('');
+        (allSlugs || []).map(s => `<option value="${escapeHtml(s)}" ${currentValue === s ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('');
 }
 
 function updateUtmDropdown(allUtmSources) {

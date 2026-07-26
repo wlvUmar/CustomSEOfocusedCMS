@@ -76,8 +76,11 @@ set_exception_handler(function($exception) use ($errorLogFile) {
 });
 
 
-// Make session cookie persist for 14 days
+// Make session persist for 14 days (cookie + server-side GC)
 $sessionLifetime = 14 * 24 * 60 * 60; // 1209600 seconds
+ini_set('session.gc_maxlifetime', $sessionLifetime);
+ini_set('session.gc_probability', 1);
+ini_set('session.gc_divisor', 100);
 session_set_cookie_params([
     'lifetime' => $sessionLifetime,
     'path' => '/',
