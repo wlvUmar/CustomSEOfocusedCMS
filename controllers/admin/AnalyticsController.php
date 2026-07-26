@@ -38,8 +38,8 @@ class AnalyticsController extends Controller {
             $utmStats = $this->analyticsModel->getUtmSourceStats($start, $end, $slug, $utmSource);
             $utmSources = array_column($utmStats, 'utm_source');
 
-            $allPageStats = $this->analyticsModel->getRangePageStats($start, $end, '', '');
-            $allPageSlugs = array_values(array_unique(array_filter(array_column($allPageStats, 'page_slug'))));
+            $allPages = $this->pageModel->getAll(true);
+            $allPageSlugs = array_values(array_filter(array_column($allPages, 'slug')));
             $allUtmStats = $this->analyticsModel->getUtmSourceStats($start, $end, '', '');
             $allUtmSources = array_values(array_unique(array_filter(array_column($allUtmStats, 'utm_source'))));
             
@@ -77,8 +77,8 @@ class AnalyticsController extends Controller {
             $utmStats = $this->analyticsModel->getTopUtmSources(null, $months * 30, $slug, $utmSource);
             $utmSources = array_column($utmStats, 'utm_source');
 
-            $allPageStats = $this->analyticsModel->getPageStats($months, '', '');
-            $allPageSlugs = array_values(array_unique(array_filter(array_column($allPageStats, 'page_slug'))));
+            $allPages = $this->pageModel->getAll(true);
+            $allPageSlugs = array_values(array_filter(array_column($allPages, 'slug')));
             $allUtmStats = $this->analyticsModel->getTopUtmSources(null, $months * 30, '', '');
             $allUtmSources = array_values(array_unique(array_filter(array_column($allUtmStats, 'utm_source'))));
             
@@ -249,10 +249,8 @@ class AnalyticsController extends Controller {
             $utm_stats = $this->analyticsModel->getTopUtmSources(null, $months * 30, $slug, $utmSource);
         }
         
-        $allPageSlugsRaw = $rangeInfo
-            ? $this->analyticsModel->getRangePageStats($start, $end, '', '')
-            : $this->analyticsModel->getPageStats($months, '', '');
-        $allPageSlugs = array_values(array_unique(array_filter(array_column($allPageSlugsRaw, 'page_slug'))));
+        $allPages = $this->pageModel->getAll(true);
+        $allPageSlugs = array_values(array_filter(array_column($allPages, 'slug')));
 
         $allUtmRaw = $rangeInfo
             ? $this->analyticsModel->getUtmSourceStats($start, $end, '', '')
