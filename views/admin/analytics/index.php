@@ -1,6 +1,7 @@
 <?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
-<div class="header-actions">
+<div class="page-header" style="justify-content: flex-end;">
+    <div class="header-actions">
     <select id="periodSelect" onchange="updateAnalyticsFilters()" class="btn">
         <optgroup label="Daily">
             <option value="range:today" <?= ($stats['range'] ?? '') === 'today' ? 'selected' : '' ?>>Сегодня</option>
@@ -22,6 +23,7 @@
        class="btn btn-secondary" title="Экспорт CSV" aria-label="Экспорт CSV">
         <i data-feather="download"></i>
     </a>
+</div>
 </div>
 
 <?php if (!empty($stats['range_label'])): ?>
