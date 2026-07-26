@@ -8,9 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Панель управления</title>
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/tables.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/mobile-overflow-fixes.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css?v=2">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/tables.css?v=2">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/mobile-overflow-fixes.css?v=2">
     <!-- Chart.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script>
@@ -33,15 +33,15 @@
         // Prefer the nested CSS file if it exists on disk; otherwise try a hyphenated sibling
         $cssFs = defined('PUBLIC_PATH') ? PUBLIC_PATH . $cssPath : __DIR__ . '/../../../public' . $cssPath;
         if (file_exists($cssFs)) {
-            echo '<link rel="stylesheet" href="' . BASE_URL . $cssPath . "\">\n";
+            echo '<link rel="stylesheet" href="' . BASE_URL . $cssPath . '?v=2' . "\">\n";
         } else {
             $altPath = '/css/admin/' . str_replace('/', '-', $pageName) . '.css';
             $altFs = defined('PUBLIC_PATH') ? PUBLIC_PATH . $altPath : __DIR__ . '/../../../public' . $altPath;
             if (file_exists($altFs)) {
-                echo '<link rel="stylesheet" href="' . BASE_URL . $altPath . "\">\n";
+                echo '<link rel="stylesheet" href="' . BASE_URL . $altPath . '?v=2' . "\">\n";
             } else {
                 // Fallback to original path (no-op if missing) — keeps behavior predictable during deploys
-                echo '<link rel="stylesheet" href="' . BASE_URL . $cssPath . "\">\n";
+                echo '<link rel="stylesheet" href="' . BASE_URL . $cssPath . '?v=2' . "\">\n";
             }
         }
     }

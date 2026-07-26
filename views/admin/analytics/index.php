@@ -81,7 +81,7 @@ function updateSlugUtmFilters() {
         phones: Object.values(phonesChartData || {})
     };
 </script>
-<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=5"></script>
+<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=6"></script>
 
 <style>
     .performance-scorecards {
