@@ -66,7 +66,7 @@ function initPerformanceChart() {
             labels: data.labels,
             datasets: [
                 {
-                    label: 'Visits',
+                    label: 'Визиты',
                     data: data.visits,
                     borderColor: CHART_COLORS.visits,
                     backgroundColor: CHART_COLORS.visits + '10',
@@ -75,7 +75,7 @@ function initPerformanceChart() {
                     yAxisID: 'y'
                 },
                 {
-                    label: 'Clicks',
+                    label: 'Клики',
                     data: data.clicks,
                     borderColor: CHART_COLORS.clicks,
                     backgroundColor: CHART_COLORS.clicks + '10',
@@ -84,7 +84,7 @@ function initPerformanceChart() {
                     yAxisID: 'y'
                 },
                 {
-                    label: 'Phone Calls',
+                    label: 'Звонки',
                     data: data.phones || [],
                     borderColor: CHART_COLORS.phones,
                     backgroundColor: CHART_COLORS.phones + '10',
