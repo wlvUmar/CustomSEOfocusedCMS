@@ -1,36 +1,32 @@
 <?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
-<div class="page-header">
-    <h1><i data-feather="trending-up"></i> Analytics Dashboard</h1>
+<div class="header-actions">
+    <select id="periodSelect" onchange="updateAnalyticsFilters()" class="btn">
+        <optgroup label="Daily">
+            <option value="range:today" <?= ($stats['range'] ?? '') === 'today' ? 'selected' : '' ?>>Сегодня</option>
+            <option value="range:yesterday" <?= ($stats['range'] ?? '') === 'yesterday' ? 'selected' : '' ?>>Вчера</option>
+            <option value="range:day_before" <?= ($stats['range'] ?? '') === 'day_before' ? 'selected' : '' ?>>Позавчера</option>
+        </optgroup>
+        <optgroup label="Weekly">
+            <option value="range:last_week" <?= ($stats['range'] ?? '') === 'last_week' ? 'selected' : '' ?>>Прошлая неделя (Пн–Вс)</option>
+        </optgroup>
+        <optgroup label="Monthly">
+            <option value="months:1" <?= empty($stats['range']) && $stats['months'] == 1 ? 'selected' : '' ?>>Последний месяц</option>
+            <option value="months:3" <?= empty($stats['range']) && $stats['months'] == 3 ? 'selected' : '' ?>>Последние 3 месяца</option>
+            <option value="months:6" <?= empty($stats['range']) && $stats['months'] == 6 ? 'selected' : '' ?>>Последние 6 месяцев</option>
+            <option value="months:12" <?= empty($stats['range']) && $stats['months'] == 12 ? 'selected' : '' ?>>Последние 12 месяцев</option>
+        </optgroup>
+    </select>
 
-    <div class="header-actions">
-        <select id="periodSelect" onchange="updateAnalyticsFilters()" class="btn">
-            <optgroup label="Daily">
-                <option value="range:today" <?= ($stats['range'] ?? '') === 'today' ? 'selected' : '' ?>>Today</option>
-                <option value="range:yesterday" <?= ($stats['range'] ?? '') === 'yesterday' ? 'selected' : '' ?>>Yesterday</option>
-                <option value="range:day_before" <?= ($stats['range'] ?? '') === 'day_before' ? 'selected' : '' ?>>Day Before Yesterday</option>
-            </optgroup>
-            <optgroup label="Weekly">
-                <option value="range:last_week" <?= ($stats['range'] ?? '') === 'last_week' ? 'selected' : '' ?>>Last Week (Mon–Sun)</option>
-            </optgroup>
-            <optgroup label="Monthly">
-                <option value="months:1" <?= empty($stats['range']) && $stats['months'] == 1 ? 'selected' : '' ?>>Last 1 Month</option>
-                <option value="months:3" <?= empty($stats['range']) && $stats['months'] == 3 ? 'selected' : '' ?>>Last 3 Months</option>
-                <option value="months:6" <?= empty($stats['range']) && $stats['months'] == 6 ? 'selected' : '' ?>>Last 6 Months</option>
-                <option value="months:12" <?= empty($stats['range']) && $stats['months'] == 12 ? 'selected' : '' ?>>Last 12 Months</option>
-            </optgroup>
-        </select>
-
-        <a href="<?= BASE_URL ?>/admin/analytics/export?months=<?= $stats['months'] ?><?= !empty($stats['range']) ? '&range=' . urlencode($stats['range']) : '' ?>"
-           class="btn btn-secondary" title="Export CSV" aria-label="Export CSV">
-            <i data-feather="download"></i>
-        </a>
-    </div>
+    <a href="<?= BASE_URL ?>/admin/analytics/export?months=<?= $stats['months'] ?><?= !empty($stats['range']) ? '&range=' . urlencode($stats['range']) : '' ?>"
+       class="btn btn-secondary" title="Экспорт CSV" aria-label="Экспорт CSV">
+        <i data-feather="download"></i>
+    </a>
 </div>
 
 <?php if (!empty($stats['range_label'])): ?>
 <div style="margin: 0 0 16px; color: #64748b; font-size: 13px;">
-    Showing: <strong><?= e($stats['range_label']) ?></strong>
+    Период: <strong><?= e($stats['range_label']) ?></strong>
 </div>
 <?php endif; ?>
 
@@ -83,7 +79,7 @@ function updateSlugUtmFilters() {
         phones: Object.values(phonesChartData || {})
     };
 </script>
-<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=4"></script>
+<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=5"></script>
 
 <style>
     .performance-scorecards {
@@ -132,10 +128,10 @@ function updateSlugUtmFilters() {
     $overallCtr = $totalVisits > 0 ? round(($totalPhones / $totalVisits) * 100, 2) : 0;
     
     $scorecards = [
-        ['label' => 'Total Visits', 'icon' => 'eye', 'value' => $totalVisits, 'class' => 'visits', 'metric' => 'visits'],
-        ['label' => 'Total Clicks', 'icon' => 'mouse-pointer', 'value' => $totalClicks, 'class' => 'clicks', 'metric' => 'clicks'],
-        ['label' => 'Phone Calls', 'icon' => 'phone', 'value' => $totalPhones, 'class' => 'phones', 'metric' => 'phone_calls'],
-        ['label' => 'Phone Call CTR', 'icon' => 'percent', 'value' => $overallCtr . '%', 'class' => 'ctr', 'metric' => 'ctr']
+        ['label' => 'Всего визитов', 'icon' => 'eye', 'value' => $totalVisits, 'class' => 'visits', 'metric' => 'visits'],
+        ['label' => 'Всего кликов', 'icon' => 'mouse-pointer', 'value' => $totalClicks, 'class' => 'clicks', 'metric' => 'clicks'],
+        ['label' => 'Звонков', 'icon' => 'phone', 'value' => $totalPhones, 'class' => 'phones', 'metric' => 'phone_calls'],
+        ['label' => 'CTR звонков', 'icon' => 'percent', 'value' => $overallCtr . '%', 'class' => 'ctr', 'metric' => 'ctr']
     ];
     
     foreach ($scorecards as $sc):
@@ -160,7 +156,7 @@ function updateSlugUtmFilters() {
 <!-- Performance Line Graph (GSC-style) -->
 <div class="chart-box">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0;"><i data-feather="activity"></i> Performance Overview</h2>
+        <h2 style="margin: 0;"><i data-feather="activity"></i> Общая статистика</h2>
 
         <?php
         $currentSlug = $stats['slug'] ?? '';
@@ -170,14 +166,14 @@ function updateSlugUtmFilters() {
         ?>
         <div style="display: flex; gap: 8px; align-items: center;">
             <select id="pageSlugFilter" onchange="updateSlugUtmFilters()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
-                <option value="">All pages</option>
+                <option value="">Все страницы</option>
                 <?php foreach ($allSlugs as $s): ?>
                 <option value="<?= e($s) ?>" <?= $currentSlug === $s ? 'selected' : '' ?>><?= e($s) ?></option>
                 <?php endforeach; ?>
             </select>
             <select id="utmSourceFilter" onchange="updateSlugUtmFilters()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
-                <option value="">All UTM Sources</option>
-                <option value="direct" <?= $currentUtm === 'direct' ? 'selected' : '' ?>>Direct</option>
+                <option value="">Все UTM-источники</option>
+                <option value="direct" <?= $currentUtm === 'direct' ? 'selected' : '' ?>>Прямой</option>
                 <?php foreach ($allUtmSources as $source): ?>
                     <?php if ($source !== 'direct' && !empty($source)): ?>
                     <option value="<?= e($source) ?>" <?= $currentUtm === $source ? 'selected' : '' ?>><?= e($source) ?></option>
@@ -185,9 +181,9 @@ function updateSlugUtmFilters() {
                 <?php endforeach; ?>
             </select>
             <select id="aggregationSelect" onchange="updateDashboard(this.value)" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
-                <option value="daily" <?= ($stats['aggregation'] ?? 'monthly') === 'daily' ? 'selected' : '' ?>>Daily</option>
-                <option value="weekly" <?= ($stats['aggregation'] ?? 'monthly') === 'weekly' ? 'selected' : '' ?>>Weekly</option>
-                <option value="monthly" <?= ($stats['aggregation'] ?? 'monthly') === 'monthly' ? 'selected' : '' ?>>Monthly</option>
+                <option value="daily" <?= ($stats['aggregation'] ?? 'monthly') === 'daily' ? 'selected' : '' ?>>По дням</option>
+                <option value="weekly" <?= ($stats['aggregation'] ?? 'monthly') === 'weekly' ? 'selected' : '' ?>>По неделям</option>
+                <option value="monthly" <?= ($stats['aggregation'] ?? 'monthly') === 'monthly' ? 'selected' : '' ?>>По месяцам</option>
             </select>
         </div>
     </div>
@@ -198,10 +194,10 @@ function updateSlugUtmFilters() {
 <div class="chart-box">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <div>
-            <h2><i data-feather="trending-up"></i> Performing Pages</h2>
+            <h2><i data-feather="trending-up"></i> Популярные страницы</h2>
             <?php if (!empty($stats['range_label'])): ?>
             <div style="margin-top: -8px; color: #64748b; font-size: 13px;">
-                Period: <?= e($stats['range_label']) ?>
+                Период: <?= e($stats['range_label']) ?>
             </div>
             <?php endif; ?>
         </div>
@@ -219,10 +215,10 @@ function updateSlugUtmFilters() {
         <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
             <tr>
                 <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">#</th>
-                <th data-sort-key="page_slug" style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Page <span class="sort-indicator">↕</span></th>
-                <th data-sort-key="visits" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Visits <span class="sort-indicator">↕</span></th>
-                <th data-sort-key="clicks" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Clicks <span class="sort-indicator">↕</span></th>
-                <th data-sort-key="phone_calls" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">Phone Calls <span class="sort-indicator">↕</span></th>
+                <th data-sort-key="page_slug" style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;"><span class="th-label">Страница</span><span class="sort-indicator">↕</span></th>
+                <th data-sort-key="visits" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;"><span class="th-label">Визиты</span><i data-feather="eye" class="th-icon"></i><span class="sort-indicator">↕</span></th>
+                <th data-sort-key="clicks" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;"><span class="th-label">Клики</span><i data-feather="mouse-pointer" class="th-icon"></i><span class="sort-indicator">↕</span></th>
+                <th data-sort-key="phone_calls" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;"><span class="th-label">Звонки</span><i data-feather="phone" class="th-icon"></i><span class="sort-indicator">↕</span></th>
                 <th data-sort-key="ctr" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">CTR <span class="sort-indicator">↕</span></th>
             </tr>
         </thead>
@@ -239,6 +235,7 @@ function updateSlugUtmFilters() {
                 $visitsWidth = $maxVisits > 0 ? ($visits / $maxVisits) * 100 : 0;
                 $clicksWidth = $maxClicks > 0 ? ($clicks / $maxClicks) * 100 : 0;
                 $phonesWidth = $maxPhones > 0 ? ($phoneCalls / $maxPhones) * 100 : 0;
+                $displaySlug = mb_strlen($page['page_slug'] ?? '') > 12 ? mb_substr($page['page_slug'], 0, 12) . '...' : ($page['page_slug'] ?? '');
             ?>
             <tr
                 data-page-slug="<?= e((string)($page['page_slug'] ?? '')) ?>"
@@ -251,7 +248,7 @@ function updateSlugUtmFilters() {
             >
                 <td data-rank-cell style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 600; color: #94a3b8; font-size: 14px;"><?= $index + 1 ?></td>
                 <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
-                    <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($page['page_slug']) ?>"><?= htmlspecialchars($page['page_slug']) ?></div>
+                    <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($page['page_slug']) ?>"><?= htmlspecialchars($displaySlug) ?></div>
                 </td>
                 <td data-label="Visits" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
                     <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #3b82f6;"><?= number_format($visits) ?></div>
@@ -271,7 +268,7 @@ function updateSlugUtmFilters() {
             </tr>
             <?php endforeach; ?>
             <?php else: ?>
-            <tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">No data available yet</td></tr>
+            <tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">Данных пока нет</td></tr>
             <?php endif; ?>
         </tbody>
     </table>
@@ -280,10 +277,10 @@ function updateSlugUtmFilters() {
 
 <!-- UTM Source Performance -->
 <div class="chart-box" id="utmStatsContainer"<?= empty($stats['utm_stats']) ? ' style="display:none"' : '' ?>>
-    <h2><i data-feather="link"></i> Traffic by UTM Source</h2>
+    <h2><i data-feather="link"></i> Трафик по UTM-источникам</h2>
     <?php if (!empty($stats['range_label'])): ?>
     <div style="margin-top: -8px; margin-bottom: 16px; color: #64748b; font-size: 13px;">
-        Period: <?= e($stats['range_label']) ?>
+        Период: <?= e($stats['range_label']) ?>
     </div>
     <?php endif; ?>
     
@@ -291,11 +288,11 @@ function updateSlugUtmFilters() {
     <table style="width: 100%; min-width: 500px; border-collapse: separate; border-spacing: 0 8px;">
         <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
             <tr>
-                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">UTM Source</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Clicks</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Phone Calls</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Total Actions</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Pages Affected</th>
+                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">UTM-источник</th>
+                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Клики</th>
+                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Звонки</th>
+                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Всего действий</th>
+                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Затронуто страниц</th>
             </tr>
         </thead>
         <tbody id="utmStatsBody">
@@ -358,8 +355,8 @@ function updateSlugUtmFilters() {
             <i data-feather="repeat"></i>
         </div>
         <div>
-            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Rotation</div>
-            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $rotationImpact['avg_engagement'] ?>% avg CTR</div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Ротация</div>
+            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $rotationImpact['avg_engagement'] ?>% средний CTR</div>
         </div>
     </a>
     
@@ -368,8 +365,8 @@ function updateSlugUtmFilters() {
             <i data-feather="git-branch"></i>
         </div>
         <div>
-            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Navigation</div>
-            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= number_format($navStats['total_clicks'] ?? 0) ?> link clicks</div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Навигация</div>
+            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= number_format($navStats['total_clicks'] ?? 0) ?> переходов</div>
         </div>
     </a>
     
@@ -378,8 +375,8 @@ function updateSlugUtmFilters() {
             <i data-feather="activity"></i>
         </div>
         <div>
-            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Crawl</div>
-            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $crawlStats['pages_crawled'] ?? 0 ?> pages (7d)</div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Обход</div>
+            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $crawlStats['pages_crawled'] ?? 0 ?> стр. (7д)</div>
         </div>
     </a>
 </div>

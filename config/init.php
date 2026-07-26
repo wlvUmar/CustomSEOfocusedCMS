@@ -76,18 +76,33 @@ set_exception_handler(function($exception) use ($errorLogFile) {
 });
 
 
+// Make session cookie persist for 14 days
+$sessionLifetime = 14 * 24 * 60 * 60; // 1209600 seconds
+session_set_cookie_params([
+    'lifetime' => $sessionLifetime,
+    'path' => '/',
+    'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
 if (session_status() === PHP_SESSION_NONE) session_start();
+
+// Extend cookie lifetime on each request so it doesn't expire mid-session
+if (session_status() === PHP_SESSION_ACTIVE) {
+    setcookie(session_name(), session_id(), time() + $sessionLifetime, '/', '', !empty($_SERVER['HTTPS']), true);
+}
 
 if (!isset($_SESSION['last_regeneration'])) {
     $_SESSION['last_regeneration'] = time();
-} elseif (time() - $_SESSION['last_regeneration'] > 1800) {
+} elseif (time() - $_SESSION['last_regeneration'] > 86400) {
     session_regenerate_id(true);
     $_SESSION['last_regeneration'] = time();
 }
 
 // Session timeout only applies to authenticated admin sessions
 if (!empty($_SESSION['user_id'])) {
-    $timeout = 1800;
+    $timeout = $sessionLifetime;
     if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $timeout) {
         session_unset();
         session_destroy();

@@ -270,7 +270,7 @@ function updatePerformingPagesTable(data) {
         >
             <td data-rank-cell style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 600; color: #94a3b8; font-size: 14px;">${index + 1}</td>
             <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
-                <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(page.page_slug || '')}">${escapeHtml(page.page_slug || '')}</div>
+                <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(page.page_slug || '')}">${escapeHtml(truncateSlug(page.page_slug))}</div>
             </td>
             <td data-label="Visits" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
                 <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #3b82f6;">${formatNumber(visits)}</div>
@@ -417,6 +417,12 @@ function updateUtmDropdown(allUtmSources) {
         html += `<option value="${escapeHtml(name)}" ${currentValue === name ? 'selected' : ''}>${escapeHtml(name)}</option>`;
     });
     select.innerHTML = html;
+}
+
+function truncateSlug(slug, maxLen) {
+    if (!slug) return '';
+    maxLen = maxLen || 12;
+    return slug.length > maxLen ? slug.substring(0, maxLen) + '...' : slug;
 }
 
 function escapeHtml(str) {
