@@ -55,6 +55,16 @@ function updateAnalyticsFilters() {
     history.pushState(null, '', '?' + params.toString());
     updateDashboard();
 }
+
+function updateSlugUtmFilters() {
+    const params = new URLSearchParams(window.location.search);
+    const slug = document.getElementById('pageSlugFilter');
+    const utm = document.getElementById('utmSourceFilter');
+    if (slug && slug.value) params.set('slug', slug.value); else params.delete('slug');
+    if (utm && utm.value) params.set('utm_source', utm.value); else params.delete('utm_source');
+    history.pushState(null, '', '?' + params.toString());
+    updateDashboard();
+}
 </script>
 
 <!-- Performance Scorecards (GSC Style) -->
@@ -192,24 +202,19 @@ function updateAnalyticsFilters() {
         <h2 style="margin: 0;"><i data-feather="activity"></i> Performance Overview</h2>
 
         <?php
-        $allSlugs = [];
-        if (!empty($stats['page_stats'])) {
-            foreach ($stats['page_stats'] as $ps) {
-                $allSlugs[$ps['page_slug']] = true;
-            }
-        }
         $currentSlug = $stats['slug'] ?? '';
         $currentUtm = $stats['utm_source'] ?? '';
-        $allUtmSources = $stats['utm_sources'] ?? [];
+        $allSlugs = $stats['all_page_slugs'] ?? [];
+        $allUtmSources = $stats['all_utm_sources'] ?? [];
         ?>
         <div style="display: flex; gap: 8px; align-items: center;">
-            <select id="pageSlugFilter" onchange="updateDashboard()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
+            <select id="pageSlugFilter" onchange="updateSlugUtmFilters()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
                 <option value="">All pages</option>
-                <?php foreach (array_keys($allSlugs) as $s): ?>
+                <?php foreach ($allSlugs as $s): ?>
                 <option value="<?= e($s) ?>" <?= $currentSlug === $s ? 'selected' : '' ?>><?= e($s) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select id="utmSourceFilter" onchange="updateDashboard()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
+            <select id="utmSourceFilter" onchange="updateSlugUtmFilters()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
                 <option value="">All UTM Sources</option>
                 <option value="direct" <?= $currentUtm === 'direct' ? 'selected' : '' ?>>Direct</option>
                 <?php foreach ($allUtmSources as $source): ?>

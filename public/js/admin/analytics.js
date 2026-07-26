@@ -399,27 +399,20 @@ function updateUtmStatsTable(data) {
     }).join('');
 }
 
-function updateSlugDropdown(pageStats) {
+function updateSlugDropdown(allSlugs) {
     const select = document.getElementById('pageSlugFilter');
     if (!select) return;
     const currentValue = select.value;
-    const slugs = {};
-    (pageStats || []).forEach(ps => { if (ps.page_slug) slugs[ps.page_slug] = true; });
-    const sorted = Object.keys(slugs).sort();
+    const sorted = (allSlugs || []).sort();
     select.innerHTML = '<option value="">All pages</option>' +
         sorted.map(s => `<option value="${escapeHtml(s)}" ${currentValue === s ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('');
 }
 
-function updateUtmDropdown(utmStats) {
+function updateUtmDropdown(allUtmSources) {
     const select = document.getElementById('utmSourceFilter');
     if (!select) return;
     const currentValue = select.value;
-    const sources = {};
-    (utmStats || []).forEach(s => {
-        const name = s.utm_source || 'direct';
-        sources[name] = true;
-    });
-    const sorted = Object.keys(sources).sort();
+    const sorted = (allUtmSources || []).sort();
     let html = '<option value="">All UTM Sources</option>';
     html += '<option value="direct" ' + (currentValue === 'direct' ? 'selected' : '') + '>Direct</option>';
     sorted.forEach(name => {
@@ -475,8 +468,8 @@ window.updateDashboard = async function (aggregation) {
         updateChartFromResponse(data);
         updatePerformingPagesTable(data);
         updateUtmStatsTable(data);
-        updateSlugDropdown(data.page_stats);
-        updateUtmDropdown(data.utm_stats);
+        updateSlugDropdown(data.all_page_slugs);
+        updateUtmDropdown(data.all_utm_sources);
     } catch (error) {
         console.error('Error fetching dashboard data:', error);
     }

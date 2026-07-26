@@ -37,6 +37,11 @@ class AnalyticsController extends Controller {
             $isSingleDay = ($start === $end);
             $utmStats = $this->analyticsModel->getUtmSourceStats($start, $end, $slug, $utmSource);
             $utmSources = array_column($utmStats, 'utm_source');
+
+            $allPageStats = $this->analyticsModel->getRangePageStats($start, $end, '', '');
+            $allPageSlugs = array_values(array_unique(array_filter(array_column($allPageStats, 'page_slug'))));
+            $allUtmStats = $this->analyticsModel->getUtmSourceStats($start, $end, '', '');
+            $allUtmSources = array_values(array_unique(array_filter(array_column($allUtmStats, 'utm_source'))));
             
             $stats = [
                 'total' => $this->analyticsModel->getRangeTotalStats($start, $end, $slug, $utmSource),
@@ -56,7 +61,11 @@ class AnalyticsController extends Controller {
                 'language_stats' => $this->analyticsModel->getRangeLanguageStats($start, $end, $slug, $utmSource),
                 'utm_stats' => $utmStats,
                 'utm_sources' => $utmSources,
+                'all_page_slugs' => $allPageSlugs,
+                'all_utm_sources' => $allUtmSources,
                 'months' => $months,
+                'slug' => $slug,
+                'utm_source' => $utmSource,
                 'view' => $view,
                 'range' => $range,
                 'range_label' => $rangeInfo['label'],
@@ -67,6 +76,11 @@ class AnalyticsController extends Controller {
             $chartAggregation = $months <= 1 ? 'daily' : ($months <= 3 ? 'weekly' : 'monthly');
             $utmStats = $this->analyticsModel->getTopUtmSources(null, $months * 30, $slug, $utmSource);
             $utmSources = array_column($utmStats, 'utm_source');
+
+            $allPageStats = $this->analyticsModel->getPageStats($months, '', '');
+            $allPageSlugs = array_values(array_unique(array_filter(array_column($allPageStats, 'page_slug'))));
+            $allUtmStats = $this->analyticsModel->getTopUtmSources(null, $months * 30, '', '');
+            $allUtmSources = array_values(array_unique(array_filter(array_column($allUtmStats, 'utm_source'))));
             
             $stats = [
                 'total' => $this->analyticsModel->getTotalStats($months, $slug, $utmSource),
@@ -92,6 +106,8 @@ class AnalyticsController extends Controller {
                 'language_stats' => $this->analyticsModel->getLanguageStats($months, $slug, $utmSource),
                 'utm_stats' => $utmStats,
                 'utm_sources' => $utmSources,
+                'all_page_slugs' => $allPageSlugs,
+                'all_utm_sources' => $allUtmSources,
                 'months' => $months,
                 'aggregation' => $chartAggregation,
                 'view' => $view,
@@ -233,6 +249,16 @@ class AnalyticsController extends Controller {
             $utm_stats = $this->analyticsModel->getTopUtmSources(null, $months * 30, $slug, $utmSource);
         }
         
+        $allPageSlugsRaw = $rangeInfo
+            ? $this->analyticsModel->getRangePageStats($start, $end, '', '')
+            : $this->analyticsModel->getPageStats($months, '', '');
+        $allPageSlugs = array_values(array_unique(array_filter(array_column($allPageSlugsRaw, 'page_slug'))));
+
+        $allUtmRaw = $rangeInfo
+            ? $this->analyticsModel->getUtmSourceStats($start, $end, '', '')
+            : $this->analyticsModel->getTopUtmSources(null, $months * 30, '', '');
+        $allUtmSources = array_values(array_unique(array_filter(array_column($allUtmRaw, 'utm_source'))));
+
         $this->json([
             'visits' => $visits,
             'clicks' => $clicks,
@@ -242,7 +268,9 @@ class AnalyticsController extends Controller {
             'trends' => $trends,
             'top_performers' => $top_performers,
             'language_stats' => $language_stats,
-            'utm_stats' => $utm_stats
+            'utm_stats' => $utm_stats,
+            'all_page_slugs' => $allPageSlugs,
+            'all_utm_sources' => $allUtmSources
         ]);
     }
 
