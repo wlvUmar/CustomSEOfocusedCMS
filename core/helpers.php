@@ -766,6 +766,11 @@ function shouldSkipTracking(): bool
         return true;
     }
 
+    // No Accept-Language header → not a real browser → skip tracking
+    if (empty($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
+        return true;
+    }
+
     $clientIp = getClientIp();
     $skipIps = [
         '144.124.192.237',
@@ -911,7 +916,7 @@ function trackSiteVisit($language) {
         return;
     }
 
-    if (!trackingRateLimit('site_visit', 60, 3600)) {
+    if (!trackingRateLimit('site_visit', 15, 60)) {
         logTrackingAudit('site_visit', array_merge($auditCtx, ['action' => 'rate_limited']));
         return;
     }
@@ -1105,7 +1110,7 @@ function trackVisit($slug, $language) {
         return;
     }
 
-    if (!trackingRateLimit('visit', 60, 3600)) {
+    if (!trackingRateLimit('visit', 15, 60)) {
         logTrackingAudit('visit', array_merge($auditCtx, ['action' => 'rate_limited']));
         return;
     }
