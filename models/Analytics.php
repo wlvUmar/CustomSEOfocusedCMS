@@ -1015,9 +1015,10 @@ class Analytics {
     public function getTopPerformers($months = 3, $limit = 500, $slug = '', $utmSource = '') {
         $months = (int)$months;
         $limit = (int)$limit;
+        $utmFiltered = $utmSource !== '';
         $sql = "SELECT 
                     page_slug,
-                    IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source,
+                    " . ($utmFiltered ? "IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source," : "") . "
                     SUM(visits) as visits,
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls,
@@ -1032,7 +1033,7 @@ class Analytics {
         } else {
             $sql .= " AND page_slug != '__site__'";
         }
-        if ($utmSource !== '') {
+        if ($utmFiltered) {
             if ($utmSource === 'direct') {
                 $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
             } else {
@@ -1040,7 +1041,7 @@ class Analytics {
                 $params[] = $utmSource;
             }
         }
-        $sql .= " GROUP BY page_slug, utm_source
+        $sql .= " GROUP BY " . ($utmFiltered ? "page_slug, utm_source" : "page_slug") . "
                 HAVING visits > 0 OR phone_calls > 0
                 ORDER BY ctr DESC, visits DESC
                 LIMIT ?";
@@ -1050,9 +1051,10 @@ class Analytics {
     }
 
     public function getRangeTopPerformers($startDate, $endDate, $slug = '', $utmSource = '') {
+        $utmFiltered = $utmSource !== '';
         $sql = "SELECT 
                     page_slug,
-                    IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source,
+                    " . ($utmFiltered ? "IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source," : "") . "
                     SUM(visits) as visits,
                     SUM(clicks) as clicks,
                     SUM(phone_calls) as phone_calls,
@@ -1066,7 +1068,7 @@ class Analytics {
         } else {
             $sql .= " AND page_slug != '__site__'";
         }
-        if ($utmSource !== '') {
+        if ($utmFiltered) {
             if ($utmSource === 'direct') {
                 $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
             } else {
@@ -1074,7 +1076,7 @@ class Analytics {
                 $params[] = $utmSource;
             }
         }
-        $sql .= " GROUP BY page_slug, utm_source
+        $sql .= " GROUP BY " . ($utmFiltered ? "page_slug, utm_source" : "page_slug") . "
                 HAVING visits > 0 OR phone_calls > 0
                 ORDER BY ctr DESC, visits DESC";
         
