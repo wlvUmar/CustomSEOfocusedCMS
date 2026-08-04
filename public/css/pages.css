@@ -1748,33 +1748,6 @@ footer::before{
     border-bottom:2px solid rgba(15,95,111,.5);
 }
 
-/* ── Vertical-style horizontal info-card carousel (mobile re-flow of .info-grid)
-   Seamless loop fix: the clone copy is appended with NO extra wrapper padding
-   so loopWidth (measured via JS as the *track* width of one copy, gap included)
-   lines up exactly with where the clone begins — no dead gap at the seam. ── */
-.v-carousel{
-  position:relative;
-  overflow-x:auto;
-  overflow-y:hidden;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:none;
-  margin:20px 0;
-  border-radius:12px;
-  background:var(--surface-2);
-  border:1px solid var(--border);
-  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%);
-  mask-image:linear-gradient(to right,transparent 0,#000 24px,#000 calc(100% - 24px),transparent 100%);
-}
-.v-carousel::-webkit-scrollbar{display:none}
-.v-carousel__track{display:flex;flex-direction:row;width:max-content}
-.v-carousel .v-carousel__list,.v-carousel .v-carousel__list--clone{
-  display:flex;flex-direction:row;gap:14px;margin:0;padding:18px;flex-shrink:0;
-}
-.v-carousel .info-card{flex:0 0 240px;width:240px;scroll-snap-align:start}
-@media (prefers-reduced-motion: reduce){
-  .v-carousel__list--clone{display:none}
-}
-
 .footer-section p {
     color: #9ca3af;
     font-size: .9rem;

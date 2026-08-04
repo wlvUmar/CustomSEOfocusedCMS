@@ -5,7 +5,6 @@ $seo = $seo ?? [];
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
 <head>
-    <?= renderMetaPixelHead() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PREVIEW: <?= e($page["title_$lang"]) ?></title>
@@ -13,7 +12,6 @@ $seo = $seo ?? [];
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/preview.css">
 </head>
 <body class="preview-mode">
-    <?= renderMetaPixelNoscript() ?>
     
     <!-- Preview Banner -->
     <div class="preview-banner">

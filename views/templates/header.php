@@ -71,15 +71,36 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
 <html lang="<?= $lang ?>">
 <head>
     <?php if (defined('GTM_ID')): ?>
-    <!-- Google Tag Manager -->
+    <!-- Google Tag Manager (lazy-loaded on idle/first interaction to keep the
+         main thread free during load; improves INP on mobile) -->
     <script>
         window.dataLayer = window.dataLayer || [];
-        window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+        window.__loadGTM = function () {
+            if (window.__gtmLoaded) return;
+            window.__gtmLoaded = true;
+            window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+            var s = document.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtm.js?id=<?= GTM_ID ?>';
+            document.head.appendChild(s);
+        };
+        (function () {
+            function loadOnIdle() {
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(window.__loadGTM, { timeout: 3000 });
+                } else {
+                    setTimeout(window.__loadGTM, 2000);
+                }
+            }
+            if (document.readyState === 'complete') {
+                loadOnIdle();
+            } else {
+                window.addEventListener('load', loadOnIdle, { once: true });
+            }
+        })();
     </script>
-    <script async src="https://www.googletagmanager.com/gtm.js?id=<?= GTM_ID ?>"></script>
     <!-- End Google Tag Manager -->
     <?php endif; ?>
-    <?= renderMetaPixelHead() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($metaTitle) ?></title>
@@ -113,8 +134,6 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <meta name="twitter:title" content="<?= e($ogTitle) ?>">
     <meta name="twitter:description" content="<?= e($ogDescription) ?>">
     <meta name="twitter:image" content="<?= e($ogImage) ?>">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7628492698305234"
-     crossorigin="anonymous"></script>
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css">
@@ -229,7 +248,6 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
     <?php endif; ?>
-    <?= renderMetaPixelNoscript() ?>
     
     <?php if ($isAdmin): ?>
     <div class="admin-toolbar">

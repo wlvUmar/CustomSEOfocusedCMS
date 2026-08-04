@@ -20,7 +20,6 @@ $brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"]
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
 <head>
-    <?= renderMetaPixelHead() ?>
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -108,7 +107,6 @@ $brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"]
     <?php endif; ?>
 </head>
 <body<?= $isAdmin ? ' class="admin-mode"' : '' ?>>
-    <?= renderMetaPixelNoscript() ?>
     
     <?php if ($isAdmin): ?>
     <div class="admin-toolbar">

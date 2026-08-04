@@ -276,8 +276,8 @@ document.addEventListener('click', function(e) {
         const gap = parseFloat(getComputedStyle(track).gap || '14') || 14;
         return tile.getBoundingClientRect().width + gap;
     }
-    prevBtn?.addEventListener('click', () => track.scrollBy({ left: -tileStep() * 2, behavior: 'smooth' }));
-    nextBtn?.addEventListener('click', () => track.scrollBy({ left: tileStep() * 2, behavior: 'smooth' }));
+    prevBtn?.addEventListener('click', () => track.scrollBy({ left: -tileStep() * 2 }));
+    nextBtn?.addEventListener('click', () => track.scrollBy({ left: tileStep() * 2 }));
 })();
 
 /* ── Intersection Observer for scroll animations ── */
@@ -430,67 +430,6 @@ document.addEventListener('click', function(e) {
 })();
 
 
-/* ── Info-card carousel: always-on horizontal auto-scroll, seamless loop ──
-   Wraps .info-grid in a track with a cloned copy placed right after it, then
-   scrolls continuously; once scrollLeft passes the original copy's width it
-   snaps back by that same amount, so the loop point is invisible. Runs at
-   all viewport sizes now (previously mobile-only). */
-function initInfoCardCarousels(){
-  document.querySelectorAll('.info-grid').forEach(grid => {
-    if (grid.dataset.carouselInit) return;
-    const cards = Array.from(grid.children).filter(el => el.classList.contains('info-card'));
-    if (cards.length < 3) return;
-    grid.dataset.carouselInit = '1';
-
-    const wrap = document.createElement('div');
-    wrap.className = 'v-carousel';
-    grid.parentNode.insertBefore(wrap, grid);
-
-    const track = document.createElement('div');
-    track.className = 'v-carousel__track';
-    grid.classList.add('v-carousel__list');
-    track.appendChild(grid);
-
-    const clone = grid.cloneNode(true);
-    clone.classList.add('v-carousel__list--clone');
-    clone.removeAttribute('data-carousel-init');
-    track.appendChild(clone);
-    wrap.appendChild(track);
-
-    let paused = false, resumeTimer = null;
-    const pause = () => { paused = true; clearTimeout(resumeTimer); };
-    const scheduleResume = () => { clearTimeout(resumeTimer); resumeTimer = setTimeout(() => paused = false, 1800); };
-
-    ['pointerdown','touchstart'].forEach(ev => wrap.addEventListener(ev, pause, {passive:true}));
-    ['pointerup','touchend'].forEach(ev => wrap.addEventListener(ev, scheduleResume, {passive:true}));
-    wrap.addEventListener('mouseenter', pause);
-    wrap.addEventListener('mouseleave', scheduleResume);
-
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; // manual swipe only
-
-    requestAnimationFrame(() => {
-      // Real seam-to-seam distance: where the clone starts minus where the
-      // original starts. This already accounts for the grid's own padding,
-      // so there's no leftover gap when we wrap scrollLeft back to 0.
-      const loopWidth = clone.offsetLeft - grid.offsetLeft;
-      let last = null;
-      function step(ts){
-        if (last === null) last = ts;
-        const dt = ts - last;
-        last = ts;
-        if (!paused) {
-          wrap.scrollLeft += dt * 0.04;
-          if (wrap.scrollLeft >= loopWidth) wrap.scrollLeft -= loopWidth;
-        }
-        requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-    });
-  });
-}
-window.addEventListener('DOMContentLoaded', initInfoCardCarousels);
-document.addEventListener('DOMContentLoaded', initInfoCardCarousels);
-
 /* ── Brands marquee: the CMS renders brand names as one block of plain
    text (e.g. "Samsung Apple LG Sony..."), so this splits it into individual
    chips and duplicates the set once, then a CSS animation scrolls the track
@@ -527,7 +466,6 @@ function initBrandsMarquee(){
   });
 }
 window.addEventListener('DOMContentLoaded', initBrandsMarquee);
-document.addEventListener('DOMContentLoaded', initBrandsMarquee);
 </script>
 
 <?php require 'footer.php'; ?>

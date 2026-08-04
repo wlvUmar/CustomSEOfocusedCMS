@@ -152,36 +152,4 @@
     } else {
         initializeParamPersistence();
     }
-
-    // Re-apply params to dynamically added links (e.g., AJAX)
-    // Using a simple observer approach
-    if (window.MutationObserver) {
-        try {
-            const observer = new MutationObserver(function(mutations) {
-                let hasNewLinks = false;
-                mutations.forEach(function(mutation) {
-                    if (mutation.addedNodes.length > 0) {
-                        mutation.addedNodes.forEach(function(node) {
-                            if (node.nodeType === 1) { // Element node
-                                if (node.tagName === 'A' || node.querySelector('a')) {
-                                    hasNewLinks = true;
-                                }
-                            }
-                        });
-                    }
-                });
-                
-                if (hasNewLinks) {
-                    addParamsToInternalLinks();
-                }
-            });
-
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-        } catch (e) {
-            // Silently handle observer errors
-        }
-    }
 })();
