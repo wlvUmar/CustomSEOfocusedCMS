@@ -101,7 +101,7 @@ class AnalyticsController extends Controller {
                     : ($chartAggregation === 'weekly'
                         ? $this->analyticsModel->getWeeklyChartData('phone_calls', $months, $slug, $utmSource)
                         : $this->analyticsModel->getChartData('phone_calls', $months, $slug, $utmSource)),
-                'trends' => $this->analyticsModel->getPerformanceTrends(null, $slug, $utmSource),
+                'trends' => $this->analyticsModel->getPerformanceTrends(null, $slug, $utmSource, $months),
                 'top_performers' => $this->analyticsModel->getTopPerformers($months, 500, $slug, $utmSource),
                 'language_stats' => $this->analyticsModel->getLanguageStats($months, $slug, $utmSource),
                 'utm_stats' => $utmStats,
@@ -243,7 +243,7 @@ class AnalyticsController extends Controller {
             }
             $total = $this->analyticsModel->getTotalStats($months, $slug, $utmSource);
             $page_stats = $this->analyticsModel->getPageStats($months, $slug, $utmSource);
-            $trends = $this->analyticsModel->getPerformanceTrends(null, $slug, $utmSource);
+            $trends = $this->analyticsModel->getPerformanceTrends(null, $slug, $utmSource, $months);
             $top_performers = $this->analyticsModel->getTopPerformers($months, 500, $slug, $utmSource);
             $language_stats = $this->analyticsModel->getLanguageStats($months, $slug, $utmSource);
             $utm_stats = $this->analyticsModel->getTopUtmSources(null, $months * 30, $slug, $utmSource);

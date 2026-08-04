@@ -196,7 +196,7 @@ function updateScorecards(data) {
     }
 
     const scChanges = document.querySelectorAll('.performance-scorecard .sc-change');
-    const metrics = ['visits', 'clicks', 'phone_calls'];
+    const metrics = ['visits', 'clicks', 'phone_calls', 'ctr'];
     scChanges.forEach((el, i) => {
         if (i >= metrics.length) return;
         const change = currentChanges[metrics[i]];

@@ -11,13 +11,15 @@ class Analytics {
     public function getMonthlyData($months = 6, $slug = '', $utmSource = '') {
         $months = (int)$months;
 
-        $sql = "SELECT year, month, SUM(total_visits) as visits, SUM(total_clicks) as clicks, SUM(total_phone_calls) as phone_calls
-                FROM analytics_monthly
-                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)";
-        $params = [];
+        $sql = "SELECT year, month, SUM(visits) as visits, SUM(clicks) as clicks, SUM(phone_calls) as phone_calls
+                FROM analytics_hourly
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
+        $params = [$months];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             if ($utmSource === 'direct') {
@@ -35,13 +37,15 @@ class Analytics {
     public function getPageStats($months = 6, $slug = '', $utmSource = '') {
         $months = (int)$months;
 
-        $sql = "SELECT page_slug, language, SUM(total_visits) as visits, SUM(total_clicks) as clicks, SUM(total_phone_calls) as phone_calls
-                FROM analytics_monthly
-                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)";
-        $params = [];
+        $sql = "SELECT page_slug, language, SUM(visits) as visits, SUM(clicks) as clicks, SUM(phone_calls) as phone_calls
+                FROM analytics_hourly
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
+        $params = [$months];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
+        } else {
+            $sql .= " AND page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             if ($utmSource === 'direct') {
@@ -87,28 +91,30 @@ class Analytics {
 
     public function getTotalStats($months = null, $slug = '', $utmSource = '') {
         $sql = "SELECT 
-                    SUM(total_visits) as total_visits,
-                    SUM(total_clicks) as total_clicks,
-                    SUM(total_phone_calls) as total_phone_calls,
+                    SUM(visits) as total_visits,
+                    SUM(clicks) as total_clicks,
+                    SUM(phone_calls) as total_phone_calls,
                     COUNT(DISTINCT page_slug) as unique_pages
-                FROM analytics_monthly";
+                FROM analytics_hourly";
         $params = [];
+        $needsPrefix = true;
         if ($months !== null) {
             $months = (int)$months;
-            $sql .= " WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
+            $sql .= " WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
             $params[] = $months;
+            $needsPrefix = false;
         }
-        $needsPrefix = $months === null;
         if ($slug !== '') {
             $sql .= ($needsPrefix ? " WHERE" : " AND") . " page_slug = ?";
             $params[] = $slug;
-            $needsPrefix = false;
+        } else {
+            $sql .= ($needsPrefix ? " WHERE" : " AND") . " page_slug != '__site__'";
         }
         if ($utmSource !== '') {
             if ($utmSource === 'direct') {
-                $sql .= ($needsPrefix ? " WHERE" : " AND") . " (utm_source = '' OR utm_source IS NULL)";
+                $sql .= " AND (utm_source = '' OR utm_source IS NULL)";
             } else {
-                $sql .= ($needsPrefix ? " WHERE" : " AND") . " utm_source = ?";
+                $sql .= " AND utm_source = ?";
                 $params[] = $utmSource;
             }
         }
@@ -816,7 +822,15 @@ class Analytics {
     }
 
 
-    public function getPerformanceTrends($pageSlug = null, $slug = '', $utmSource = '') {
+    public function getPerformanceTrends($pageSlug = null, $slug = '', $utmSource = '', $months = null) {
+        if ($months !== null) {
+            $months = max(1, (int)$months);
+            $today = new DateTime('today');
+            $start = (clone $today)->modify('-' . $months . ' months')->format('Y-m-d');
+            $end = $today->format('Y-m-d');
+            return $this->getPerformanceTrendsByDateRange($start, $end, $pageSlug, $slug, $utmSource);
+        }
+
         $currentMonth = date('n');
         $currentYear = date('Y');
         $lastMonth = date('n', strtotime('-1 month'));
@@ -866,11 +880,11 @@ class Analytics {
         $paramsPrevious[] = $lastMonth;
 
         $sql = "
-            SELECT 'current' as period, SUM(visits) as visits, SUM(clicks) as clicks
+            SELECT 'current' as period, SUM(visits) as visits, SUM(clicks) as clicks, SUM(phone_calls) as phone_calls
             FROM analytics_hourly
             WHERE " . implode(' AND ', $whereCurrent) . "
             UNION ALL
-            SELECT 'previous' as period, SUM(visits) as visits, SUM(clicks) as clicks
+            SELECT 'previous' as period, SUM(visits) as visits, SUM(clicks) as clicks, SUM(phone_calls) as phone_calls
             FROM analytics_hourly
             WHERE " . implode(' AND ', $wherePrevious);
 
@@ -878,8 +892,8 @@ class Analytics {
 
         $results = $this->db->fetchAll($sql, $params);
 
-        $current = ['visits' => 0, 'clicks' => 0];
-        $previous = ['visits' => 0, 'clicks' => 0];
+        $current = ['visits' => 0, 'clicks' => 0, 'phone_calls' => 0];
+        $previous = ['visits' => 0, 'clicks' => 0, 'phone_calls' => 0];
 
         foreach ($results as $row) {
             if ($row['period'] === 'current') {
@@ -898,7 +912,11 @@ class Analytics {
                     : 0,
                 'clicks' => $previous['clicks'] > 0
                     ? round((($current['clicks'] - $previous['clicks']) / $previous['clicks']) * 100, 1)
-                    : 0
+                    : 0,
+                'phone_calls' => $previous['phone_calls'] > 0
+                    ? round((($current['phone_calls'] - $previous['phone_calls']) / $previous['phone_calls']) * 100, 1)
+                    : 0,
+                'ctr' => $this->ctrChange($current, $previous)
             ]
         ];
     }
@@ -945,11 +963,11 @@ class Analytics {
         }
 
         $sql = "
-            SELECT 'current' as period, SUM(visits) as visits, SUM(clicks) as clicks
+            SELECT 'current' as period, SUM(visits) as visits, SUM(clicks) as clicks, SUM(phone_calls) as phone_calls
             FROM analytics_hourly
             WHERE " . implode(' AND ', $whereCurrent) . "
             UNION ALL
-            SELECT 'previous' as period, SUM(visits) as visits, SUM(clicks) as clicks
+            SELECT 'previous' as period, SUM(visits) as visits, SUM(clicks) as clicks, SUM(phone_calls) as phone_calls
             FROM analytics_hourly
             WHERE " . implode(' AND ', $wherePrevious);
 
@@ -957,8 +975,8 @@ class Analytics {
 
         $results = $this->db->fetchAll($sql, $params);
 
-        $current = ['visits' => 0, 'clicks' => 0];
-        $previous = ['visits' => 0, 'clicks' => 0];
+        $current = ['visits' => 0, 'clicks' => 0, 'phone_calls' => 0];
+        $previous = ['visits' => 0, 'clicks' => 0, 'phone_calls' => 0];
 
         foreach ($results as $row) {
             if ($row['period'] === 'current') {
@@ -977,9 +995,27 @@ class Analytics {
                     : 0,
                 'clicks' => $previous['clicks'] > 0
                     ? round((($current['clicks'] - $previous['clicks']) / $previous['clicks']) * 100, 1)
-                    : 0
+                    : 0,
+                'phone_calls' => $previous['phone_calls'] > 0
+                    ? round((($current['phone_calls'] - $previous['phone_calls']) / $previous['phone_calls']) * 100, 1)
+                    : 0,
+                'ctr' => $this->ctrChange($current, $previous)
             ]
         ];
+    }
+
+    /**
+     * Percentage-point difference in call CTR (phone_calls/visits * 100)
+     * between the current and previous periods.
+     */
+    private function ctrChange($current, $previous) {
+        $currentCtr = ($current['visits'] ?? 0) > 0
+            ? (($current['phone_calls'] ?? 0) / $current['visits']) * 100
+            : 0;
+        $previousCtr = ($previous['visits'] ?? 0) > 0
+            ? (($previous['phone_calls'] ?? 0) / $previous['visits']) * 100
+            : 0;
+        return round($currentCtr - $previousCtr, 2);
     }
 
     /**
