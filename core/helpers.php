@@ -40,6 +40,12 @@ function logInfo($message) {
 }
 
 function logTrackingAudit(string $event, array $context = []): void {
+    // Disabled via TRACKING_AUDIT_ENABLED (config/init.php); flip it to true
+    // to re-enable audit logging. Kept intact for later debugging.
+    if (!defined('TRACKING_AUDIT_ENABLED') || !TRACKING_AUDIT_ENABLED) {
+        return;
+    }
+
     $ts = date('Y-m-d H:i:s');
     $ip = getClientIp() ?? 'unknown';
     $method = $_SERVER['REQUEST_METHOD'] ?? 'UNKNOWN';

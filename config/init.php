@@ -28,6 +28,10 @@ if (!file_exists($trackingAuditLogFile)) {
 }
 define('TRACKING_AUDIT_LOG', $trackingAuditLogFile);
 
+// Audit logging is disabled by default; flip to true to re-enable. The full
+// logTrackingAudit() implementation stays in core/helpers.php.
+define('TRACKING_AUDIT_ENABLED', false);
+
 ini_set('log_errors', 1);
 ini_set('error_log', $errorLogFile);
 ini_set('display_errors', IS_PRODUCTION ? 0 : 1);
