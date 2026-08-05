@@ -11,7 +11,7 @@ class Analytics {
     public function getMonthlyData($months = 6, $slug = '', $utmSource = '') {
         $months = (int)$months;
 
-        $sql = "SELECT year, month, SUM(visits) as visits, SUM(clicks) as clicks, SUM(phone_calls) as phone_calls
+        $sql = "SELECT YEAR(date) as year, MONTH(date) as month, SUM(visits) as visits, SUM(clicks) as clicks, SUM(phone_calls) as phone_calls
                 FROM analytics_hourly
                 WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
         $params = [$months];
@@ -29,7 +29,7 @@ class Analytics {
                 $params[] = $utmSource;
             }
         }
-        $sql .= " GROUP BY year, month ORDER BY year DESC, month DESC";
+        $sql .= " GROUP BY YEAR(date), MONTH(date) ORDER BY YEAR(date) DESC, MONTH(date) DESC";
 
         return $this->db->fetchAll($sql, $params);
     }
