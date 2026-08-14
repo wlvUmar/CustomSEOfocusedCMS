@@ -31,6 +31,8 @@
     /* Green: phone */
     --green:        #059669;
     --green-dark:   #047857;
+    --success:      #059669;
+    --success-hover:#047857;
 
     /* Telegram blue */
     --tg:           #24a1de;
