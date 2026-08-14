@@ -276,6 +276,7 @@ tinymce.init({
     content_css: [
         '<?= BASE_URL ?>/css/pages.min.css'
     ],
+    content_style: '.hero__content,.content-section,.info-card,.process-step,.brands-list,.faq-item,.condition-item,.review-strip,.links-tile,.faq-section{opacity:1!important;transform:none!important}',
 });
 
 // Handle rotation mode toggle
