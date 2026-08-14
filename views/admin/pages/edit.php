@@ -35,7 +35,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <option value="" <?= (!isset($page) || !$page || !($page['parent_id'] ?? null)) ? 'selected' : '' ?>>— Root Level (No Parent) —</option>
                 <?php if (!empty($allPages)): ?>
                     <?php 
-                    function renderParentPageOptions($pages, $currentPageId = null, $parentId = 0, $depth = 0, $maxDepth = 3) {
+                    function renderParentPageOptions($pages, $currentPageId = null, $parentId = 0, $depth = 0, $maxDepth = 3, $selectedParentId = null) {
                         $output = '';
                         if ($depth > $maxDepth) return $output;
                         
@@ -51,7 +51,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         
                         foreach ($childPages as $p) {
                             $indent = str_repeat('  ', $depth) . ($depth > 0 ? '└ ' : '');
-                            $isSelected = isset($page) && $page && isset($page['parent_id']) && $page['parent_id'] == $p['id'];
+                            $isSelected = $selectedParentId !== null && $selectedParentId !== '' && $selectedParentId == $p['id'];
                             $output .= sprintf(
                                 '<option value="%d" %s>%s%s</option>' . "\n",
                                 $p['id'],
@@ -59,11 +59,11 @@ require BASE_PATH . '/views/admin/layout/header.php';
                                 $indent,
                                 e($p['title_ru'] ?? $p['slug'])
                             );
-                            $output .= renderParentPageOptions($pages, $currentPageId, $p['id'], $depth + 1, $maxDepth);
+                            $output .= renderParentPageOptions($pages, $currentPageId, $p['id'], $depth + 1, $maxDepth, $selectedParentId);
                         }
                         return $output;
                     }
-                    echo renderParentPageOptions($allPages, $page['id'] ?? null);
+                    echo renderParentPageOptions($allPages, $page['id'] ?? null, 0, 0, 3, $page['parent_id'] ?? null);
                     ?>
                 <?php endif; ?>
             </select>
