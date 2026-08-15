@@ -9,6 +9,30 @@ class PageAdminController extends Controller {
     private $rotationModel;
 
 
+    /**
+     * Output token budget for an OpenRouter call, sized to the content involved.
+     * The previous flat 4096 cap was easy to exceed on a full-field rewrite of a
+     * large HTML page, which truncates the response mid-JSON/mid-HTML — that
+     * shows up downstream as "the model didn't return valid JSON" or an edit
+     * that silently fails to apply, not as an obvious token-limit error.
+     *
+     * 'full' mode echoes back content roughly proportional to $contentLength,
+     * so it gets a generous multiplier. 'edits' mode only echoes back the
+     * specific find/replace snippets touched, so it needs much less even for
+     * a large field, but still scales up a bit so many small edits in one
+     * turn (or a page-wide restructure) aren't cut off either.
+     */
+    private function estimateMaxTokens(int $contentLength, string $mode): int {
+        $charsPerToken = 3; // conservative for mixed RU/UZ/HTML content
+        if ($mode === 'full') {
+            $budget = intdiv($contentLength, $charsPerToken) + 1500;
+            return max(4096, min($budget, 24000));
+        }
+        // 'edits' mode
+        $budget = intdiv($contentLength, $charsPerToken * 3) + 2000;
+        return max(4096, min($budget, 12000));
+    }
+
     private function sanitizeSlug($slug) {
         $slug = strtolower(trim($slug));
         $slug = preg_replace('/[^a-z0-9-]/', '-', $slug);
@@ -83,6 +107,7 @@ class PageAdminController extends Controller {
 
         if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
             $this->json(['success' => false, 'message' => 'CSRF token validation failed'], 400);
+            return;
         }
 
         $pageId = intval($_POST['page_id'] ?? 0);
@@ -101,20 +126,25 @@ class PageAdminController extends Controller {
 
         if ($pageId <= 0) {
             $this->json(['success' => false, 'message' => 'Invalid page'], 400);
+            return;
         }
         if (!in_array($field, $allowedFields, true)) {
             $this->json(['success' => false, 'message' => 'Invalid target field'], 400);
+            return;
         }
         if (!in_array($mode, $allowedModes, true)) {
             $this->json(['success' => false, 'message' => 'Invalid mode'], 400);
+            return;
         }
         if ($prompt === '') {
             $this->json(['success' => false, 'message' => 'Prompt cannot be empty'], 400);
+            return;
         }
 
         $page = $this->pageModel->getById($pageId);
         if (!$page) {
             $this->json(['success' => false, 'message' => 'Page not found'], 404);
+            return;
         }
 
         require_once BASE_PATH . '/models/OpenRouter.php';
@@ -183,11 +213,12 @@ class PageAdminController extends Controller {
         $messages = array_merge([$system], $historyMessages, [$user]);
 
         try {
-            $result = OpenRouter::chat($messages, $model);
+            $maxTokens = $this->estimateMaxTokens(strlen($currentValue) + strlen($prompt), $mode);
+            $result = OpenRouter::chat($messages, $model, 0.7, $maxTokens);
             $response = ['success' => true, 'result' => $result];
             if ($mode === 'edits') {
-                $edits = $this->parseEditsJson($result);
-                $applied = $this->applyEditsPartial($currentValue, $edits);
+                $parsed = $this->parseEditsResponse($result);
+                $applied = $this->applyEditsPartial($currentValue, $parsed['edits']);
                 $response['result'] = $applied['text'];
                 $response['changes'] = $applied['applied'];
                 if (!empty($applied['failed'])) {
@@ -195,6 +226,7 @@ class PageAdminController extends Controller {
                 }
                 if (empty($applied['applied'])) {
                     $this->json(['success' => false, 'message' => 'No edits could be applied — the model\'s "find" text did not match the content.'], 500);
+                    return;
                 }
             }
             $this->json($response);
@@ -213,6 +245,7 @@ class PageAdminController extends Controller {
 
         if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
             $this->json(['success' => false, 'message' => 'CSRF token validation failed'], 400);
+            return;
         }
 
         $pageId = intval($_POST['page_id'] ?? 0);
@@ -231,17 +264,21 @@ class PageAdminController extends Controller {
 
         if ($pageId <= 0) {
             $this->json(['success' => false, 'message' => 'Invalid page'], 400);
+            return;
         }
         if (!in_array($field, $allowedFields, true)) {
             $this->json(['success' => false, 'message' => 'Invalid target field'], 400);
+            return;
         }
         if ($prompt === '') {
             $this->json(['success' => false, 'message' => 'Prompt cannot be empty'], 400);
+            return;
         }
 
         $page = $this->pageModel->getById($pageId);
         if (!$page) {
             $this->json(['success' => false, 'message' => 'Page not found'], 404);
+            return;
         }
 
         // Fall back to the stored value on the very first turn (empty working copy)
@@ -264,6 +301,21 @@ class PageAdminController extends Controller {
             'meta_description_ru' => 'meta description (RU / Russian)',
             'meta_description_uz' => 'meta description (UZ / Uzbek)',
         ];
+
+        // For big HTML fields, avoid re-sending the entire field on every turn —
+        // that's the token burn you're seeing. This codebase already marks logical
+        // blocks with "<!-- Section Name -->" comments (Page Hero, Intro, CTA, etc.),
+        // so scope the request to just the section(s) that look relevant to the
+        // prompt, and escalate to the full field automatically if that guess is wrong.
+        $sections = null;
+        $scopedSections = null;
+        if ($isHtml && mb_strlen($workingContent) > 2000) {
+            $sections = $this->splitIntoSections($workingContent);
+            if (count($sections) >= 3) {
+                $scopedSections = $this->selectRelevantSections($sections, $prompt);
+            }
+        }
+        $totalSections = $sections !== null ? count($sections) : 0;
 
         $system = [
             'role' => 'system',
@@ -292,26 +344,52 @@ class PageAdminController extends Controller {
                         . "(e.g. content-section, info-card, process-step, faq-item, links-tile, btn, btn-primary) "
                         . "and inline styles unless the user explicitly asks to change them.\n"
                     : "- For short fields (titles, meta titles, meta descriptions) respect reasonable length "
-                        . "limits (titles ~60-70 chars, meta descriptions ~150-160 chars).\n"),
+                        . "limits (titles ~60-70 chars, meta descriptions ~150-160 chars).\n")
+                . ($scopedSections !== null
+                    ? "- To save tokens you are only shown the section(s) of the field that look relevant to the "
+                        . "request, not the whole value. If the exact text you need to change is NOT visible in "
+                        . "what you were shown, respond with ONLY {\"edits\":[],\"need_more_context\":true} and "
+                        . "nothing else — you will then be shown the full field.\n"
+                    : ""),
         ];
 
         $historyMessages = $this->buildHistoryMessages($history);
 
         $user = [
             'role' => 'user',
-            'content' => ($workingContent !== ''
-                    ? "Current value of the field (line numbers shown only for reference):\n\n"
-                        . $this->numberLines($workingContent) . "\n\n"
-                    : "The field is currently empty.\n\n")
+            'content' => $this->buildScopedContext($workingContent, $scopedSections, $totalSections)
                 . "User request:\n{$prompt}",
         ];
 
         $messages = array_merge([$system], $historyMessages, [$user]);
 
         try {
-            $modelOutput = OpenRouter::chat($messages, $model);
-            $edits = $this->parseEditsJson($modelOutput);
-            $round = $this->applyEditsPartial($workingContent, $edits);
+            $chatContentLen = $scopedSections !== null
+                ? array_sum(array_map(fn($s) => strlen($s['text']), $scopedSections))
+                : strlen($workingContent);
+            $maxTokens = $this->estimateMaxTokens($chatContentLen, 'edits');
+            $modelOutput = OpenRouter::chat($messages, $model, 0.7, $maxTokens);
+            $parsed = $this->parseEditsResponse($modelOutput);
+            $usedFullContext = ($scopedSections === null);
+            $sectionsUsed = $scopedSections !== null ? array_column($scopedSections, 'name') : null;
+
+            // Escalate to the full field if the model asked for more context, or came
+            // back with nothing usable — a sign the section guess missed the target.
+            if ($scopedSections !== null && ($parsed['need_more_context'] || empty($parsed['edits']))) {
+                $fullUser = [
+                    'role' => 'user',
+                    'content' => $this->buildScopedContext($workingContent, null, $totalSections)
+                        . "User request:\n{$prompt}",
+                ];
+                $messages = array_merge([$system], $historyMessages, [$fullUser]);
+                $maxTokens = $this->estimateMaxTokens(strlen($workingContent), 'edits');
+                $modelOutput = OpenRouter::chat($messages, $model, 0.7, $maxTokens);
+                $parsed = $this->parseEditsResponse($modelOutput);
+                $usedFullContext = true;
+                $sectionsUsed = null;
+            }
+
+            $round = $this->applyEditsPartial($workingContent, $parsed['edits']);
             $text = $round['text'];
             $applied = $round['applied'];
             $failed = $round['failed'];
@@ -326,15 +404,15 @@ class PageAdminController extends Controller {
                         . "\nThe successful edits (if any) have already been applied. Re-examine the CURRENT "
                         . "value below and resend ONLY corrected edits for the items above, in the same JSON "
                         . "shape. If a change is no longer needed, omit it.\n\n"
-                        . "Current value of the field (line numbers shown only for reference):\n\n"
-                        . $this->numberLines($text);
+                        . $this->buildScopedContext($text, null, $totalSections);
                     $retryMessages = array_merge($messages, [
                         ['role' => 'assistant', 'content' => $modelOutput],
                         ['role' => 'user', 'content' => $correction],
                     ]);
-                    $retryOutput = OpenRouter::chat($retryMessages, $model);
-                    $retryEdits = $this->parseEditsJson($retryOutput);
-                    $retryRound = $this->applyEditsPartial($text, $retryEdits);
+                    $retryMaxTokens = $this->estimateMaxTokens(strlen($text) + strlen($correction), 'edits');
+                    $retryOutput = OpenRouter::chat($retryMessages, $model, 0.7, $retryMaxTokens);
+                    $retryParsed = $this->parseEditsResponse($retryOutput);
+                    $retryRound = $this->applyEditsPartial($text, $retryParsed['edits']);
                     $text = $retryRound['text'];
                     $applied = array_merge($applied, $retryRound['applied']);
                     $failed = $retryRound['failed'];
@@ -349,6 +427,7 @@ class PageAdminController extends Controller {
                     'success' => false,
                     'message' => 'Could not apply the edit. ' . $this->describeFailuresForModel($failed, true),
                 ], 500);
+                return;
             }
 
             $response = [
@@ -358,6 +437,11 @@ class PageAdminController extends Controller {
             ];
             if (!empty($failed)) {
                 $response['unresolved'] = array_map([$this, 'describeFailedEdit'], $failed);
+            }
+            if ($sectionsUsed !== null) {
+                $response['scoped'] = true;
+                $response['sections_used'] = $sectionsUsed;
+                $response['sections_total'] = $totalSections;
             }
             $this->json($response);
         } catch (Exception $e) {
@@ -404,11 +488,13 @@ class PageAdminController extends Controller {
     /**
      * In 'edits' mode the model returns a JSON patch like:
      *   {"edits":[{"find":"...","replace":"...","explanation":"..."}, ...]}
-     * This parses that patch. Throws only when the output isn't valid JSON
-     * of the expected shape — actual find/replace failures are handled by
-     * applyEditsPartial() below without discarding the whole batch.
+     * (optionally with "need_more_context":true when it was shown a scoped
+     * excerpt and couldn't find its target in it). This parses that patch.
+     * Throws only when the output isn't valid JSON of the expected shape —
+     * actual find/replace failures are handled by applyEditsPartial() below
+     * without discarding the whole batch.
      */
-    private function parseEditsJson($modelOutput) {
+    private function parseEditsResponse($modelOutput) {
         // Strip surrounding markdown fences if the model wrapped the JSON
         $clean = trim($modelOutput);
         $clean = preg_replace('/^```(?:json)?\s*/i', '', $clean);
@@ -425,7 +511,98 @@ class PageAdminController extends Controller {
         if (!is_array($data) || !isset($data['edits']) || !is_array($data['edits'])) {
             throw new Exception('Expected JSON with an "edits" array. Got: ' . mb_substr($json, 0, 400));
         }
-        return $data['edits'];
+        return [
+            'edits' => $data['edits'],
+            'need_more_context' => !empty($data['need_more_context']),
+        ];
+    }
+
+    /**
+     * Split an HTML field on its "<!-- Section Name -->" comment markers (this
+     * codebase already uses these to delimit logical blocks: hero, intro, CTA,
+     * etc). Text before the first marker is grouped under 'Top of document'.
+     * Returns an ordered list of ['name' => ..., 'text' => ...].
+     */
+    private function splitIntoSections($html) {
+        $parts = preg_split('/(<!--.*?-->)/s', $html, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+        $sections = [];
+        $currentName = 'Top of document';
+        $buffer = '';
+        foreach ($parts as $part) {
+            if (preg_match('/^<!--\s*(.*?)\s*-->$/s', $part, $m)) {
+                if (trim($buffer) !== '') {
+                    $sections[] = ['name' => $currentName, 'text' => $buffer];
+                }
+                $currentName = trim($m[1]) !== '' ? trim($m[1]) : $currentName;
+                $buffer = $part . "\n";
+            } else {
+                $buffer .= $part;
+            }
+        }
+        if (trim($buffer) !== '') {
+            $sections[] = ['name' => $currentName, 'text' => $buffer];
+        }
+        return $sections;
+    }
+
+    /**
+     * Score each section by how many meaningful prompt words it contains, and
+     * greedily pick the best ones within a rough token budget. Returns null
+     * (meaning: use the full field instead) when nothing scores — a vague or
+     * unrelated-looking prompt isn't worth guessing on.
+     */
+    private function selectRelevantSections(array $sections, $prompt, $budgetChars = 6000) {
+        preg_match_all('/[\p{L}\p{N}]{4,}/u', mb_strtolower($prompt), $m);
+        $words = array_unique($m[0] ?? []);
+        if (empty($words)) return null;
+
+        $scored = [];
+        foreach ($sections as $i => $section) {
+            $haystack = mb_strtolower(strip_tags($section['name'] . ' ' . $section['text']));
+            $score = 0;
+            foreach ($words as $w) {
+                if (mb_strpos($haystack, $w) !== false) $score++;
+            }
+            $scored[$i] = $score;
+        }
+
+        arsort($scored);
+        if (reset($scored) === 0) return null;
+
+        $chosenIdx = [];
+        $used = 0;
+        foreach ($scored as $i => $score) {
+            if ($score === 0) break;
+            $len = mb_strlen($sections[$i]['text']);
+            if (!empty($chosenIdx) && $used + $len > $budgetChars) continue;
+            $chosenIdx[] = $i;
+            $used += $len;
+        }
+        sort($chosenIdx); // restore original document order for readability
+        $selected = [];
+        foreach ($chosenIdx as $i) $selected[] = $sections[$i];
+        return $selected;
+    }
+
+    /**
+     * Build the "current value" portion of the user message: either the full
+     * field (line-numbered), or just the scoped sections when $scopedSections
+     * is a non-null array.
+     */
+    private function buildScopedContext($workingContent, $scopedSections, $totalSections) {
+        if ($scopedSections === null) {
+            return $workingContent !== ''
+                ? "Current value of the field (line numbers shown only for reference):\n\n"
+                    . $this->numberLines($workingContent) . "\n\n"
+                : "The field is currently empty.\n\n";
+        }
+        $shown = count($scopedSections);
+        $out = "Showing {$shown} of {$totalSections} section(s) of the field — the ones that look most "
+            . "relevant to the request below (this saves tokens on large fields):\n\n";
+        foreach ($scopedSections as $s) {
+            $out .= "--- SECTION: {$s['name']} ---\n" . $s['text'] . "\n\n";
+        }
+        return $out;
     }
 
     /**

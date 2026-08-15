@@ -31,34 +31,81 @@
         return cfg.fields[field] || null;
     }
 
-    function readField(field) {
-        const f = getFieldConfig(field);
-        if (!f) return '';
-        if (f.type === 'tinymce') {
-            const editor = tinymce.get(field);
-            if (editor) return editor.getContent();
-            const ta = document.querySelector('textarea[name="' + field + '"]');
-            return ta ? ta.value : '';
+    // tinymce.get(id) only works if the source <textarea>'s id matches our
+    // field key. If it doesn't (missing id attribute, mismatched id, etc.)
+    // fall back to scanning live editor instances by the underlying
+    // textarea's `name` attribute, which is what the rest of the form (and
+    // the PHP save handler) actually keys off of.
+    function findTinymceEditor(field) {
+        if (typeof tinymce === 'undefined') return null;
+        const byId = tinymce.get(field);
+        if (byId) return byId;
+        const editors = tinymce.editors || [];
+        for (let i = 0; i < editors.length; i++) {
+            const el = editors[i].getElement && editors[i].getElement();
+            if (el && el.getAttribute('name') === field) return editors[i];
         }
-        const el = document.querySelector(f.selector);
-        return el ? el.value : '';
+        return null;
     }
 
+    function readField(field) {
+        const f = getFieldConfig(field);
+        if (!f) {
+            console.error('[ai-panel] No field config for "' + field + '" — check AI_CONFIG.fields');
+            return '';
+        }
+        if (f.type === 'tinymce') {
+            const editor = findTinymceEditor(field);
+            if (editor) return editor.getContent();
+            const ta = document.querySelector('textarea[name="' + field + '"]');
+            if (ta) return ta.value;
+            console.error('[ai-panel] TinyMCE instance and fallback textarea both missing for "' + field + '"');
+            return '';
+        }
+        const el = document.querySelector(f.selector);
+        if (el) return el.value;
+        console.error('[ai-panel] No element matches selector "' + f.selector + '" for field "' + field + '"');
+        return '';
+    }
+
+    // Returns true if the field was actually located and written to, false
+    // otherwise. Callers MUST check this before telling the user "Applied" —
+    // previously this failed silently (wrong selector, TinyMCE not yet
+    // initialized, etc.) while the UI still reported success.
     function writeField(field, html) {
         const f = getFieldConfig(field);
-        if (!f) return;
+        if (!f) {
+            console.error('[ai-panel] No field config for "' + field + '" — check AI_CONFIG.fields');
+            return false;
+        }
         if (f.type === 'tinymce') {
-            const editor = tinymce.get(field);
+            const editor = findTinymceEditor(field);
             if (editor) {
                 editor.setContent(html);
-            } else {
-                const ta = document.querySelector('textarea[name="' + field + '"]');
-                if (ta) ta.value = html;
+                // Sync TinyMCE's iframe content back into the underlying
+                // <textarea> immediately so the value is correct even if
+                // something reads the textarea directly before form submit.
+                if (typeof editor.save === 'function') editor.save();
+                return true;
             }
-        } else {
-            const el = document.querySelector(f.selector);
-            if (el) el.value = html;
+            const ta = document.querySelector('textarea[name="' + field + '"]');
+            if (ta) {
+                ta.value = html;
+                return true;
+            }
+            console.error('[ai-panel] TinyMCE instance and fallback textarea both missing for "' + field + '"');
+            return false;
         }
+        const el = document.querySelector(f.selector);
+        if (el) {
+            el.value = html;
+            // Let any listeners (validation, char counters, etc.) know the
+            // value changed programmatically.
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            return true;
+        }
+        console.error('[ai-panel] No element matches selector "' + f.selector + '" for field "' + field + '"');
+        return false;
     }
 
     function getField() {
@@ -224,10 +271,17 @@
                 const u = (data.unresolved || []).length;
                 let msg = n + ' change(s) applied';
                 if (u > 0) msg += ', ' + u + ' skipped (too ambiguous — see above)';
+                if (data.scoped) {
+                    msg += ' · scoped to ' + (data.sections_used || []).length + '/' + data.sections_total + ' section(s)';
+                }
 
                 if (isAutoApply()) {
-                    writeField(field, workingContent);
-                    setChatStatus(msg + ' — written to the field automatically.', u > 0 ? 'error' : '');
+                    const ok = writeField(field, workingContent);
+                    if (ok) {
+                        setChatStatus(msg + ' — written to the field automatically.', u > 0 ? 'error' : '');
+                    } else {
+                        setChatStatus(msg + ', but auto-apply could not find the "' + field + '" field on the page (see console). The change is kept in this session — try "Apply all changes" or reload.', 'error');
+                    }
                 } else {
                     setChatStatus(msg + ' — click "Apply all changes" to write it to the field.', u > 0 ? 'error' : '');
                 }
@@ -248,8 +302,18 @@
             setChatStatus('Nothing to apply yet.', '');
             return;
         }
-        writeField(getField(), workingContent);
-        setChatStatus('Applied to field. Don\'t forget to Save the page.', '');
+        // Use the field this session's content actually belongs to (chatField),
+        // not whatever happens to be selected in the dropdown right now — those
+        // can drift apart. Fall back to the dropdown only if we somehow have no
+        // session field recorded.
+        const targetField = chatField || getField();
+        const ok = writeField(targetField, workingContent);
+        if (ok) {
+            setChatStatus('Applied to field. Don\'t forget to Save the page.', '');
+        } else {
+            setChatStatus('Could not apply — the "' + targetField + '" field wasn\'t found on the page (see browser console for details).', 'error');
+            return;
+        }
         const panel = document.querySelector('.ai-panel');
         if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -265,8 +329,10 @@
         workingContent = turns.length ? turns[turns.length - 1].before : originalContent;
         replayChatUi();
         if (isAutoApply() && chatField) {
-            writeField(chatField, workingContent);
-            setChatStatus('Undid last change and updated the field.', '');
+            const ok = writeField(chatField, workingContent);
+            setChatStatus(ok
+                ? 'Undid last change and updated the field.'
+                : 'Undid last change, but couldn\'t write it to the field (see console). Try "Apply all changes".', ok ? '' : 'error');
         } else {
             setChatStatus('Undid last change. Click "Apply all changes" to write it to the field.', '');
         }
@@ -393,7 +459,14 @@
         const box = document.getElementById('ai-result');
         const content = document.getElementById('ai-result-content');
         if (!box || !content || box.classList.contains('hidden')) return;
-        writeField(getField(), content.textContent);
+        // Same reasoning as chatApply(): apply to the field this result was
+        // actually generated for, not whatever the dropdown shows right now.
+        const targetField = fullField || getField();
+        const ok = writeField(targetField, content.textContent);
+        if (!ok) {
+            setFullStatus('Could not apply — the "' + targetField + '" field wasn\'t found on the page (see browser console for details).', 'error');
+            return;
+        }
         setFullStatus('Applied to field. Don\'t forget to Save the page.', '');
         hideFullResult();
         fullReset();

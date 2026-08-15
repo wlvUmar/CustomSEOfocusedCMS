@@ -201,12 +201,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
         
         <div class="form-group">
             <label>Content (RU)</label>
-            <textarea name="content_ru" class="tinymce"><?= $page['content_ru'] ?? '' ?></textarea>
+            <textarea name="content_ru" id="content_ru" class="tinymce"><?= $page['content_ru'] ?? '' ?></textarea>
         </div>
         
         <div class="form-group">
             <label>Content (UZ)</label>
-            <textarea name="content_uz" class="tinymce"><?= $page['content_uz'] ?? '' ?></textarea>
+            <textarea name="content_uz" id="content_uz" class="tinymce"><?= $page['content_uz'] ?? '' ?></textarea>
         </div>
         
         <div class="form-row">
