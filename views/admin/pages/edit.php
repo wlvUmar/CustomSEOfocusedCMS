@@ -5,6 +5,87 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <h1><?= $page ? 'Edit Page' : 'Create Page' ?></h1>
 
+<?php if ($page): ?>
+<div class="ai-panel">
+    <button type="button" class="ai-panel__toggle" onclick="toggleAiPanel(this)">
+        <span class="ai-panel__toggle-title">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l1.6 4.9L18.5 8.5l-4.9 1.6L12 15l-1.6-4.9L5.5 8.5l4.9-1.6zM18 14l.8 2.4 2.4.8-2.4.8L18 20.4l-.8-2.4-2.4-.8 2.4-.8zM5 16l.6 1.9 1.9.6-1.9.6L5 21l-.6-1.9-1.9-.6 1.9-.6z"/>
+            </svg>
+            AI Assistant
+        </span>
+        <span class="ai-panel__badge">OpenRouter</span>
+        <svg class="ai-panel__chevron" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+    </button>
+
+    <div class="ai-panel__body">
+        <div class="ai-panel__row">
+            <div class="ai-panel__group ai-panel__group--field">
+                <label for="ai-field">Target field</label>
+                <select id="ai-field">
+                    <option value="content_ru">Content (RU)</option>
+                    <option value="content_uz">Content (UZ)</option>
+                    <option value="title_ru">Title (RU)</option>
+                    <option value="title_uz">Title (UZ)</option>
+                    <option value="meta_title_ru">Meta title (RU)</option>
+                    <option value="meta_title_uz">Meta title (UZ)</option>
+                    <option value="meta_description_ru">Meta description (RU)</option>
+                    <option value="meta_description_uz">Meta description (UZ)</option>
+                </select>
+            </div>
+            <div class="ai-panel__group ai-panel__group--model">
+                <label for="ai-model">Model</label>
+                <select id="ai-model">
+                    <option value="deepseek/deepseek-chat" selected>DeepSeek Chat (fast, cheap)</option>
+                    <option value="openai/gpt-4o-mini">GPT-4o Mini (balanced)</option>
+                    <option value="anthropic/claude-3.5-haiku">Claude Haiku (fast)</option>
+                    <option value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B (open)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="ai-panel__chips">
+            <button type="button" class="ai-chip" data-prompt="Rewrite this content to be clearer, more engaging and persuasive. Keep the same meaning and structure.">✍️ Rewrite</button>
+            <button type="button" class="ai-chip" data-prompt="Improve this content for SEO: strengthen keywords, readability and user intent. Do not change the factual claims.">🎯 Improve SEO</button>
+            <button type="button" class="ai-chip" data-prompt="Fix all grammar, spelling and punctuation mistakes. Keep the rest exactly the same.">✅ Fix grammar</button>
+            <button type="button" class="ai-chip" data-prompt="Shorten this content by about 30% while keeping the key points.">✂️ Shorten</button>
+            <button type="button" class="ai-chip" data-prompt="Expand this content with more useful details and examples. Keep the same style.">🚀 Expand</button>
+            <button type="button" class="ai-chip" data-prompt="Translate this content into the target language naturally, keeping all template variables and formatting.">🔄 Translate</button>
+        </div>
+
+        <div class="ai-panel__group">
+            <label for="ai-prompt">What should the AI do?</label>
+            <textarea id="ai-prompt" rows="3" placeholder="e.g. Rewrite the intro to highlight that we pay the best prices in Tashkent, add a short paragraph about free pickup..."></textarea>
+        </div>
+
+        <div class="ai-panel__actions">
+            <button type="button" id="ai-generate" class="btn btn-primary" onclick="aiGenerate()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                Generate
+            </button>
+            <span id="ai-status" class="ai-panel__status"></span>
+        </div>
+
+        <div id="ai-result" class="ai-panel__result hidden">
+            <div class="ai-panel__result-head">
+                <span>Generated result</span>
+                <span id="ai-result-meta" class="ai-panel__result-meta"></span>
+            </div>
+            <div id="ai-result-content" class="ai-panel__result-content"></div>
+            <div class="ai-panel__result-actions">
+                <button type="button" class="btn btn-primary btn-sm" onclick="aiApply()">Apply to field</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="aiRegenerate()">Regenerate</button>
+                <button type="button" class="btn btn-sm" onclick="aiDiscard()">Discard</button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <form method="POST" action="<?= BASE_URL ?>/admin/pages/save" class="admin-form">
     <?= csrfField() ?>
     <?php if ($page): ?>
@@ -293,5 +374,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<?php if ($page): ?>
+<script>
+    window.AI_CONFIG = {
+        pageId: <?= (int)$page['id'] ?>,
+        csrf: '<?= $_SESSION['csrf_token'] ?? '' ?>',
+        endpoint: '<?= BASE_URL ?>/admin/pages/ai-edit',
+        fields: {
+            content_ru: { type: 'tinymce', label: 'Content (RU)' },
+            content_uz: { type: 'tinymce', label: 'Content (UZ)' },
+            title_ru: { type: 'input', selector: '[name="title_ru"]', label: 'Title (RU)' },
+            title_uz: { type: 'input', selector: '[name="title_uz"]', label: 'Title (UZ)' },
+            meta_title_ru: { type: 'input', selector: '[name="meta_title_ru"]', label: 'Meta title (RU)' },
+            meta_title_uz: { type: 'input', selector: '[name="meta_title_uz"]', label: 'Meta title (UZ)' },
+            meta_description_ru: { type: 'input', selector: '[name="meta_description_ru"]', label: 'Meta description (RU)' },
+            meta_description_uz: { type: 'input', selector: '[name="meta_description_uz"]', label: 'Meta description (UZ)' },
+        }
+    };
+</script>
+<script src="<?= BASE_URL ?>/js/admin/pages-ai.js"></script>
+<?php endif; ?>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

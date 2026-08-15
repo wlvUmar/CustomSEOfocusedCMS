@@ -53,4 +53,7 @@ define('DEFAULT_LANGUAGE', 'ru');
 define('GTM_ID', 'GTM-PRK222HD');
 define('TELEGRAM_BOT_URL', getenv('TELEGRAM_BOT_URL') ?: 'https://t.me/YOUR_BOT');
 
+// OpenRouter API key for the AI page-editing assistant (set OPENROUTER_API_KEY in .env)
+define('OPENROUTER_API_KEY', getenv('OPENROUTER_API_KEY') ?: '');
+
 date_default_timezone_set('Asia/Tashkent');
