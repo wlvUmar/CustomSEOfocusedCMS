@@ -119,7 +119,12 @@ class PageAdminController extends Controller {
 
         require_once BASE_PATH . '/models/OpenRouter.php';
 
-        $currentValue = (string)($page[$field] ?? '');
+        // Prefer whatever is currently in the browser's form/editor (unsaved edits included);
+        // only fall back to the saved DB value when the client didn't send anything yet.
+        $workingContent = (string)($_POST['working_content'] ?? '');
+        $currentValue = $workingContent !== '' ? $workingContent : (string)($page[$field] ?? '');
+        $historyMessages = $this->buildHistoryMessages($_POST['history'] ?? '[]');
+
         $isHtml = in_array($field, ['content_ru', 'content_uz'], true);
         $isRu = str_ends_with($field, '_ru') || $field === 'title_ru';
 
@@ -162,8 +167,8 @@ class PageAdminController extends Controller {
                     ? "- The current value is HTML. Preserve the existing structure, CSS classes "
                         . "(e.g. content-section, info-card, process-step, faq-item, links-tile, btn, btn-primary) and "
                         . "inline styles unless the user explicitly asks to change them.\n"
-                    : '- For short fields (titles, meta titles, meta descriptions) respect reasonable length limits '
-                        . '(titles ~60-70 chars, meta descriptions ~150-160 chars).\n')
+                    : "- For short fields (titles, meta titles, meta descriptions) respect reasonable length limits "
+                        . "(titles ~60-70 chars, meta descriptions ~150-160 chars).\n")
                 . '- If a prompt is too vague, make reasonable SEO-focused improvements rather than asking questions.',
         ];
 
@@ -175,13 +180,24 @@ class PageAdminController extends Controller {
                 . "User request:\n{$prompt}",
         ];
 
+        $messages = array_merge([$system], $historyMessages, [$user]);
+
         try {
-            $result = OpenRouter::chat([$system, $user], $model);
+            $result = OpenRouter::chat($messages, $model);
+            $response = ['success' => true, 'result' => $result];
             if ($mode === 'edits') {
-                $applied = $this->applyTargetedEdits($currentValue, $result);
-                $result = $applied['text'];
+                $edits = $this->parseEditsJson($result);
+                $applied = $this->applyEditsPartial($currentValue, $edits);
+                $response['result'] = $applied['text'];
+                $response['changes'] = $applied['applied'];
+                if (!empty($applied['failed'])) {
+                    $response['unresolved'] = array_map([$this, 'describeFailedEdit'], $applied['failed']);
+                }
+                if (empty($applied['applied'])) {
+                    $this->json(['success' => false, 'message' => 'No edits could be applied — the model\'s "find" text did not match the content.'], 500);
+                }
             }
-            $this->json(['success' => true, 'result' => $result]);
+            $this->json($response);
         } catch (Exception $e) {
             $this->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -251,50 +267,35 @@ class PageAdminController extends Controller {
 
         $system = [
             'role' => 'system',
-            'content' => 'You are a precise line-editor tool for an appliance buyback service website '
-                . 'based in Tashkent, Uzbekistan (bilingual RU/UZ). '
+            'content' => "You are a precise line-editor tool for an appliance buyback service website "
+                . "based in Tashkent, Uzbekistan (bilingual RU/UZ). "
                 . "You are editing the {$fieldLabels[$field]} of the page titled \"{$siteName}\".\n"
-                . 'You work with the CURRENT value of the field, which may already contain changes from '
-                . 'previous turns of this session.\n'
-                . 'Rules:' . "\n"
-                . '- Read the current value and the user request, then decide which small pieces must change.\n'
-                . '- Respond with ONLY a JSON object of this exact shape, no explanations, no markdown fences:\n'
+                . "You work with the CURRENT value of the field, which may already contain changes from "
+                . "previous turns of this session.\n"
+                . "Rules:\n"
+                . "- Read the current value and the user request, then decide which small pieces must change.\n"
+                . "- Respond with ONLY a JSON object of this exact shape, no explanations, no markdown fences:\n"
                 . "{\"edits\":[{\"find\":\"<exact existing text>\",\"replace\":\"<new text>\",\"explanation\":\"<one short sentence>\"}]}\n"
-                . '- The "find" text MUST appear verbatim in the current value; copy it exactly, character for '
-                . 'character, including punctuation and HTML tags. It is searched literally.\n'
-                . '- Each "find" must occur exactly once in the value; if it appears several times, include '
-                . 'surrounding context to make it unique.\n'
-                . '- For deletion, use "replace": "".\n'
-                . '- Touch ONLY what the user asked for; leave everything else untouched. Do not rewrite '
-                . 'unrelated lines and do not return the whole value.\n'
-                . '- Keep the language as specified for this field (' . ($isRu ? 'Russian' : 'Uzbek') . ').\n'
-                . '- Preserve all template variables exactly as-is: {{page.title}}, {{global.phone}}, '
-                . '{{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}, '
-                . '{{date.year}}, {{date.month}} and any other {{...}} placeholder. Never invent new variables.\n'
+                . "- The \"find\" text MUST appear verbatim in the current value; copy it exactly, character for "
+                . "character, including punctuation and HTML tags. It is searched literally.\n"
+                . "- Each \"find\" must occur exactly once in the value; if it appears several times, include "
+                . "surrounding context to make it unique.\n"
+                . "- For deletion, use \"replace\": \"\".\n"
+                . "- Touch ONLY what the user asked for; leave everything else untouched. Do not rewrite "
+                . "unrelated lines and do not return the whole value.\n"
+                . "- Keep the language as specified for this field (" . ($isRu ? 'Russian' : 'Uzbek') . ").\n"
+                . "- Preserve all template variables exactly as-is: {{page.title}}, {{global.phone}}, "
+                . "{{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}, "
+                . "{{date.year}}, {{date.month}} and any other {{...}} placeholder. Never invent new variables.\n"
                 . ($isHtml
-                    ? '- The value is HTML. Preserve the existing structure, CSS classes '
+                    ? "- The value is HTML. Preserve the existing structure, CSS classes "
                         . "(e.g. content-section, info-card, process-step, faq-item, links-tile, btn, btn-primary) "
                         . "and inline styles unless the user explicitly asks to change them.\n"
-                    : '- For short fields (titles, meta titles, meta descriptions) respect reasonable length '
-                        . 'limits (titles ~60-70 chars, meta descriptions ~150-160 chars).\n'),
+                    : "- For short fields (titles, meta titles, meta descriptions) respect reasonable length "
+                        . "limits (titles ~60-70 chars, meta descriptions ~150-160 chars).\n"),
         ];
 
-        $decodedHistory = json_decode($history, true);
-        $historyMessages = [];
-        if (is_array($decodedHistory)) {
-            foreach ($decodedHistory as $turn) {
-                if (!is_array($turn)) continue;
-                $role = in_array($turn['role'] ?? '', ['user', 'assistant'], true) ? $turn['role'] : null;
-                $content = (string)($turn['content'] ?? '');
-                if ($role && $content !== '') {
-                    $historyMessages[] = ['role' => $role, 'content' => $content];
-                }
-            }
-            // Trim to the last ~12 turns to keep context manageable
-            if (count($historyMessages) > 12) {
-                $historyMessages = array_slice($historyMessages, -12);
-            }
-        }
+        $historyMessages = $this->buildHistoryMessages($history);
 
         $user = [
             'role' => 'user',
@@ -309,15 +310,83 @@ class PageAdminController extends Controller {
 
         try {
             $modelOutput = OpenRouter::chat($messages, $model);
-            $applied = $this->applyTargetedEdits($workingContent, $modelOutput);
-            $this->json([
-                'success'   => true,
-                'result'    => $applied['text'],
-                'changes'   => $applied['changes'],
-            ]);
+            $edits = $this->parseEditsJson($modelOutput);
+            $round = $this->applyEditsPartial($workingContent, $edits);
+            $text = $round['text'];
+            $applied = $round['applied'];
+            $failed = $round['failed'];
+
+            // Agentic self-correction: if some edits didn't land (ambiguous match,
+            // text not found, etc.), give the model one shot to fix just those,
+            // instead of throwing the whole turn away.
+            if (!empty($failed)) {
+                try {
+                    $correction = "Some of your edits could not be applied to the current value:\n\n"
+                        . $this->describeFailuresForModel($failed)
+                        . "\nThe successful edits (if any) have already been applied. Re-examine the CURRENT "
+                        . "value below and resend ONLY corrected edits for the items above, in the same JSON "
+                        . "shape. If a change is no longer needed, omit it.\n\n"
+                        . "Current value of the field (line numbers shown only for reference):\n\n"
+                        . $this->numberLines($text);
+                    $retryMessages = array_merge($messages, [
+                        ['role' => 'assistant', 'content' => $modelOutput],
+                        ['role' => 'user', 'content' => $correction],
+                    ]);
+                    $retryOutput = OpenRouter::chat($retryMessages, $model);
+                    $retryEdits = $this->parseEditsJson($retryOutput);
+                    $retryRound = $this->applyEditsPartial($text, $retryEdits);
+                    $text = $retryRound['text'];
+                    $applied = array_merge($applied, $retryRound['applied']);
+                    $failed = $retryRound['failed'];
+                } catch (Exception $e) {
+                    // Retry failed outright (bad JSON, network, etc.) — keep the
+                    // original failures as unresolved and move on with what we have.
+                }
+            }
+
+            if (empty($applied)) {
+                $this->json([
+                    'success' => false,
+                    'message' => 'Could not apply the edit. ' . $this->describeFailuresForModel($failed, true),
+                ], 500);
+            }
+
+            $response = [
+                'success' => true,
+                'result'  => $text,
+                'changes' => $applied,
+            ];
+            if (!empty($failed)) {
+                $response['unresolved'] = array_map([$this, 'describeFailedEdit'], $failed);
+            }
+            $this->json($response);
         } catch (Exception $e) {
             $this->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Parse and trim a JSON-encoded chat history array from the client into
+     * the {role, content} shape OpenRouter expects.
+     */
+    private function buildHistoryMessages($history) {
+        $decoded = json_decode((string)$history, true);
+        $messages = [];
+        if (is_array($decoded)) {
+            foreach ($decoded as $turn) {
+                if (!is_array($turn)) continue;
+                $role = in_array($turn['role'] ?? '', ['user', 'assistant'], true) ? $turn['role'] : null;
+                $content = (string)($turn['content'] ?? '');
+                if ($role && $content !== '') {
+                    $messages[] = ['role' => $role, 'content' => $content];
+                }
+            }
+            // Trim to the last ~12 turns to keep context manageable
+            if (count($messages) > 12) {
+                $messages = array_slice($messages, -12);
+            }
+        }
+        return $messages;
     }
 
     /**
@@ -335,10 +404,11 @@ class PageAdminController extends Controller {
     /**
      * In 'edits' mode the model returns a JSON patch like:
      *   {"edits":[{"find":"...","replace":"...","explanation":"..."}, ...]}
-     * This applies each find/replace to the original value, leaving the rest untouched.
-     * Returns ['text' => patched text, 'changes' => [['find' => ..., 'replace' => ..., 'explanation' => ...]]]
+     * This parses that patch. Throws only when the output isn't valid JSON
+     * of the expected shape — actual find/replace failures are handled by
+     * applyEditsPartial() below without discarding the whole batch.
      */
-    private function applyTargetedEdits($original, $modelOutput) {
+    private function parseEditsJson($modelOutput) {
         // Strip surrounding markdown fences if the model wrapped the JSON
         $clean = trim($modelOutput);
         $clean = preg_replace('/^```(?:json)?\s*/i', '', $clean);
@@ -347,49 +417,81 @@ class PageAdminController extends Controller {
         $start = strpos($clean, '{');
         $end = strrpos($clean, '}');
         if ($start === false || $end === false || $end <= $start) {
-            throw new Exception('Targeted edits: the model did not return valid JSON. It returned: ' . mb_substr($modelOutput, 0, 400));
+            throw new Exception('The model did not return valid JSON. It returned: ' . mb_substr($modelOutput, 0, 400));
         }
         $json = substr($clean, $start, $end - $start + 1);
 
         $data = json_decode($json, true);
         if (!is_array($data) || !isset($data['edits']) || !is_array($data['edits'])) {
-            throw new Exception('Targeted edits: expected JSON with an "edits" array. Got: ' . mb_substr($json, 0, 400));
+            throw new Exception('Expected JSON with an "edits" array. Got: ' . mb_substr($json, 0, 400));
         }
+        return $data['edits'];
+    }
 
-        $text = $original;
-        $applied = 0;
-        $changes = [];
-        foreach ($data['edits'] as $edit) {
+    /**
+     * Apply a list of {find, replace, explanation?} edits to $text.
+     * Never throws: each edit either succeeds or is reported as failed
+     * (not found / ambiguous), so one bad match doesn't discard the rest
+     * of a good batch. Returns ['text' => ..., 'applied' => [...], 'failed' => [...]].
+     */
+    private function applyEditsPartial($text, array $edits) {
+        $applied = [];
+        $failed = [];
+        foreach ($edits as $edit) {
             if (!is_array($edit)) continue;
             $find = (string)($edit['find'] ?? '');
             $replace = (string)($edit['replace'] ?? '');
             $explanation = (string)($edit['explanation'] ?? '');
-
             if ($find === '') continue;
 
             $count = substr_count($text, $find);
             if ($count === 0) {
-                throw new Exception(
-                    'Could not find "' . mb_substr($find, 0, 80) . '" in the current value. '
-                    . 'Nothing was changed — try rephrasing.'
-                );
+                $failed[] = ['find' => $find, 'replace' => $replace, 'explanation' => $explanation, 'reason' => 'not_found'];
+                continue;
             }
             if ($count > 1) {
-                throw new Exception(
-                    '"' . mb_substr($find, 0, 80) . '" occurs ' . $count . ' times. '
-                    . 'Make the change request more specific. Nothing was changed.'
-                );
+                $failed[] = ['find' => $find, 'replace' => $replace, 'explanation' => $explanation, 'reason' => 'ambiguous', 'count' => $count];
+                continue;
             }
             $text = str_replace($find, $replace, $text);
-            $applied++;
-            $changes[] = ['find' => $find, 'replace' => $replace, 'explanation' => $explanation];
+            $applied[] = ['find' => $find, 'replace' => $replace, 'explanation' => $explanation];
         }
+        return ['text' => $text, 'applied' => $applied, 'failed' => $failed];
+    }
 
-        if ($applied === 0) {
-            throw new Exception('No edits could be applied.');
+    /**
+     * Human-readable reason for a single failed edit, for display in the UI.
+     */
+    private function describeFailedEdit($edit) {
+        $snippet = mb_substr($edit['find'], 0, 80);
+        if (($edit['reason'] ?? '') === 'ambiguous') {
+            $reason = 'appears ' . ($edit['count'] ?? 'multiple') . ' times in the content — too ambiguous to apply safely';
+        } else {
+            $reason = 'could not be found in the current content';
         }
+        return [
+            'find' => $edit['find'],
+            'replace' => $edit['replace'],
+            'explanation' => $edit['explanation'] ?? '',
+            'reason' => $reason,
+        ];
+    }
 
-        return ['text' => $text, 'changes' => $changes];
+    /**
+     * Render a list of failed edits as text, for feeding back to the model
+     * (self-correction) or showing in an error message.
+     */
+    private function describeFailuresForModel(array $failed, bool $short = false) {
+        if (empty($failed)) return '';
+        $lines = [];
+        foreach ($failed as $edit) {
+            $d = $this->describeFailedEdit($edit);
+            $lines[] = '- "' . mb_substr($d['find'], 0, 80) . '" — ' . $d['reason'] . '.';
+        }
+        if ($short) {
+            return implode(' ', $lines);
+        }
+        return implode("\n", $lines) . "\n";
     }
 
     public function save() {

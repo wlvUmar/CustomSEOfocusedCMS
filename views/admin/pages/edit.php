@@ -70,6 +70,10 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <span id="ai-chat-status" class="ai-panel__status"></span>
 
             <div class="ai-chat__controls">
+                <label class="ai-chat__autoapply">
+                    <input type="checkbox" id="ai-autoapply" checked>
+                    Auto-apply changes to field
+                </label>
                 <button type="button" class="btn btn-primary btn-sm" onclick="aiChatApply()">Apply all changes to field</button>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="aiChatUndo()">Undo last</button>
                 <button type="button" class="btn btn-sm" onclick="aiChatReset()">Reset</button>

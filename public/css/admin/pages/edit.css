@@ -309,8 +309,25 @@
 .ai-chat__controls {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 10px;
     margin-top: 10px;
+}
+
+.ai-chat__autoapply {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: #374151;
+    margin-right: auto;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ai-chat__autoapply input {
+    accent-color: #0f5f6f;
+    cursor: pointer;
 }
 
 /* ── Diff (old → new) ──────────────────────────────────────────────────── */
@@ -378,6 +395,30 @@
     color: #6b7280;
     background: #fff;
     border-top: 1px solid #f3f4f6;
+}
+
+/* ── Skipped / unresolved edits (self-correction couldn't land them) ────── */
+.ai-diff--unresolved {
+    border-color: #fde68a;
+}
+
+.ai-diff__row--warn {
+    background: #fffbeb;
+}
+
+.ai-diff__label--warn {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.ai-diff--unresolved .ai-diff__old {
+    text-decoration: none;
+    color: #92400e;
+}
+
+.ai-diff--unresolved .ai-diff__expl {
+    color: #92400e;
+    background: #fffbeb;
 }
 
 @media (max-width: 640px) {

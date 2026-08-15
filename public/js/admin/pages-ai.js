@@ -1,8 +1,11 @@
 // FILE: public/js/admin/pages-ai.js
 // AI Assistant for the page edit form (OpenRouter backend).
 // Two modes:
-//  - 'edits' (default): chat thread that makes targeted line edits (find/replace)
-//  - 'full': single-shot rewrite of the entire field
+//  - 'edits' (default): chat thread that makes targeted line edits (find/replace),
+//    self-correcting when a match is ambiguous, and auto-applying to the field
+//    as it goes (like an editing agent) unless auto-apply is turned off.
+//  - 'full': iterative single-field rewrite — each prompt refines the previous
+//    AI result, not the original saved value, until you Apply or Discard.
 
 (function() {
     'use strict';
@@ -10,11 +13,18 @@
     const cfg = window.AI_CONFIG;
     if (!cfg) return;
 
-    // ---- Chat state -------------------------------------------------------
+    // ---- Chat ('edits' mode) state ------------------------------------------
     let workingContent = null;      // accumulated copy of the field being edited
     let originalContent = null;     // snapshot taken when chat mode started
-    let history = [];               // prior {role, content} turns
+    let history = [];               // prior {role, content} turns sent to the model
+    let turns = [];                 // {prompt, changes, unresolved, before} for real undo + replay
+    let chatField = null;           // which field the current chat session belongs to
     let chatBusy = false;
+
+    // ---- Full mode state -----------------------------------------------------
+    let fullWorkingContent = null;  // last AI output (or null = start from field)
+    let fullHistory = [];
+    let fullField = null;
 
     // ---- Shared field helpers ---------------------------------------------
     function getFieldConfig(field) {
@@ -61,6 +71,11 @@
         return sel ? sel.value : 'deepseek/deepseek-chat';
     }
 
+    function isAutoApply() {
+        const cb = document.getElementById('ai-autoapply');
+        return cb ? cb.checked : true;
+    }
+
     // ---- Status ------------------------------------------------------------
     function setChatStatus(text, type) {
         const el = document.getElementById('ai-chat-status');
@@ -95,7 +110,7 @@
         chat.scrollTop = chat.scrollHeight;
     }
 
-    function addAssistantMessage(changes) {
+    function addAssistantMessage(changes, unresolved) {
         const chat = document.getElementById('ai-chat');
         if (!chat) return;
         const empty = chat.querySelector('.ai-chat__empty');
@@ -104,7 +119,7 @@
         msg.className = 'ai-chat__msg ai-chat__msg--ai';
 
         let html = '<div class="ai-chat__bubble">';
-        if (!changes || changes.length === 0) {
+        if ((!changes || changes.length === 0) && (!unresolved || unresolved.length === 0)) {
             html += '<div class="ai-chat__note">No changes were needed.</div>';
         }
         (changes || []).forEach(function(c) {
@@ -114,6 +129,12 @@
             if (c.explanation) {
                 html += '<div class="ai-diff__expl">' + esc(c.explanation) + '</div>';
             }
+            html += '</div>';
+        });
+        (unresolved || []).forEach(function(u) {
+            html += '<div class="ai-diff ai-diff--unresolved">';
+            html += '<div class="ai-diff__row ai-diff__row--warn"><span class="ai-diff__label ai-diff__label--warn">skipped</span><span class="ai-diff__old">' + esc(u.find) + '</span></div>';
+            html += '<div class="ai-diff__expl">' + esc(u.reason || 'Could not be applied safely.') + ' Try being more specific.</div>';
             html += '</div>';
         });
         html += '</div>';
@@ -136,7 +157,15 @@
     function resetChatUi() {
         const chat = document.getElementById('ai-chat');
         if (!chat) return;
-        chat.innerHTML = '<div class="ai-chat__empty">Tell the AI what to change, e.g. "replace the phone number in the hero with +998 90 123 45 67". It will locate the exact text and change only that.</div>';
+        chat.innerHTML = '<div class="ai-chat__empty">Tell the AI what to change, e.g. "replace the phone number in the hero with +998 90 123 45 67". It will locate the exact text, change only that, and (unless you turn off auto-apply) write it straight to the field as it goes.</div>';
+    }
+
+    function replayChatUi() {
+        resetChatUi();
+        turns.forEach(function(t) {
+            addUserMessage(t.prompt);
+            addAssistantMessage(t.changes, t.unresolved);
+        });
     }
 
     // ---- Chat API ----------------------------------------------------------
@@ -150,10 +179,12 @@
         }
 
         const field = getField();
-        if (workingContent === null) {
+        if (workingContent === null || chatField !== field) {
             workingContent = readField(field);
             originalContent = workingContent;
+            chatField = field;
             history = [];
+            turns = [];
             resetChatUi();
         }
 
@@ -173,6 +204,8 @@
         fd.append('working_content', workingContent);
         fd.append('history', JSON.stringify(history));
 
+        const before = workingContent;
+
         fetch(cfg.chatEndpoint, { method: 'POST', body: fd, credentials: 'same-origin' })
             .then(function(res) {
                 return res.json().catch(function() {
@@ -184,8 +217,20 @@
                 workingContent = data.result;
                 history.push({ role: 'user', content: prompt });
                 history.push({ role: 'assistant', content: 'Edits applied: ' + JSON.stringify(data.changes || []) });
-                addAssistantMessage(data.changes || []);
-                setChatStatus((data.changes || []).length + ' change(s) pending — click "Apply all changes" when done.', '');
+                turns.push({ prompt: prompt, changes: data.changes || [], unresolved: data.unresolved || [], before: before });
+                addAssistantMessage(data.changes || [], data.unresolved || []);
+
+                const n = (data.changes || []).length;
+                const u = (data.unresolved || []).length;
+                let msg = n + ' change(s) applied';
+                if (u > 0) msg += ', ' + u + ' skipped (too ambiguous — see above)';
+
+                if (isAutoApply()) {
+                    writeField(field, workingContent);
+                    setChatStatus(msg + ' — written to the field automatically.', u > 0 ? 'error' : '');
+                } else {
+                    setChatStatus(msg + ' — click "Apply all changes" to write it to the field.', u > 0 ? 'error' : '');
+                }
             })
             .catch(function(err) {
                 addChatError(err.message || 'Edit failed');
@@ -210,32 +255,34 @@
     }
 
     function chatUndo() {
-        if (history.length === 0) {
+        if (turns.length === 0) {
             setChatStatus('Nothing to undo.', '');
             return;
         }
-        // Roll back two history entries (user + assistant) at a time
+        turns.pop();
         history.pop(); // assistant
-        const lastUser = history.pop(); // user
-        resetChatUi();
-        history.forEach(function(turn) {
-            if (turn.role === 'user') {
-                addUserMessage(turn.content);
-            }
-        });
-        workingContent = null;
-        setChatStatus(lastUser ? 'Undid last change. The field copy was reset — keep chatting.' : 'Undid.', '');
+        history.pop(); // user
+        workingContent = turns.length ? turns[turns.length - 1].before : originalContent;
+        replayChatUi();
+        if (isAutoApply() && chatField) {
+            writeField(chatField, workingContent);
+            setChatStatus('Undid last change and updated the field.', '');
+        } else {
+            setChatStatus('Undid last change. Click "Apply all changes" to write it to the field.', '');
+        }
     }
 
     function chatReset() {
         workingContent = null;
         originalContent = null;
+        chatField = null;
         history = [];
+        turns = [];
         resetChatUi();
         setChatStatus('Reset. Starting fresh from the field\'s current content.', '');
     }
 
-    // ---- Full mode (single-shot replace) -----------------------------------
+    // ---- Full mode (iterative rewrite) --------------------------------------
     function getPrompt() {
         const ta = document.getElementById('ai-prompt');
         return ta ? ta.value.trim() : '';
@@ -257,6 +304,12 @@
         if (box) box.classList.add('hidden');
     }
 
+    function fullReset() {
+        fullWorkingContent = null;
+        fullHistory = [];
+        fullField = null;
+    }
+
     function fullRequest() {
         const prompt = getPrompt();
         if (!prompt) {
@@ -264,17 +317,27 @@
             return Promise.reject(new Error('empty prompt'));
         }
 
+        const field = getField();
+        if (fullWorkingContent === null || fullField !== field) {
+            fullWorkingContent = readField(field);
+            fullHistory = [];
+            fullField = field;
+        }
+        const iterating = fullHistory.length > 0;
+
         const btn = document.getElementById('ai-generate');
         const fd = new FormData();
         fd.append('csrf_token', cfg.csrf);
         fd.append('page_id', cfg.pageId);
-        fd.append('field', getField());
+        fd.append('field', field);
         fd.append('prompt', prompt);
         fd.append('model', getModel());
         fd.append('mode', 'full');
+        fd.append('working_content', fullWorkingContent);
+        fd.append('history', JSON.stringify(fullHistory));
 
         if (btn) btn.disabled = true;
-        setFullStatus('Generating…', 'loading');
+        setFullStatus(iterating ? 'Refining…' : 'Generating…', 'loading');
 
         return fetch(cfg.endpoint, { method: 'POST', body: fd, credentials: 'same-origin' })
             .then(function(res) {
@@ -284,8 +347,11 @@
             })
             .then(function(data) {
                 if (!data.success) throw new Error(data.message || 'Generation failed');
+                fullHistory.push({ role: 'user', content: prompt });
+                fullHistory.push({ role: 'assistant', content: data.result });
+                fullWorkingContent = data.result;
                 showFullResult(data.result);
-                setFullStatus('Done. Review and click Apply when satisfied.', '');
+                setFullStatus('Done. Review and click Apply, or keep refining with another prompt.', '');
             })
             .catch(function(err) {
                 setFullStatus(err.message || 'Generation failed', 'error');
@@ -330,12 +396,14 @@
         writeField(getField(), content.textContent);
         setFullStatus('Applied to field. Don\'t forget to Save the page.', '');
         hideFullResult();
+        fullReset();
         const panel = document.querySelector('.ai-panel');
         if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
     window.aiDiscard = function() {
         setFullStatus('Discarded.', '');
         hideFullResult();
+        fullReset();
     };
 
     // ---- Wire up events ----------------------------------------------------
@@ -367,6 +435,21 @@
             setFullStatus('', '');
         });
     }
+
+    // Switching the target field mid-session would silently mix content from
+    // two different fields into one working copy — start clean instead.
+    const fieldSel = document.getElementById('ai-field');
+    if (fieldSel) {
+        fieldSel.addEventListener('change', function() {
+            if (workingContent !== null) chatReset();
+            if (fullWorkingContent !== null) {
+                fullReset();
+                hideFullResult();
+                setFullStatus('', '');
+            }
+        });
+    }
+
     switchMode();
 })();
 
