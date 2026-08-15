@@ -35,6 +35,13 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <option value="meta_description_uz">Meta description (UZ)</option>
                 </select>
             </div>
+            <div class="ai-panel__group ai-panel__group--mode">
+                <label for="ai-mode">Edit mode</label>
+                <select id="ai-mode">
+                    <option value="edits" selected>Chat — targeted line edits</option>
+                    <option value="full">Replace entire field</option>
+                </select>
+            </div>
             <div class="ai-panel__group ai-panel__group--model">
                 <label for="ai-model">Model</label>
                 <select id="ai-model">
@@ -46,40 +53,65 @@ require BASE_PATH . '/views/admin/layout/header.php';
             </div>
         </div>
 
-        <div class="ai-panel__chips">
-            <button type="button" class="ai-chip" data-prompt="Rewrite this content to be clearer, more engaging and persuasive. Keep the same meaning and structure.">✍️ Rewrite</button>
-            <button type="button" class="ai-chip" data-prompt="Improve this content for SEO: strengthen keywords, readability and user intent. Do not change the factual claims.">🎯 Improve SEO</button>
-            <button type="button" class="ai-chip" data-prompt="Fix all grammar, spelling and punctuation mistakes. Keep the rest exactly the same.">✅ Fix grammar</button>
-            <button type="button" class="ai-chip" data-prompt="Shorten this content by about 30% while keeping the key points.">✂️ Shorten</button>
-            <button type="button" class="ai-chip" data-prompt="Expand this content with more useful details and examples. Keep the same style.">🚀 Expand</button>
-            <button type="button" class="ai-chip" data-prompt="Translate this content into the target language naturally, keeping all template variables and formatting.">🔄 Translate</button>
-        </div>
-
-        <div class="ai-panel__group">
-            <label for="ai-prompt">What should the AI do?</label>
-            <textarea id="ai-prompt" rows="3" placeholder="e.g. Rewrite the intro to highlight that we pay the best prices in Tashkent, add a short paragraph about free pickup..."></textarea>
-        </div>
-
-        <div class="ai-panel__actions">
-            <button type="button" id="ai-generate" class="btn btn-primary" onclick="aiGenerate()">
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                </svg>
-                Generate
-            </button>
-            <span id="ai-status" class="ai-panel__status"></span>
-        </div>
-
-        <div id="ai-result" class="ai-panel__result hidden">
-            <div class="ai-panel__result-head">
-                <span>Generated result</span>
-                <span id="ai-result-meta" class="ai-panel__result-meta"></span>
+        <div id="ai-chat-wrap">
+            <div id="ai-chat" class="ai-chat">
+                <div class="ai-chat__empty">Tell the AI what to change, e.g. "replace the phone number in the hero with +998 90 123 45 67". It will locate the exact text and change only that.</div>
             </div>
-            <div id="ai-result-content" class="ai-panel__result-content"></div>
-            <div class="ai-panel__result-actions">
-                <button type="button" class="btn btn-primary btn-sm" onclick="aiApply()">Apply to field</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="aiRegenerate()">Regenerate</button>
-                <button type="button" class="btn btn-sm" onclick="aiDiscard()">Discard</button>
+
+            <div class="ai-chat__input">
+                <textarea id="ai-chat-prompt" rows="2" placeholder="e.g. Change the second paragraph to say we also pay for broken fridges..."></textarea>
+                <button type="button" id="ai-chat-send" class="btn btn-primary" onclick="aiChatSend()">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                    </svg>
+                    Send
+                </button>
+            </div>
+            <span id="ai-chat-status" class="ai-panel__status"></span>
+
+            <div class="ai-chat__controls">
+                <button type="button" class="btn btn-primary btn-sm" onclick="aiChatApply()">Apply all changes to field</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="aiChatUndo()">Undo last</button>
+                <button type="button" class="btn btn-sm" onclick="aiChatReset()">Reset</button>
+            </div>
+        </div>
+
+        <div id="ai-full-wrap" style="display:none;">
+            <div class="ai-panel__chips">
+                <button type="button" class="ai-chip" data-prompt="Rewrite this content to be clearer, more engaging and persuasive. Keep the same meaning and structure.">✍️ Rewrite</button>
+                <button type="button" class="ai-chip" data-prompt="Improve this content for SEO: strengthen keywords, readability and user intent. Do not change the factual claims.">🎯 Improve SEO</button>
+                <button type="button" class="ai-chip" data-prompt="Fix all grammar, spelling and punctuation mistakes. Keep the rest exactly the same.">✅ Fix grammar</button>
+                <button type="button" class="ai-chip" data-prompt="Shorten this content by about 30% while keeping the key points.">✂️ Shorten</button>
+                <button type="button" class="ai-chip" data-prompt="Expand this content with more useful details and examples. Keep the same style.">🚀 Expand</button>
+                <button type="button" class="ai-chip" data-prompt="Translate this content into the target language naturally, keeping all template variables and formatting.">🔄 Translate</button>
+            </div>
+
+            <div class="ai-panel__group">
+                <label for="ai-prompt">What should the AI do?</label>
+                <textarea id="ai-prompt" rows="3" placeholder="e.g. Rewrite the intro to highlight that we pay the best prices in Tashkent, add a short paragraph about free pickup..."></textarea>
+            </div>
+
+            <div class="ai-panel__actions">
+                <button type="button" id="ai-generate" class="btn btn-primary" onclick="aiGenerate()">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Generate
+                </button>
+                <span id="ai-status" class="ai-panel__status"></span>
+            </div>
+
+            <div id="ai-result" class="ai-panel__result hidden">
+                <div class="ai-panel__result-head">
+                    <span>Generated result</span>
+                    <span id="ai-result-meta" class="ai-panel__result-meta"></span>
+                </div>
+                <div id="ai-result-content" class="ai-panel__result-content"></div>
+                <div class="ai-panel__result-actions">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="aiApply()">Apply to field</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="aiRegenerate()">Regenerate</button>
+                    <button type="button" class="btn btn-sm" onclick="aiDiscard()">Discard</button>
+                </div>
             </div>
         </div>
     </div>
@@ -381,6 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
         pageId: <?= (int)$page['id'] ?>,
         csrf: '<?= $_SESSION['csrf_token'] ?? '' ?>',
         endpoint: '<?= BASE_URL ?>/admin/pages/ai-edit',
+        chatEndpoint: '<?= BASE_URL ?>/admin/pages/ai-chat',
         fields: {
             content_ru: { type: 'tinymce', label: 'Content (RU)' },
             content_uz: { type: 'tinymce', label: 'Content (UZ)' },

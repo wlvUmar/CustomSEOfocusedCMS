@@ -43,6 +43,7 @@ $router->group('/admin/pages', function($router) {
     $router->post('/save', function() { requirePageAdmin('save'); });
     $router->post('/delete', function() { requirePageAdmin('delete'); });
     $router->post('/ai-edit', function() { requirePageAdmin('aiEdit'); });
+    $router->post('/ai-chat', function() { requirePageAdmin('aiChat'); });
 });
 
 // Admin Rotation Management
