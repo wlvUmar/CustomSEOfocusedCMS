@@ -35,6 +35,7 @@ class AiStudioController extends Controller {
         $message = trim((string)($_POST['message'] ?? ''));
         $history = $this->sanitizeHistory($_POST['history'] ?? '[]');
         $approved = $this->sanitizeApproved($_POST['approved'] ?? '[]');
+        $pending = $this->sanitizePending($_POST['pending'] ?? '[]');
 
         $startedAt = microtime(true);
         $turnsUsed = 0;
@@ -52,6 +53,7 @@ class AiStudioController extends Controller {
             'message_len' => mb_strlen($message),
             'history_turns' => count($history),
             'approved_count' => count($approved),
+            'pending_count' => count($pending),
         ]);
 
         $this->sse('activity', ['text' => 'Starting…']);
@@ -59,6 +61,7 @@ class AiStudioController extends Controller {
         $messages = array_merge(
             [['role' => 'system', 'content' => $this->buildSystemPrompt()]],
             $history,
+            $pending,
             [['role' => 'user', 'content' => $message]]
         );
 
@@ -158,11 +161,40 @@ class AiStudioController extends Controller {
 
                     if ($out['type'] === 'approval') {
                         $haltForApproval = true;
+                        // Carry the exact interrupted call into the follow-up run
+                        // (Approve/Deny), so the model re-issues the same
+                        // arguments — and thus the same deterministic call_id —
+                        // instead of re-deriving them from the plan text.
+                        $pendingPair = [
+                            [
+                                'role' => 'assistant',
+                                'content' => $response['content'],
+                                'tool_calls' => [[
+                                    'id' => $toolMsgId,
+                                    'type' => 'function',
+                                    'function' => [
+                                        'name' => $name,
+                                        'arguments' => (string)$rawArgs,
+                                    ],
+                                ]],
+                            ],
+                            [
+                                'role' => 'tool',
+                                'tool_call_id' => $toolMsgId,
+                                'content' => json_encode([
+                                    'status' => 'approval_required',
+                                    'call_id' => $out['call_id'],
+                                    'plan' => $out['plan'],
+                                    'note' => 'Re-issue the exact same tool call (same name and arguments) to execute this change.',
+                                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                            ],
+                        ];
                         $this->sse('approval_required', [
                             'call_id' => $out['call_id'],
                             'tool' => $name,
                             'plan' => $out['plan'],
                             'reason' => $out['reason'],
+                            'pending' => $pendingPair,
                         ]);
                         $this->logAi('approval_requested', [
                             'call_id' => $out['call_id'],
@@ -178,7 +210,7 @@ class AiStudioController extends Controller {
                                 'plan' => $out['plan'],
                             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                         ];
-                        continue;
+                        break; // stop the batch here — nothing runs after a guard
                     }
 
                     if ($out['type'] === 'error') {
@@ -373,6 +405,67 @@ PROMPT;
                 $out[] = $id;
             }
         }
+        return $out;
+    }
+
+    /**
+     * Validate the interrupted tool context a follow-up run (Approve/Deny)
+     * sends back: an assistant message carrying exactly one tool_call,
+     * immediately followed by its tool result. Strictly data — never
+     * auto-executed; it just gives the model the exact call to re-issue.
+     */
+    private function sanitizePending($pending): array {
+        $decoded = json_decode((string)$pending, true);
+        if (!is_array($decoded) || count($decoded) < 2) return [];
+        $out = [];
+
+        $assistant = $decoded[0] ?? null;
+        if (is_array($assistant) && ($assistant['role'] ?? '') === 'assistant') {
+            $toolCalls = $assistant['tool_calls'] ?? null;
+            if (is_array($toolCalls) && count($toolCalls) === 1) {
+                $tc = $toolCalls[0];
+                $fn = is_array($tc) ? ($tc['function'] ?? null) : null;
+                if (is_array($tc) && is_array($fn)) {
+                    $id = (string)($tc['id'] ?? '');
+                    $name = (string)($fn['name'] ?? '');
+                    $arguments = (string)($fn['arguments'] ?? '{}');
+                    if ($id !== '' && $name !== '' && strlen($arguments) <= 16384
+                        && json_decode($arguments) !== null) {
+                        $out[] = [
+                            'role' => 'assistant',
+                            'content' => (string)($assistant['content'] ?? ''),
+                            'tool_calls' => [[
+                                'id' => substr($id, 0, 64),
+                                'type' => 'function',
+                                'function' => [
+                                    'name' => substr($name, 0, 64),
+                                    'arguments' => $arguments,
+                                ],
+                            ]],
+                        ];
+                    }
+                }
+            }
+        }
+
+        $tool = $decoded[1] ?? null;
+        if (is_array($tool) && ($tool['role'] ?? '') === 'tool' && $out !== []) {
+            $callId = (string)($tool['tool_call_id'] ?? '');
+            $content = (string)($tool['content'] ?? '');
+            if ($callId !== '' && $content !== '' && strlen($content) <= 16384
+                && $callId === ($out[0]['tool_calls'][0]['id'] ?? '')) {
+                $out[] = [
+                    'role' => 'tool',
+                    'tool_call_id' => substr($callId, 0, 64),
+                    'content' => $content,
+                ];
+            } else {
+                return [];
+            }
+        } else {
+            return [];
+        }
+
         return $out;
     }
 

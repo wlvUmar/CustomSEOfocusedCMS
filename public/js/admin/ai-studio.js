@@ -37,6 +37,7 @@
     let busy = false;
     let history = [];           // [{role:'user'|'assistant', content}] sent for model context
     let pendingApproval = null; // {call_id, plan, reason}
+    let pendingContext = null;  // interrupted tool_call + result, resent on the follow-up run
     let abortCtrl = null;       // AbortController for the in-flight request
     let typingEl = null;
     let lastPreviewHtml = '';
@@ -57,6 +58,7 @@
         if (busy) return;
         history = [];
         pendingApproval = null;
+        pendingContext = null;
         els.approval.hidden = true;
         els.transcript.innerHTML = '';
         els.previewFrame.removeAttribute('srcdoc');
@@ -554,6 +556,9 @@
         let assistantText = '';
         abortCtrl = new AbortController();
 
+        const pending = pendingContext;
+        pendingContext = null;
+
         try {
             await sendTurn({
                 csrf_token: cfg.csrf,
@@ -561,6 +566,7 @@
                 message: userText,
                 history: JSON.stringify(history),
                 approved: JSON.stringify(approved),
+                pending: JSON.stringify(pending || []),
             }, (event, data) => {
                 switch (event) {
                     case 'activity':
@@ -589,6 +595,7 @@
                     case 'approval_required':
                         addApprovalEvent(data.plan);
                         showApproval({ call_id: data.call_id, plan: data.plan, reason: data.reason });
+                        pendingContext = Array.isArray(data.pending) ? data.pending : null;
                         setActivity('Awaiting your approval…');
                         break;
                     case 'error':
