@@ -16,7 +16,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <option value="<?= e($key) ?>" <?= $key === 'deepseek/deepseek-chat' ? 'selected' : '' ?>><?= e($label) ?></option>
                 <?php endforeach; ?>
             </select>
-            <button id="ai-new-session" type="button" class="ai-btn ai-btn--ghost">New session</button>
+            <button id="ai-new-session" type="button" class="ai-btn ai-btn--ghost"><i data-feather="rotate-ccw"></i> New session</button>
         </div>
     </header>
 
@@ -39,15 +39,15 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <div id="ai-approval-plan" class="ai-approval__plan"></div>
                 <div id="ai-approval-reason" class="ai-approval__reason"></div>
                 <div class="ai-approval__actions">
-                    <button id="ai-approve" type="button" class="ai-btn ai-btn--primary">Approve</button>
-                    <button id="ai-deny" type="button" class="ai-btn ai-btn--ghost">Deny</button>
+                    <button id="ai-approve" type="button" class="ai-btn ai-btn--primary"><i data-feather="check"></i> Approve</button>
+                    <button id="ai-deny" type="button" class="ai-btn ai-btn--ghost"><i data-feather="x"></i> Deny</button>
                 </div>
             </div>
 
             <div id="ai-suggestions" class="ai-suggestions" aria-label="Suggested prompts">
-                <button type="button" class="ai-chip" data-prompt="Find the weakest pages by traffic and propose fixes for the worst one.">Find weakest pages</button>
-                <button type="button" class="ai-chip" data-prompt="Read the homepage, then propose an improved intro section and render a preview.">Improve homepage intro</button>
-                <button type="button" class="ai-chip" data-prompt="Add a &quot;How it works&quot; FAQ entry to the FAQ page.">Add a how-it-works FAQ</button>
+                <button type="button" class="ai-chip" data-prompt="Find the weakest pages by traffic and propose fixes for the worst one."><i data-feather="trending-down"></i> Find weakest pages</button>
+                <button type="button" class="ai-chip" data-prompt="Read the homepage, then propose an improved intro section and render a preview."><i data-feather="edit-3"></i> Improve homepage intro</button>
+                <button type="button" class="ai-chip" data-prompt="Add a &quot;How it works&quot; FAQ entry to the FAQ page."><i data-feather="help-circle"></i> Add a how-it-works FAQ</button>
             </div>
 
             <form id="ai-form" class="ai-composer" autocomplete="off">
@@ -58,8 +58,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         <span id="ai-usage" class="ai-usage" title="">0 tok</span>
                     </div>
                     <div class="ai-composer__actions">
-                        <button id="ai-stop" type="button" class="ai-btn ai-btn--danger" hidden>Stop</button>
-                        <button id="ai-send" type="submit" class="ai-btn ai-btn--primary">Send</button>
+                        <button id="ai-stop" type="button" class="ai-btn ai-btn--danger" hidden><i data-feather="square"></i> Stop</button>
+                        <button id="ai-send" type="submit" class="ai-btn ai-btn--primary"><i data-feather="send"></i> Send</button>
                     </div>
                 </div>
             </form>
