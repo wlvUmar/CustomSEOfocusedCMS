@@ -98,6 +98,9 @@
                 
                 <div class="nav-section">
                     <div class="nav-section-title">Content</div>
+                    <a href="<?= BASE_URL ?>/admin/ai-studio" class="<?= strpos($_SERVER['REQUEST_URI'], '/ai-studio') !== false ? 'active' : '' ?>">
+                        <i data-feather="zap"></i> AI Studio
+                    </a>
                     <a href="<?= BASE_URL ?>/admin/pages" class="<?= strpos($_SERVER['REQUEST_URI'], '/pages') !== false ? 'active' : '' ?>">
                         <i data-feather="file-text"></i> Pages
                     </a>

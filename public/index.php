@@ -134,6 +134,10 @@ $router->post('/admin/requests/approve', function() { requireAdminController('Re
 $router->post('/admin/requests/reject', function() { requireAdminController('RequestAdminController', 'reject'); });
 $router->post('/admin/requests/delete', function() { requireAdminController('RequestAdminController', 'delete'); }); 
 
+// Admin AI Studio (agent loop over the admin via tools)
+$router->get('/admin/ai-studio', function() { requireAdminController('AiStudioController', 'index'); });
+$router->post('/admin/ai-studio/run', function() { requireAdminController('AiStudioController', 'run'); });
+
 // $router->group('/admin/media', function($router) {
 //     $router->get('/', function() { requireMediaAdmin('index'); });
 //     $router->post('/upload', function() { requireMediaAdmin('upload'); });
