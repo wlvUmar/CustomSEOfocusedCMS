@@ -1,7 +1,8 @@
 // FILE: public/js/admin/ai-studio.js
 // AI Studio client: streams agent turns over SSE (fetch reader — EventSource
-// cannot POST), renders the transcript, drives the live preview pane, and
-// handles the approval flow for guarded (destructive) tool calls.
+// cannot POST), renders the transcript with safe markdown, drives the live
+// preview pane, tracks token usage, and handles the approval flow for guarded
+// (destructive) tool calls.
 
 (function() {
     'use strict';
@@ -13,8 +14,10 @@
         form: document.getElementById('ai-form'),
         input: document.getElementById('ai-input'),
         send: document.getElementById('ai-send'),
+        stop: document.getElementById('ai-stop'),
         transcript: document.getElementById('ai-transcript'),
         status: document.getElementById('ai-status'),
+        usage: document.getElementById('ai-usage'),
         approval: document.getElementById('ai-approval'),
         approvalPlan: document.getElementById('ai-approval-plan'),
         approvalReason: document.getElementById('ai-approval-reason'),
@@ -22,13 +25,18 @@
         deny: document.getElementById('ai-deny'),
         model: document.getElementById('ai-model'),
         newSession: document.getElementById('ai-new-session'),
+        suggestions: document.getElementById('ai-suggestions'),
         previewFrame: document.getElementById('ai-preview-frame'),
         previewHint: document.getElementById('ai-preview-hint'),
+        previewOpen: document.getElementById('ai-preview-open'),
     };
 
     let busy = false;
     let history = [];           // [{role:'user'|'assistant', content}] sent for model context
     let pendingApproval = null; // {call_id, plan, reason}
+    let abortCtrl = null;       // AbortController for the in-flight request
+    let typingEl = null;
+    let lastPreviewHtml = '';
 
     // ---- Model selector persistence --------------------------------------
     const savedModel = localStorage.getItem('ai-studio-model');
@@ -47,11 +55,29 @@
         els.approval.hidden = true;
         els.transcript.innerHTML = '';
         els.previewFrame.removeAttribute('srcdoc');
+        lastPreviewHtml = '';
         els.previewHint.textContent = 'Renders here after each turn';
         setStatus('Ready');
+        updateUsage(null);
         els.input.value = '';
+        els.input.style.height = 'auto';
         els.input.focus();
     });
+
+    // ---- Busy state -------------------------------------------------------
+    function setBusy(value) {
+        busy = value;
+        els.send.disabled = value;
+        els.input.disabled = value;
+        els.model.disabled = value;
+        els.newSession.disabled = value;
+        els.stop.hidden = !value;
+        els.suggestions.classList.toggle('ai-suggestions--disabled', value);
+        Array.prototype.forEach.call(els.suggestions.querySelectorAll('.ai-chip'), chip => {
+            chip.disabled = value;
+        });
+        if (!value) abortCtrl = null;
+    }
 
     // ---- DOM helpers ------------------------------------------------------
     function setStatus(text, kind) {
@@ -59,56 +85,122 @@
         els.status.className = 'ai-status' + (kind ? ' ai-status--' + kind : '');
     }
 
+    function updateUsage(u) {
+        if (!u) {
+            els.usage.textContent = '0 tok';
+            els.usage.title = '';
+            return;
+        }
+        const total = u.total || 0;
+        const hasCost = typeof u.cost === 'number' && u.cost > 0;
+        els.usage.textContent = total.toLocaleString() + ' tok' + (hasCost ? ' · $' + u.cost.toFixed(4) : '');
+        els.usage.title = 'Prompt ' + (u.prompt || 0).toLocaleString() + ' · completion '
+            + (u.completion || 0).toLocaleString() + (hasCost ? ' · cost $' + u.cost.toFixed(4) : '');
+    }
+
     function scrollTranscript() {
         els.transcript.scrollTop = els.transcript.scrollHeight;
     }
 
-    function addBubble(role, text) {
+    function addUserBubble(text) {
         const wrap = document.createElement('div');
-        wrap.className = 'ai-msg ai-msg--' + role;
+        wrap.className = 'ai-msg ai-msg--user';
         const body = document.createElement('div');
         body.className = 'ai-msg__body';
         body.textContent = text;
         wrap.appendChild(body);
         els.transcript.appendChild(wrap);
         scrollTranscript();
-        return body;
+    }
+
+    function addAgentBubble(text) {
+        hideTyping();
+        const wrap = document.createElement('div');
+        wrap.className = 'ai-msg ai-msg--agent';
+        const body = document.createElement('div');
+        body.className = 'ai-msg__body md';
+        body.appendChild(renderMarkdown(text));
+        wrap.appendChild(body);
+        els.transcript.appendChild(wrap);
+        scrollTranscript();
     }
 
     function addToolEvent(tool, summary, ok) {
+        hideTyping();
         const wrap = document.createElement('div');
         wrap.className = 'ai-tool-event' + (ok ? '' : ' ai-tool-event--error');
-        const head = document.createElement('div');
+        const head = document.createElement('button');
+        head.type = 'button';
         head.className = 'ai-tool-event__head';
-        head.textContent = (ok ? '⚙ ' : '✗ ') + tool;
-        wrap.appendChild(head);
+        head.innerHTML = '<span class="ai-tool-event__dot"></span><span class="ai-tool-event__name"></span><span class="ai-tool-event__chev"></span>';
+        head.querySelector('.ai-tool-event__name').textContent = tool;
         const body = document.createElement('pre');
         body.className = 'ai-tool-event__body';
-        body.textContent = summary;
+        body.textContent = summary || '';
+        wrap.appendChild(head);
         wrap.appendChild(body);
+        head.addEventListener('click', () => {
+            body.hidden = !body.hidden;
+            head.querySelector('.ai-tool-event__chev').textContent = body.hidden ? '▸' : '▾';
+        });
         els.transcript.appendChild(wrap);
         scrollTranscript();
     }
 
     function addApprovalEvent(plan) {
+        hideTyping();
         const wrap = document.createElement('div');
         wrap.className = 'ai-tool-event ai-tool-event--approval';
-        const head = document.createElement('div');
+        const head = document.createElement('button');
+        head.type = 'button';
         head.className = 'ai-tool-event__head';
-        head.textContent = '🔒 Approval requested';
-        wrap.appendChild(head);
+        head.innerHTML = '<span class="ai-tool-event__dot"></span><span class="ai-tool-event__name"></span><span class="ai-tool-event__chev"></span>';
+        head.querySelector('.ai-tool-event__name').textContent = 'Approval requested';
         const body = document.createElement('div');
         body.className = 'ai-tool-event__body';
         body.textContent = plan;
+        wrap.appendChild(head);
         wrap.appendChild(body);
+        head.addEventListener('click', () => {
+            body.hidden = !body.hidden;
+            head.querySelector('.ai-tool-event__chev').textContent = body.hidden ? '▸' : '▾';
+        });
         els.transcript.appendChild(wrap);
         scrollTranscript();
     }
 
-    function updatePreview(html) {
-        els.previewFrame.setAttribute('srcdoc', html);
-        els.previewHint.textContent = 'Updated ' + new Date().toLocaleTimeString();
+    function showTyping() {
+        if (typingEl && typingEl.isConnected) return;
+        typingEl = document.createElement('div');
+        typingEl.className = 'ai-typing';
+        for (let k = 0; k < 3; k++) typingEl.appendChild(document.createElement('span'));
+        els.transcript.appendChild(typingEl);
+        scrollTranscript();
     }
+
+    function hideTyping() {
+        if (typingEl && typingEl.isConnected) typingEl.remove();
+        typingEl = null;
+    }
+
+    function updatePreview(html) {
+        lastPreviewHtml = html;
+        els.previewHint.textContent = 'Updated ' + new Date().toLocaleTimeString();
+        els.previewFrame.style.opacity = '0';
+        els.previewFrame.setAttribute('srcdoc', html);
+    }
+
+    els.previewFrame.addEventListener('load', () => {
+        els.previewFrame.style.opacity = '1';
+    });
+
+    els.previewOpen.addEventListener('click', () => {
+        if (!lastPreviewHtml) return;
+        const blob = new Blob([lastPreviewHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+    });
 
     function showApproval(p) {
         pendingApproval = p;
@@ -124,12 +216,156 @@
         els.approval.hidden = true;
     }
 
+    // ---- Safe markdown rendering ------------------------------------------
+    // Builds DOM nodes only (no innerHTML for model text), so model output can
+    // never inject markup. Links are restricted to safe protocols.
+
+    const SAFE_URL = /^(https?:|mailto:|tel:)/i;
+    const RE_HEADING = /^(#{1,4})\s+(.*)$/;
+    const RE_HR = /^\s*([-*_])(\s*\1){2,}\s*$/;
+    const RE_QUOTE = /^\s*>/;
+    const RE_LIST = /^\s*([-*+]|\d+\.)\s+(.*)$/;
+    const RE_FENCE = /^\s*```/;
+    const INLINE_RE = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]*\]\([^)]+\))/g;
+
+    function renderMarkdown(text) {
+        const frag = document.createDocumentFragment();
+        const lines = String(text).split('\n');
+        let i = 0;
+        while (i < lines.length) {
+            if (RE_FENCE.test(lines[i])) {
+                const lang = lines[i].trim().slice(3).trim();
+                i++;
+                const buf = [];
+                while (i < lines.length && !RE_FENCE.test(lines[i])) {
+                    buf.push(lines[i]);
+                    i++;
+                }
+                i++; // skip closing fence
+                const pre = document.createElement('pre');
+                const code = document.createElement('code');
+                if (lang) code.className = 'lang-' + lang.replace(/[^\w-]/g, '');
+                code.textContent = buf.join('\n');
+                pre.appendChild(code);
+                frag.appendChild(pre);
+                continue;
+            }
+            const para = [];
+            while (i < lines.length && !RE_FENCE.test(lines[i])) {
+                para.push(lines[i]);
+                i++;
+            }
+            frag.appendChild(parseBlocks(para));
+        }
+        return frag;
+    }
+
+    function parseBlocks(lines) {
+        const frag = document.createDocumentFragment();
+        let i = 0;
+        const n = lines.length;
+        while (i < n) {
+            const line = lines[i];
+            if (line.trim() === '') { i++; continue; }
+
+            const h = line.match(RE_HEADING);
+            if (h) {
+                const el = document.createElement('h' + h[1].length);
+                appendInline(el, h[2]);
+                frag.appendChild(el);
+                i++;
+                continue;
+            }
+
+            if (RE_HR.test(line)) {
+                frag.appendChild(document.createElement('hr'));
+                i++;
+                continue;
+            }
+
+            if (RE_QUOTE.test(line)) {
+                const q = [];
+                while (i < n && RE_QUOTE.test(lines[i])) {
+                    q.push(lines[i].replace(/^\s*>\s?/, ''));
+                    i++;
+                }
+                const bq = document.createElement('blockquote');
+                bq.appendChild(parseBlocks(q));
+                frag.appendChild(bq);
+                continue;
+            }
+
+            const list = line.match(RE_LIST);
+            if (list) {
+                const ordered = /\d+\./.test(list[1]);
+                const el = document.createElement(ordered ? 'ol' : 'ul');
+                while (i < n) {
+                    const m = lines[i].match(RE_LIST);
+                    if (!m || ordered !== /\d+\./.test(m[1])) break;
+                    const li = document.createElement('li');
+                    appendInline(li, m[2]);
+                    el.appendChild(li);
+                    i++;
+                }
+                frag.appendChild(el);
+                continue;
+            }
+
+            const pLines = [];
+            while (i < n) {
+                const t = lines[i];
+                if (t.trim() === '' || RE_HEADING.test(t) || RE_HR.test(t) || RE_QUOTE.test(t) || RE_LIST.test(t)) break;
+                pLines.push(t);
+                i++;
+            }
+            const p = document.createElement('p');
+            appendInline(p, pLines.join(' '));
+            frag.appendChild(p);
+        }
+        return frag;
+    }
+
+    function appendInline(parent, text) {
+        const parts = String(text).split(INLINE_RE);
+        parts.forEach(part => {
+            if (!part) return;
+            if (part.length > 4 && part.startsWith('**') && part.endsWith('**')) {
+                const b = document.createElement('strong');
+                appendInline(b, part.slice(2, -2));
+                parent.appendChild(b);
+            } else if (part.length > 2 && part.startsWith('*') && part.endsWith('*')) {
+                const em = document.createElement('em');
+                appendInline(em, part.slice(1, -1));
+                parent.appendChild(em);
+            } else if (part.length > 2 && part.startsWith('`') && part.endsWith('`')) {
+                const code = document.createElement('code');
+                code.textContent = part.slice(1, -1);
+                parent.appendChild(code);
+            } else if (part.charAt(0) === '[') {
+                const m = part.match(/^\[([^\]]*)\]\(([^)]+)\)$/);
+                if (m && SAFE_URL.test(m[2])) {
+                    const a = document.createElement('a');
+                    a.href = m[2];
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    a.textContent = m[1] || m[2];
+                    parent.appendChild(a);
+                } else {
+                    parent.appendChild(document.createTextNode(part));
+                }
+            } else {
+                parent.appendChild(document.createTextNode(part));
+            }
+        });
+    }
+
     // ---- SSE over fetch (EventSource can't POST) --------------------------
-    async function sendTurn(payload, onEvent) {
+    async function sendTurn(payload, onEvent, signal) {
         const resp = await fetch(cfg.baseUrl + '/admin/ai-studio/run', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams(payload),
+            signal: signal,
         });
         if (!resp.ok) {
             const text = await resp.text();
@@ -182,17 +418,33 @@
         }
     });
 
+    els.input.addEventListener('input', () => {
+        els.input.style.height = 'auto';
+        els.input.style.height = Math.min(els.input.scrollHeight, 200) + 'px';
+    });
+
+    els.suggestions.addEventListener('click', (e) => {
+        const chip = e.target.closest('.ai-chip');
+        if (!chip || busy) return;
+        runTurn(chip.dataset.prompt, []);
+    });
+
+    els.stop.addEventListener('click', () => {
+        if (abortCtrl) abortCtrl.abort();
+    });
+
     async function runTurn(userText, approved) {
-        busy = true;
-        els.send.disabled = true;
-        els.input.disabled = true;
+        setBusy(true);
         hideApproval();
-        addBubble('user', userText);
+        addUserBubble(userText);
         els.input.value = '';
+        els.input.style.height = 'auto';
         history.push({ role: 'user', content: userText });
         setStatus('Working…', 'busy');
+        showTyping();
 
         let assistantText = '';
+        abortCtrl = new AbortController();
 
         try {
             await sendTurn({
@@ -205,10 +457,14 @@
                 switch (event) {
                     case 'turn':
                         setStatus('Thinking… turn ' + data.number + '/' + data.max, 'busy');
+                        showTyping();
+                        break;
+                    case 'usage':
+                        updateUsage(data);
                         break;
                     case 'narrate':
                         assistantText = data.text;
-                        addBubble('agent', data.text);
+                        addAgentBubble(data.text);
                         break;
                     case 'tool_result':
                         addToolEvent(data.tool, data.summary, data.ok);
@@ -221,12 +477,17 @@
                         showApproval({ call_id: data.call_id, plan: data.plan, reason: data.reason });
                         break;
                     case 'error':
-                        addBubble('agent', '⚠ ' + data.message);
+                        hideTyping();
+                        addAgentBubble('⚠ ' + data.message);
                         setStatus('Error', 'error');
                         break;
                     case 'done':
+                        hideTyping();
                         if (data.status === 'complete') {
-                            if (!assistantText) assistantText = data.text || '';
+                            if (!assistantText) {
+                                assistantText = data.text || '';
+                                if (assistantText) addAgentBubble(assistantText);
+                            }
                             setStatus('Done', 'ok');
                         } else if (data.status === 'awaiting_approval') {
                             setStatus('Awaiting approval', 'wait');
@@ -235,10 +496,17 @@
                         }
                         break;
                 }
-            });
+            }, abortCtrl.signal);
         } catch (err) {
-            setStatus('Request failed', 'error');
-            addBubble('agent', '⚠ ' + err.message);
+            if (err && err.name === 'AbortError') {
+                hideTyping();
+                hideApproval();
+                setStatus('Stopped', 'error');
+            } else {
+                hideTyping();
+                setStatus('Request failed', 'error');
+                addAgentBubble('⚠ ' + err.message);
+            }
         }
 
         if (assistantText) {
@@ -249,9 +517,9 @@
             history = history.slice(-24);
         }
 
-        busy = false;
-        els.send.disabled = false;
-        els.input.disabled = false;
+        abortCtrl = null;
+        setBusy(false);
+        if (els.status.className.indexOf('ai-status--') === -1) setStatus('Ready');
         els.input.focus();
     }
 

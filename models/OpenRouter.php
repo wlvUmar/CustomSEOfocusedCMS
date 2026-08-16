@@ -160,7 +160,7 @@ class OpenRouter {
      * @param float  $temperature
      * @param int    $maxTokens   Output token budget per model call
      * @param int    $retries     Extra attempts on transient failures (network, 429, 5xx)
-     * @return array              Raw assistant message (content + tool_calls)
+     * @return array              Raw assistant message (content + tool_calls + usage)
      * @throws Exception          On missing key, network, or API errors
      */
     public static function chatWithTools(
@@ -284,6 +284,7 @@ class OpenRouter {
                 'content'       => $content,
                 'tool_calls'    => $toolCalls,
                 'finish_reason' => $finishReason,
+                'usage'         => $data['usage'] ?? null,
             ];
         }
 

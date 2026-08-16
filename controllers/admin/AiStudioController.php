@@ -49,12 +49,36 @@ class AiStudioController extends Controller {
         );
 
         $finalText = '';
+        $usageTotal = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'cost' => 0.0];
 
         try {
             for ($turn = 1; $turn <= self::MAX_TOOL_TURNS; $turn++) {
+                if (connection_aborted()) {
+                    return; // client pressed Stop — don't spend more tokens
+                }
+
                 $this->sse('turn', ['number' => $turn, 'max' => self::MAX_TOOL_TURNS]);
 
                 $response = OpenRouter::chatWithTools($messages, $model, AiToolRegistry::definitions(), 0.5, 8192);
+
+                $usage = $response['usage'] ?? null;
+                if (is_array($usage)) {
+                    $uPrompt = (int)($usage['prompt_tokens'] ?? 0);
+                    $uCompletion = (int)($usage['completion_tokens'] ?? 0);
+                    $uTotal = (int)($usage['total_tokens'] ?? ($uPrompt + $uCompletion));
+                    $uCost = (float)($usage['cost'] ?? 0);
+                    $usageTotal['prompt'] += $uPrompt;
+                    $usageTotal['completion'] += $uCompletion;
+                    $usageTotal['total'] += $uTotal;
+                    $usageTotal['cost'] += $uCost;
+                    $this->sse('usage', [
+                        'turn' => $turn,
+                        'prompt' => $usageTotal['prompt'],
+                        'completion' => $usageTotal['completion'],
+                        'total' => $usageTotal['total'],
+                        'cost' => $usageTotal['cost'],
+                    ]);
+                }
 
                 if ($response['content'] !== '') {
                     $finalText = $response['content'];

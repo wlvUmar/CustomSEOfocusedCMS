@@ -44,11 +44,23 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </div>
             </div>
 
+            <div id="ai-suggestions" class="ai-suggestions" aria-label="Suggested prompts">
+                <button type="button" class="ai-chip" data-prompt="Find the weakest pages by traffic and propose fixes for the worst one.">Find weakest pages</button>
+                <button type="button" class="ai-chip" data-prompt="Read the homepage, then propose an improved intro section and render a preview.">Improve homepage intro</button>
+                <button type="button" class="ai-chip" data-prompt="Add a &quot;How it works&quot; FAQ entry to the FAQ page.">Add a how-it-works FAQ</button>
+            </div>
+
             <form id="ai-form" class="ai-composer" autocomplete="off">
                 <textarea id="ai-input" rows="3" placeholder="e.g. Find the weakest pages by traffic and propose an improved intro section for the worst one…"></textarea>
                 <div class="ai-composer__footer">
-                    <span id="ai-status" class="ai-status">Ready</span>
-                    <button id="ai-send" type="submit" class="ai-btn ai-btn--primary">Send</button>
+                    <div class="ai-composer__meta">
+                        <span id="ai-status" class="ai-status">Ready</span>
+                        <span id="ai-usage" class="ai-usage" title="">0 tok</span>
+                    </div>
+                    <div class="ai-composer__actions">
+                        <button id="ai-stop" type="button" class="ai-btn ai-btn--danger" hidden>Stop</button>
+                        <button id="ai-send" type="submit" class="ai-btn ai-btn--primary">Send</button>
+                    </div>
                 </div>
             </form>
         </section>
@@ -56,7 +68,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <section class="ai-studio__preview">
             <div class="ai-preview__bar">
                 <span class="ai-preview__title"><i data-feather="eye"></i> Live preview</span>
-                <span id="ai-preview-hint" class="ai-preview__hint">Renders here after each turn</span>
+                <span class="ai-preview__side">
+                    <span id="ai-preview-hint" class="ai-preview__hint">Renders here after each turn</span>
+                    <button id="ai-preview-open" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="Open preview in a new tab">
+                        <i data-feather="external-link"></i> Open
+                    </button>
+                </span>
             </div>
             <div class="ai-preview__frame-wrap">
                 <iframe id="ai-preview-frame" title="Live preview" sandbox="allow-same-origin"></iframe>
