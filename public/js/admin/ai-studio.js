@@ -18,6 +18,9 @@
         transcript: document.getElementById('ai-transcript'),
         status: document.getElementById('ai-status'),
         usage: document.getElementById('ai-usage'),
+        activity: document.getElementById('ai-activity'),
+        activityText: document.getElementById('ai-activity-text'),
+        activityTimer: document.getElementById('ai-activity-timer'),
         approval: document.getElementById('ai-approval'),
         approvalPlan: document.getElementById('ai-approval-plan'),
         approvalReason: document.getElementById('ai-approval-reason'),
@@ -37,6 +40,8 @@
     let abortCtrl = null;       // AbortController for the in-flight request
     let typingEl = null;
     let lastPreviewHtml = '';
+    let activityTimerId = null; // interval driving the elapsed-time readout
+    let activityStartedAt = 0;
 
     // ---- Model selector persistence --------------------------------------
     const savedModel = localStorage.getItem('ai-studio-model');
@@ -59,6 +64,7 @@
         els.previewHint.textContent = 'Renders here after each turn';
         setStatus('Ready');
         updateUsage(null);
+        hideActivity();
         els.input.value = '';
         els.input.style.height = 'auto';
         els.input.focus();
@@ -96,6 +102,37 @@
         els.usage.textContent = total.toLocaleString() + ' tok' + (hasCost ? ' · $' + u.cost.toFixed(4) : '');
         els.usage.title = 'Prompt ' + (u.prompt || 0).toLocaleString() + ' · completion '
             + (u.completion || 0).toLocaleString() + (hasCost ? ' · cost $' + u.cost.toFixed(4) : '');
+    }
+
+    // ---- Activity bar -------------------------------------------------------
+    // A compact "is it alive" strip between the transcript and the composer:
+    // spinner + current phase + elapsed time, driven by SSE 'activity' events
+    // (with event-derived fallbacks if one is ever missed).
+
+    function fmtElapsed(ms) {
+        const s = Math.max(0, Math.floor(ms / 1000));
+        return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    }
+
+    function setActivity(text) {
+        if (!els.activity) return;
+        els.activityText.textContent = text;
+        els.activity.hidden = false;
+        if (activityTimerId === null) {
+            activityStartedAt = Date.now();
+            els.activityTimer.textContent = '0:00';
+            activityTimerId = setInterval(() => {
+                els.activityTimer.textContent = fmtElapsed(Date.now() - activityStartedAt);
+            }, 1000);
+        }
+    }
+
+    function hideActivity() {
+        if (activityTimerId !== null) {
+            clearInterval(activityTimerId);
+            activityTimerId = null;
+        }
+        if (els.activity) els.activity.hidden = true;
     }
 
     function scrollTranscript() {
@@ -511,6 +548,7 @@
         els.input.style.height = 'auto';
         history.push({ role: 'user', content: userText });
         setStatus('Working…', 'busy');
+        setActivity('Starting…');
         showTyping();
 
         let assistantText = '';
@@ -525,8 +563,12 @@
                 approved: JSON.stringify(approved),
             }, (event, data) => {
                 switch (event) {
+                    case 'activity':
+                        setActivity(data.text);
+                        break;
                     case 'turn':
                         setStatus('Thinking… turn ' + data.number + '/' + data.max, 'busy');
+                        setActivity('Thinking… turn ' + data.number + '/' + data.max);
                         showTyping();
                         break;
                     case 'usage':
@@ -538,21 +580,26 @@
                         break;
                     case 'tool_result':
                         addToolEvent(data.tool, data.summary, data.ok);
+                        setActivity(data.ok ? 'Done: ' + data.tool : 'Failed: ' + data.tool);
                         break;
                     case 'preview':
                         updatePreview(data.html);
+                        setActivity('Preview rendered');
                         break;
                     case 'approval_required':
                         addApprovalEvent(data.plan);
                         showApproval({ call_id: data.call_id, plan: data.plan, reason: data.reason });
+                        setActivity('Awaiting your approval…');
                         break;
                     case 'error':
                         hideTyping();
+                        hideActivity();
                         addAgentBubble('⚠ ' + data.message);
                         setStatus('Error', 'error');
                         break;
                     case 'done':
                         hideTyping();
+                        hideActivity();
                         if (data.status === 'complete') {
                             if (!assistantText) {
                                 assistantText = data.text || '';
@@ -571,9 +618,11 @@
             if (err && err.name === 'AbortError') {
                 hideTyping();
                 hideApproval();
+                hideActivity();
                 setStatus('Stopped', 'error');
             } else {
                 hideTyping();
+                hideActivity();
                 setStatus('Request failed', 'error');
                 addAgentBubble('⚠ ' + err.message);
             }

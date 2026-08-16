@@ -438,4 +438,6 @@ function requireArticleAdmin($method, $id = null) {
     $id !== null ? $c->$method($id) : $c->$method();
 }
 
-ob_end_flush();
+if (ob_get_level() > 0) {
+    ob_end_flush();
+}

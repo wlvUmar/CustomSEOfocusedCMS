@@ -611,6 +611,54 @@
     cursor: default;
 }
 
+/* ---- Activity bar ("is it working?") ---- */
+
+.ai-activity {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 12px 18px 0;
+    padding: 8px 12px;
+    border: 1px solid #cfe3e4;
+    background: var(--ai-teal-wash);
+    border-radius: var(--ai-radius-md);
+    font-size: .8rem;
+    color: #1c5c66;
+    animation: ai-msg-in .2s ease-out;
+}
+
+.ai-activity__spinner {
+    flex-shrink: 0;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    border: 2px solid rgba(15, 95, 111, .25);
+    border-top-color: var(--ai-teal);
+    animation: ai-spin .8s linear infinite;
+}
+
+.ai-activity__text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.ai-activity__timer {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--ai-teal);
+    white-space: nowrap;
+}
+
+@keyframes ai-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 /* ---- Approval banner ---- */
 
 .ai-approval {
@@ -898,6 +946,7 @@
     .ai-msg,
     .ai-tool-event,
     .ai-approval,
+    .ai-activity,
     .ai-typing span,
     .ai-status--busy::before,
     .ai-studio__heading::after,

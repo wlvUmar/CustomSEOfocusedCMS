@@ -31,6 +31,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </div>
             </div>
 
+            <div id="ai-activity" class="ai-activity" hidden>
+                <span class="ai-activity__spinner" aria-hidden="true"></span>
+                <span id="ai-activity-text" class="ai-activity__text">Working…</span>
+                <span id="ai-activity-timer" class="ai-activity__timer"></span>
+            </div>
+
             <div id="ai-approval" class="ai-approval" hidden>
                 <div class="ai-approval__title">
                     <i data-feather="shield"></i> Approval required

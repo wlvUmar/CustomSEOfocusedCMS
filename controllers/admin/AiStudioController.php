@@ -13,6 +13,8 @@ class AiStudioController extends Controller {
     private const MAX_TOOL_TURNS = 8;
     /** History depth kept for context (client sends the transcript each turn). */
     private const MAX_HISTORY_TURNS = 12;
+    /** JSON-lines operational log for this feature (separate from php_errors.log). */
+    private const LOG_FILE = BASE_PATH . '/logs/ai-studio.log';
 
     public function index() {
         $this->requireAuth();
@@ -34,6 +36,9 @@ class AiStudioController extends Controller {
         $history = $this->sanitizeHistory($_POST['history'] ?? '[]');
         $approved = $this->sanitizeApproved($_POST['approved'] ?? '[]');
 
+        $startedAt = microtime(true);
+        $turnsUsed = 0;
+
         $this->startStream();
 
         if ($message === '') {
@@ -41,6 +46,15 @@ class AiStudioController extends Controller {
             $this->sse('done', ['status' => 'error']);
             return;
         }
+
+        $this->logAi('run_start', [
+            'model' => $model,
+            'message_len' => mb_strlen($message),
+            'history_turns' => count($history),
+            'approved_count' => count($approved),
+        ]);
+
+        $this->sse('activity', ['text' => 'Starting…']);
 
         $messages = array_merge(
             [['role' => 'system', 'content' => $this->buildSystemPrompt()]],
@@ -54,12 +68,21 @@ class AiStudioController extends Controller {
         try {
             for ($turn = 1; $turn <= self::MAX_TOOL_TURNS; $turn++) {
                 if (connection_aborted()) {
+                    $this->logAi('run_end', [
+                        'status' => 'aborted',
+                        'turns' => $turnsUsed,
+                        'duration_ms' => $this->elapsedMs($startedAt),
+                    ]);
                     return; // client pressed Stop — don't spend more tokens
                 }
 
+                $turnsUsed++;
                 $this->sse('turn', ['number' => $turn, 'max' => self::MAX_TOOL_TURNS]);
+                $this->sse('activity', ['text' => 'Thinking… turn ' . $turn . '/' . self::MAX_TOOL_TURNS]);
 
+                $modelStart = microtime(true);
                 $response = OpenRouter::chatWithTools($messages, $model, AiToolRegistry::definitions(), 0.5, 8192);
+                $modelMs = (int)round((microtime(true) - $modelStart) * 1000);
 
                 $usage = $response['usage'] ?? null;
                 if (is_array($usage)) {
@@ -79,6 +102,18 @@ class AiStudioController extends Controller {
                         'cost' => $usageTotal['cost'],
                     ]);
                 }
+
+                $this->logAi('model_turn', [
+                    'turn' => $turn,
+                    'model' => $model,
+                    'prompt_tokens' => (int)($usage['prompt_tokens'] ?? 0),
+                    'completion_tokens' => (int)($usage['completion_tokens'] ?? 0),
+                    'total_tokens' => (int)($usage['total_tokens'] ?? 0),
+                    'cost' => (float)($usage['cost'] ?? 0),
+                    'finish_reason' => $response['finish_reason'] ?? null,
+                    'tool_calls' => count($response['tool_calls'] ?? []),
+                    'duration_ms' => $modelMs,
+                ]);
 
                 if ($response['content'] !== '') {
                     $finalText = $response['content'];
@@ -106,8 +141,20 @@ class AiStudioController extends Controller {
                         $args = [];
                     }
 
+                    $this->sse('activity', ['text' => 'Running ' . $name . '…']);
+
+                    $toolStart = microtime(true);
                     $out = AiToolRegistry::execute($name, $args, $approved);
+                    $toolMs = (int)round((microtime(true) - $toolStart) * 1000);
                     $toolMsgId = $tc['id'] ?? $out['call_id'] ?? $name;
+
+                    $this->logAi('tool_call', [
+                        'name' => $name,
+                        'call_id' => $out['call_id'] ?? $toolMsgId,
+                        'type' => $out['type'],
+                        'args' => mb_substr((string)json_encode($args, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 0, 500),
+                        'duration_ms' => $toolMs,
+                    ]);
 
                     if ($out['type'] === 'approval') {
                         $haltForApproval = true;
@@ -116,6 +163,11 @@ class AiStudioController extends Controller {
                             'tool' => $name,
                             'plan' => $out['plan'],
                             'reason' => $out['reason'],
+                        ]);
+                        $this->logAi('approval_requested', [
+                            'call_id' => $out['call_id'],
+                            'tool' => $name,
+                            'plan' => mb_substr((string)($out['plan'] ?? ''), 0, 300),
                         ]);
                         $messages[] = [
                             'role' => 'tool',
@@ -151,6 +203,7 @@ class AiStudioController extends Controller {
                     ]);
 
                     if ($name === 'render_preview' && isset($out['result']['html'])) {
+                        $this->sse('activity', ['text' => 'Rendering preview…']);
                         $this->sse('preview', ['html' => $out['result']['html']]);
                     }
 
@@ -162,13 +215,32 @@ class AiStudioController extends Controller {
                 }
 
                 if ($haltForApproval) {
+                    $this->logAi('run_end', [
+                        'status' => 'awaiting_approval',
+                        'turns' => $turnsUsed,
+                        'duration_ms' => $this->elapsedMs($startedAt),
+                    ]);
                     $this->sse('done', ['status' => 'awaiting_approval', 'text' => $finalText]);
                     return;
                 }
             }
 
             $this->sse('done', ['status' => 'complete', 'text' => $finalText]);
+            $this->logAi('run_end', [
+                'status' => 'complete',
+                'turns' => $turnsUsed,
+                'prompt_tokens' => $usageTotal['prompt'],
+                'completion_tokens' => $usageTotal['completion'],
+                'total_tokens' => $usageTotal['total'],
+                'cost' => $usageTotal['cost'],
+                'duration_ms' => $this->elapsedMs($startedAt),
+            ]);
         } catch (Exception $e) {
+            $this->logAi('run_error', [
+                'message' => $e->getMessage(),
+                'at' => $e->getFile() . ':' . $e->getLine(),
+                'duration_ms' => $this->elapsedMs($startedAt),
+            ]);
             $this->sse('error', ['message' => $e->getMessage()]);
             $this->sse('done', ['status' => 'error']);
         }
@@ -210,6 +282,26 @@ class AiStudioController extends Controller {
             ob_flush();
         }
         flush();
+    }
+
+    // ------------------------------------------------------------------
+    // Operational logging (logs/ai-studio.log, one JSON line per event)
+    // ------------------------------------------------------------------
+
+    private function elapsedMs(float $since): int {
+        return (int)round((microtime(true) - $since) * 1000);
+    }
+
+    private function logAi(string $event, array $ctx = []): void {
+        $line = json_encode([
+            'ts' => date('Y-m-d H:i:s'),
+            'event' => $event,
+            'user' => $_SESSION['username'] ?? 'admin',
+            'user_id' => $_SESSION['user_id'] ?? null,
+        ] + $ctx, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($line !== false) {
+            @error_log($line . "\n", 3, self::LOG_FILE);
+        }
     }
 
     // ------------------------------------------------------------------
