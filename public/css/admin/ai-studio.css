@@ -21,8 +21,8 @@
 
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 170px);
-    min-height: 520px;
+    height: var(--ai-studio-h, calc(100vh - 170px));
+    min-height: 560px;
     font-variant-numeric: tabular-nums;
 }
 
@@ -213,6 +213,21 @@
     gap: 18px;
     flex: 1;
     min-height: 0;
+    transition: grid-template-columns .2s ease;
+}
+
+.ai-studio__layout--single {
+    grid-template-columns: 1fr;
+}
+
+.ai-studio__layout--single .ai-studio__preview {
+    display: none;
+}
+
+.ai-studio__layout--single .ai-studio__chat {
+    max-width: 1180px;
+    width: 100%;
+    margin: 0 auto;
 }
 
 /* ---- Chat column ---- */

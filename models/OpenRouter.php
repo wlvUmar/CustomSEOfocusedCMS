@@ -5,9 +5,14 @@ class OpenRouter {
     private const API_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
     public const MODELS = [
-        'deepseek/deepseek-chat'          => 'DeepSeek Chat (fast, cheap)',
+        'deepseek/deepseek-chat'          => 'DeepSeek Chat (default, cheap)',
+        'openrouter/free'                 => 'Auto: best free model',
+        'openai/gpt-oss-120b:free'        => 'GPT-OSS 120B (free)',
+        'openai/gpt-oss-20b:free'         => 'GPT-OSS 20B (free, fast)',
         'openai/gpt-4o-mini'              => 'GPT-4o Mini (balanced)',
         'anthropic/claude-3.5-haiku'      => 'Claude Haiku (fast)',
+        'google/gemini-2.5-flash'         => 'Gemini 2.5 Flash (cheap)',
+        'deepseek/deepseek-r1'            => 'DeepSeek R1 (reasoning)',
         'meta-llama/llama-3.3-70b-instruct' => 'Llama 3.3 70B (open)',
     ];
 

@@ -539,4 +539,50 @@
         const plan = pendingApproval.plan;
         await runTurn('[Denied] Do not make this change: ' + plan + '. Propose an alternative if appropriate.', []);
     });
+
+    // ---- Preview toggle: preview is optional, chat gets the full width when hidden ----
+    const layoutEl = document.querySelector('.ai-studio__layout');
+    const previewToggle = document.getElementById('ai-preview-toggle');
+    const previewToggleLabel = document.getElementById('ai-preview-toggle-label');
+    const PREVIEW_HIDDEN_KEY = 'aiStudioPreviewHidden';
+
+    function applyPreviewState(hidden) {
+        if (!layoutEl) return;
+        layoutEl.classList.toggle('ai-studio__layout--single', hidden);
+        if (previewToggleLabel) previewToggleLabel.textContent = hidden ? 'Show preview' : 'Hide preview';
+        if (previewToggle) previewToggle.setAttribute('aria-pressed', hidden ? 'false' : 'true');
+        fitStudioHeight();
+    }
+
+    if (previewToggle) {
+        previewToggle.addEventListener('click', () => {
+            const hidden = !layoutEl.classList.contains('ai-studio__layout--single');
+            try { localStorage.setItem(PREVIEW_HIDDEN_KEY, hidden ? '1' : '0'); } catch (e) { /* storage unavailable */ }
+            applyPreviewState(hidden);
+        });
+    }
+
+    // ---- Fill remaining viewport height instead of guessing the chrome height ----
+    const studioEl = document.querySelector('.ai-studio');
+    let fitRaf = null;
+
+    function fitStudioHeight() {
+        if (!studioEl) return;
+        if (fitRaf) cancelAnimationFrame(fitRaf);
+        fitRaf = requestAnimationFrame(() => {
+            const top = studioEl.getBoundingClientRect().top + window.scrollY;
+            const bottomBreathingRoom = 28;
+            const h = window.innerHeight - top - bottomBreathingRoom;
+            studioEl.style.setProperty('--ai-studio-h', Math.max(560, h) + 'px');
+        });
+    }
+
+    window.addEventListener('resize', fitStudioHeight);
+    window.addEventListener('load', fitStudioHeight);
+
+    (function initStudioLayout() {
+        let hidden = false;
+        try { hidden = localStorage.getItem(PREVIEW_HIDDEN_KEY) === '1'; } catch (e) { /* storage unavailable */ }
+        applyPreviewState(hidden);
+    })();
 })();

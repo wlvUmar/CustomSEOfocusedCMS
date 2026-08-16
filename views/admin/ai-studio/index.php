@@ -17,6 +17,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <?php endforeach; ?>
             </select>
             <button id="ai-new-session" type="button" class="ai-btn ai-btn--ghost"><i data-feather="rotate-ccw"></i> New session</button>
+            <button id="ai-preview-toggle" type="button" class="ai-btn ai-btn--ghost" aria-pressed="true"><i data-feather="sidebar"></i> <span id="ai-preview-toggle-label">Hide preview</span></button>
         </div>
     </header>
 
@@ -24,10 +25,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <section class="ai-studio__chat">
             <div id="ai-transcript" class="ai-transcript" aria-live="polite">
                 <div class="ai-msg ai-msg--agent">
-                    <div class="ai-msg__body">
-                        I'm the AI Studio agent. I can inspect pages, rotation variants, FAQs and analytics, then
-                        edit content and show you a live preview. Ask me to improve a page, find underperforming
-                        content, or create a new section.
+                    <div class="ai-msg__body md">
+                        <p>I'm the AI Studio agent. I can inspect pages, rotation variants, FAQs and analytics, then edit content and show you a live preview. Ask me to improve a page, find underperforming content, or create a new section.</p>
                     </div>
                 </div>
             </div>
