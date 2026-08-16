@@ -426,6 +426,43 @@
     margin: .6em 0;
 }
 
+.ai-msg__body.md .ai-md-table-wrap {
+    overflow-x: auto;
+    margin: .5em 0;
+    border: 1px solid #e2dfd1;
+    border-radius: 8px;
+}
+
+.ai-msg__body.md table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: .86em;
+    line-height: 1.45;
+}
+
+.ai-msg__body.md th,
+.ai-msg__body.md td {
+    border: 1px solid #e2dfd1;
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.ai-msg__body.md th {
+    background: #e8e5d3;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.ai-msg__body.md tr:nth-child(even) td {
+    background: #f7f6ec;
+}
+
+.ai-msg__body.md ul li::marker,
+.ai-msg__body.md ol li::marker {
+    color: #0f5f6f;
+}
+
 /* ---- Tool events (log strip, distinct register from conversation) ---- */
 
 .ai-tool-event {

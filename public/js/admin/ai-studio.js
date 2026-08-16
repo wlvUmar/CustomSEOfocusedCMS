@@ -311,10 +311,30 @@
                 continue;
             }
 
+            // GFM-style table: | a | b | rows with a --- separator row
+            if (line.trim().charAt(0) === '|') {
+                const rows = [];
+                while (i < n && lines[i].trim().charAt(0) === '|') {
+                    rows.push(lines[i]);
+                    i++;
+                }
+                const table = buildTable(rows);
+                if (table) {
+                    frag.appendChild(table);
+                } else {
+                    // stray pipe lines — render as plain text
+                    const p = document.createElement('p');
+                    appendInline(p, rows.join(' '));
+                    frag.appendChild(p);
+                }
+                continue;
+            }
+
             const pLines = [];
             while (i < n) {
                 const t = lines[i];
-                if (t.trim() === '' || RE_HEADING.test(t) || RE_HR.test(t) || RE_QUOTE.test(t) || RE_LIST.test(t)) break;
+                if (t.trim() === '' || RE_HEADING.test(t) || RE_HR.test(t) || RE_QUOTE.test(t) || RE_LIST.test(t)
+                    || t.trim().charAt(0) === '|') break;
                 pLines.push(t);
                 i++;
             }
@@ -323,6 +343,52 @@
             frag.appendChild(p);
         }
         return frag;
+    }
+
+    function splitRow(line) {
+        let s = String(line).trim();
+        if (s.charAt(0) === '|') s = s.slice(1);
+        if (s.charAt(s.length - 1) === '|') s = s.slice(0, -1);
+        return s.split('|').map(c => c.trim());
+    }
+
+    function buildTable(rows) {
+        if (rows.length < 2) return null;
+        const headerCells = splitRow(rows[0]);
+        const sepCells = splitRow(rows[1]);
+        if (!headerCells.length || !sepCells.length) return null;
+        const isSep = sepCells.every(c => /^\s*:?-{3,}:?\s*$/.test(c));
+        if (!isSep) return null;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'ai-md-table-wrap';
+        const table = document.createElement('table');
+
+        const thead = document.createElement('thead');
+        const trh = document.createElement('tr');
+        headerCells.forEach(c => {
+            const th = document.createElement('th');
+            appendInline(th, c);
+            trh.appendChild(th);
+        });
+        thead.appendChild(trh);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        for (let r = 2; r < rows.length; r++) {
+            const cells = splitRow(rows[r]);
+            if (!cells.length) continue;
+            const tr = document.createElement('tr');
+            cells.forEach(c => {
+                const td = document.createElement('td');
+                appendInline(td, c);
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        wrap.appendChild(table);
+        return wrap;
     }
 
     function appendInline(parent, text) {
@@ -354,7 +420,11 @@
                     parent.appendChild(document.createTextNode(part));
                 }
             } else {
-                parent.appendChild(document.createTextNode(part));
+                const brParts = part.split(/<br\s*\/?>/i);
+                brParts.forEach((seg, idx) => {
+                    if (idx > 0) parent.appendChild(document.createElement('br'));
+                    if (seg) parent.appendChild(document.createTextNode(seg));
+                });
             }
         });
     }
