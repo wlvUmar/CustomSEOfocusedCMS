@@ -3,6 +3,7 @@
 // Tools for the content rotation system (content_rotations + manual selection).
 
 require_once BASE_PATH . '/models/ContentRotation.php';
+require_once BASE_PATH . '/models/Page.php';
 
 class RotationTools {
 
@@ -16,9 +17,10 @@ class RotationTools {
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
-                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id (alternative to page_slug).'],
+                            'page_slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id). Prefer this when you know it.'],
                         ],
-                        'required' => ['page_id'],
+                        'oneOf' => [['required' => ['page_id']], ['required' => ['page_slug']]],
                     ],
                 ],
             ],
@@ -44,10 +46,12 @@ class RotationTools {
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
-                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id (alternative to page_slug).'],
+                            'page_slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id). Prefer this when you know it.'],
                             'rotation_id' => ['type' => 'integer', 'description' => 'Rotation id to pin, or 0 to clear.'],
                         ],
-                        'required' => ['page_id', 'rotation_id'],
+                        'required' => ['rotation_id'],
+                        'oneOf' => [['required' => ['page_id']], ['required' => ['page_slug']]],
                     ],
                 ],
             ],
@@ -66,9 +70,20 @@ class RotationTools {
         throw new InvalidArgumentException("Unknown tool: {$name}");
     }
 
+    private static function resolvePageId(array $args): int {
+        $slug = trim((string)($args['page_slug'] ?? ''));
+        if ($slug !== '') {
+            $page = Page::getBySlug($slug);
+            if (!$page) throw new InvalidArgumentException("Page not found: {$slug}");
+            return (int)$page['id'];
+        }
+        $id = (int)($args['page_id'] ?? 0);
+        if ($id <= 0) throw new InvalidArgumentException('page_id or page_slug is required');
+        return $id;
+    }
+
     private static function listRotations(array $args): array {
-        $pageId = (int)($args['page_id'] ?? 0);
-        if ($pageId <= 0) throw new InvalidArgumentException('page_id is required');
+        $pageId = self::resolvePageId($args);
         $model = new ContentRotation();
         $rows = $model->getByPageId($pageId);
         $out = [];
@@ -105,9 +120,8 @@ class RotationTools {
     }
 
     private static function setRotation(array $args): array {
-        $pageId = (int)($args['page_id'] ?? 0);
+        $pageId = self::resolvePageId($args);
         $rotationId = (int)($args['rotation_id'] ?? 0);
-        if ($pageId <= 0) throw new InvalidArgumentException('page_id is required');
 
         $model = new ContentRotation();
         if ($rotationId === 0) {

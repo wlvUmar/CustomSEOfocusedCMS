@@ -35,7 +35,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_page',
-                    'description' => 'Fetch one page by id or slug with its RU/UZ titles, content, and meta fields. Long HTML fields are truncated to ~12000 chars with a "truncated" flag — targeted edits on the full value should use str_replace_field with the snippets you see here.',
+                    'description' => 'Fetch one page by slug (preferred) or id, with its RU/UZ titles, content, and meta fields. Long HTML fields are truncated to ~12000 chars with a "truncated" flag — targeted edits on the full value should use str_replace_field with the snippets you see here.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [

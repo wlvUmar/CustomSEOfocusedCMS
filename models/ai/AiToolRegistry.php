@@ -8,6 +8,7 @@
 require_once BASE_PATH . '/models/ai/tools/PageTools.php';
 require_once BASE_PATH . '/models/ai/tools/RotationTools.php';
 require_once BASE_PATH . '/models/ai/tools/AnalyticsTools.php';
+require_once BASE_PATH . '/models/ai/tools/AnalyticsQueryTools.php';
 require_once BASE_PATH . '/models/ai/tools/SiteTools.php';
 require_once BASE_PATH . '/models/ai/tools/FaqTools.php';
 
@@ -18,6 +19,7 @@ class AiToolRegistry {
         PageTools::class,
         RotationTools::class,
         AnalyticsTools::class,
+        AnalyticsQueryTools::class,
         SiteTools::class,
         FaqTools::class,
     ];

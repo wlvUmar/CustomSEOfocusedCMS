@@ -27,13 +27,14 @@ class FaqTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_faq',
-                    'description' => 'Fetch one FAQ by id (RU/UZ question and answer, sort order, active flag).',
+                    'description' => 'Fetch an FAQ by numeric id, or all FAQs for a page by slug. Prefer page_slug when you know it — ids are not required.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
-                            'faq_id' => ['type' => 'integer', 'description' => 'Numeric FAQ id.'],
+                            'faq_id' => ['type' => 'integer', 'description' => 'Numeric FAQ id (alternative to page_slug).'],
+                            'page_slug' => ['type' => 'string', 'description' => 'Page slug (alternative to faq_id). Returns all FAQs of that page.'],
                         ],
-                        'required' => ['faq_id'],
+                        'oneOf' => [['required' => ['faq_id']], ['required' => ['page_slug']]],
                     ],
                 ],
             ],
@@ -131,8 +132,29 @@ class FaqTools {
     }
 
     private static function getFaq(array $args): array {
+        $slug = trim((string)($args['page_slug'] ?? ''));
+        if ($slug !== '') {
+            $rows = array_values(array_filter((new FAQ())->getAll(), fn($f) => ($f['page_slug'] ?? '') === $slug));
+            $out = [];
+            foreach ($rows as $f) {
+                $out[] = [
+                    'id' => (int)$f['id'],
+                    'page_slug' => $f['page_slug'],
+                    'question_ru' => mb_substr((string)($f['question_ru'] ?? ''), 0, 200),
+                    'question_uz' => mb_substr((string)($f['question_uz'] ?? ''), 0, 200),
+                    'sort_order' => (int)($f['sort_order'] ?? 0),
+                    'is_active' => (int)($f['is_active'] ?? 1),
+                ];
+            }
+            return [
+                'page_slug' => $slug,
+                'faqs' => $out,
+                'count' => count($out),
+                'note' => 'FAQ ids are stable — use faq_id for targeted updates/deletes.',
+            ];
+        }
         $id = (int)($args['faq_id'] ?? 0);
-        if ($id <= 0) throw new InvalidArgumentException('faq_id is required');
+        if ($id <= 0) throw new InvalidArgumentException('faq_id or page_slug is required');
         $row = (new FAQ())->getById($id);
         if (!$row) throw new InvalidArgumentException('FAQ not found');
         return $row;
