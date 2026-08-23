@@ -966,12 +966,9 @@
         applyPreviewState(hidden);
     })();
 
-    // App mode: prevent page scroll — only chat/history scroll (isolated, no impact on other admin pages)
+    // App mode: prevent page scroll on desktop — only chat/history scroll (content-level, no global lock)
     try {
         if (document.querySelector('.ai-studio--app')) {
-            document.documentElement.classList.add('ai-app');
-            document.body.classList.add('ai-app');
-            document.querySelector('.admin-wrapper')?.classList.add('ai-app');
             document.querySelector('.admin-main')?.classList.add('ai-app');
             document.querySelector('.admin-content')?.classList.add('ai-app');
         }
