@@ -20,6 +20,42 @@ class OpenRouter {
         return defined('OPENROUTER_API_KEY') ? OPENROUTER_API_KEY : (getenv('OPENROUTER_API_KEY') ?: '');
     }
 
+    /** Fetch live model list from OpenRouter (cached 10min). Falls back to MODELS const on failure. */
+    public static function fetchModels(): array {
+        $cacheFile = BASE_PATH . '/storage/openrouter_models.json';
+        $ttl = 600;
+        if (is_file($cacheFile) && (time() - filemtime($cacheFile) < $ttl)) {
+            $cached = json_decode((string)file_get_contents($cacheFile), true);
+            if (is_array($cached) && isset($cached['data']) && is_array($cached['data'])) return $cached['data'];
+            if (is_array($cached) && isset($cached[0]['id'])) return $cached;
+        }
+        $apiKey = self::getApiKey();
+        $ch = curl_init('https://openrouter.ai/api/v1/models');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => $apiKey ? ['Authorization: Bearer ' . $apiKey] : [],
+            CURLOPT_TIMEOUT => 8,
+            CURLOPT_CONNECTTIMEOUT => 4,
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($resp !== false && $code >= 200 && $code < 300) {
+            $data = json_decode($resp, true);
+            $list = $data['data'] ?? null;
+            if (is_array($list) && $list) {
+                // cache raw response
+                @mkdir(dirname($cacheFile), 0750, true);
+                @file_put_contents($cacheFile, json_encode($data), LOCK_EX);
+                return $list;
+            }
+        }
+        // fallback: convert const to same shape
+        $fallback = [];
+        foreach (self::MODELS as $id => $label) $fallback[] = ['id' => $id, 'name' => $label];
+        return $fallback;
+    }
+
     /**
      * Send a chat completion request to OpenRouter.
      *

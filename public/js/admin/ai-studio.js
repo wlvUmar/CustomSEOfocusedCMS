@@ -58,6 +58,44 @@
     els.model.addEventListener('change', () => {
         localStorage.setItem('ai-studio-model', els.model.value);
     });
+    // Realtime model list from OpenRouter (falls back to PHP const)
+    (async () => {
+        try {
+            const r = await fetch(cfg.baseUrl + '/admin/ai-studio/models', { headers: { 'Accept': 'application/json' } });
+            const j = await r.json();
+            const list = Array.isArray(j.models) ? j.models : [];
+            if (!list.length) return;
+            const cur = els.model.value;
+            // Keep curated fallback order? Replace with live list sorted by name, curated first.
+            const curated = new Set(['deepseek/deepseek-chat','openrouter/free','openai/gpt-oss-120b:free','openai/gpt-oss-20b:free','openai/gpt-4o-mini','anthropic/claude-3.5-haiku','google/gemini-2.5-flash','deepseek/deepseek-r1','meta-llama/llama-3.3-70b-instruct']);
+            list.sort((a,b) => {
+                const ca = curated.has(a.id), cb = curated.has(b.id);
+                if (ca && !cb) return -1; if (!ca && cb) return 1;
+                return (a.name || a.id).localeCompare(b.name || b.id);
+            });
+            const frag = document.createDocumentFragment();
+            const seen = new Set();
+            list.forEach(m => {
+                if (!m.id || seen.has(m.id)) return; seen.add(m.id);
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                const pricing = m.pricing ? ` — $${Number(m.pricing.prompt||0).toFixed(4)}/$${Number(m.pricing.completion||0).toFixed(4)}` : '';
+                const ctx = m.context_length ? ` · ${Math.round(m.context_length/1000)}k` : '';
+                opt.textContent = (m.name || m.id) + (pricing||ctx ? ` (${pricing}${ctx})` : '');
+                // keep curated labels short if they match const
+                if (curated.has(m.id)) {
+                    const short = { 'deepseek/deepseek-chat':'DeepSeek Chat (default, cheap)','openrouter/free':'Auto: best free model','openai/gpt-oss-120b:free':'GPT-OSS 120B (free)','openai/gpt-oss-20b:free':'GPT-OSS 20B (free, fast)','openai/gpt-4o-mini':'GPT-4o Mini','anthropic/claude-3.5-haiku':'Claude Haiku','google/gemini-2.5-flash':'Gemini 2.5 Flash','deepseek/deepseek-r1':'DeepSeek R1','meta-llama/llama-3.3-70b-instruct':'Llama 3.3 70B'}[m.id];
+                    if (short) opt.textContent = short;
+                }
+                frag.appendChild(opt);
+            });
+            // Preserve current selection if still present, else keep savedModel if in new list
+            const toSelect = (cur && seen.has(cur) ? cur : (savedModel && seen.has(savedModel) ? savedModel : null));
+            els.model.innerHTML = ''; els.model.appendChild(frag);
+            if (toSelect) els.model.value = toSelect;
+            else els.model.selectedIndex = 0;
+        } catch(e){ /* keep static list */ }
+    })();
 
     // ---- Session history (localStorage persistence) ---------------------------
     const SESSIONS_KEY = 'ai-studio-sessions';
@@ -927,6 +965,17 @@
         try { hidden = localStorage.getItem(PREVIEW_HIDDEN_KEY) === '1'; } catch (e) { /* storage unavailable */ }
         applyPreviewState(hidden);
     })();
+
+    // App mode: prevent page scroll — only chat/history scroll (isolated, no impact on other admin pages)
+    try {
+        if (document.querySelector('.ai-studio--app')) {
+            document.documentElement.classList.add('ai-app');
+            document.body.classList.add('ai-app');
+            document.querySelector('.admin-wrapper')?.classList.add('ai-app');
+            document.querySelector('.admin-main')?.classList.add('ai-app');
+            document.querySelector('.admin-content')?.classList.add('ai-app');
+        }
+    } catch(e){}
 
     // Ensure clean idle state on fresh open — prevents stale spinner/typing from cached DOM or back-forward cache.
     hideActivity();

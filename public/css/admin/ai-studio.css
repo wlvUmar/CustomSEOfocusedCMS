@@ -30,12 +30,19 @@
 .admin-content .ai-studio { margin-left: -24px; margin-right: -24px; width: calc(100% + 48px); }
 @media (max-width:900px){ .admin-content .ai-studio{margin-left:-16px;margin-right:-16px;width:calc(100% + 32px);} }
 
-/* App mode: no page scroll, only chat/history scroll */
-.ai-studio--app { height: var(--ai-studio-h, calc(100vh - 84px)); overflow: hidden; min-height: 0; }
+/* App mode: no page scroll, only chat/history scroll — isolated */
+.ai-studio--app { height: var(--ai-studio-h, calc(100dvh - 72px)); overflow: hidden; min-height: 0; }
 .ai-studio--app .ai-studio__layout { flex:1; min-height:0; overflow:hidden; }
 .ai-studio--app .ai-studio__chat { overflow:hidden; min-height:0; }
 .ai-studio--app .ai-transcript-wrap { flex:1; min-height:0; overflow:hidden; }
 .ai-studio--app .ai-history-list { max-height: 240px; overflow-y:auto; }
+.ai-studio__topbar, .ai-studio__layout { width:100%; box-sizing:border-box; }
+/* When app mode active, lock page scroll — class added by JS */
+html.ai-app, body.ai-app { overflow:hidden !important; height:100dvh !important; }
+.admin-wrapper.ai-app { overflow:hidden !important; height:100dvh !important; }
+.admin-main.ai-app { overflow:hidden !important; height:100dvh !important; display:flex !important; flex-direction:column !important; }
+.admin-content.ai-app { flex:1 !important; overflow:hidden !important; display:flex !important; flex-direction:column !important; min-height:0 !important; }
+.admin-content.ai-app .ai-studio { flex:1; min-height:0; }
 
 /* ---- Topbar ---- */
 .ai-studio__topbar {
@@ -43,10 +50,7 @@
     gap:16px; padding:14px 20px; background:#fff; border:1px solid var(--ai-line);
     border-radius: var(--ai-radius-md); margin-bottom:12px; flex-wrap:wrap;
 }
-.ai-studio__heading { display:flex; align-items:center; gap:12px; min-width:0; }
-.ai-studio__heading::before{ content:''; width:32px; height:32px; border-radius:8px; flex-shrink:0;
-    background:#0f172a; box-shadow:none; position:relative; }
-.ai-studio__heading::after{ content:''; position:absolute; width:6px; height:6px; margin:13px 0 0 13px; border-radius:50%; background:#38bdf8; opacity:1; animation:none; }
+.ai-studio__heading { display:flex; align-items:center; gap:10px; min-width:0; }
 .ai-studio__heading h1{ margin:0; font-size:1.05rem; font-weight:700; letter-spacing:-0.02em; color:var(--ai-ink); line-height:1; }
 .ai-studio__subtitle{ margin:2px 0 0; color:var(--ai-muted); font-size:.78rem; line-height:1.4; max-width:48ch; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
 .ai-studio__topbar-right{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-left:auto; }

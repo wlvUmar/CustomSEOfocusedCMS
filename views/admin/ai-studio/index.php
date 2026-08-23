@@ -27,7 +27,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <?php if ($gscConfigured && !$gscConnected): ?>
                     <a id="ai-gsc-connect" href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--primary ai-btn--xs"><i data-feather="link"></i> Connect</a>
                 <?php elseif ($gscConnected): ?>
-                    <button id="ai-gsc-disconnect" type="button" class="ai-btn ai-btn--ghost ai-btn--xs"><i data-feather="unlink"></i></button>
+                    <button id="ai-gsc-disconnect" type="button" class="ai-btn ai-btn--ghost ai-btn--xs" title="Disconnect Search Console"><i data-feather="log-out"></i> Disconnect</button>
                 <?php endif; ?>
             </div>
             <div class="ai-studio__controls">

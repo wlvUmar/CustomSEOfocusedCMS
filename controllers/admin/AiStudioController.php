@@ -27,6 +27,12 @@ class AiStudioController extends Controller {
         ]);
     }
 
+    public function models() {
+        $this->requireAuth();
+        $list = OpenRouter::fetchModels();
+        $this->json(['success' => true, 'models' => $list]);
+    }
+
     public function run() {
         $this->requireAuth();
 

@@ -137,6 +137,7 @@ $router->post('/admin/requests/delete', function() { requireAdminController('Req
 // Admin AI Studio (agent loop over the admin via tools)
 $router->get('/admin/ai-studio', function() { requireAdminController('AiStudioController', 'index'); });
 $router->post('/admin/ai-studio/run', function() { requireAdminController('AiStudioController', 'run'); });
+$router->get('/admin/ai-studio/models', function() { requireAdminController('AiStudioController', 'models'); });
 $router->get('/admin/ai-studio/gsc-status', function() { requireAdminController('GscAuthController', 'status'); });
 $router->get('/admin/ai-studio/gsc-auth', function() { requireAdminController('GscAuthController', 'authorize'); });
 $router->get('/admin/ai-studio/gsc-callback', function() { requireAdminController('GscAuthController', 'callback'); });
