@@ -34,6 +34,10 @@
         previewOpen: document.getElementById('ai-preview-open'),
         gscStatus: document.getElementById('ai-gsc-status'),
         gscDisconnect: document.getElementById('ai-gsc-disconnect'),
+        historyToggle: document.getElementById('ai-history-toggle'),
+        historyPanel: document.getElementById('ai-history-panel'),
+        historyList: document.getElementById('ai-history-list'),
+        historyClose: document.getElementById('ai-history-close'),
     };
 
     let busy = false;
@@ -54,6 +58,137 @@
     els.model.addEventListener('change', () => {
         localStorage.setItem('ai-studio-model', els.model.value);
     });
+
+    // ---- Session history (localStorage persistence) ---------------------------
+    const SESSIONS_KEY = 'ai-studio-sessions';
+    const CURRENT_KEY = 'ai-studio-current-session-id';
+    let currentSessionId = null;
+
+    function loadSessions() {
+        try { const raw = localStorage.getItem(SESSIONS_KEY); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; } catch (e) { return []; }
+    }
+    function saveSessions(arr) {
+        try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(arr.slice(0, 50))); } catch (e) { /* quota */ }
+    }
+    function genSessionId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+    function sessionTitleFromHistory(hist) {
+        const firstUser = hist.find(m => m.role === 'user');
+        if (!firstUser) return 'New conversation';
+        const t = firstUser.content.trim().slice(0, 48);
+        return t.length < firstUser.content.trim().length ? t + '…' : t;
+    }
+    function saveCurrentSession() {
+        if (!currentSessionId) return;
+        const sessions = loadSessions();
+        const idx = sessions.findIndex(s => s.id === currentSessionId);
+        const payload = {
+            id: currentSessionId,
+            title: sessionTitleFromHistory(history),
+            updatedAt: Date.now(),
+            createdAt: (idx >= 0 ? sessions[idx].createdAt : Date.now()),
+            history: history.slice(),
+            transcriptHTML: els.transcript ? els.transcript.innerHTML : '',
+            lastPreviewHtml: lastPreviewHtml || '',
+            usageText: els.usage ? els.usage.textContent : ''
+        };
+        if (idx >= 0) sessions[idx] = payload; else sessions.unshift(payload);
+        // keep sorted by updatedAt desc
+        sessions.sort((a, b) => b.updatedAt - a.updatedAt);
+        saveSessions(sessions);
+        renderHistoryList();
+    }
+    function renderHistoryList() {
+        if (!els.historyList) return;
+        const sessions = loadSessions();
+        els.historyList.innerHTML = '';
+        if (!sessions.length) {
+            els.historyList.innerHTML = '<div style="padding:12px;color:var(--ai-muted);font-size:.82rem;text-align:center">No sessions yet</div>';
+            return;
+        }
+        sessions.forEach(s => {
+            const item = document.createElement('div');
+            item.className = 'ai-history-item' + (s.id === currentSessionId ? ' ai-history-item--active' : '');
+            const title = document.createElement('div'); title.className = 'ai-history-item__title'; title.textContent = s.title || 'Untitled';
+            const meta = document.createElement('div'); meta.className = 'ai-history-item__meta';
+            const d = new Date(s.updatedAt); meta.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ' · ' + (s.history ? s.history.length : 0) + ' msgs';
+            const actions = document.createElement('div'); actions.className = 'ai-history-item__actions';
+            const loadBtn = document.createElement('button'); loadBtn.type = 'button'; loadBtn.className = 'ai-btn ai-btn--ghost ai-btn--sm'; loadBtn.textContent = 'Open';
+            loadBtn.addEventListener('click', (e) => { e.stopPropagation(); restoreSession(s.id); });
+            const delBtn = document.createElement('button'); delBtn.type = 'button'; delBtn.className = 'ai-history-item__del'; delBtn.textContent = 'Delete';
+            delBtn.addEventListener('click', (e) => { e.stopPropagation(); if (!confirm('Delete this session?')) return; deleteSession(s.id); });
+            actions.appendChild(loadBtn); actions.appendChild(delBtn);
+            item.appendChild(title); item.appendChild(meta); item.appendChild(actions);
+            item.addEventListener('click', () => restoreSession(s.id));
+            els.historyList.appendChild(item);
+        });
+        if (window.feather) try { feather.replace({class:'feather-icon'}); } catch(e){}
+    }
+    function restoreSession(id) {
+        const sessions = loadSessions();
+        const s = sessions.find(x => x.id === id);
+        if (!s) return;
+        currentSessionId = s.id;
+        try { localStorage.setItem(CURRENT_KEY, currentSessionId); } catch(e){}
+        history = Array.isArray(s.history) ? s.history.slice() : [];
+        pendingApproval = null; pendingContext = null;
+        if (els.transcript) {
+            if (s.transcriptHTML) els.transcript.innerHTML = s.transcriptHTML;
+            else els.transcript.innerHTML = '';
+            // re-enhance missing? MutationObserver will handle next adds
+        }
+        lastPreviewHtml = s.lastPreviewHtml || '';
+        if (lastPreviewHtml && els.previewFrame) { els.previewFrame.setAttribute('srcdoc', lastPreviewHtml); els.previewHint.textContent = 'Restored ' + new Date(s.updatedAt).toLocaleTimeString(); }
+        if (els.approval) els.approval.hidden = true;
+        setStatus('Ready'); updateUsage(null);
+        if (s.usageText && els.usage) els.usage.textContent = s.usageText;
+        hideActivity(); hideTyping();
+        renderHistoryList();
+        if (els.historyPanel) els.historyPanel.hidden = true;
+        scrollTranscript();
+        els.input.focus();
+    }
+    function deleteSession(id) {
+        let sessions = loadSessions();
+        sessions = sessions.filter(s => s.id !== id);
+        saveSessions(sessions);
+        if (currentSessionId === id) {
+            if (sessions.length) restoreSession(sessions[0].id);
+            else createNewSession(true);
+        } else renderHistoryList();
+    }
+    function createNewSession(skipSaveCurrent) {
+        if (!skipSaveCurrent && currentSessionId && history.length) saveCurrentSession();
+        currentSessionId = genSessionId();
+        try { localStorage.setItem(CURRENT_KEY, currentSessionId); } catch(e){}
+        history = []; pendingApproval = null; pendingContext = null;
+        if (els.transcript) els.transcript.innerHTML = '<div class="ai-welcome"><div class="ai-welcome__icon"><i data-feather="zap"></i></div><h2 class="ai-welcome__title">Hi, I\'m your AI Studio agent</h2><p class="ai-welcome__text">I can inspect pages, rotation variants, FAQs and analytics, then edit content and show you a live preview. Ask me to improve a page, find underperforming content, or create a new section.</p></div>';
+        lastPreviewHtml = ''; if (els.previewFrame) els.previewFrame.removeAttribute('srcdoc');
+        if (els.previewHint) els.previewHint.textContent = 'Renders here after each turn';
+        setStatus('Ready'); updateUsage(null); hideActivity(); hideTyping(); if (els.approval) els.approval.hidden = true;
+        const sessions = loadSessions();
+        sessions.unshift({ id: currentSessionId, title: 'New conversation', createdAt: Date.now(), updatedAt: Date.now(), history: [], transcriptHTML: els.transcript.innerHTML, lastPreviewHtml: '', usageText: '' });
+        saveSessions(sessions);
+        renderHistoryList();
+        if (window.feather) try { feather.replace({class:'feather-icon'}); } catch(e){}
+        scrollTranscript();
+    }
+    // init current session
+    (function initSession() {
+        const existing = loadSessions();
+        const savedId = (() => { try { return localStorage.getItem(CURRENT_KEY); } catch(e){ return null; } })();
+        if (savedId && existing.some(s => s.id === savedId)) {
+            restoreSession(savedId);
+        } else if (existing.length) {
+            restoreSession(existing[0].id);
+        } else {
+            createNewSession(true);
+        }
+        renderHistoryList();
+        if (els.historyToggle && els.historyPanel) {
+            els.historyToggle.addEventListener('click', () => { els.historyPanel.hidden = !els.historyPanel.hidden; if (!els.historyPanel.hidden) renderHistoryList(); });
+        }
+        if (els.historyClose && els.historyPanel) els.historyClose.addEventListener('click', () => els.historyPanel.hidden = true);
+    })();
 
     // ---- GSC: live Connect/Disconnect --------------------------
     (function initGsc() {
@@ -86,17 +221,7 @@
     // ---- New session ------------------------------------------------------
     els.newSession.addEventListener('click', () => {
         if (busy) return;
-        history = [];
-        pendingApproval = null;
-        pendingContext = null;
-        els.approval.hidden = true;
-        els.transcript.innerHTML = '';
-        els.previewFrame.removeAttribute('srcdoc');
-        lastPreviewHtml = '';
-        els.previewHint.textContent = 'Renders here after each turn';
-        setStatus('Ready');
-        updateUsage(null);
-        hideActivity();
+        createNewSession(false);
         els.input.value = '';
         els.input.style.height = 'auto';
         els.input.focus();
@@ -110,10 +235,12 @@
         els.model.disabled = value;
         els.newSession.disabled = value;
         els.stop.hidden = !value;
-        els.suggestions.classList.toggle('ai-suggestions--disabled', value);
-        Array.prototype.forEach.call(els.suggestions.querySelectorAll('.ai-chip'), chip => {
-            chip.disabled = value;
-        });
+        if (els.suggestions) {
+            els.suggestions.classList.toggle('ai-suggestions--disabled', value);
+            Array.prototype.forEach.call(els.suggestions.querySelectorAll('.ai-chip'), chip => {
+                chip.disabled = value;
+            });
+        }
         if (!value) abortCtrl = null;
     }
 
@@ -568,11 +695,13 @@
         els.input.style.height = Math.min(els.input.scrollHeight, 200) + 'px';
     });
 
-    els.suggestions.addEventListener('click', (e) => {
-        const chip = e.target.closest('.ai-chip');
-        if (!chip || busy) return;
-        runTurn(chip.dataset.prompt, []);
-    });
+    if (els.suggestions) {
+        els.suggestions.addEventListener('click', (e) => {
+            const chip = e.target.closest('.ai-chip');
+            if (!chip || busy) return;
+            runTurn(chip.dataset.prompt, []);
+        });
+    }
 
     els.stop.addEventListener('click', () => {
         if (abortCtrl) abortCtrl.abort();
@@ -718,6 +847,8 @@
         if (history.length > 24) {
             history = history.slice(-24);
         }
+        // Persist session for continue/refresh (history + transcript snapshot)
+        try { saveCurrentSession(); } catch(e){}
 
         abortCtrl = null;
         setBusy(false);

@@ -21,11 +21,47 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </div>
     </header>
 
-    <div class="ai-studio__layout">
+    <div id="ai-gsc-bar" class="ai-gsc-bar ai-gsc-bar--outside" aria-label="GSC data">
+        <div class="ai-gsc-bar__left">
+            <span class="ai-gsc-bar__title"><i data-feather="bar-chart-2"></i> GSC live</span>
+            <?php
+              $gscConfigured = !empty($gscStatus['configured']);
+              $gscConnected = !empty($gscStatus['connected']);
+            ?>
+            <?php if (!$gscConfigured): ?>
+                <span id="ai-gsc-status" class="ai-gsc-bar__hint ai-gsc-bar__hint--warn">Not configured — add GSC_CLIENT_ID / GSC_CLIENT_SECRET to .env</span>
+            <?php elseif ($gscConnected): ?>
+                <span id="ai-gsc-status" class="ai-gsc-bar__hint ai-gsc-bar__hint--ok">Connected · <?= e($gscStatus['site_url'] ?? '') ?> · live Search Console API</span>
+            <?php else: ?>
+                <span id="ai-gsc-status" class="ai-gsc-bar__hint">Not connected — live Search Console API</span>
+            <?php endif; ?>
+        </div>
+        <div class="ai-gsc-bar__actions">
+            <?php if ($gscConfigured && !$gscConnected): ?>
+                <a id="ai-gsc-connect" href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--primary ai-btn--sm"><i data-feather="link"></i> Connect GSC</a>
+            <?php elseif ($gscConnected): ?>
+                <button id="ai-gsc-disconnect" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="unlink"></i> Disconnect</button>
+                <a href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--ghost ai-btn--sm" title="Reconnect with a different account"><i data-feather="refresh-cw"></i> Reconnect</a>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="ai-studio__layout ai-studio__layout--full">
         <section class="ai-studio__chat">
             <div class="ai-studio__chat-head">
                 <span class="ai-studio__chat-head__title"><i data-feather="message-square"></i> Conversation</span>
-                <span class="ai-studio__chat-head__hint">Shift+Enter for a new line</span>
+                <div class="ai-studio__chat-head__actions">
+                    <button id="ai-history-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="Chat history"><i data-feather="clock"></i> History</button>
+                    <span class="ai-studio__chat-head__hint">Shift+Enter for a new line</span>
+                </div>
+            </div>
+
+            <div id="ai-history-panel" class="ai-history-panel" hidden>
+                <div class="ai-history-panel__head">
+                    <span>Sessions</span>
+                    <button id="ai-history-close" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="x"></i></button>
+                </div>
+                <div id="ai-history-list" class="ai-history-list"></div>
             </div>
 
             <div class="ai-transcript-wrap">
@@ -57,38 +93,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <button id="ai-approve" type="button" class="ai-btn ai-btn--primary"><i data-feather="check"></i> Approve</button>
                     <button id="ai-deny" type="button" class="ai-btn ai-btn--ghost"><i data-feather="x"></i> Deny</button>
                 </div>
-            </div>
-
-            <div id="ai-gsc-bar" class="ai-gsc-bar" aria-label="GSC data">
-                <div class="ai-gsc-bar__left">
-                    <span class="ai-gsc-bar__title"><i data-feather="bar-chart-2"></i> GSC live</span>
-                    <?php
-                      $gscConfigured = !empty($gscStatus['configured']);
-                      $gscConnected = !empty($gscStatus['connected']);
-                    ?>
-                    <?php if (!$gscConfigured): ?>
-                        <span id="ai-gsc-status" class="ai-gsc-bar__hint ai-gsc-bar__hint--warn">Not configured — add GSC_CLIENT_ID / GSC_CLIENT_SECRET to .env</span>
-                    <?php elseif ($gscConnected): ?>
-                        <span id="ai-gsc-status" class="ai-gsc-bar__hint ai-gsc-bar__hint--ok">Connected · <?= e($gscStatus['site_url'] ?? '') ?> · live Search Console API</span>
-                    <?php else: ?>
-                        <span id="ai-gsc-status" class="ai-gsc-bar__hint">Not connected — live Search Console API</span>
-                    <?php endif; ?>
-                </div>
-                <div class="ai-gsc-bar__actions">
-                    <?php if ($gscConfigured && !$gscConnected): ?>
-                        <a id="ai-gsc-connect" href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--primary ai-btn--sm"><i data-feather="link"></i> Connect GSC</a>
-                    <?php elseif ($gscConnected): ?>
-                        <button id="ai-gsc-disconnect" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="unlink"></i> Disconnect</button>
-                        <a href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--ghost ai-btn--sm" title="Reconnect with a different account"><i data-feather="refresh-cw"></i> Reconnect</a>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <div id="ai-suggestions" class="ai-suggestions" aria-label="Suggested prompts">
-                <button type="button" class="ai-chip" data-prompt="Find the weakest pages by traffic and propose fixes for the worst one."><i data-feather="trending-down"></i> <span>Find weakest pages</span></button>
-                <button type="button" class="ai-chip" data-prompt="Read the homepage, then propose an improved intro section and render a preview."><i data-feather="edit-3"></i> <span>Improve homepage intro</span></button>
-                <button type="button" class="ai-chip" data-prompt="Add a &quot;How it works&quot; FAQ entry to the FAQ page."><i data-feather="help-circle"></i> <span>Add a how-it-works FAQ</span></button>
-                <button type="button" class="ai-chip" data-prompt="Give me a GSC overview and list the pages with the most impressions but low CTR."><i data-feather="search"></i> <span>GSC overview</span></button>
             </div>
 
             <form id="ai-form" class="ai-composer" autocomplete="off">

@@ -22,9 +22,22 @@
 
     display: flex;
     flex-direction: column;
-    height: var(--ai-studio-h, calc(100vh - 170px));
-    min-height: 560px;
+    width: 100%;
+    max-width: none;
+    flex: 1;
+    height: var(--ai-studio-h, calc(100vh - 110px));
+    min-height: 640px;
     font-variant-numeric: tabular-nums;
+}
+
+/* Full-bleed: break out of centered admin-content padding if present */
+.admin-content .ai-studio {
+    margin-left: -24px;
+    margin-right: -24px;
+    width: calc(100% + 48px);
+}
+@media (max-width: 900px) {
+    .admin-content .ai-studio { margin-left: -16px; margin-right: -16px; width: calc(100% + 32px); }
 }
 
 /* ---- Topbar ---- */
@@ -210,11 +223,16 @@
 
 .ai-studio__layout {
     display: grid;
-    grid-template-columns: minmax(380px, 1fr) 1.25fr;
+    grid-template-columns: minmax(420px, 1.15fr) minmax(520px, 1.25fr);
     gap: 18px;
     flex: 1;
     min-height: 0;
+    width: 100%;
     transition: grid-template-columns .2s ease;
+}
+
+.ai-studio__layout--full {
+    grid-template-columns: minmax(440px, 1.05fr) minmax(560px, 1.45fr);
 }
 
 .ai-studio__layout--single {
@@ -243,6 +261,12 @@
     overflow: hidden;
     box-shadow: var(--ai-shadow-md);
     position: relative;
+}
+
+/* ---- GSC bar outside layout (full-width) ---- */
+.ai-gsc-bar--outside {
+    margin: 0 0 16px;
+    width: 100%;
 }
 
 /* ---- Chat head (static context strip above the transcript) ---- */
@@ -847,6 +871,35 @@
 .ai-chip:disabled {
     cursor: default;
 }
+
+/* ---- History panel (session list) ---- */
+.ai-studio__chat-head__actions { display:flex; align-items:center; gap:8px; }
+.ai-history-panel {
+    margin: 0 18px;
+    border: 1px solid var(--ai-line);
+    background: var(--ai-paper);
+    border-radius: var(--ai-radius-md);
+    overflow: hidden;
+    box-shadow: var(--ai-shadow-sm);
+}
+.ai-history-panel__head {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 8px 10px; border-bottom:1px solid var(--ai-line-soft);
+    font-size:.8rem; font-weight:700; color:#374151;
+}
+.ai-history-list { max-height: 220px; overflow-y:auto; }
+.ai-history-item {
+    width:100%; text-align:left; padding:10px 12px; border:0; background:#fff;
+    border-bottom:1px solid var(--ai-line-soft); cursor:pointer;
+    display:flex; flex-direction:column; gap:2px;
+}
+.ai-history-item:hover { background: var(--ai-paper); }
+.ai-history-item--active { background: var(--ai-teal-wash); border-left:3px solid var(--ai-teal); }
+.ai-history-item__title { font-size:.82rem; font-weight:600; color:var(--ai-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ai-history-item__meta { font-size:.72rem; color:var(--ai-muted); }
+.ai-history-item__actions { display:flex; gap:6px; margin-top:4px; }
+.ai-history-item__del { font-size:.72rem; color:var(--ai-danger); border:0; background:none; cursor:pointer; }
+.ai-history-panel[hidden] { display:none !important; }
 
 /* ---- Scroll-to-bottom FAB (shown when the user scrolls up mid-conversation) ---- */
 
