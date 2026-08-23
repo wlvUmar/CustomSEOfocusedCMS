@@ -18,7 +18,7 @@ class GscTools {
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
-                            'days' => ['type' => 'integer', 'description' => 'Lookback window in days (default 28, max 90 for live API; up to 365 for local fallback).'],
+                            'days' => ['type' => 'integer', 'description' => 'Lookback window in days (default 28, max 90).'],
                         ],
                     ],
                 ],
@@ -87,6 +87,25 @@ class GscTools {
                     ],
                 ],
             ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'query_gsc',
+                    'description' => 'Flexible, MCP-like GSC Search Analytics query. Use when sugar tools are too limited. Build any combination of dimensions (query, page, country, device, searchAppearance, date), filters, and ordering. This is the freedom tool for custom breakdowns (e.g. device/country splits, searchAppearance, date trends, regex page filters, period comparison via explicit startDate/endDate). Returns raw API rows mapped to {keys, impressions, clicks, ctr_percent, position}.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'days' => ['type' => 'integer', 'description' => 'Lookback window in days (default 28). Ignored if startDate/endDate provided.'],
+                            'startDate' => ['type' => 'string', 'description' => 'Explicit start date Y-m-d (overrides days).'],
+                            'endDate' => ['type' => 'string', 'description' => 'Explicit end date Y-m-d (overrides days).'],
+                            'dimensions' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['query', 'page', 'country', 'device', 'searchAppearance', 'date']], 'description' => 'Dimensions to group by. Empty = site totals. Example ["query","device"] for per-query device split.'],
+                            'filters' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['dimension' => ['type' => 'string', 'enum' => ['query', 'page', 'country', 'device', 'searchAppearance']], 'operator' => ['type' => 'string', 'enum' => ['equals', 'contains', 'notContains', 'includingRegex', 'excludingRegex']], 'expression' => ['type' => 'string', 'description' => 'Value or regex. For page, full URL or slug fragment; for regex use RE2 syntax.']], 'required' => ['dimension', 'operator', 'expression']], 'description' => 'AND-combined filters. Example [{"dimension":"device","operator":"equals","expression":"MOBILE"}].'],
+                            'orderBy' => ['type' => 'string', 'enum' => ['impressions', 'clicks', 'ctr', 'position'], 'description' => 'Client-side sort (default impressions).'],
+                            'limit' => ['type' => 'integer', 'description' => 'Max rows 1-100 (default 25, max 100).'],
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -97,6 +116,7 @@ class GscTools {
             case 'get_gsc_queries': return self::gscQueries($args);
             case 'get_gsc_pages': return self::gscPages($args);
             case 'search_gsc_queries': return self::searchQueries($args);
+            case 'query_gsc': return self::queryGsc($args);
         }
         throw new InvalidArgumentException("Unknown tool: {$name}");
     }
@@ -196,7 +216,7 @@ class GscTools {
                     ROUND(SUM(position*impressions)/NULLIF(SUM(impressions),0),2) AS avg_position,
                     COUNT(DISTINCT query) AS distinct_queries,
                     COUNT(DISTINCT page_slug) AS distinct_pages,
-                    COUNT(*) AS rows,
+                    COUNT(*) AS row_count,
                     MIN(date) AS earliest,
                     MAX(date) AS latest
              FROM gsc_data WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY) OR date IS NULL"
@@ -212,10 +232,10 @@ class GscTools {
             'avg_position' => (float)($row['avg_position'] ?? 0),
             'distinct_queries' => (int)($row['distinct_queries'] ?? 0),
             'distinct_pages' => (int)($row['distinct_pages'] ?? 0),
-            'rows' => (int)($row['rows'] ?? 0),
+            'rows' => (int)($row['row_count'] ?? 0),
             'earliest' => $row['earliest'] ?? null,
             'latest' => $row['latest'] ?? null,
-            'note' => ((int)($row['rows'] ?? 0) === 0) ? 'No GSC rows — connect Search Console in AI Studio.' : (self::shouldUseApi() ? null : 'Live GSC not connected — showing cached data. Connect via AI Studio → Connect GSC for live data.'),
+            'note' => ((int)($row['row_count'] ?? 0) === 0) ? 'No GSC rows — connect Search Console in AI Studio.' : (self::shouldUseApi() ? null : 'Live GSC not connected — showing cached data. Connect via AI Studio → Connect GSC for live data.'),
         ];
     }
 
@@ -280,7 +300,7 @@ class GscTools {
                     COALESCE(SUM(clicks),0) AS clicks,
                     ROUND(CASE WHEN SUM(impressions)=0 THEN 0 ELSE 100.0*SUM(clicks)/SUM(impressions) END,2) AS ctr,
                     ROUND(SUM(position*impressions)/NULLIF(SUM(impressions),0),2) AS avg_position,
-                    COUNT(*) AS rows
+                    COUNT(*) AS row_count
              FROM gsc_data WHERE page_slug = ? AND (date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY) OR date IS NULL)",
             [$slug]
         );
@@ -298,7 +318,7 @@ class GscTools {
         }
         return [
             'slug' => $slug, 'days' => $days, 'source' => 'db',
-            'totals' => ['impressions' => (int)($totals['impressions'] ?? 0), 'clicks' => (int)($totals['clicks'] ?? 0), 'ctr_percent' => (float)($totals['ctr'] ?? 0), 'avg_position' => (float)($totals['avg_position'] ?? 0), 'rows' => (int)($totals['rows'] ?? 0)],
+            'totals' => ['impressions' => (int)($totals['impressions'] ?? 0), 'clicks' => (int)($totals['clicks'] ?? 0), 'ctr_percent' => (float)($totals['ctr'] ?? 0), 'avg_position' => (float)($totals['avg_position'] ?? 0), 'rows' => (int)($totals['row_count'] ?? 0)],
             'queries' => $queries, 'count' => count($queries),
             'note' => empty($queries) ? 'No GSC data for this slug — try a different slug or connect Search Console.' : (self::shouldUseApi() ? 'API returned no rows for this slug — falling back to local data.' : null),
         ];
@@ -456,5 +476,94 @@ class GscTools {
         $out = [];
         foreach ($rows as $r) $out[] = ['query' => $r['query'], 'page_slug' => $r['page_slug'], 'impressions' => (int)$r['impressions'], 'clicks' => (int)$r['clicks'], 'ctr_percent' => (float)$r['ctr'], 'position' => (float)$r['position']];
         return ['term' => $term, 'days' => $days, 'source' => 'db', 'queries' => $out, 'count' => count($out)];
+    }
+
+    private static function queryGsc(array $args): array {
+        if (!self::shouldUseApi()) {
+            return ['error' => 'GSC not connected', 'note' => 'Connect Search Console in AI Studio to use query_gsc. Sugar tools fall back to cached gsc_data, but query_gsc is live-API only.'];
+        }
+        $days = isset($args['days']) ? max(1, min(90, (int)$args['days'])) : 28;
+        $startDate = isset($args['startDate']) ? trim((string)$args['startDate']) : '';
+        $endDate = isset($args['endDate']) ? trim((string)$args['endDate']) : '';
+        if ($startDate !== '' || $endDate !== '') {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
+                throw new InvalidArgumentException('startDate/endDate must be Y-m-d');
+            }
+            if (strtotime($startDate) > strtotime($endDate)) throw new InvalidArgumentException('startDate must be <= endDate');
+            $start = $startDate; $end = $endDate;
+        } else {
+            [$start, $end] = self::dateRange($days);
+        }
+        $allowedDims = ['query','page','country','device','searchAppearance','date'];
+        $dims = $args['dimensions'] ?? [];
+        if (!is_array($dims)) $dims = [];
+        $dims = array_values(array_intersect(array_map('strval', $dims), $allowedDims));
+        // GSC API max 5 dimensions? Keep up to 3 for sanity.
+        if (count($dims) > 3) $dims = array_slice($dims, 0, 3);
+
+        $allowedOps = ['equals','contains','notContains','includingRegex','excludingRegex'];
+        $filters = [];
+        if (isset($args['filters']) && is_array($args['filters'])) {
+            foreach ($args['filters'] as $f) {
+                if (!is_array($f)) continue;
+                $dim = (string)($f['dimension'] ?? '');
+                $op = (string)($f['operator'] ?? '');
+                $exp = trim((string)($f['expression'] ?? ''));
+                if (!in_array($dim, $allowedDims, true)) continue;
+                if (!in_array($op, $allowedOps, true)) continue;
+                if ($exp === '' || mb_strlen($exp) > 500) continue;
+                $filters[] = ['dimension' => $dim, 'operator' => $op, 'expression' => $exp];
+                if (count($filters) >= 5) break;
+            }
+        }
+        $filterGroups = [];
+        if (!empty($filters)) $filterGroups = [['filters' => $filters]];
+
+        $limit = isset($args['limit']) ? max(1, min(100, (int)$args['limit'])) : 25;
+        $orderBy = in_array($args['orderBy'] ?? '', ['impressions','clicks','ctr','position'], true) ? $args['orderBy'] : 'impressions';
+
+        $rows = GscClient::searchAnalytics($start, $end, $dims, $filterGroups, $limit * 2);
+        if ($rows === null) {
+            return ['error' => 'GSC API auth failed or site unverified', 'note' => 'Check GSC connection and site_url (sc-domain:... vs https://...). Try get_gsc_overview first.', 'start_date' => $start, 'end_date' => $end];
+        }
+        $out = [];
+        foreach ($rows as $r) {
+            $keys = $r['keys'] ?? [];
+            if (!is_array($keys)) $keys = [];
+            $entry = [
+                'keys' => $keys,
+                'impressions' => (int)($r['impressions'] ?? 0),
+                'clicks' => (int)($r['clicks'] ?? 0),
+                'ctr_percent' => round((float)($r['ctr'] ?? 0) * 100, 2),
+                'position' => round((float)($r['position'] ?? 0), 2),
+            ];
+            // Map keys to dimension names for ergonomics
+            foreach ($dims as $i => $d) {
+                $entry[$d] = $keys[$i] ?? null;
+                if ($d === 'page' && isset($entry[$d])) {
+                    $entry['page_slug'] = GscClient::slugFromPage((string)$entry[$d]);
+                }
+            }
+            $out[] = $entry;
+        }
+        usort($out, function($a,$b) use ($orderBy) {
+            if ($orderBy === 'clicks') return $b['clicks'] <=> $a['clicks'];
+            if ($orderBy === 'ctr') return $b['ctr_percent'] <=> $a['ctr_percent'];
+            if ($orderBy === 'position') return $a['position'] <=> $b['position'];
+            return $b['impressions'] <=> $a['impressions'];
+        });
+        $out = array_slice($out, 0, $limit);
+        return [
+            'source' => 'api',
+            'start_date' => $start,
+            'end_date' => $end,
+            'dimensions' => $dims,
+            'filters' => $filters,
+            'orderBy' => $orderBy,
+            'limit' => $limit,
+            'rows' => $out,
+            'count' => count($out),
+            'note' => empty($out) ? 'No rows for this query — try broader dimensions/filters or larger days.' : null,
+        ];
     }
 }
