@@ -38,12 +38,39 @@ class AiToolRegistry {
         'set_rotation' => 'Pins a manual rotation variant as the live content for a page.',
     ];
 
+    /** Tools that are read-only and safe in PLAN mode. Everything else requires BUILD mode. */
+    private const PLAN_ALLOWLIST = [
+        // PageTools read
+        'list_pages', 'get_page', 'search_content', 'list_sections',
+        // Rotation read
+        'list_rotations', 'get_rotation',
+        // Analytics read
+        'get_top_pages', 'get_page_stats', 'get_underperforming_pages', 'get_crawl_frequency', 'get_internal_links', 'get_rotation_effectiveness',
+        'run_analytics_query',
+        // Site read + preview (preview is non-persistent)
+        'get_global_settings', 'get_template_variables', 'get_design_tokens', 'render_preview',
+        // Faq read
+        'list_faqs', 'get_faq',
+        // GSC read
+        'get_gsc_overview', 'get_page_gsc', 'get_gsc_queries', 'get_gsc_pages', 'search_gsc_queries', 'query_gsc',
+    ];
+
     public static function definitions(): array {
         $defs = [];
         foreach (self::TOOL_CLASSES as $class) {
             $defs = array_merge($defs, $class::definitions());
         }
         return $defs;
+    }
+
+    public static function definitionsForMode(string $mode): array {
+        $mode = $mode === 'build' ? 'build' : 'plan';
+        if ($mode === 'build') return self::definitions();
+        return array_values(array_filter(self::definitions(), fn($d) => in_array($d['function']['name'] ?? '', self::PLAN_ALLOWLIST, true)));
+    }
+
+    public static function isPlanAllowed(string $name): bool {
+        return in_array($name, self::PLAN_ALLOWLIST, true);
     }
 
     public static function guardedTools(): array {
@@ -79,8 +106,18 @@ class AiToolRegistry {
      *   ['type'=>'approval', 'name'=>.., 'call_id'=>.., 'plan'=>.., 'args'=>.., 'reason'=>..]
      *   ['type'=>'error',    'name'=>.., 'call_id'=>.., 'message'=>..]
      */
-    public static function execute(string $name, array $args, array $approved = []): array {
+    public static function execute(string $name, array $args, array $approved = [], string $mode = 'build'): array {
         $callId = self::callId($name, $args);
+        // PLAN mode enforcement: block any write tool server-side even if model hallucinates it.
+        $mode = $mode === 'build' ? 'build' : 'plan';
+        if ($mode === 'plan' && !self::isPlanAllowed($name)) {
+            return [
+                'type' => 'error',
+                'name' => $name,
+                'call_id' => $callId,
+                'message' => "Blocked in PLAN mode — switch to BUILD mode to run '{$name}'. PLAN mode is read-only (pages, FAQs, rotations, analytics, GSC, preview).",
+            ];
+        }
 
         $isGuarded = isset(self::GUARDED_TOOLS[$name]);
         $guardReason = self::GUARDED_TOOLS[$name] ?? '';

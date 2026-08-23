@@ -18,6 +18,7 @@
     --ai-radius-lg: 14px;
     --ai-radius-md: 10px;
     --ai-radius-sm: 7px;
+    --ai-radius-xl: 18px;
 
     display: flex;
     flex-direction: column;
@@ -241,11 +242,54 @@
     border-radius: var(--ai-radius-lg);
     overflow: hidden;
     box-shadow: var(--ai-shadow-md);
+    position: relative;
+}
+
+/* ---- Chat head (static context strip above the transcript) ---- */
+
+.ai-studio__chat-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--ai-line);
+    background: linear-gradient(180deg, #fdfcf6 0%, var(--ai-paper) 100%);
+    flex-shrink: 0;
+}
+
+.ai-studio__chat-head__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: .82rem;
+    font-weight: 700;
+    color: #374151;
+}
+
+.ai-studio__chat-head__title .feather-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--ai-teal);
+}
+
+.ai-studio__chat-head__hint {
+    font-size: .74rem;
+    color: #a8a599;
+    white-space: nowrap;
+}
+
+.ai-transcript-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
 }
 
 .ai-transcript {
     flex: 1;
     overflow-y: auto;
+    overflow-anchor: none;
     padding: 20px 18px;
     display: flex;
     flex-direction: column;
@@ -270,7 +314,7 @@
 
 .ai-msg {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 9px;
     max-width: 90%;
     align-self: flex-start;
@@ -278,19 +322,17 @@
 }
 
 .ai-msg::before {
-    content: '\25C6';
+    content: '';
     flex-shrink: 0;
     width: 26px;
     height: 26px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    line-height: 1;
+    margin-top: 1px;
     background: linear-gradient(155deg, var(--ai-teal) 0%, var(--ai-teal-dark) 100%);
-    color: #fff;
     box-shadow: 0 2px 5px rgba(15, 95, 111, .3);
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3l1.6 4.9L18.5 9l-4.9 1.6L12 15.5l-1.6-4.9L5.5 9l4.9-1.6L12 3z'/><path d='M19 15l.8 2.4L22 18l-2.2.6L19 21l-.8-2.4L16 18l2.2-.6L19 15z'/></svg>") center / 15px no-repeat;
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3l1.6 4.9L18.5 9l-4.9 1.6L12 15.5l-1.6-4.9L5.5 9l4.9-1.6L12 3z'/><path d='M19 15l.8 2.4L22 18l-2.2.6L19 21l-.8-2.4L16 18l2.2-.6L19 15z'/></svg>") center / 15px no-repeat;
+    background-color: transparent;
 }
 
 .ai-msg--user {
@@ -299,11 +341,24 @@
 }
 
 .ai-msg--user::before {
-    content: '';
     width: 22px;
     height: 22px;
     background: #303034;
     box-shadow: none;
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='8' r='3.5'/><path d='M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5'/></svg>") center / 13px no-repeat;
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='8' r='3.5'/><path d='M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5'/></svg>") center / 13px no-repeat;
+}
+
+.ai-msg__col {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.ai-msg--user .ai-msg__col {
+    align-items: flex-end;
 }
 
 .ai-msg__body {
@@ -316,6 +371,7 @@
     white-space: pre-wrap;
     word-break: break-word;
     color: var(--ai-ink);
+    position: relative;
 }
 
 .ai-msg--user .ai-msg__body {
@@ -327,6 +383,59 @@
 
 .ai-msg--user .ai-msg__body a {
     color: #9ecfd8;
+}
+
+/* ---- Message meta: timestamp + hover copy action (added for UX; purely cosmetic) ---- */
+
+.ai-msg__meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 3px;
+    opacity: 0;
+    transform: translateY(-2px);
+    transition: opacity .12s ease, transform .12s ease;
+    pointer-events: none;
+}
+
+.ai-msg:hover .ai-msg__meta,
+.ai-msg__meta--pinned {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+}
+
+.ai-msg__time {
+    font-size: .7rem;
+    color: #a8a599;
+    white-space: nowrap;
+}
+
+.ai-msg__copy {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    color: #a8a599;
+    padding: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    transition: color .12s ease, background .12s ease;
+}
+
+.ai-msg__copy:hover {
+    color: var(--ai-teal);
+    background: var(--ai-teal-wash);
+}
+
+.ai-msg__copy svg {
+    width: 12px;
+    height: 12px;
+}
+
+.ai-msg__copy--done {
+    color: var(--ai-success);
 }
 
 /* ---- Markdown inside agent bubbles ---- */
@@ -461,6 +570,49 @@
 .ai-msg__body.md ul li::marker,
 .ai-msg__body.md ol li::marker {
     color: #0f5f6f;
+}
+
+/* ---- Welcome hero (shown when the transcript is empty) ---- */
+
+.ai-welcome {
+    align-self: center;
+    max-width: 480px;
+    margin: auto 0 4px;
+    padding: 26px 24px;
+    text-align: center;
+    animation: ai-msg-in .25s ease-out;
+}
+
+.ai-welcome__icon {
+    width: 46px;
+    height: 46px;
+    margin: 0 auto 14px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(155deg, var(--ai-teal) 0%, var(--ai-teal-dark) 100%);
+    box-shadow: 0 4px 12px rgba(15, 95, 111, .28);
+}
+
+.ai-welcome__icon .feather-icon {
+    width: 22px;
+    height: 22px;
+    color: #fff;
+}
+
+.ai-welcome__title {
+    margin: 0 0 8px;
+    font-size: 1.12rem;
+    font-weight: 700;
+    color: var(--ai-ink);
+}
+
+.ai-welcome__text {
+    margin: 0;
+    font-size: .87rem;
+    line-height: 1.6;
+    color: var(--ai-muted);
 }
 
 /* ---- Tool events (log strip, distinct register from conversation) ---- */
@@ -622,17 +774,44 @@
     flex-shrink: 0;
 }
 
-/* ---- Suggestion chips ---- */
+/* ---- Suggestion chips ----
+   Rendered as a small grid of "starter prompt" cards while the conversation
+   is empty (via .ai-suggestions--intro, toggled from JS), and collapses to a
+   compact horizontal chip row once the conversation has messages. */
 
 .ai-suggestions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     padding: 12px 18px 0;
+    transition: opacity .15s ease;
 }
 
 .ai-suggestions--disabled {
     opacity: .5;
+}
+
+.ai-suggestions--intro {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 0 18px 14px;
+}
+
+.ai-suggestions--intro .ai-chip {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 12px 13px;
+    border-radius: var(--ai-radius-md);
+    text-align: left;
+    white-space: normal;
+    line-height: 1.4;
+}
+
+.ai-suggestions--intro .ai-chip .feather-icon {
+    width: 15px;
+    height: 15px;
 }
 
 .ai-chip {
@@ -667,6 +846,43 @@
 
 .ai-chip:disabled {
     cursor: default;
+}
+
+/* ---- Scroll-to-bottom FAB (shown when the user scrolls up mid-conversation) ---- */
+
+.ai-scroll-fab {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--ai-line);
+    background: #fff;
+    color: var(--ai-teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--ai-shadow-md);
+    z-index: 3;
+    transition: background .12s ease, transform .12s ease, opacity .12s ease;
+    animation: ai-msg-in .18s ease-out;
+}
+
+.ai-scroll-fab:hover {
+    background: var(--ai-teal-wash);
+    transform: translateX(-50%) translateY(-1px);
+}
+
+.ai-scroll-fab svg {
+    width: 15px;
+    height: 15px;
+}
+
+.ai-scroll-fab[hidden] {
+    display: none !important;
 }
 
 /* ---- Activity bar ("is it working?") ---- */
@@ -780,26 +996,38 @@
 
 .ai-composer {
     border-top: 1px solid var(--ai-line);
-    padding: 14px 18px;
+    padding: 14px 18px 16px;
     background: var(--ai-paper);
+}
+
+.ai-composer__field {
+    background: #fff;
+    border: 1px solid #e2dfd1;
+    border-radius: var(--ai-radius-lg);
+    box-shadow: var(--ai-shadow-sm);
+    transition: border-color .12s ease, box-shadow .12s ease;
+}
+
+.ai-composer__field:focus-within {
+    border-color: var(--ai-teal);
+    box-shadow: 0 0 0 3px var(--ai-teal-wash);
 }
 
 #ai-input {
     width: 100%;
     resize: none;
     overflow-y: auto;
-    border: 1px solid #e2dfd1;
-    border-radius: var(--ai-radius-md);
-    padding: 11px 13px;
+    border: 0;
+    border-radius: var(--ai-radius-lg);
+    padding: 12px 14px;
     font: inherit;
     font-size: .91rem;
     line-height: 1.5;
-    min-height: 58px;
+    min-height: 52px;
     max-height: 200px;
     color: var(--ai-ink);
-    background: #fff;
-    box-shadow: var(--ai-shadow-sm);
-    transition: border-color .12s ease, box-shadow .12s ease;
+    background: transparent;
+    display: block;
 }
 
 #ai-input::placeholder {
@@ -808,8 +1036,6 @@
 
 #ai-input:focus {
     outline: none;
-    border-color: var(--ai-teal);
-    box-shadow: 0 0 0 3px var(--ai-teal-wash);
 }
 
 #ai-input:disabled {
@@ -1017,7 +1243,9 @@
     .ai-studio__heading::after,
     #ai-preview-frame,
     .ai-chip,
-    .ai-btn {
+    .ai-btn,
+    .ai-welcome,
+    .ai-scroll-fab {
         animation: none !important;
         transition: none !important;
     }
@@ -1053,5 +1281,14 @@
     }
     .ai-typing {
         margin-left: 0;
+    }
+    .ai-suggestions--intro {
+        grid-template-columns: 1fr;
+    }
+    .ai-welcome {
+        padding: 20px 12px;
+    }
+    .ai-studio__chat-head__hint {
+        display: none;
     }
 }

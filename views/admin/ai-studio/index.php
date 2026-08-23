@@ -23,12 +23,22 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
     <div class="ai-studio__layout">
         <section class="ai-studio__chat">
-            <div id="ai-transcript" class="ai-transcript" aria-live="polite">
-                <div class="ai-msg ai-msg--agent">
-                    <div class="ai-msg__body md">
-                        <p>I'm the AI Studio agent. I can inspect pages, rotation variants, FAQs and analytics, then edit content and show you a live preview. Ask me to improve a page, find underperforming content, or create a new section.</p>
+            <div class="ai-studio__chat-head">
+                <span class="ai-studio__chat-head__title"><i data-feather="message-square"></i> Conversation</span>
+                <span class="ai-studio__chat-head__hint">Shift+Enter for a new line</span>
+            </div>
+
+            <div class="ai-transcript-wrap">
+                <div id="ai-transcript" class="ai-transcript" aria-live="polite">
+                    <div class="ai-welcome">
+                        <div class="ai-welcome__icon"><i data-feather="zap"></i></div>
+                        <h2 class="ai-welcome__title">Hi, I'm your AI Studio agent</h2>
+                        <p class="ai-welcome__text">I can inspect pages, rotation variants, FAQs and analytics, then edit content and show you a live preview. Ask me to improve a page, find underperforming content, or create a new section.</p>
                     </div>
                 </div>
+                <button id="ai-scroll-bottom" type="button" class="ai-scroll-fab" hidden aria-label="Scroll to latest message">
+                    <i data-feather="arrow-down"></i>
+                </button>
             </div>
 
             <div id="ai-activity" class="ai-activity" hidden>
@@ -75,14 +85,16 @@ require BASE_PATH . '/views/admin/layout/header.php';
             </div>
 
             <div id="ai-suggestions" class="ai-suggestions" aria-label="Suggested prompts">
-                <button type="button" class="ai-chip" data-prompt="Find the weakest pages by traffic and propose fixes for the worst one."><i data-feather="trending-down"></i> Find weakest pages</button>
-                <button type="button" class="ai-chip" data-prompt="Read the homepage, then propose an improved intro section and render a preview."><i data-feather="edit-3"></i> Improve homepage intro</button>
-                <button type="button" class="ai-chip" data-prompt="Add a &quot;How it works&quot; FAQ entry to the FAQ page."><i data-feather="help-circle"></i> Add a how-it-works FAQ</button>
-                <button type="button" class="ai-chip" data-prompt="Give me a GSC overview and list the pages with the most impressions but low CTR."><i data-feather="search"></i> GSC overview</button>
+                <button type="button" class="ai-chip" data-prompt="Find the weakest pages by traffic and propose fixes for the worst one."><i data-feather="trending-down"></i> <span>Find weakest pages</span></button>
+                <button type="button" class="ai-chip" data-prompt="Read the homepage, then propose an improved intro section and render a preview."><i data-feather="edit-3"></i> <span>Improve homepage intro</span></button>
+                <button type="button" class="ai-chip" data-prompt="Add a &quot;How it works&quot; FAQ entry to the FAQ page."><i data-feather="help-circle"></i> <span>Add a how-it-works FAQ</span></button>
+                <button type="button" class="ai-chip" data-prompt="Give me a GSC overview and list the pages with the most impressions but low CTR."><i data-feather="search"></i> <span>GSC overview</span></button>
             </div>
 
             <form id="ai-form" class="ai-composer" autocomplete="off">
-                <textarea id="ai-input" rows="3" placeholder="e.g. Find the weakest pages by traffic and propose an improved intro section for the worst one…"></textarea>
+                <div class="ai-composer__field">
+                    <textarea id="ai-input" rows="3" placeholder="e.g. Find the weakest pages by traffic and propose an improved intro section for the worst one…"></textarea>
+                </div>
                 <div class="ai-composer__footer">
                     <div class="ai-composer__meta">
                         <span id="ai-status" class="ai-status">Ready</span>

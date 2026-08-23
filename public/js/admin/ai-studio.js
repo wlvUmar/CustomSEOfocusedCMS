@@ -815,4 +815,119 @@
         const cur = els.status.textContent || '';
         if (cur === 'Working…' || cur.startsWith('Thinking')) setStatus('Ready', '');
     });
+
+    // ========================================================================
+    // UI polish (additive, presentation-only).
+    // Nothing below drives the agent loop, SSE parsing, approvals, or session
+    // state — it only observes the transcript DOM that the code above already
+    // produces and layers cosmetic affordances on top: restoring the welcome
+    // card after "New session", collapsing the starter prompts once the chat
+    // has messages, adding a timestamp + copy button to each bubble, and a
+    // scroll-to-bottom button while reading back through history.
+    // ========================================================================
+    (function aiStudioUiPolish() {
+        const transcript = els.transcript;
+        const scrollFab = document.getElementById('ai-scroll-bottom');
+        const suggestionsEl = els.suggestions;
+        if (!transcript) return;
+
+        function refreshIcons() {
+            if (window.feather) {
+                try { feather.replace({ class: 'feather-icon' }); } catch (e) { /* feather not ready */ }
+            }
+        }
+
+        function welcomeMarkup() {
+            return '<div class="ai-welcome">'
+                + '<div class="ai-welcome__icon"><i data-feather="zap"></i></div>'
+                + '<h2 class="ai-welcome__title">Hi, I\u2019m your AI Studio agent</h2>'
+                + '<p class="ai-welcome__text">I can inspect pages, rotation variants, FAQs and analytics, then edit content and show you a live preview. Ask me to improve a page, find underperforming content, or create a new section.</p>'
+                + '</div>';
+        }
+
+        function refreshSuggestionsLayout() {
+            if (!suggestionsEl) return;
+            const hasMessages = transcript.querySelector('.ai-msg') !== null;
+            suggestionsEl.classList.toggle('ai-suggestions--intro', !hasMessages);
+        }
+
+        function enhanceMessage(msg) {
+            if (msg.dataset.enhanced) return;
+            const body = msg.querySelector(':scope > .ai-msg__body');
+            if (!body) return;
+            msg.dataset.enhanced = '1';
+
+            const col = document.createElement('div');
+            col.className = 'ai-msg__col';
+            msg.insertBefore(col, body);
+            col.appendChild(body);
+
+            const meta = document.createElement('div');
+            meta.className = 'ai-msg__meta';
+
+            const time = document.createElement('span');
+            time.className = 'ai-msg__time';
+            time.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            meta.appendChild(time);
+
+            if (msg.classList.contains('ai-msg--agent')) {
+                const copyBtn = document.createElement('button');
+                copyBtn.type = 'button';
+                copyBtn.className = 'ai-msg__copy';
+                copyBtn.setAttribute('aria-label', 'Copy message');
+                copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>';
+                copyBtn.addEventListener('click', () => {
+                    if (!navigator.clipboard) return;
+                    const text = body.innerText || body.textContent || '';
+                    navigator.clipboard.writeText(text).then(() => {
+                        meta.classList.add('ai-msg__meta--pinned');
+                        copyBtn.classList.add('ai-msg__copy--done');
+                        setTimeout(() => {
+                            meta.classList.remove('ai-msg__meta--pinned');
+                            copyBtn.classList.remove('ai-msg__copy--done');
+                        }, 1200);
+                    }).catch(() => { /* clipboard denied — silently skip */ });
+                });
+                meta.appendChild(copyBtn);
+            }
+
+            col.appendChild(meta);
+        }
+
+        const transcriptObserver = new MutationObserver((mutations) => {
+            let touched = false;
+            mutations.forEach((m) => {
+                m.addedNodes.forEach((node) => {
+                    if (node.nodeType !== 1) return;
+                    if (node.classList && node.classList.contains('ai-msg')) {
+                        enhanceMessage(node);
+                        touched = true;
+                    }
+                });
+            });
+            if (transcript.childElementCount === 0) {
+                transcript.innerHTML = welcomeMarkup();
+                refreshIcons();
+            }
+            if (touched) refreshSuggestionsLayout();
+        });
+        transcriptObserver.observe(transcript, { childList: true });
+        refreshSuggestionsLayout();
+
+        if (scrollFab) {
+            function nearBottom() {
+                return transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 80;
+            }
+            function updateFab() {
+                scrollFab.hidden = nearBottom();
+            }
+            transcript.addEventListener('scroll', updateFab, { passive: true });
+            if (window.ResizeObserver) new ResizeObserver(updateFab).observe(transcript);
+            new MutationObserver(updateFab).observe(transcript, { childList: true, subtree: true });
+            scrollFab.addEventListener('click', () => {
+                transcript.scrollTo({ top: transcript.scrollHeight, behavior: 'smooth' });
+            });
+            updateFab();
+        }
+    })();
 })();

@@ -61,6 +61,8 @@ class AiStudioController extends Controller {
         $history = $this->sanitizeHistory($_POST['history'] ?? '[]');
         $approved = $this->sanitizeApproved($_POST['approved'] ?? '[]');
         $pending = $this->sanitizePending($_POST['pending'] ?? '[]');
+        $mode = strtolower(trim((string)($_POST['mode'] ?? 'plan')));
+        if (!in_array($mode, ['plan', 'build'], true)) $mode = 'plan';
 
         $startedAt = microtime(true);
         $turnsUsed = 0;
@@ -80,13 +82,14 @@ class AiStudioController extends Controller {
 
         $this->logAi('run_start', [
             'model' => $model,
+            'mode' => $mode,
             'message_len' => mb_strlen($message),
             'history_turns' => count($history),
             'approved_count' => count($approved),
             'pending_count' => count($pending),
         ]);
 
-        $this->sse('activity', ['text' => 'Starting…']);
+        $this->sse('activity', ['text' => ($mode === 'plan' ? 'Planning…' : 'Starting…')]);
 
         // Deduplicate last history turn if client already pushed current message (C1).
         $alreadyInHistory = false;
@@ -97,7 +100,7 @@ class AiStudioController extends Controller {
             }
         }
         $messages = array_merge(
-            [['role' => 'system', 'content' => $this->buildSystemPrompt()]],
+            [['role' => 'system', 'content' => $this->buildSystemPrompt($mode)]],
             $history,
             $pending,
             $alreadyInHistory ? [] : [['role' => 'user', 'content' => $message]]
@@ -124,7 +127,7 @@ class AiStudioController extends Controller {
                 $this->sse('activity', ['text' => 'Thinking… turn ' . $turn . '/' . self::MAX_TOOL_TURNS]);
 
                 $modelStart = microtime(true);
-                $response = OpenRouter::chatWithTools($messages, $model, AiToolRegistry::definitions(), 0.5, 8192);
+                $response = OpenRouter::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192);
                 $modelMs = (int)round((microtime(true) - $modelStart) * 1000);
 
                 $usage = $response['usage'] ?? null;
@@ -187,7 +190,7 @@ class AiStudioController extends Controller {
                     $this->sse('activity', ['text' => 'Running ' . $name . '…']);
 
                     $toolStart = microtime(true);
-                    $out = AiToolRegistry::execute($name, $args, $approved);
+                    $out = AiToolRegistry::execute($name, $args, $approved, $mode);
                     $toolMs = (int)round((microtime(true) - $toolStart) * 1000);
                     $toolMsgId = $tc['id'] ?? $out['call_id'] ?? $name;
 
@@ -415,8 +418,12 @@ class AiStudioController extends Controller {
     // Prompt + helpers
     // ------------------------------------------------------------------
 
-    private function buildSystemPrompt(): string {
-        return <<<'PROMPT'
+    private function buildSystemPrompt(string $mode = 'plan'): string {
+        $mode = $mode === 'build' ? 'build' : 'plan';
+        $modeBlock = $mode === 'plan'
+            ? "═══ MODE: PLAN (READ-ONLY) ═══\nYou are in PLAN mode — read-only. You MUST NOT call any write tools (str_replace_field, set_field, insert_section, set_rotation, create_faq, update_faq, delete_faq). Use only read tools (list_pages, get_page, search_content, list_sections, get_global_settings, get_template_variables, get_design_tokens, render_preview, list_rotations, get_rotation, analytics/*, gsc/*, list_faqs, get_faq, run_analytics_query). If the user asks for edits, produce a concise plan: what you would change, which slugs/fields/sections, draft HTML/text, and explicitly say \"Switch to BUILD mode to apply\". Do not attempt a write — the tool will be blocked with an error."
+            : "═══ MODE: BUILD (EDIT ALLOWED) ═══\nYou are in BUILD mode — editing is allowed via tools. You may call write tools (str_replace_field, set_field, insert_section, set_rotation, create_faq, update_faq, delete_faq) when needed. Still follow the read-before-write and approval rules below.";
+        $base = <<<'PROMPT'
 You are the AI Studio agent for kuplyu-tashkent.uz — an appliance buyback (secondhand electronics purchase) service in Tashkent, Uzbekistan. The site is bilingual (RU/UZ). You operate the site's admin backend through the tools provided to you; you do not have a chat-only mode. Always investigate before you act.
 
 ═══ OPERATING LOOP ═══
@@ -452,6 +459,7 @@ You are the AI Studio agent for kuplyu-tashkent.uz — an appliance buyback (sec
 - If a tool call fails or returns unexpected data, say so plainly and adjust — don't silently retry the same failing call more than once.
 - Finish with a short summary of what you changed or propose, and remind the user if anything still awaits their approval.
 PROMPT;
+        return $modeBlock . "\n\n" . $base;
     }
 
     private function sanitizeHistory($history): array {
