@@ -508,9 +508,11 @@
         });
         if (!resp.ok) {
             const text = await resp.text();
-            throw new Error('Request failed (' + resp.status + '): ' + text.slice(0, 200));
+            throw new Error('Request failed (' + resp.status + '): ' + text.slice(0, 500));
         }
-
+        if (!resp.body || typeof resp.body.getReader !== 'function') {
+            throw new Error('Streaming not supported by this browser (ReadableStream missing)');
+        }
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         let buf = '';
@@ -537,7 +539,11 @@
         });
         if (!data.trim()) return;
         let parsed;
-        try { parsed = JSON.parse(data); } catch (e) { return; }
+        try { parsed = JSON.parse(data); } catch (e) {
+            // Surface malformed SSE instead of silently dropping (e.g., failed json_encode on PHP side).
+            console.warn('AI Studio: dropped malformed SSE frame', frame.slice(0, 300), e);
+            return;
+        }
         onEvent(event, parsed);
     }
 
@@ -591,8 +597,8 @@
         const pending = pendingContext;
         pendingContext = null;
 
-        // Watchdog: if server stalls and sends no SSE for N seconds, abort with a helpful message.
-        // Prevents the "thinking forever" state when the loop dies or the host buffers/kills the stream.
+        // Watchdog: if server stalls and sends no SSE for N seconds, abort.
+        // 180s accommodates 2×120s OpenRouter curls within one run (audit H6). Reset on any SSE keeps healthy long runs alive.
         function resetWatchdog() {
             if (watchdogId) clearTimeout(watchdogId);
             watchdogId = setTimeout(() => {
@@ -601,9 +607,9 @@
                     hideTyping();
                     hideActivity();
                     setStatus('Timeout', 'error');
-                    addAgentBubble('⚠ No response from server for 90s — the run may have stalled (host buffer / PHP timeout / model error). Try again or pick a cheaper model.');
+                    addAgentBubble('⚠ No response from server for 180s — the run may have stalled (host buffer / PHP timeout / model error). Check logs/ai-studio.log or try a cheaper model.');
                 }
-            }, 90000);
+            }, 180000);
         }
         resetWatchdog();
 

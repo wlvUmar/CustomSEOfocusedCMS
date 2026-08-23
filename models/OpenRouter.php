@@ -53,6 +53,7 @@ class OpenRouter {
         }
 
         $maxTokens = max(256, min($maxTokens, 32000));
+        $temperature = max(0, min(2, (float)$temperature));
 
         $payload = json_encode([
             'model'       => $model,
@@ -112,7 +113,7 @@ class OpenRouter {
 
             if ($transient) {
                 if ($attempt <= $retries) {
-                    usleep(500000); // brief backoff before retrying
+                    usleep(500000 + random_int(0, 500000)); // jittered backoff
                     continue;
                 }
                 throw $lastError;
@@ -133,10 +134,9 @@ class OpenRouter {
             }
 
             if ($finishReason === 'length') {
-                throw new Exception(
-                    'OpenRouter response was cut off because it hit the ' . $maxTokens . '-token output limit. '
-                    . 'Try a smaller field/section, a more specific prompt, or raise max_tokens for this request.'
-                );
+                // Return partial instead of throwing — caller can surface truncated hint (C6).
+                $content = trim((string)$content) . "\n\n[Response truncated: hit {$maxTokens}-token output limit. Try a smaller field/section or raise max_tokens.]";
+                return $content;
             }
 
             return trim($content);
@@ -186,6 +186,7 @@ class OpenRouter {
         }
 
         $maxTokens = max(256, min($maxTokens, 32000));
+        $temperature = max(0, min(2, (float)$temperature));
 
         $payload = json_encode([
             'model'       => $model,
@@ -247,7 +248,7 @@ class OpenRouter {
 
             if ($transient) {
                 if ($attempt <= $retries) {
-                    usleep(500000); // brief backoff before retrying
+                    usleep(500000 + random_int(0, 500000)); // jittered backoff
                     continue;
                 }
                 throw $lastError;
@@ -265,13 +266,6 @@ class OpenRouter {
             }
 
             $finishReason = $choice['finish_reason'] ?? null;
-
-            if ($finishReason === 'length') {
-                throw new Exception(
-                    'OpenRouter response was cut off because it hit the ' . $maxTokens . '-token output limit. '
-                    . 'Ask for a smaller edit or raise the token budget for this request.'
-                );
-            }
 
             $message = $choice['message'] ?? [];
             $content = isset($message['content']) && is_string($message['content']) ? $message['content'] : '';

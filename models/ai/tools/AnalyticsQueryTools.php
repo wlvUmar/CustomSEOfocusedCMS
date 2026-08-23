@@ -28,7 +28,7 @@ class AnalyticsQueryTools {
         'INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'CREATE', 'TRUNCATE',
         'REPLACE', 'RENAME', 'GRANT', 'REVOKE', 'LOCK', 'UNLOCK', 'USE', 'SET',
         'OUTFILE', 'LOAD_FILE', 'SLEEP', 'BENCHMARK', 'INTO', 'CALL', 'DO',
-        'INFORMATION_SCHEMA', 'PERFORMANCE_SCHEMA', 'MYSQL',
+        'INFORMATION_SCHEMA', 'PERFORMANCE_SCHEMA', 'MYSQL', 'UNION',
     ];
 
     private const MAX_ROWS = 50;
@@ -72,10 +72,22 @@ class AnalyticsQueryTools {
 
         if (preg_match('/\bLIMIT\s+(\d+)/i', $sql, $m)) {
             if ((int)$m[1] > self::MAX_ROWS) {
-                $sql = preg_replace('/\bLIMIT\s+\d+/i', 'LIMIT ' . self::MAX_ROWS, $sql);
+                $sql = preg_replace('/\bLIMIT\s+\d+/i', 'LIMIT ' . self::MAX_ROWS, $sql, 1);
             }
         } else {
             $sql .= ' LIMIT ' . self::MAX_ROWS;
+        }
+        // Cap OFFSET to prevent OFFSET 1000000 DoS (H8).
+        if (preg_match('/\bOFFSET\s+(\d+)/i', $sql, $om)) {
+            if ((int)$om[1] > 10000) {
+                $sql = preg_replace('/\bOFFSET\s+\d+/i', 'OFFSET 10000', $sql, 1);
+            }
+        }
+        // Also cap LIMIT ... OFFSET combined via comma syntax LIMIT offset, count
+        if (preg_match('/\bLIMIT\s+(\d+)\s*,\s*(\d+)/i', $sql, $cm)) {
+            if ((int)$cm[1] > 10000) {
+                $sql = preg_replace('/\bLIMIT\s+\d+\s*,\s*\d+/i', 'LIMIT 10000, ' . min((int)$cm[2], self::MAX_ROWS), $sql, 1);
+            }
         }
 
         $rows = Database::getInstance()->query($sql)->fetchAll();

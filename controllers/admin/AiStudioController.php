@@ -34,14 +34,41 @@ class AiStudioController extends Controller {
             $this->json(['success' => false, 'message' => 'CSRF token validation failed'], 400);
         }
 
+        // Rate limit: 20 runs / 10 min per admin (C4). Uses dedicated key to avoid polluting default limiter.
+        $rl = new RateLimiter();
+        // Temporarily bump window for AI Studio — check raw session key to avoid dying with HTML.
+        $rlKey = 'ai_studio_' . ($_SESSION['user_id'] ?? 'anon');
+        $rlData = $_SESSION["ratelimit_ai_studio_{$rlKey}"] ?? ['count' => 0, 'timestamp' => time()];
+        if (time() - $rlData['timestamp'] > 600) $rlData = ['count' => 0, 'timestamp' => time()];
+        $rlData['count']++;
+        $_SESSION["ratelimit_ai_studio_{$rlKey}"] = $rlData;
+        if ($rlData['count'] > 20) {
+            // Use SSE path if stream already started? Not yet started, so JSON.
+            $this->json(['success' => false, 'message' => 'AI Studio rate limit: max 20 runs per 10 minutes. Please wait.'], 429);
+        }
+
         $model = (string)($_POST['model'] ?? '');
+        // Model whitelist — fall back silently but log mismatch (H).
+        if ($model !== '' && !isset(OpenRouter::MODELS[$model])) {
+            $this->logAi('model_fallback', ['requested' => $model, 'fallback' => 'deepseek/deepseek-chat']);
+            $model = 'deepseek/deepseek-chat';
+        }
         $message = trim((string)($_POST['message'] ?? ''));
+        // Hard cap single message to avoid token blow-up (C1/H5).
+        if (mb_strlen($message) > 8000) {
+            $message = mb_substr($message, 0, 8000) . "\n…[truncated to 8000 chars]";
+        }
         $history = $this->sanitizeHistory($_POST['history'] ?? '[]');
         $approved = $this->sanitizeApproved($_POST['approved'] ?? '[]');
         $pending = $this->sanitizePending($_POST['pending'] ?? '[]');
 
         $startedAt = microtime(true);
         $turnsUsed = 0;
+
+        // Unlock session for concurrent admin tabs / GSC calls (C3).
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+        @ignore_user_abort(true);
+        @set_time_limit(0);
 
         $this->startStream();
 
@@ -61,11 +88,19 @@ class AiStudioController extends Controller {
 
         $this->sse('activity', ['text' => 'Starting…']);
 
+        // Deduplicate last history turn if client already pushed current message (C1).
+        $alreadyInHistory = false;
+        if (!empty($history)) {
+            $last = end($history);
+            if (($last['role'] ?? '') === 'user' && ($last['content'] ?? '') === $message) {
+                $alreadyInHistory = true;
+            }
+        }
         $messages = array_merge(
             [['role' => 'system', 'content' => $this->buildSystemPrompt()]],
             $history,
             $pending,
-            [['role' => 'user', 'content' => $message]]
+            $alreadyInHistory ? [] : [['role' => 'user', 'content' => $message]]
         );
 
         $finalText = '';
@@ -244,10 +279,15 @@ class AiStudioController extends Controller {
                         $this->sse('preview', ['html' => $out['result']['html']]);
                     }
 
+                    $toolJson = json_encode($out['result'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+                    if ($toolJson === false) $toolJson = '{"error":"failed to encode tool result"}';
+                    if (mb_strlen($toolJson) > 12000) {
+                        $toolJson = mb_substr($toolJson, 0, 12000) . "\n…[truncated from " . mb_strlen($toolJson) . " chars for context window]";
+                    }
                     $messages[] = [
                         'role' => 'tool',
                         'tool_call_id' => $toolMsgId,
-                        'content' => json_encode($out['result'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        'content' => $toolJson,
                     ];
                 }
 
@@ -262,24 +302,40 @@ class AiStudioController extends Controller {
                 }
             }
 
-            $this->sse('done', ['status' => 'complete', 'text' => $finalText]);
-            $this->logAi('run_end', [
-                'status' => 'complete',
-                'turns' => $turnsUsed,
-                'prompt_tokens' => $usageTotal['prompt'],
-                'completion_tokens' => $usageTotal['completion'],
-                'total_tokens' => $usageTotal['total'],
-                'cost' => $usageTotal['cost'],
-                'duration_ms' => $this->elapsedMs($startedAt),
-            ]);
-        } catch (Exception $e) {
+            // H1: detect hitting the cap with pending tool calls
+            $hitCap = ($turnsUsed >= self::MAX_TOOL_TURNS && !empty($toolCalls ?? null));
+            if ($hitCap) {
+                $this->sse('error', ['message' => 'Reached max tool turns (' . self::MAX_TOOL_TURNS . ') — response truncated. Ask to continue or simplify the request.']);
+                $this->sse('done', ['status' => 'max_turns_exceeded', 'text' => $finalText]);
+                $this->logAi('run_end', [
+                    'status' => 'max_turns_exceeded',
+                    'turns' => $turnsUsed,
+                    'prompt_tokens' => $usageTotal['prompt'],
+                    'completion_tokens' => $usageTotal['completion'],
+                    'total_tokens' => $usageTotal['total'],
+                    'cost' => $usageTotal['cost'],
+                    'duration_ms' => $this->elapsedMs($startedAt),
+                ]);
+            } else {
+                $this->sse('done', ['status' => 'complete', 'text' => $finalText]);
+                $this->logAi('run_end', [
+                    'status' => 'complete',
+                    'turns' => $turnsUsed,
+                    'prompt_tokens' => $usageTotal['prompt'],
+                    'completion_tokens' => $usageTotal['completion'],
+                    'total_tokens' => $usageTotal['total'],
+                    'cost' => $usageTotal['cost'],
+                    'duration_ms' => $this->elapsedMs($startedAt),
+                ]);
+            }
+        } catch (Throwable $e) {
             $this->logAi('run_error', [
                 'message' => $e->getMessage(),
                 'at' => $e->getFile() . ':' . $e->getLine(),
                 'duration_ms' => $this->elapsedMs($startedAt),
             ]);
-            $this->sse('error', ['message' => $e->getMessage()]);
-            $this->sse('done', ['status' => 'error']);
+            try { $this->sse('error', ['message' => $e->getMessage()]); } catch (Throwable $ignored) {}
+            try { $this->sse('done', ['status' => 'error']); } catch (Throwable $ignored) {}
         }
     }
 
@@ -299,18 +355,29 @@ class AiStudioController extends Controller {
         header('Cache-Control: no-cache, no-store, must-revalidate');
         header('X-Accel-Buffering: no');
         if (ini_get('zlib.output_compression')) {
-            ini_set('zlib.output_compression', '0');
+            @ini_set('zlib.output_compression', '0');
         }
+        // Discard any prior buffered HTML (front controller ob_start + header views) instead of flushing it into the SSE stream (C2).
         while (ob_get_level() > 0) {
-            ob_end_flush();
+            ob_end_clean();
+        }
+        // Prevent PHP session lock already released above; ensure no further buffering.
+        if (function_exists('fastcgi_finish_request')) {
+            // not calling, just ensuring headers sent
         }
         echo "retry: 2000\n\n";
         $this->flushAll();
     }
 
     private function sse(string $event, array $data = []) {
+        $event = preg_replace('/[^a-zA-Z0-9_\-]/', '', $event) ?: 'message';
+        $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($json === false) {
+            $json = json_encode(['error' => 'Failed to encode SSE payload', 'event' => $event]);
+            if ($json === false) $json = '{"error":"encode failed"}';
+        }
         echo 'event: ' . $event . "\n";
-        echo 'data: ' . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n\n";
+        echo 'data: ' . $json . "\n\n";
         $this->flushAll();
     }
 
@@ -336,9 +403,12 @@ class AiStudioController extends Controller {
             'user' => $_SESSION['username'] ?? 'admin',
             'user_id' => $_SESSION['user_id'] ?? null,
         ] + $ctx, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        if ($line !== false) {
-            @error_log($line . "\n", 3, self::LOG_FILE);
+        if ($line === false) return;
+        // Rotate if >10MB to prevent unbounded growth (LOW).
+        if (is_file(self::LOG_FILE) && @filesize(self::LOG_FILE) > 10 * 1024 * 1024) {
+            @rename(self::LOG_FILE, self::LOG_FILE . '.' . date('Y-m-d_His'));
         }
+        @error_log($line . "\n", 3, self::LOG_FILE);
     }
 
     // ------------------------------------------------------------------
@@ -392,9 +462,12 @@ PROMPT;
                 if (!is_array($turn)) continue;
                 $role = in_array($turn['role'] ?? '', ['user', 'assistant'], true) ? $turn['role'] : null;
                 $content = (string)($turn['content'] ?? '');
+                // Per-message cap to prevent token blow-up (H5). Truncate, don't drop.
+                if (mb_strlen($content) > 4000) $content = mb_substr($content, 0, 4000) . "\n…[truncated]";
                 if ($role && $content !== '') {
                     $messages[] = ['role' => $role, 'content' => $content];
                 }
+                if (count($messages) >= 48) break; // hard cap before slice
             }
             if (count($messages) > self::MAX_HISTORY_TURNS * 2) {
                 $messages = array_slice($messages, -self::MAX_HISTORY_TURNS * 2);
@@ -407,8 +480,11 @@ PROMPT;
         $decoded = json_decode((string)$approved, true);
         if (!is_array($decoded)) return [];
         $out = [];
+        $seen = [];
         foreach ($decoded as $id) {
-            if (is_string($id) && preg_match('/^[a-f0-9]{40}$/', $id)) {
+            if (count($out) >= 20) break; // cap array size (C)
+            if (is_string($id) && preg_match('/^[a-f0-9]{40}$/', $id) && !isset($seen[$id])) {
+                $seen[$id] = true;
                 $out[] = $id;
             }
         }
@@ -436,7 +512,7 @@ PROMPT;
                     $id = (string)($tc['id'] ?? '');
                     $name = (string)($fn['name'] ?? '');
                     $arguments = (string)($fn['arguments'] ?? '{}');
-                    if ($id !== '' && $name !== '' && strlen($arguments) <= 16384
+                    if ($id !== '' && $name !== '' && strlen($arguments) <= 65536
                         && json_decode($arguments) !== null) {
                         $out[] = [
                             'role' => 'assistant',
@@ -459,7 +535,7 @@ PROMPT;
         if (is_array($tool) && ($tool['role'] ?? '') === 'tool' && $out !== []) {
             $callId = (string)($tool['tool_call_id'] ?? '');
             $content = (string)($tool['content'] ?? '');
-            if ($callId !== '' && $content !== '' && strlen($content) <= 16384
+            if ($callId !== '' && $content !== '' && strlen($content) <= 65536
                 && $callId === ($out[0]['tool_calls'][0]['id'] ?? '')) {
                 $out[] = [
                     'role' => 'tool',
@@ -479,12 +555,13 @@ PROMPT;
     /** Human-readable one-liner for the transcript; keeps the feed tidy. */
     private function summarizeResult(string $tool, $result): string {
         if (is_string($result)) {
-            return mb_substr($result, 0, 300);
+            $s = mb_substr($result, 0, 300);
+            return mb_strlen($result) > 300 ? $s . '…[truncated]' : $s;
         }
-        $json = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $json = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
         if ($json === false) {
             return 'Tool returned data that could not be serialized';
         }
-        return mb_substr($json, 0, 300);
+        return mb_strlen($json) > 300 ? mb_substr($json, 0, 300) . '…[truncated]' : $json;
     }
 }

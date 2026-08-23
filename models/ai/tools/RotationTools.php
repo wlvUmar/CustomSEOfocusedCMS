@@ -73,7 +73,7 @@ class RotationTools {
     private static function resolvePageId(array $args): int {
         $slug = trim((string)($args['page_slug'] ?? ''));
         if ($slug !== '') {
-            $page = Page::getBySlug($slug);
+            $page = (new Page())->getBySlug($slug);
             if (!$page) throw new InvalidArgumentException("Page not found: {$slug}");
             return (int)$page['id'];
         }

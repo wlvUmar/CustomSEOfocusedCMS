@@ -115,8 +115,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <script>
     window.AI_STUDIO = {
-        baseUrl: '<?= BASE_URL ?>',
-        csrf: '<?= generateCSRFToken() ?>'
+        baseUrl: <?= json_encode(BASE_URL) ?>,
+        csrf: <?= json_encode(generateCSRFToken()) ?>
     };
 </script>
 <script src="<?= BASE_URL ?>/js/admin/ai-studio.js"></script>

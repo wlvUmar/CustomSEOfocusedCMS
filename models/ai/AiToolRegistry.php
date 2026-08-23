@@ -35,6 +35,7 @@ class AiToolRegistry {
     private const GUARDED_TOOLS = [
         'set_field'    => 'Replaces the entire existing field. This is the tool you should reserve for genuinely new content or full-page rewrites.',
         'delete_faq'   => 'Permanently deletes an FAQ from the site.',
+        'set_rotation' => 'Pins a manual rotation variant as the live content for a page.',
     ];
 
     public static function definitions(): array {
@@ -55,7 +56,16 @@ class AiToolRegistry {
      * same id on the retry turn.
      */
     public static function callId(string $name, array $args): string {
-        return sha1($name . ':' . json_encode($args));
+        $sorted = self::sortKeysRecursive($args);
+        return sha1($name . ':' . json_encode($sorted, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    private static function sortKeysRecursive(array $arr): array {
+        ksort($arr);
+        foreach ($arr as $k => $v) {
+            if (is_array($v)) $arr[$k] = self::sortKeysRecursive($v);
+        }
+        return $arr;
     }
 
     /**
@@ -72,7 +82,14 @@ class AiToolRegistry {
     public static function execute(string $name, array $args, array $approved = []): array {
         $callId = self::callId($name, $args);
 
-        if (isset(self::GUARDED_TOOLS[$name]) && !in_array($callId, $approved, true)) {
+        $isGuarded = isset(self::GUARDED_TOOLS[$name]);
+        $guardReason = self::GUARDED_TOOLS[$name] ?? '';
+        // str_replace_field is only guarded when it would replace with a large payload (destructive potential).
+        if (!$isGuarded && $name === 'str_replace_field' && isset($args['replace']) && mb_strlen((string)$args['replace']) > 800) {
+            $isGuarded = true;
+            $guardReason = 'Large str_replace_field (>800 chars) is considered destructive — requires approval.';
+        }
+        if ($isGuarded && !in_array($callId, $approved, true)) {
             $planArgs = [];
             foreach ($args as $k => $v) {
                 $planArgs[$k] = is_scalar($v) ? $v : json_encode($v);
@@ -88,7 +105,7 @@ class AiToolRegistry {
                 'call_id' => $callId,
                 'plan' => $plan,
                 'args' => $args,
-                'reason' => self::GUARDED_TOOLS[$name],
+                'reason' => $guardReason,
             ];
         }
 

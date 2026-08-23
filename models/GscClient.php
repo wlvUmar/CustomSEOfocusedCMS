@@ -83,7 +83,17 @@ class GscClient {
 
     private static function encrypt(string $plain): string {
         $key = self::encKey();
-        if ($key === '' || !function_exists('openssl_encrypt')) return $plain;
+        if ($key === '' || !function_exists('openssl_encrypt')) {
+            error_log("GscClient: GSC_ENCRYPTION_KEY not set — storing token plaintext is insecure. Set GSC_ENCRYPTION_KEY in .env.");
+            // Fail closed for new installs if BOT_API_SECRET also empty; otherwise allow fallback for BC but warn.
+            if ($key === '') {
+                $fallback = (string)(getenv('BOT_API_SECRET') ?: '');
+                if ($fallback === '') {
+                    throw new RuntimeException('GSC_ENCRYPTION_KEY not configured — refusing to store plaintext token. Set GSC_ENCRYPTION_KEY in .env.');
+                }
+            }
+            return $plain;
+        }
         $k = hash('sha256', $key, true);
         $iv = random_bytes(12);
         $ct = openssl_encrypt($plain, 'aes-256-gcm', $k, OPENSSL_RAW_DATA, $iv, $tag);
@@ -175,39 +185,63 @@ class GscClient {
     }
 
     private static function refreshAccessToken(string $refreshToken): ?string {
-        $ch = curl_init(self::TOKEN_URL);
-        $payload = http_build_query([
-            'client_id' => self::getClientId(),
-            'client_secret' => self::getClientSecret(),
-            'refresh_token' => $refreshToken,
-            'grant_type' => 'refresh_token',
-        ]);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $payload,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
-            CURLOPT_TIMEOUT => 15,
-        ]);
-        $resp = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $err = curl_error($ch);
-        curl_close($ch);
-        if ($err !== '' || $code < 200 || $code >= 300) {
-            error_log("GscClient refresh failed HTTP $code: " . mb_substr((string)$resp, 0, 500) . " err=$err");
-            return null;
+        // File lock to prevent concurrent refresh races (C5).
+        $lockFile = BASE_PATH . '/storage/gsc_token.lock';
+        $lockDir = dirname($lockFile);
+        if (!is_dir($lockDir)) @mkdir($lockDir, 0750, true);
+        $fp = @fopen($lockFile, 'c');
+        if ($fp && !@flock($fp, LOCK_EX | LOCK_NB)) {
+            // Another process is refreshing — wait briefly then reuse cached token if available.
+            @flock($fp, LOCK_EX);
         }
-        $data = json_decode((string)$resp, true);
-        if (!is_array($data) || empty($data['access_token'])) {
-            error_log("GscClient refresh bad json: " . mb_substr((string)$resp, 0, 500));
-            return null;
+        try {
+            // Re-check if another process already refreshed while we waited.
+            $db = Database::getInstance();
+            $row = $db->fetchOne("SELECT access_token, expires_at FROM gsc_tokens WHERE id = 1");
+            if ($row && !empty($row['access_token']) && !empty($row['expires_at'])) {
+                $exp = strtotime((string)$row['expires_at']);
+                if ($exp !== false && $exp > time() + 60) {
+                    $tok = self::decrypt((string)$row['access_token']);
+                    if ($tok !== '') return $tok;
+                }
+            }
+
+            $ch = curl_init(self::TOKEN_URL);
+            $payload = http_build_query([
+                'client_id' => self::getClientId(),
+                'client_secret' => self::getClientSecret(),
+                'refresh_token' => $refreshToken,
+                'grant_type' => 'refresh_token',
+            ]);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $payload,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+                CURLOPT_TIMEOUT => 15,
+            ]);
+            $resp = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err = curl_error($ch);
+            curl_close($ch);
+            if ($err !== '' || $code < 200 || $code >= 300) {
+                error_log("GscClient refresh failed HTTP $code: " . mb_substr((string)$resp, 0, 500) . " err=$err");
+                return null;
+            }
+            $data = json_decode((string)$resp, true);
+            if (!is_array($data) || empty($data['access_token'])) {
+                error_log("GscClient refresh bad json: " . mb_substr((string)$resp, 0, 500));
+                return null;
+            }
+            $access = (string)$data['access_token'];
+            $expiresIn = (int)($data['expires_in'] ?? 3600);
+            $expiresAt = date('Y-m-d H:i:s', time() + max(60, $expiresIn - 30));
+            $enc = self::encrypt($access);
+            $db->query("UPDATE gsc_tokens SET access_token = ?, expires_at = ? WHERE id = 1", [$enc, $expiresAt]);
+            return $access;
+        } finally {
+            if ($fp) { @flock($fp, LOCK_UN); @fclose($fp); }
         }
-        $access = (string)$data['access_token'];
-        $expiresIn = (int)($data['expires_in'] ?? 3600);
-        $expiresAt = date('Y-m-d H:i:s', time() + max(60, $expiresIn - 30));
-        $enc = self::encrypt($access);
-        Database::getInstance()->query("UPDATE gsc_tokens SET access_token = ?, expires_at = ? WHERE id = 1", [$enc, $expiresAt]);
-        return $access;
     }
 
     public static function exchangeCode(string $code): ?array {
@@ -293,12 +327,12 @@ class GscClient {
         // Remove empty filters for cleaner cache key.
         if (empty($dimensionFilterGroups)) unset($payload['dimensionFilterGroups']);
 
+        $token = self::getAccessToken();
+        if ($token === null) return null; // auth_required
+
         $cacheKey = self::cacheKey($siteUrl, $payload);
         $cached = self::cacheGet($cacheKey);
         if ($cached !== null) return $cached;
-
-        $token = self::getAccessToken();
-        if ($token === null) return null; // auth_required
 
         $url = self::API_BASE . '/sites/' . rawurlencode($siteUrl) . '/searchAnalytics/query';
         $ch = curl_init($url);
@@ -317,6 +351,10 @@ class GscClient {
 
         if ($code === 401 || $code === 403) {
             error_log("GscClient searchAnalytics auth error HTTP $code: " . mb_substr((string)$resp, 0, 800));
+            // Invalidate cache on auth failure to avoid serving stale data (H10).
+            self::clearCache();
+            // Also clear stored access_token so next call triggers refresh.
+            try { Database::getInstance()->query("UPDATE gsc_tokens SET access_token = NULL, expires_at = NULL WHERE id = 1"); } catch (Throwable $e) {}
             return null; // treat as auth_required; token may be revoked
         }
         if ($err !== '' || $code < 200 || $code >= 300) {

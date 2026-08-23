@@ -168,16 +168,16 @@ class GscTools {
                             'distinct_queries' => null, 'distinct_pages' => null, 'rows' => 1,
                         ];
                     }
-                    // If API returned no aggregated row, sum via a query grouped by page (cheaper than query).
+                    // If API returned no aggregated row, sum via a query grouped by page (weighted avg position by impressions).
                     $sumRows = GscClient::searchAnalytics($start, $end, ['page'], [], 5000);
                     if ($sumRows !== null) {
-                        $imp = 0; $clk = 0; $posSum = 0; $cnt = 0;
-                        foreach ($sumRows as $rr) { $imp += (int)($rr['impressions'] ?? 0); $clk += (int)($rr['clicks'] ?? 0); $posSum += (float)($rr['position'] ?? 0); $cnt++; }
+                        $imp = 0; $clk = 0; $posWeighted = 0; $cnt = 0;
+                        foreach ($sumRows as $rr) { $imp += (int)($rr['impressions'] ?? 0); $clk += (int)($rr['clicks'] ?? 0); $posWeighted += (float)($rr['position'] ?? 0) * (int)($rr['impressions'] ?? 0); $cnt++; }
                         return [
                             'days' => $days, 'source' => 'api', 'start_date' => $start, 'end_date' => $end,
                             'impressions' => $imp, 'clicks' => $clk,
                             'ctr_percent' => $imp > 0 ? round(100.0 * $clk / $imp, 2) : 0,
-                            'avg_position' => $cnt > 0 ? round($posSum / $cnt, 2) : 0,
+                            'avg_position' => $imp > 0 ? round($posWeighted / $imp, 2) : 0,
                             'distinct_queries' => null, 'distinct_pages' => $cnt, 'rows' => $cnt,
                         ];
                     }
@@ -193,7 +193,7 @@ class GscTools {
             "SELECT COALESCE(SUM(impressions),0) AS impressions,
                     COALESCE(SUM(clicks),0) AS clicks,
                     ROUND(CASE WHEN SUM(impressions)=0 THEN 0 ELSE 100.0*SUM(clicks)/SUM(impressions) END,2) AS ctr,
-                    ROUND(AVG(position),2) AS avg_position,
+                    ROUND(SUM(position*impressions)/NULLIF(SUM(impressions),0),2) AS avg_position,
                     COUNT(DISTINCT query) AS distinct_queries,
                     COUNT(DISTINCT page_slug) AS distinct_pages,
                     COUNT(*) AS rows,
@@ -231,12 +231,13 @@ class GscTools {
         if (self::shouldUseApi()) {
             try {
                 [$start, $end] = self::dateRange($days);
-                $filter = [['dimension' => 'page', 'operator' => 'contains', 'expression' => $slug]];
+                $regex = '.*\/' . preg_quote($slug, '/') . '(?:\/|$|\?|#).*';
+                $filter = [['dimension' => 'page', 'operator' => 'includingRegex', 'expression' => $regex]];
                 $rows = GscClient::searchAnalytics($start, $end, ['query'], [['filters' => $filter]], 1000);
                 if ($rows !== null) {
                     // rows are per-query for pages containing slug. Aggregate per query.
                     $map = [];
-                    $totImp = 0; $totClk = 0; $posSum = 0; $posCnt = 0;
+                    $totImp = 0; $totClk = 0; $posWeighted = 0;
                     foreach ($rows as $r) {
                         $q = (string)($r['keys'][0] ?? '');
                         if ($q === '') continue;
@@ -245,7 +246,7 @@ class GscTools {
                         $ctr = round((float)($r['ctr'] ?? 0) * 100, 2);
                         $pos = (float)($r['position'] ?? 0);
                         $map[$q] = ['query' => $q, 'impressions' => $imp, 'clicks' => $clk, 'ctr_percent' => $ctr, 'position' => round($pos, 2)];
-                        $totImp += $imp; $totClk += $clk; $posSum += $pos; $posCnt++;
+                        $totImp += $imp; $totClk += $clk; $posWeighted += $pos * $imp;
                     }
                     $queries = array_values($map);
                     // Client-side sort.
@@ -255,8 +256,7 @@ class GscTools {
                         return $b['impressions'] <=> $a['impressions'];
                     });
                     $queries = array_slice($queries, 0, $limit);
-                    // Also get total position via separate aggregated call for this page?
-                    $avgPos = $posCnt > 0 ? round($posSum / $posCnt, 2) : 0;
+                    $avgPos = $totImp > 0 ? round($posWeighted / $totImp, 2) : 0;
                     $ctrTot = $totImp > 0 ? round(100.0 * $totClk / $totImp, 2) : 0;
                     if (!empty($queries) || $totImp > 0) {
                         return [
@@ -279,7 +279,7 @@ class GscTools {
             "SELECT COALESCE(SUM(impressions),0) AS impressions,
                     COALESCE(SUM(clicks),0) AS clicks,
                     ROUND(CASE WHEN SUM(impressions)=0 THEN 0 ELSE 100.0*SUM(clicks)/SUM(impressions) END,2) AS ctr,
-                    ROUND(AVG(position),2) AS avg_position,
+                    ROUND(SUM(position*impressions)/NULLIF(SUM(impressions),0),2) AS avg_position,
                     COUNT(*) AS rows
              FROM gsc_data WHERE page_slug = ? AND (date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY) OR date IS NULL)",
             [$slug]
@@ -287,7 +287,7 @@ class GscTools {
         $rows = $db->fetchAll(
             "SELECT query, SUM(impressions) AS impressions, SUM(clicks) AS clicks,
                     ROUND(CASE WHEN SUM(impressions)=0 THEN 0 ELSE 100.0*SUM(clicks)/SUM(impressions) END,2) AS ctr,
-                    ROUND(AVG(position),2) AS position
+                    ROUND(SUM(position*impressions)/NULLIF(SUM(impressions),0),2) AS position
              FROM gsc_data WHERE page_slug = ? AND (date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY) OR date IS NULL)
              GROUP BY query ORDER BY {$orderSql} LIMIT {$limit}",
             [$slug]
@@ -350,7 +350,7 @@ class GscTools {
         $rows = $db->fetchAll(
             "SELECT query, page_slug, SUM(impressions) AS impressions, SUM(clicks) AS clicks,
                     ROUND(CASE WHEN SUM(impressions)=0 THEN 0 ELSE 100.0*SUM(clicks)/SUM(impressions) END,2) AS ctr,
-                    ROUND(AVG(position),2) AS position
+                    ROUND(SUM(position*impressions)/NULLIF(SUM(impressions),0),2) AS position
              FROM gsc_data WHERE (date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY) OR date IS NULL)
              GROUP BY query, page_slug {$having} ORDER BY {$orderSql} LIMIT {$limit}"
         );
@@ -400,7 +400,7 @@ class GscTools {
         $rows = $db->fetchAll(
             "SELECT page_slug, SUM(impressions) AS impressions, SUM(clicks) AS clicks,
                     ROUND(CASE WHEN SUM(impressions)=0 THEN 0 ELSE 100.0*SUM(clicks)/SUM(impressions) END,2) AS ctr,
-                    ROUND(AVG(position),2) AS avg_position, COUNT(DISTINCT query) AS distinct_queries
+                    ROUND(SUM(position*impressions)/NULLIF(SUM(impressions),0),2) AS avg_position, COUNT(DISTINCT query) AS distinct_queries
              FROM gsc_data WHERE (date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY) OR date IS NULL)
              GROUP BY page_slug ORDER BY {$orderSql} LIMIT {$limit}"
         );
@@ -448,7 +448,7 @@ class GscTools {
         $rows = $db->fetchAll(
             "SELECT query, page_slug, SUM(impressions) AS impressions, SUM(clicks) AS clicks,
                     ROUND(CASE WHEN SUM(impressions)=0 THEN 0 ELSE 100.0*SUM(clicks)/SUM(impressions) END,2) AS ctr,
-                    ROUND(AVG(position),2) AS position
+                    ROUND(SUM(position*impressions)/NULLIF(SUM(impressions),0),2) AS position
              FROM gsc_data WHERE query LIKE ? AND (date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY) OR date IS NULL)
              GROUP BY query, page_slug ORDER BY impressions DESC LIMIT {$limit}",
             [$like]

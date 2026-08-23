@@ -13,8 +13,9 @@ function e($string) {
     $result = str_replace("\xEF\xBF\xBD", '', $result); 
     
     ini_set('mbstring.substitute_character', $current_sub); 
-
-    return ($result === '' && $string !== '') ? $string : $result;
+    $result = ($result === '' && $string !== '') ? $string : $result;
+    // Escape for HTML output — previously this helper stripped invalid bytes but did not escape.
+    return htmlspecialchars($result, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
 function getCurrentLanguage() {
@@ -724,7 +725,11 @@ function shouldSkipTracking(): bool
     }
 
     // Skip tracking for logged-in admins browsing the front-end
+    // Visitor requests run under PHPSESSID, not ADMINSESSID — check admin cookie as proxy to avoid polluting analytics.
     if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_id'])) {
+        return true;
+    }
+    if (isset($_COOKIE['ADMINSESSID']) && $_COOKIE['ADMINSESSID'] !== '') {
         return true;
     }
 

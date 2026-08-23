@@ -9,7 +9,9 @@ class Database {
         try {
             $this->connect();
         } catch (PDOException $e) {
-            die("Database connection failed: " . $e->getMessage());
+            error_log("Database connection failed: " . $e->getMessage());
+            // Don't leak details to client — let caller handle via exception
+            throw new RuntimeException("Database unavailable", 0, $e);
         }
     }
 

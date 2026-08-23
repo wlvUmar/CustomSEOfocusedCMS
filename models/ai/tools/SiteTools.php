@@ -191,6 +191,11 @@ class SiteTools {
     private static function renderPreview(array $args): array {
         $html = (string)($args['html'] ?? '');
         if (trim($html) === '') throw new InvalidArgumentException('html is required');
+        if (mb_strlen($html) > 200 * 1024) throw new InvalidArgumentException('html too large (max 200KB)');
+        // Strip scripts and event handlers for preview sandbox XSS hardening (H9).
+        $html = (string)preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $html);
+        $html = (string)preg_replace('/\bon\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html);
+        $html = (string)preg_replace('/\b(href|src)\s*=\s*["\']\s*javascript:[^"\']*["\']/i', '', $html);
         $lang = ($args['lang'] ?? 'ru') === 'uz' ? 'uz' : 'ru';
         $pageTitle = (string)($args['page_title'] ?? '');
         $pageSlug = (string)($args['page_slug'] ?? '');
