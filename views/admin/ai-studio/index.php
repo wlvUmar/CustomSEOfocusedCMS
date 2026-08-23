@@ -3,48 +3,45 @@
 require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
-<div class="ai-studio">
+<div class="ai-studio ai-studio--app">
     <header class="ai-studio__topbar">
         <div class="ai-studio__heading">
             <h1>AI Studio</h1>
-            <p class="ai-studio__subtitle">Agent over the admin: investigate, edit pages, preview live, confirm destructive changes.</p>
+            <p class="ai-studio__subtitle">Investigate, edit pages, preview live — destructive changes require approval.</p>
         </div>
-        <div class="ai-studio__controls">
-            <label class="ai-studio__model-label" for="ai-model">Model</label>
-            <select id="ai-model">
-                <?php foreach ($models as $key => $label): ?>
-                    <option value="<?= e($key) ?>" <?= $key === 'deepseek/deepseek-chat' ? 'selected' : '' ?>><?= e($label) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <button id="ai-new-session" type="button" class="ai-btn ai-btn--ghost"><i data-feather="rotate-ccw"></i> New session</button>
-            <button id="ai-preview-toggle" type="button" class="ai-btn ai-btn--ghost" aria-pressed="true"><i data-feather="sidebar"></i> <span id="ai-preview-toggle-label">Hide preview</span></button>
+        <div class="ai-studio__topbar-right">
+            <div id="ai-gsc-bar" class="ai-gsc-inline" aria-label="GSC data">
+                <span class="ai-gsc-inline__dot" aria-hidden="true"></span>
+                <span class="ai-gsc-inline__label">GSC</span>
+                <?php
+                  $gscConfigured = !empty($gscStatus['configured']);
+                  $gscConnected = !empty($gscStatus['connected']);
+                ?>
+                <?php if (!$gscConfigured): ?>
+                    <span id="ai-gsc-status" class="ai-gsc-inline__status ai-gsc-inline__status--warn">Not configured</span>
+                <?php elseif ($gscConnected): ?>
+                    <span id="ai-gsc-status" class="ai-gsc-inline__status ai-gsc-inline__status--ok" title="<?= e($gscStatus['site_url'] ?? '') ?>">Connected</span>
+                <?php else: ?>
+                    <span id="ai-gsc-status" class="ai-gsc-inline__status">Not connected</span>
+                <?php endif; ?>
+                <?php if ($gscConfigured && !$gscConnected): ?>
+                    <a id="ai-gsc-connect" href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--primary ai-btn--xs"><i data-feather="link"></i> Connect</a>
+                <?php elseif ($gscConnected): ?>
+                    <button id="ai-gsc-disconnect" type="button" class="ai-btn ai-btn--ghost ai-btn--xs"><i data-feather="unlink"></i></button>
+                <?php endif; ?>
+            </div>
+            <div class="ai-studio__controls">
+                <label class="ai-studio__model-label" for="ai-model">Model</label>
+                <select id="ai-model">
+                    <?php foreach ($models as $key => $label): ?>
+                        <option value="<?= e($key) ?>" <?= $key === 'deepseek/deepseek-chat' ? 'selected' : '' ?>><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button id="ai-new-session" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="rotate-ccw"></i> New session</button>
+                <button id="ai-preview-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" aria-pressed="true"><i data-feather="sidebar"></i> <span id="ai-preview-toggle-label">Hide preview</span></button>
+            </div>
         </div>
     </header>
-
-    <div id="ai-gsc-bar" class="ai-gsc-bar ai-gsc-bar--outside" aria-label="GSC data">
-        <div class="ai-gsc-bar__left">
-            <span class="ai-gsc-bar__title"><i data-feather="bar-chart-2"></i> GSC live</span>
-            <?php
-              $gscConfigured = !empty($gscStatus['configured']);
-              $gscConnected = !empty($gscStatus['connected']);
-            ?>
-            <?php if (!$gscConfigured): ?>
-                <span id="ai-gsc-status" class="ai-gsc-bar__hint ai-gsc-bar__hint--warn">Not configured — add GSC_CLIENT_ID / GSC_CLIENT_SECRET to .env</span>
-            <?php elseif ($gscConnected): ?>
-                <span id="ai-gsc-status" class="ai-gsc-bar__hint ai-gsc-bar__hint--ok">Connected · <?= e($gscStatus['site_url'] ?? '') ?> · live Search Console API</span>
-            <?php else: ?>
-                <span id="ai-gsc-status" class="ai-gsc-bar__hint">Not connected — live Search Console API</span>
-            <?php endif; ?>
-        </div>
-        <div class="ai-gsc-bar__actions">
-            <?php if ($gscConfigured && !$gscConnected): ?>
-                <a id="ai-gsc-connect" href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--primary ai-btn--sm"><i data-feather="link"></i> Connect GSC</a>
-            <?php elseif ($gscConnected): ?>
-                <button id="ai-gsc-disconnect" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="unlink"></i> Disconnect</button>
-                <a href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--ghost ai-btn--sm" title="Reconnect with a different account"><i data-feather="refresh-cw"></i> Reconnect</a>
-            <?php endif; ?>
-        </div>
-    </div>
 
     <div class="ai-studio__layout ai-studio__layout--full">
         <section class="ai-studio__chat">
