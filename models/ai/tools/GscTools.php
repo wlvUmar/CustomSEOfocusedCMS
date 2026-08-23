@@ -1,8 +1,7 @@
 <?php
 // path: ./models/ai/tools/GscTools.php
-// READ-ONLY GSC tools — API-first (Google Search Console Search Analytics API)
-// with CSV/BigQuery fallback to local `gsc_data` table.
-// Live data via GscClient when GSC OAuth is connected; otherwise reads local table.
+// READ-ONLY GSC tools — live Google Search Console Search Analytics API via GscClient.
+// When GSC is not connected the tools return empty with a connect hint (no CSV fallback UI).
 
 require_once BASE_PATH . '/core/Database.php';
 require_once BASE_PATH . '/models/GscClient.php';
@@ -15,7 +14,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_gsc_overview',
-                    'description' => 'Site-wide GSC summary: total impressions, clicks, average CTR and position plus number of distinct queries/pages with data. Use to check if GSC data is present and how the site performs in Search. Live via Search Console API when connected, otherwise from local gsc_data.',
+                    'description' => 'Site-wide GSC summary: total impressions, clicks, average CTR and position plus number of distinct queries/pages with data. Use to check if GSC data is present and how the site performs in Search. Live via Search Console API (requires GSC connection in AI Studio).',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -203,7 +202,7 @@ class GscTools {
              FROM gsc_data WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY) OR date IS NULL"
         );
         if (!$row) {
-            return ['days' => $days, 'source' => 'db', 'impressions' => 0, 'clicks' => 0, 'ctr_percent' => 0, 'avg_position' => 0, 'distinct_queries' => 0, 'distinct_pages' => 0, 'rows' => 0, 'note' => 'No GSC data — connect Search Console or upload CSV in AI Studio.'];
+            return ['days' => $days, 'source' => 'db', 'impressions' => 0, 'clicks' => 0, 'ctr_percent' => 0, 'avg_position' => 0, 'distinct_queries' => 0, 'distinct_pages' => 0, 'rows' => 0, 'note' => 'No GSC data — connect Search Console in AI Studio.'];
         }
         return [
             'days' => $days, 'source' => self::shouldUseApi() ? 'db-fallback' : 'db',
@@ -216,7 +215,7 @@ class GscTools {
             'rows' => (int)($row['rows'] ?? 0),
             'earliest' => $row['earliest'] ?? null,
             'latest' => $row['latest'] ?? null,
-            'note' => ((int)($row['rows'] ?? 0) === 0) ? 'No GSC rows — connect Search Console or upload CSV.' : (self::shouldUseApi() ? null : 'Live GSC not connected — showing local gsc_data. Connect via AI Studio → Connect GSC for live data.'),
+            'note' => ((int)($row['rows'] ?? 0) === 0) ? 'No GSC rows — connect Search Console in AI Studio.' : (self::shouldUseApi() ? null : 'Live GSC not connected — showing cached data. Connect via AI Studio → Connect GSC for live data.'),
         ];
     }
 
@@ -301,7 +300,7 @@ class GscTools {
             'slug' => $slug, 'days' => $days, 'source' => 'db',
             'totals' => ['impressions' => (int)($totals['impressions'] ?? 0), 'clicks' => (int)($totals['clicks'] ?? 0), 'ctr_percent' => (float)($totals['ctr'] ?? 0), 'avg_position' => (float)($totals['avg_position'] ?? 0), 'rows' => (int)($totals['rows'] ?? 0)],
             'queries' => $queries, 'count' => count($queries),
-            'note' => empty($queries) ? 'No GSC data for this slug — try a different slug, connect Search Console, or upload CSV.' : (self::shouldUseApi() ? 'API returned no rows for this slug — falling back to local data.' : null),
+            'note' => empty($queries) ? 'No GSC data for this slug — try a different slug or connect Search Console.' : (self::shouldUseApi() ? 'API returned no rows for this slug — falling back to local data.' : null),
         ];
     }
 

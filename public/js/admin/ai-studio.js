@@ -32,8 +32,6 @@
         previewFrame: document.getElementById('ai-preview-frame'),
         previewHint: document.getElementById('ai-preview-hint'),
         previewOpen: document.getElementById('ai-preview-open'),
-        gscFile: document.getElementById('ai-gsc-file'),
-        gscReplace: document.getElementById('ai-gsc-replace'),
         gscStatus: document.getElementById('ai-gsc-status'),
         gscDisconnect: document.getElementById('ai-gsc-disconnect'),
     };
@@ -57,76 +55,30 @@
         localStorage.setItem('ai-studio-model', els.model.value);
     });
 
-    // ---- GSC: CSV upload + live Connect/Disconnect --------------------------
+    // ---- GSC: live Connect/Disconnect --------------------------
     (function initGsc() {
-        if (!els.gscFile && !els.gscDisconnect) return;
+        if (!els.gscDisconnect) return;
         function setGscStatus(text, kind) {
             if (!els.gscStatus) return;
             els.gscStatus.textContent = text;
             els.gscStatus.className = 'ai-gsc-bar__hint' + (kind ? ' ai-gsc-bar__hint--' + kind : '');
         }
-        if (els.gscDisconnect) {
-            els.gscDisconnect.addEventListener('click', async () => {
-                if (!confirm('Disconnect Search Console? Live GSC tools will fall back to local CSV data.')) return;
-                els.gscDisconnect.disabled = true;
-                setGscStatus('Disconnecting…', 'busy');
-                try {
-                    const fd = new FormData();
-                    fd.append('csrf_token', cfg.csrf);
-                    const resp = await fetch(cfg.baseUrl + '/admin/ai-studio/gsc-disconnect', { method: 'POST', body: fd });
-                    const data = await resp.json().catch(() => ({}));
-                    if (!resp.ok || !data.success) throw new Error((data && data.message) || ('Failed (' + resp.status + ')'));
-                    setGscStatus('Disconnected — use Connect GSC or CSV fallback', 'warn');
-                    addAgentBubble('🔌 GSC disconnected. Tools now use local `gsc_data` (CSV) until you reconnect.');
-                    setTimeout(() => location.reload(), 800);
-                } catch (err) {
-                    setGscStatus('Disconnect failed: ' + err.message, 'error');
-                    els.gscDisconnect.disabled = false;
-                }
-            });
-        }
-        if (!els.gscFile) return;
-        els.gscFile.addEventListener('change', async () => {
-            const file = els.gscFile.files && els.gscFile.files[0];
-            if (!file) return;
-            if (!file.name.toLowerCase().endsWith('.csv')) {
-                setGscStatus('Only .csv files are allowed', 'error');
-                addAgentBubble('⚠ GSC upload: only .csv files are allowed.');
-                els.gscFile.value = '';
-                return;
-            }
-            if (file.size > 10 * 1024 * 1024) {
-                setGscStatus('File too large (max 10 MB)', 'error');
-                addAgentBubble('⚠ GSC upload: file too large (max 10 MB).');
-                els.gscFile.value = '';
-                return;
-            }
-            setGscStatus('Uploading ' + file.name + '…', 'busy');
-            setActivity('Uploading GSC CSV…');
-            const fd = new FormData();
-            fd.append('csrf_token', cfg.csrf);
-            fd.append('file', file);
-            fd.append('replace', els.gscReplace && els.gscReplace.checked ? '1' : '0');
+        els.gscDisconnect.addEventListener('click', async () => {
+            if (!confirm('Disconnect Search Console? Live GSC tools will require reconnection.')) return;
+            els.gscDisconnect.disabled = true;
+            setGscStatus('Disconnecting…', 'busy');
             try {
-                const resp = await fetch(cfg.baseUrl + '/admin/ai-studio/upload-gsc', {
-                    method: 'POST',
-                    body: fd,
-                });
+                const fd = new FormData();
+                fd.append('csrf_token', cfg.csrf);
+                const resp = await fetch(cfg.baseUrl + '/admin/ai-studio/gsc-disconnect', { method: 'POST', body: fd });
                 const data = await resp.json().catch(() => ({}));
-                if (!resp.ok || !data.success) {
-                    throw new Error((data && data.message) || ('Upload failed (' + resp.status + ')'));
-                }
-                const n = data.total || (data.imported + data.updated) || 0;
-                const msg = 'GSC CSV imported: ' + n.toLocaleString() + ' rows' + (data.skipped ? ' (' + data.skipped + ' skipped)' : '') + (data.errors && data.errors.length ? ' — ' + data.errors.join(' ') : '');
-                setGscStatus(msg, 'ok');
-                addAgentBubble('✅ ' + msg + '\n\nThe AI can now use `get_gsc_overview`, `get_page_gsc`, `get_gsc_pages`, `get_gsc_queries` and `search_gsc_queries` to include Search Console data in audits. Try: "Give me a GSC overview" or "Audit the services page using GSC + analytics."');
-                hideActivity();
+                if (!resp.ok || !data.success) throw new Error((data && data.message) || ('Failed (' + resp.status + ')'));
+                setGscStatus('Disconnected — reconnect to restore live GSC', 'warn');
+                addAgentBubble('🔌 GSC disconnected. Tools will return empty until you reconnect Search Console.');
+                setTimeout(() => location.reload(), 800);
             } catch (err) {
-                setGscStatus('Upload failed: ' + err.message, 'error');
-                addAgentBubble('⚠ GSC upload failed: ' + err.message);
-                hideActivity();
-            } finally {
-                els.gscFile.value = '';
+                setGscStatus('Disconnect failed: ' + err.message, 'error');
+                els.gscDisconnect.disabled = false;
             }
         });
     })();
@@ -838,4 +790,23 @@
         try { hidden = localStorage.getItem(PREVIEW_HIDDEN_KEY) === '1'; } catch (e) { /* storage unavailable */ }
         applyPreviewState(hidden);
     })();
+
+    // Ensure clean idle state on fresh open — prevents stale spinner/typing from cached DOM or back-forward cache.
+    hideActivity();
+    hideTyping();
+    hideApproval();
+    setBusy(false);
+    setStatus('Ready', '');
+    if (els.activity) els.activity.hidden = true;
+    if (els.stop) els.stop.hidden = true;
+
+    // bfcache (back/forward) can restore a stuck busy state — reset on pageshow.
+    window.addEventListener('pageshow', () => {
+        hideActivity();
+        hideTyping();
+        setBusy(false);
+        if (!els.approval.hidden) hideApproval();
+        const cur = els.status.textContent || '';
+        if (cur === 'Working…' || cur.startsWith('Thinking')) setStatus('Ready', '');
+    });
 })();

@@ -615,31 +615,11 @@
 .ai-gsc-bar__hint--error { color: var(--ai-danger); }
 .ai-gsc-bar__hint--warn { color: #b45309; }
 
-.ai-gsc-bar__sep {
-    color: #d5d1bf;
-    font-weight: 700;
-}
-
 .ai-gsc-bar__actions {
     display: flex;
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
-}
-
-.ai-gsc-replace {
-    font-size: .76rem;
-    color: #6b7280;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-}
-
-.ai-gsc-replace input {
-    accent-color: var(--ai-teal);
 }
 
 /* ---- Suggestion chips ---- */
@@ -978,6 +958,13 @@
     display: block;
     box-shadow: 0 2px 14px rgba(48, 48, 52, .1);
     transition: opacity .25s ease;
+}
+
+/* ---- Hidden fallback (author CSS overrides UA `display:none` for [hidden]) ---- */
+.ai-activity[hidden],
+.ai-approval[hidden],
+#ai-stop[hidden] {
+    display: none !important;
 }
 
 /* ---- Animations ---- */

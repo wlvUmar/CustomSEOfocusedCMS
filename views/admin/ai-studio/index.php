@@ -71,10 +71,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         <button id="ai-gsc-disconnect" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="unlink"></i> Disconnect</button>
                         <a href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--ghost ai-btn--sm" title="Reconnect with a different account"><i data-feather="refresh-cw"></i> Reconnect</a>
                     <?php endif; ?>
-                    <span class="ai-gsc-bar__sep" aria-hidden="true">·</span>
-                    <input id="ai-gsc-file" type="file" accept=".csv,text/csv" hidden>
-                    <label for="ai-gsc-file" class="ai-btn ai-btn--ghost ai-btn--sm" style="cursor:pointer" title="Fallback: upload a GSC CSV (used when API not connected)"><i data-feather="upload"></i> Upload CSV</label>
-                    <label class="ai-gsc-replace"><input id="ai-gsc-replace" type="checkbox"> Replace</label>
                 </div>
             </div>
 
