@@ -11,6 +11,7 @@ require_once BASE_PATH . '/models/ai/tools/AnalyticsTools.php';
 require_once BASE_PATH . '/models/ai/tools/AnalyticsQueryTools.php';
 require_once BASE_PATH . '/models/ai/tools/SiteTools.php';
 require_once BASE_PATH . '/models/ai/tools/FaqTools.php';
+require_once BASE_PATH . '/models/ai/tools/GscTools.php';
 
 class AiToolRegistry {
 
@@ -22,6 +23,7 @@ class AiToolRegistry {
         AnalyticsQueryTools::class,
         SiteTools::class,
         FaqTools::class,
+        GscTools::class,
     ];
 
     /**

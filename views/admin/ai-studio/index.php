@@ -49,10 +49,40 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </div>
             </div>
 
+            <div id="ai-gsc-bar" class="ai-gsc-bar" aria-label="GSC data">
+                <div class="ai-gsc-bar__left">
+                    <span class="ai-gsc-bar__title"><i data-feather="bar-chart-2"></i> GSC live</span>
+                    <?php
+                      $gscConfigured = !empty($gscStatus['configured']);
+                      $gscConnected = !empty($gscStatus['connected']);
+                    ?>
+                    <?php if (!$gscConfigured): ?>
+                        <span id="ai-gsc-status" class="ai-gsc-bar__hint ai-gsc-bar__hint--warn">Not configured — add GSC_CLIENT_ID / GSC_CLIENT_SECRET to .env</span>
+                    <?php elseif ($gscConnected): ?>
+                        <span id="ai-gsc-status" class="ai-gsc-bar__hint ai-gsc-bar__hint--ok">Connected · <?= e($gscStatus['site_url'] ?? '') ?> · live Search Console API</span>
+                    <?php else: ?>
+                        <span id="ai-gsc-status" class="ai-gsc-bar__hint">Not connected — live Search Console API</span>
+                    <?php endif; ?>
+                </div>
+                <div class="ai-gsc-bar__actions">
+                    <?php if ($gscConfigured && !$gscConnected): ?>
+                        <a id="ai-gsc-connect" href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--primary ai-btn--sm"><i data-feather="link"></i> Connect GSC</a>
+                    <?php elseif ($gscConnected): ?>
+                        <button id="ai-gsc-disconnect" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="unlink"></i> Disconnect</button>
+                        <a href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--ghost ai-btn--sm" title="Reconnect with a different account"><i data-feather="refresh-cw"></i> Reconnect</a>
+                    <?php endif; ?>
+                    <span class="ai-gsc-bar__sep" aria-hidden="true">·</span>
+                    <input id="ai-gsc-file" type="file" accept=".csv,text/csv" hidden>
+                    <label for="ai-gsc-file" class="ai-btn ai-btn--ghost ai-btn--sm" style="cursor:pointer" title="Fallback: upload a GSC CSV (used when API not connected)"><i data-feather="upload"></i> Upload CSV</label>
+                    <label class="ai-gsc-replace"><input id="ai-gsc-replace" type="checkbox"> Replace</label>
+                </div>
+            </div>
+
             <div id="ai-suggestions" class="ai-suggestions" aria-label="Suggested prompts">
                 <button type="button" class="ai-chip" data-prompt="Find the weakest pages by traffic and propose fixes for the worst one."><i data-feather="trending-down"></i> Find weakest pages</button>
                 <button type="button" class="ai-chip" data-prompt="Read the homepage, then propose an improved intro section and render a preview."><i data-feather="edit-3"></i> Improve homepage intro</button>
                 <button type="button" class="ai-chip" data-prompt="Add a &quot;How it works&quot; FAQ entry to the FAQ page."><i data-feather="help-circle"></i> Add a how-it-works FAQ</button>
+                <button type="button" class="ai-chip" data-prompt="Give me a GSC overview and list the pages with the most impressions but low CTR."><i data-feather="search"></i> GSC overview</button>
             </div>
 
             <form id="ai-form" class="ai-composer" autocomplete="off">

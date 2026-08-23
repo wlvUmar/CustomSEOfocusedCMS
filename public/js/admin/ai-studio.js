@@ -32,6 +32,10 @@
         previewFrame: document.getElementById('ai-preview-frame'),
         previewHint: document.getElementById('ai-preview-hint'),
         previewOpen: document.getElementById('ai-preview-open'),
+        gscFile: document.getElementById('ai-gsc-file'),
+        gscReplace: document.getElementById('ai-gsc-replace'),
+        gscStatus: document.getElementById('ai-gsc-status'),
+        gscDisconnect: document.getElementById('ai-gsc-disconnect'),
     };
 
     let busy = false;
@@ -52,6 +56,80 @@
     els.model.addEventListener('change', () => {
         localStorage.setItem('ai-studio-model', els.model.value);
     });
+
+    // ---- GSC: CSV upload + live Connect/Disconnect --------------------------
+    (function initGsc() {
+        if (!els.gscFile && !els.gscDisconnect) return;
+        function setGscStatus(text, kind) {
+            if (!els.gscStatus) return;
+            els.gscStatus.textContent = text;
+            els.gscStatus.className = 'ai-gsc-bar__hint' + (kind ? ' ai-gsc-bar__hint--' + kind : '');
+        }
+        if (els.gscDisconnect) {
+            els.gscDisconnect.addEventListener('click', async () => {
+                if (!confirm('Disconnect Search Console? Live GSC tools will fall back to local CSV data.')) return;
+                els.gscDisconnect.disabled = true;
+                setGscStatus('Disconnecting…', 'busy');
+                try {
+                    const fd = new FormData();
+                    fd.append('csrf_token', cfg.csrf);
+                    const resp = await fetch(cfg.baseUrl + '/admin/ai-studio/gsc-disconnect', { method: 'POST', body: fd });
+                    const data = await resp.json().catch(() => ({}));
+                    if (!resp.ok || !data.success) throw new Error((data && data.message) || ('Failed (' + resp.status + ')'));
+                    setGscStatus('Disconnected — use Connect GSC or CSV fallback', 'warn');
+                    addAgentBubble('🔌 GSC disconnected. Tools now use local `gsc_data` (CSV) until you reconnect.');
+                    setTimeout(() => location.reload(), 800);
+                } catch (err) {
+                    setGscStatus('Disconnect failed: ' + err.message, 'error');
+                    els.gscDisconnect.disabled = false;
+                }
+            });
+        }
+        if (!els.gscFile) return;
+        els.gscFile.addEventListener('change', async () => {
+            const file = els.gscFile.files && els.gscFile.files[0];
+            if (!file) return;
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                setGscStatus('Only .csv files are allowed', 'error');
+                addAgentBubble('⚠ GSC upload: only .csv files are allowed.');
+                els.gscFile.value = '';
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                setGscStatus('File too large (max 10 MB)', 'error');
+                addAgentBubble('⚠ GSC upload: file too large (max 10 MB).');
+                els.gscFile.value = '';
+                return;
+            }
+            setGscStatus('Uploading ' + file.name + '…', 'busy');
+            setActivity('Uploading GSC CSV…');
+            const fd = new FormData();
+            fd.append('csrf_token', cfg.csrf);
+            fd.append('file', file);
+            fd.append('replace', els.gscReplace && els.gscReplace.checked ? '1' : '0');
+            try {
+                const resp = await fetch(cfg.baseUrl + '/admin/ai-studio/upload-gsc', {
+                    method: 'POST',
+                    body: fd,
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || !data.success) {
+                    throw new Error((data && data.message) || ('Upload failed (' + resp.status + ')'));
+                }
+                const n = data.total || (data.imported + data.updated) || 0;
+                const msg = 'GSC CSV imported: ' + n.toLocaleString() + ' rows' + (data.skipped ? ' (' + data.skipped + ' skipped)' : '') + (data.errors && data.errors.length ? ' — ' + data.errors.join(' ') : '');
+                setGscStatus(msg, 'ok');
+                addAgentBubble('✅ ' + msg + '\n\nThe AI can now use `get_gsc_overview`, `get_page_gsc`, `get_gsc_pages`, `get_gsc_queries` and `search_gsc_queries` to include Search Console data in audits. Try: "Give me a GSC overview" or "Audit the services page using GSC + analytics."');
+                hideActivity();
+            } catch (err) {
+                setGscStatus('Upload failed: ' + err.message, 'error');
+                addAgentBubble('⚠ GSC upload failed: ' + err.message);
+                hideActivity();
+            } finally {
+                els.gscFile.value = '';
+            }
+        });
+    })();
 
     // ---- New session ------------------------------------------------------
     els.newSession.addEventListener('click', () => {
@@ -554,10 +632,28 @@
         showTyping();
 
         let assistantText = '';
+        let receivedDone = false;
+        let watchdogId = null;
         abortCtrl = new AbortController();
 
         const pending = pendingContext;
         pendingContext = null;
+
+        // Watchdog: if server stalls and sends no SSE for N seconds, abort with a helpful message.
+        // Prevents the "thinking forever" state when the loop dies or the host buffers/kills the stream.
+        function resetWatchdog() {
+            if (watchdogId) clearTimeout(watchdogId);
+            watchdogId = setTimeout(() => {
+                if (abortCtrl && !receivedDone) {
+                    try { abortCtrl.abort(); } catch (_) {}
+                    hideTyping();
+                    hideActivity();
+                    setStatus('Timeout', 'error');
+                    addAgentBubble('⚠ No response from server for 90s — the run may have stalled (host buffer / PHP timeout / model error). Try again or pick a cheaper model.');
+                }
+            }, 90000);
+        }
+        resetWatchdog();
 
         try {
             await sendTurn({
@@ -568,6 +664,7 @@
                 approved: JSON.stringify(approved),
                 pending: JSON.stringify(pending || []),
             }, (event, data) => {
+                resetWatchdog();
                 switch (event) {
                     case 'activity':
                         setActivity(data.text);
@@ -605,6 +702,7 @@
                         setStatus('Error', 'error');
                         break;
                     case 'done':
+                        receivedDone = true;
                         hideTyping();
                         hideActivity();
                         if (data.status === 'complete') {
@@ -621,18 +719,38 @@
                         break;
                 }
             }, abortCtrl.signal);
+            // Stream ended but server never sent `done` (host killed the loop / connection_aborted early / PHP fatal).
+            if (!receivedDone) {
+                hideTyping();
+                hideActivity();
+                // Don't overwrite an explicit error/done status that was already set.
+                const cur = els.status.textContent || '';
+                const isStillBusy = cur.includes('Working') || cur.includes('Thinking') || cur === 'Starting…';
+                if (isStillBusy) {
+                    setStatus('Stopped', 'error');
+                    addAgentBubble('⚠ Stream ended without a final status — the agent loop may have been killed (PHP timeout / host buffer). Check logs/ai-studio.log and try again.');
+                } else if (!els.status.className.includes('ai-status--')) {
+                    setStatus('Ready', '');
+                }
+            }
         } catch (err) {
+            receivedDone = true; // prevent double message from the !receivedDone guard
             if (err && err.name === 'AbortError') {
                 hideTyping();
-                hideApproval();
                 hideActivity();
-                setStatus('Stopped', 'error');
+                // Only show Stopped if not already showing approval wait.
+                if (els.status.textContent !== 'Awaiting approval') setStatus('Stopped', 'error');
             } else {
                 hideTyping();
                 hideActivity();
                 setStatus('Request failed', 'error');
                 addAgentBubble('⚠ ' + err.message);
             }
+        } finally {
+            if (watchdogId) { clearTimeout(watchdogId); watchdogId = null; }
+            // Absolute guarantee: never leave spinner/typing visible after a turn finishes.
+            hideTyping();
+            hideActivity();
         }
 
         if (assistantText) {
@@ -645,7 +763,16 @@
 
         abortCtrl = null;
         setBusy(false);
-        if (els.status.className.indexOf('ai-status--') === -1) setStatus('Ready');
+        // If we ended in a terminal state (Done / Error / Awaiting approval) keep it; otherwise reset to Ready after a short grace.
+        const statusText = els.status.textContent || '';
+        const isTerminal = statusText === 'Done' || statusText === 'Awaiting approval' || statusText === 'Stopped' || statusText === 'Error' || statusText === 'Request failed' || statusText === 'Timeout';
+        if (!isTerminal && els.status.className.indexOf('ai-status--') === -1) setStatus('Ready', '');
+        if (isTerminal && (statusText === 'Done' || statusText === 'Stopped')) {
+            // Auto-reset Done/Stopped to Ready after 4s so next turn doesn't look stuck.
+            setTimeout(() => {
+                if (!busy && (els.status.textContent === 'Done' || els.status.textContent === 'Stopped')) setStatus('Ready', '');
+            }, 4000);
+        }
         els.input.focus();
     }
 

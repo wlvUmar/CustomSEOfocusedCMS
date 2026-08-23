@@ -56,4 +56,10 @@ define('TELEGRAM_BOT_URL', getenv('TELEGRAM_BOT_URL') ?: 'https://t.me/YOUR_BOT'
 // OpenRouter API key for the AI page-editing assistant (set OPENROUTER_API_KEY in .env)
 define('OPENROUTER_API_KEY', getenv('OPENROUTER_API_KEY') ?: '');
 
+// Google Search Console API (MCP-like live GSC for AI Studio)
+define('GSC_CLIENT_ID', getenv('GSC_CLIENT_ID') ?: '');
+define('GSC_CLIENT_SECRET', getenv('GSC_CLIENT_SECRET') ?: '');
+define('GSC_SITE_URL', getenv('GSC_SITE_URL') ?: (BASE_URL ? rtrim(BASE_URL, '/') . '/' : ''));
+define('GSC_ENCRYPTION_KEY', getenv('GSC_ENCRYPTION_KEY') ?: (getenv('BOT_API_SECRET') ?: ''));
+
 date_default_timezone_set('Asia/Tashkent');

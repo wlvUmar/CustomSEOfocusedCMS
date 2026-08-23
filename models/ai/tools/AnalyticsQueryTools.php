@@ -19,6 +19,7 @@ class AnalyticsQueryTools {
         'analytics_dedup_visits', 'analytics_dedup_clicks',
         'analytics_dedup_phone_calls', 'analytics_dedup_site_visits',
         'analytics_dedup_internal_links', 'analytics_throttle',
+        'gsc_data',
         'pages',
     ];
 
