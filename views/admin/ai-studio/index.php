@@ -123,7 +123,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </span>
             </div>
             <div class="ai-preview__frame-wrap">
-                <iframe id="ai-preview-frame" title="Live preview" sandbox="allow-same-origin"></iframe>
+                <iframe id="ai-preview-frame" title="Live preview" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"></iframe>
             </div>
         </section>
     </div>

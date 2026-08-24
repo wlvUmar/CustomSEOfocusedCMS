@@ -83,15 +83,35 @@ class Page {
 
     public function update($id, $data) {
         $currentPage = $this->getById($id);
+        if (!$currentPage) {
+            throw new Exception('Page not found');
+        }
+        // Auto-backup: snapshot current row before any mutation so AI wipes are undoable.
+        // Never let backup failure block the page save.
+        try {
+            if (!class_exists('PageRevision', false)) {
+                @require_once BASE_PATH . '/models/PageRevision.php';
+            }
+            if (class_exists('PageRevision')) {
+                // Avoid spamming revisions when only depth was recalculated — depth
+                // is a derived field, not user content. Still snapshot on real edits.
+                $isDepthOnly = (count($data) === 1 && array_key_exists('depth', $data));
+                if (!$isDepthOnly) {
+                    PageRevision::createSnapshot((int)$id, $currentPage, array_keys($data));
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('[Page] revision snapshot failed for page ' . $id . ': ' . $e->getMessage());
+        }
         $oldParentId = $currentPage['parent_id'] ?? null;
-        $newParentId = $data['parent_id'] ?? null;
+        $newParentId = array_key_exists('parent_id', $data) ? $data['parent_id'] : $oldParentId;
         
         if ($newParentId && !$this->canBeParent($id, $newParentId)) {
             throw new Exception('Invalid parent: circular reference detected');
         }
         
         // Use explicit rotation_mode if provided, otherwise keep current
-        $rotationMode = $data['rotation_mode'] ?? ($currentPage['rotation_mode'] ?? 'auto');
+        $rotationMode = array_key_exists('rotation_mode', $data) ? $data['rotation_mode'] : ($currentPage['rotation_mode'] ?? 'auto');
         
         $sql = "UPDATE pages SET 
                     slug = ?, title_ru = ?, title_uz = ?, 
@@ -103,34 +123,35 @@ class Page {
                     og_description_ru = ?, og_description_uz = ?, 
                     og_image = ?, canonical_url = ?,
                     jsonld_ru = ?, jsonld_uz = ?, 
-                    is_published = ?, rotation_mode = ?, selected_rotation_id = ?, sort_order = ?,
+                    is_published = ?, enable_rotation = ?, rotation_mode = ?, selected_rotation_id = ?, sort_order = ?,
                     parent_id = ?
                 WHERE id = ?";
         
         $result = $this->db->query($sql, [
-            $data['slug'],
-            $data['title_ru'],
-            $data['title_uz'],
-            $data['content_ru'],
-            $data['content_uz'],
-            $data['meta_title_ru'] ?? null,
-            $data['meta_title_uz'] ?? null,
-            $data['meta_keywords_ru'] ?? null,
-            $data['meta_keywords_uz'] ?? null,
-            $data['meta_description_ru'] ?? null,
-            $data['meta_description_uz'] ?? null,
-            $data['og_title_ru'] ?? null,
-            $data['og_title_uz'] ?? null,
-            $data['og_description_ru'] ?? null,
-            $data['og_description_uz'] ?? null,
-            $data['og_image'] ?? null,
-            $data['canonical_url'] ?? null,
-            $data['jsonld_ru'] ?? null,
-            $data['jsonld_uz'] ?? null,
-            $data['is_published'] ?? 1,
+            array_key_exists('slug', $data) ? $data['slug'] : $currentPage['slug'],
+            array_key_exists('title_ru', $data) ? $data['title_ru'] : $currentPage['title_ru'],
+            array_key_exists('title_uz', $data) ? $data['title_uz'] : $currentPage['title_uz'],
+            array_key_exists('content_ru', $data) ? $data['content_ru'] : $currentPage['content_ru'],
+            array_key_exists('content_uz', $data) ? $data['content_uz'] : $currentPage['content_uz'],
+            array_key_exists('meta_title_ru', $data) ? $data['meta_title_ru'] : $currentPage['meta_title_ru'],
+            array_key_exists('meta_title_uz', $data) ? $data['meta_title_uz'] : $currentPage['meta_title_uz'],
+            array_key_exists('meta_keywords_ru', $data) ? $data['meta_keywords_ru'] : $currentPage['meta_keywords_ru'],
+            array_key_exists('meta_keywords_uz', $data) ? $data['meta_keywords_uz'] : $currentPage['meta_keywords_uz'],
+            array_key_exists('meta_description_ru', $data) ? $data['meta_description_ru'] : $currentPage['meta_description_ru'],
+            array_key_exists('meta_description_uz', $data) ? $data['meta_description_uz'] : $currentPage['meta_description_uz'],
+            array_key_exists('og_title_ru', $data) ? $data['og_title_ru'] : $currentPage['og_title_ru'],
+            array_key_exists('og_title_uz', $data) ? $data['og_title_uz'] : $currentPage['og_title_uz'],
+            array_key_exists('og_description_ru', $data) ? $data['og_description_ru'] : $currentPage['og_description_ru'],
+            array_key_exists('og_description_uz', $data) ? $data['og_description_uz'] : $currentPage['og_description_uz'],
+            array_key_exists('og_image', $data) ? $data['og_image'] : $currentPage['og_image'],
+            array_key_exists('canonical_url', $data) ? $data['canonical_url'] : $currentPage['canonical_url'],
+            array_key_exists('jsonld_ru', $data) ? $data['jsonld_ru'] : $currentPage['jsonld_ru'],
+            array_key_exists('jsonld_uz', $data) ? $data['jsonld_uz'] : $currentPage['jsonld_uz'],
+            array_key_exists('is_published', $data) ? $data['is_published'] : $currentPage['is_published'],
+            array_key_exists('enable_rotation', $data) ? $data['enable_rotation'] : ($currentPage['enable_rotation'] ?? 0),
             $rotationMode,
-            $data['selected_rotation_id'] ?? null,
-            $data['sort_order'] ?? 0,
+            array_key_exists('selected_rotation_id', $data) ? $data['selected_rotation_id'] : $currentPage['selected_rotation_id'],
+            array_key_exists('sort_order', $data) ? $data['sort_order'] : $currentPage['sort_order'],
             $newParentId,
             $id
         ]);

@@ -33,15 +33,16 @@ class AiToolRegistry {
      * user's "approve" survives the next model turn.
      */
     private const GUARDED_TOOLS = [
-        'set_field'    => 'Replaces the entire existing field. This is the tool you should reserve for genuinely new content or full-page rewrites.',
-        'delete_faq'   => 'Permanently deletes an FAQ from the site.',
-        'set_rotation' => 'Pins a manual rotation variant as the live content for a page.',
+        'set_field'             => 'Replaces the entire existing field. This is the tool you should reserve for genuinely new content or full-page rewrites.',
+        'delete_faq'            => 'Permanently deletes an FAQ from the site.',
+        'set_rotation'          => 'Pins a manual rotation variant as the live content for a page.',
+        'restore_page_revision' => 'Restores a page to a previous snapshot — current state is saved as a new revision first, so this is undoable, but still guarded.',
     ];
 
     /** Tools that are read-only and safe in PLAN mode. Everything else requires BUILD mode. */
     private const PLAN_ALLOWLIST = [
-        // PageTools read
-        'list_pages', 'get_page', 'search_content', 'list_sections',
+        // PageTools read + revisions read + section reads (granular, untruncated)
+        'list_pages', 'get_page', 'search_content', 'list_sections', 'get_section', 'get_content_chunk', 'list_page_revisions', 'get_page_revision',
         // Rotation read
         'list_rotations', 'get_rotation',
         // Analytics read
@@ -121,10 +122,15 @@ class AiToolRegistry {
 
         $isGuarded = isset(self::GUARDED_TOOLS[$name]);
         $guardReason = self::GUARDED_TOOLS[$name] ?? '';
-        // str_replace_field is only guarded when it would replace with a large payload (destructive potential).
-        if (!$isGuarded && $name === 'str_replace_field' && isset($args['replace']) && mb_strlen((string)$args['replace']) > 800) {
+        // str_replace_field / patch_section are only guarded when they would replace with a large payload.
+        if (!$isGuarded && in_array($name, ['str_replace_field','patch_section'], true) && isset($args['replace']) && mb_strlen((string)$args['replace']) > 800) {
             $isGuarded = true;
-            $guardReason = 'Large str_replace_field (>800 chars) is considered destructive — requires approval.';
+            $guardReason = 'Large ' . $name . ' (>800 chars) is considered destructive — requires approval.';
+        }
+        if (!$isGuarded && $name === 'update_section' && isset($args['html']) && mb_strlen((string)$args['html']) > 800) {
+            // update_section is always guarded, but this keeps the large-payload message consistent
+            $isGuarded = true;
+            $guardReason = 'Large update_section (>800 chars) is considered destructive — requires approval.';
         }
         if ($isGuarded && !in_array($callId, $approved, true)) {
             $planArgs = [];

@@ -756,4 +756,32 @@ class PageAdminController extends Controller {
         
         $this->redirect('/admin/pages');
     }
+
+    public function revisions($id = null) {
+        $this->requireAuth();
+        $pageId = (int)($id ?? $_GET['id'] ?? 0);
+        if ($pageId <= 0) $this->json(['success' => false, 'message' => 'Page id required'], 400);
+        require_once BASE_PATH . '/models/PageRevision.php';
+        $model = new PageRevision();
+        $rows = $model->getByPageId($pageId, 20);
+        $this->json(['success' => true, 'revisions' => $rows]);
+    }
+
+    public function restoreRevision() {
+        $this->requireAuth();
+        if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+            $this->json(['success' => false, 'message' => 'CSRF token validation failed'], 400);
+            return;
+        }
+        $revId = (int)($_POST['revision_id'] ?? 0);
+        if ($revId <= 0) $this->json(['success' => false, 'message' => 'revision_id required'], 400);
+        require_once BASE_PATH . '/models/PageRevision.php';
+        try {
+            $model = new PageRevision();
+            $fresh = $model->restore($revId);
+            $this->json(['success' => true, 'page' => $fresh, 'message' => 'Page restored to revision ' . $revId]);
+        } catch (Exception $e) {
+            $this->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 }
