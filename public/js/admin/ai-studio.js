@@ -38,6 +38,8 @@
         historyPanel: document.getElementById('ai-history-panel'),
         historyList: document.getElementById('ai-history-list'),
         historyClose: document.getElementById('ai-history-close'),
+        modeToggle: document.getElementById('ai-mode-toggle'),
+        modeLabel: document.getElementById('ai-mode-label'),
     };
 
     let busy = false;
@@ -49,6 +51,7 @@
     let lastPreviewHtml = '';
     let activityTimerId = null; // interval driving the elapsed-time readout
     let activityStartedAt = 0;
+    let currentMode = 'plan';   // 'plan' or 'build'
 
     // ---- Model selector persistence --------------------------------------
     const savedModel = localStorage.getItem('ai-studio-model');
@@ -58,6 +61,22 @@
     els.model.addEventListener('change', () => {
         localStorage.setItem('ai-studio-model', els.model.value);
     });
+
+    // ---- Mode toggle (Plan/Build) -----------------------------------------
+    function setMode(mode) {
+        currentMode = mode === 'build' ? 'build' : 'plan';
+        if (els.modeToggle) els.modeToggle.setAttribute('aria-pressed', currentMode === 'build');
+        if (els.modeLabel) els.modeLabel.textContent = currentMode.charAt(0).toUpperCase() + currentMode.slice(1);
+        localStorage.setItem('ai-studio-mode', currentMode);
+    }
+    if (els.modeToggle) {
+        els.modeToggle.addEventListener('click', () => {
+            setMode(currentMode === 'plan' ? 'build' : 'plan');
+        });
+    }
+    // Restore saved mode
+    const savedMode = localStorage.getItem('ai-studio-mode');
+    if (savedMode) setMode(savedMode);
     // Realtime model list from OpenRouter (falls back to PHP const)
     (async () => {
         try {
@@ -745,7 +764,7 @@
         if (abortCtrl) abortCtrl.abort();
     });
 
-    async function runTurn(userText, approved) {
+    async function runTurn(userText, approved, mode = 'plan') {
         setBusy(true);
         hideApproval();
         addUserBubble(userText);
@@ -788,6 +807,7 @@
                 history: JSON.stringify(history),
                 approved: JSON.stringify(approved),
                 pending: JSON.stringify(pending || []),
+                mode: currentMode,
             }, (event, data) => {
                 resetWatchdog();
                 switch (event) {
@@ -909,7 +929,7 @@
         els.approve.disabled = true;
         els.deny.disabled = true;
         const plan = pendingApproval.plan;
-        await runTurn('[Approved] Proceed with the requested change: ' + plan, [pendingApproval.call_id]);
+        await runTurn('[Approved] Proceed with the requested change: ' + plan, [pendingApproval.call_id], currentMode);
     });
 
     els.deny.addEventListener('click', async () => {
@@ -917,7 +937,7 @@
         els.approve.disabled = true;
         els.deny.disabled = true;
         const plan = pendingApproval.plan;
-        await runTurn('[Denied] Do not make this change: ' + plan + '. Propose an alternative if appropriate.', []);
+        await runTurn('[Denied] Do not make this change: ' + plan + '. Propose an alternative if appropriate.', [], currentMode);
     });
 
     // ---- Preview toggle: preview is optional, chat gets the full width when hidden ----

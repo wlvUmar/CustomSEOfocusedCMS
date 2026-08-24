@@ -48,6 +48,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <div class="ai-studio__chat-head">
                 <span class="ai-studio__chat-head__title"><i data-feather="message-square"></i> Conversation</span>
                 <div class="ai-studio__chat-head__actions">
+                    <button id="ai-mode-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="Toggle Plan/Build mode" aria-pressed="false">
+                        <i data-feather="layout"></i> <span id="ai-mode-label">Plan</span>
+                    </button>
                     <button id="ai-history-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="Chat history"><i data-feather="clock"></i> History</button>
                     <span class="ai-studio__chat-head__hint">Shift+Enter for a new line</span>
                 </div>
