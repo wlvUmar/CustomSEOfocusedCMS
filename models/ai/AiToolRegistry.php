@@ -120,17 +120,22 @@ class AiToolRegistry {
             ];
         }
 
-        $isGuarded = isset(self::GUARDED_TOOLS[$name]);
-        $guardReason = self::GUARDED_TOOLS[$name] ?? '';
-        // str_replace_field / patch_section are only guarded when they would replace with a large payload.
-        if (!$isGuarded && in_array($name, ['str_replace_field','patch_section'], true) && isset($args['replace']) && mb_strlen((string)$args['replace']) > 800) {
-            $isGuarded = true;
-            $guardReason = 'Large ' . $name . ' (>800 chars) is considered destructive — requires approval.';
-        }
-        if (!$isGuarded && $name === 'update_section' && isset($args['html']) && mb_strlen((string)$args['html']) > 800) {
-            // update_section is always guarded, but this keeps the large-payload message consistent
-            $isGuarded = true;
-            $guardReason = 'Large update_section (>800 chars) is considered destructive — requires approval.';
+        // BUILD mode is auto-execute — approvals disabled per owner request.
+        // Guarded logic is retained only for PLAN mode (which already blocks writes) or if you re-enable it later.
+        $isGuarded = false;
+        $guardReason = '';
+        if ($mode !== 'build') {
+            $isGuarded = isset(self::GUARDED_TOOLS[$name]);
+            $guardReason = self::GUARDED_TOOLS[$name] ?? '';
+            // str_replace_field / patch_section are only guarded when they would replace with a large payload.
+            if (!$isGuarded && in_array($name, ['str_replace_field','patch_section'], true) && isset($args['replace']) && mb_strlen((string)$args['replace']) > 800) {
+                $isGuarded = true;
+                $guardReason = 'Large ' . $name . ' (>800 chars) is considered destructive — requires approval.';
+            }
+            if (!$isGuarded && $name === 'update_section' && isset($args['html']) && mb_strlen((string)$args['html']) > 800) {
+                $isGuarded = true;
+                $guardReason = 'Large update_section (>800 chars) is considered destructive — requires approval.';
+            }
         }
         if ($isGuarded && !in_array($callId, $approved, true)) {
             $planArgs = [];
