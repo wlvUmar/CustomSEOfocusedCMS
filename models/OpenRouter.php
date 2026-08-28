@@ -161,12 +161,21 @@ class OpenRouter {
             }
 
             $choice = $data['choices'][0] ?? null;
-            $content = $choice['message']['content'] ?? null;
+            $msg = $choice['message'] ?? [];
+            $content = $msg['content'] ?? null;
+            if ((!is_string($content) || trim($content) === '') && isset($msg['reasoning']) && is_string($msg['reasoning']) && trim($msg['reasoning']) !== '') {
+                $content = trim($msg['reasoning']);
+            }
             $finishReason = $choice['finish_reason'] ?? null;
 
             if (!is_string($content) || trim($content) === '') {
-                $detail = $data['error']['message'] ?? $data['error'] ?? 'empty completion';
-                throw new Exception('OpenRouter returned no content: ' . (is_string($detail) ? $detail : json_encode($detail)));
+                $detail = $data['error']['message'] ?? $data['error'] ?? 'empty completion (finish_reason=' . ($finishReason ?? 'null') . ')';
+                $lastError = new Exception('OpenRouter returned no content: ' . (is_string($detail) ? $detail : json_encode($detail)));
+                if ($attempt <= $retries) {
+                    usleep(500000 + random_int(0, 500000));
+                    continue;
+                }
+                throw $lastError;
             }
 
             if ($finishReason === 'length') {
@@ -305,14 +314,34 @@ class OpenRouter {
 
             $message = $choice['message'] ?? [];
             $content = isset($message['content']) && is_string($message['content']) ? $message['content'] : '';
+            // Reasoning models (deepseek-r1, etc.) put thinking in `reasoning` not `content`
+            if ($content === '' && isset($message['reasoning']) && is_string($message['reasoning']) && trim($message['reasoning']) !== '') {
+                $content = trim($message['reasoning']);
+            }
+            if ($content === '' && isset($message['reasoning_details']) && is_array($message['reasoning_details'])) {
+                // Some providers return array of reasoning chunks
+                $parts = array_map(fn($r) => $r['text'] ?? $r['content'] ?? '', $message['reasoning_details']);
+                $joined = trim(implode("\n", array_filter($parts)));
+                if ($joined !== '') $content = $joined;
+            }
             $toolCalls = $message['tool_calls'] ?? null;
             if (!is_array($toolCalls)) {
                 $toolCalls = null;
             }
 
             if ($content === '' && empty($toolCalls)) {
-                $detail = $data['error']['message'] ?? $data['error'] ?? 'empty completion';
-                throw new Exception('OpenRouter returned no content: ' . (is_string($detail) ? $detail : json_encode($detail)));
+                // Surface raw payload for debugging; treat as transient so retry can help
+                $detail = $data['error']['message'] ?? $data['error'] ?? null;
+                if ($detail === null) {
+                    $detail = 'empty completion (finish_reason=' . ($finishReason ?? 'null') . ', has_reasoning=' . (isset($message['reasoning']) ? 'yes' : 'no') . ') raw=' . mb_substr(json_encode($data, JSON_UNESCAPED_UNICODE), 0, 800);
+                }
+                $lastError = new Exception('OpenRouter returned no content: ' . (is_string($detail) ? $detail : json_encode($detail)));
+                $transient = true;
+                if ($attempt <= $retries) {
+                    usleep(500000 + random_int(0, 500000));
+                    continue;
+                }
+                throw $lastError;
             }
 
             return [
