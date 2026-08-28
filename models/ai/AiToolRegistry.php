@@ -12,6 +12,7 @@ require_once BASE_PATH . '/models/ai/tools/AnalyticsQueryTools.php';
 require_once BASE_PATH . '/models/ai/tools/SiteTools.php';
 require_once BASE_PATH . '/models/ai/tools/FaqTools.php';
 require_once BASE_PATH . '/models/ai/tools/GscTools.php';
+require_once BASE_PATH . '/models/ai/tools/MemoryTools.php';
 
 class AiToolRegistry {
 
@@ -24,6 +25,7 @@ class AiToolRegistry {
         SiteTools::class,
         FaqTools::class,
         GscTools::class,
+        MemoryTools::class,
     ];
 
     /**
@@ -47,13 +49,15 @@ class AiToolRegistry {
         'list_rotations', 'get_rotation',
         // Analytics read
         'get_top_pages', 'get_page_stats', 'get_underperforming_pages', 'get_crawl_frequency', 'get_internal_links', 'get_rotation_effectiveness',
-        'run_analytics_query',
+        'run_analytics_query', 'query_builder',
         // Site read + preview (preview is non-persistent)
-        'get_global_settings', 'get_template_variables', 'get_design_tokens', 'render_preview',
+        'get_global_settings', 'get_template_variables', 'get_design_tokens', 'render_preview', 'render_full_page',
         // Faq read
         'list_faqs', 'get_faq',
         // GSC read
         'get_gsc_overview', 'get_page_gsc', 'get_gsc_queries', 'get_gsc_pages', 'search_gsc_queries', 'query_gsc',
+        // Memory + debug read-only
+        'list_context', 'get_context', 'get_tool_logs',
     ];
 
     public static function definitions(): array {

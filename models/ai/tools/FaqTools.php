@@ -154,9 +154,9 @@ class FaqTools {
             ];
         }
         $id = (int)($args['faq_id'] ?? 0);
-        if ($id <= 0) throw new InvalidArgumentException('faq_id or page_slug is required');
+        if ($id <= 0) throw new InvalidArgumentException('faq_id or page_slug is required — call list_faqs to discover ids or pass page_slug to list FAQs for a page.');
         $row = (new FAQ())->getById($id);
-        if (!$row) throw new InvalidArgumentException('FAQ not found');
+        if (!$row) throw new InvalidArgumentException('FAQ not found: ID ' . $id . ' not found. Call list_faqs to discover ids.');
         return $row;
     }
 
@@ -164,7 +164,7 @@ class FaqTools {
         $required = ['page_slug', 'question_ru', 'question_uz', 'answer_ru', 'answer_uz'];
         foreach ($required as $k) {
             if (trim((string)($args[$k] ?? '')) === '') {
-                throw new InvalidArgumentException("Missing required field: {$k}");
+                throw new InvalidArgumentException("Missing required field: {$k} — all of page_slug, question_ru, question_uz, answer_ru, answer_uz are required.");
             }
         }
         $model = new FAQ();
@@ -182,10 +182,10 @@ class FaqTools {
 
     private static function updateFaq(array $args): array {
         $id = (int)($args['faq_id'] ?? 0);
-        if ($id <= 0) throw new InvalidArgumentException('faq_id is required');
+        if ($id <= 0) throw new InvalidArgumentException('faq_id is required — call list_faqs or get_faq with page_slug to find ids.');
         $model = new FAQ();
         $existing = $model->getById($id);
-        if (!$existing) throw new InvalidArgumentException('FAQ not found');
+        if (!$existing) throw new InvalidArgumentException('FAQ not found: ID ' . $id . ' not found. Call list_faqs to discover ids.');
 
         $data = [];
         foreach (['page_slug', 'question_ru', 'question_uz', 'answer_ru', 'answer_uz', 'sort_order', 'is_active'] as $k) {
@@ -201,9 +201,9 @@ class FaqTools {
 
     private static function deleteFaq(array $args): array {
         $id = (int)($args['faq_id'] ?? 0);
-        if ($id <= 0) throw new InvalidArgumentException('faq_id is required');
+        if ($id <= 0) throw new InvalidArgumentException('faq_id is required — call list_faqs to discover ids.');
         $model = new FAQ();
-        if (!$model->getById($id)) throw new InvalidArgumentException('FAQ not found');
+        if (!$model->getById($id)) throw new InvalidArgumentException('FAQ not found: ID ' . $id . ' not found. Call list_faqs to discover ids.');
         $model->delete($id);
         return ['ok' => true, 'faq_id' => $id, 'note' => 'FAQ deleted.'];
     }

@@ -208,6 +208,11 @@
         let sessions = loadSessions();
         sessions = sessions.filter(s => s.id !== id);
         saveSessions(sessions);
+        // Also delete from DB
+        (async()=>{ try{
+            const fd=new FormData(); fd.append('csrf_token',cfg.csrf);
+            await fetch(cfg.baseUrl+'/admin/ai-studio/session/'+encodeURIComponent(id)+'/delete',{method:'POST',body:fd});
+        }catch(e){}})();
         if (currentSessionId === id) {
             if (sessions.length) restoreSession(sessions[0].id);
             else createNewSession(true);
@@ -229,6 +234,63 @@
         if (window.feather) try { feather.replace({class:'feather-icon'}); } catch(e){}
         scrollTranscript();
     }
+    // ---- DB-backed sessions sync (cross-session persistence) ---------------
+    async function fetchDbSessions() {
+        try {
+            const r = await fetch(cfg.baseUrl + '/admin/ai-studio/sessions', { headers:{'Accept':'application/json'}});
+            const j = await r.json();
+            if (j.success && Array.isArray(j.sessions)) return j.sessions;
+        } catch(e){}
+        return null;
+    }
+    async function syncSessionsFromDb() {
+        const db = await fetchDbSessions();
+        if (!db) return;
+        // Merge DB list into localStorage for display; prefer DB titles
+        const local = loadSessions();
+        const map = new Map(local.map(s=>[s.id,s]));
+        db.forEach(row => {
+            const id=row.id;
+            if (!map.has(id)) {
+                map.set(id,{id:id,title:row.title||'Session',updatedAt: new Date(row.updated_at).getTime(),createdAt:new Date(row.created_at).getTime(),history:[],transcriptHTML:'',lastPreviewHtml:'',usageText:''});
+            } else {
+                const ex=map.get(id);
+                ex.title = row.title||ex.title;
+                ex.updatedAt = new Date(row.updated_at).getTime();
+            }
+        });
+        const merged=[...map.values()].sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,50);
+        saveSessions(merged);
+        renderHistoryList();
+    }
+    async function loadSessionFromDb(id) {
+        try {
+            const r = await fetch(cfg.baseUrl + '/admin/ai-studio/session/'+encodeURIComponent(id), { headers:{'Accept':'application/json'}});
+            const j = await r.json();
+            if (j.success && j.session) {
+                const s=j.session;
+                currentSessionId=s.id;
+                try{localStorage.setItem(CURRENT_KEY,currentSessionId);}catch(e){}
+                history=Array.isArray(s.history)?s.history.slice():[];
+                pendingApproval=null; pendingContext=null;
+                if (els.transcript) {
+                    if (s.history && s.history.length) {
+                        els.transcript.innerHTML='';
+                        s.history.forEach(m=>{
+                            if(m.role==='user') addUserBubble(m.content);
+                            else if(m.role==='assistant' && m.content) addAgentBubble(m.content);
+                        });
+                    } else els.transcript.innerHTML='';
+                }
+                if (els.approval) els.approval.hidden=true;
+                setStatus('Ready'); hideActivity(); hideTyping(); renderHistoryList();
+                if (els.historyPanel) els.historyPanel.hidden=true;
+                scrollTranscript(); els.input.focus();
+                return true;
+            }
+        } catch(e){}
+        return false;
+    }
     // init current session
     (function initSession() {
         const existing = loadSessions();
@@ -241,10 +303,19 @@
             createNewSession(true);
         }
         renderHistoryList();
+        syncSessionsFromDb();
         if (els.historyToggle && els.historyPanel) {
-            els.historyToggle.addEventListener('click', () => { els.historyPanel.hidden = !els.historyPanel.hidden; if (!els.historyPanel.hidden) renderHistoryList(); });
+            els.historyToggle.addEventListener('click', () => { els.historyPanel.hidden = !els.historyPanel.hidden; if (!els.historyPanel.hidden) { renderHistoryList(); syncSessionsFromDb(); } });
         }
         if (els.historyClose && els.historyPanel) els.historyClose.addEventListener('click', () => els.historyPanel.hidden = true);
+        // Patch restoreSession to try DB if not in local
+        const _origRestore = restoreSession;
+        window._aiRestoreSession = async function(id){
+            const local = loadSessions().find(x=>x.id===id);
+            if (local) return restoreSession(id);
+            const ok = await loadSessionFromDb(id);
+            if (!ok) restoreSession(id);
+        };
     })();
 
     // ---- GSC: live Connect/Disconnect --------------------------
@@ -808,6 +879,7 @@
                 approved: JSON.stringify(approved),
                 pending: JSON.stringify(pending || []),
                 mode: currentMode,
+                session_id: currentSessionId || '',
             }, (event, data) => {
                 resetWatchdog();
                 switch (event) {

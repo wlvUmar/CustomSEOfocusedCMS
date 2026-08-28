@@ -74,11 +74,11 @@ class RotationTools {
         $slug = trim((string)($args['page_slug'] ?? ''));
         if ($slug !== '') {
             $page = (new Page())->getBySlug($slug);
-            if (!$page) throw new InvalidArgumentException("Page not found: {$slug}");
+            if (!$page) throw new InvalidArgumentException("Page not found: {$slug} — call list_pages to discover slugs.");
             return (int)$page['id'];
         }
         $id = (int)($args['page_id'] ?? 0);
-        if ($id <= 0) throw new InvalidArgumentException('page_id or page_slug is required');
+        if ($id <= 0) throw new InvalidArgumentException('page_id or page_slug is required — call list_pages to discover slugs.');
         return $id;
     }
 
@@ -101,10 +101,10 @@ class RotationTools {
 
     private static function getRotation(array $args): array {
         $id = (int)($args['rotation_id'] ?? 0);
-        if ($id <= 0) throw new InvalidArgumentException('rotation_id is required');
+        if ($id <= 0) throw new InvalidArgumentException('rotation_id is required — call list_rotations for page_id/page_slug to find ids.');
         $model = new ContentRotation();
         $row = $model->getById($id);
-        if (!$row) throw new InvalidArgumentException('Rotation not found');
+        if (!$row) throw new InvalidArgumentException('Rotation not found: ID ' . $id . ' not found. Call list_rotations to discover ids.');
         $row = PageTools::clipRow($row, [
             'content_ru' => 12000, 'content_uz' => 12000,
             'meta_description_ru' => 2000, 'meta_description_uz' => 2000,
@@ -129,7 +129,7 @@ class RotationTools {
             return ['ok' => true, 'page_id' => $pageId, 'selected_rotation_id' => null, 'note' => 'Manual selection cleared — page returns to auto rotation.'];
         }
         if (!$model->setManualRotation($pageId, $rotationId)) {
-            throw new InvalidArgumentException('Rotation not found or does not belong to this page.');
+            throw new InvalidArgumentException('Rotation not found or does not belong to this page (id ' . $rotationId . ' for page_id ' . $pageId . ') — call list_rotations to see valid ids.');
         }
         return ['ok' => true, 'page_id' => $pageId, 'selected_rotation_id' => $rotationId, 'note' => 'Manual rotation pinned.'];
     }

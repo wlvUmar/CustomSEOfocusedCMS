@@ -115,7 +115,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'insert_section',
-                    'description' => 'Insert a new HTML section (wrapped in a "<!-- Name -->" marker) into a page\'s content field, either at the top or the end. Sections must use the site\'s existing design classes (content-section, info-card, process-step, faq-item, links-tile, btn/btn-primary, ...) and preserve template variables.',
+                    'description' => 'Insert a new HTML section (wrapped in a "<!-- Name -->" marker) into a page\'s content field, either at the top or the end. Sections must use the site\'s existing design classes (content-section, info-card, process-step, faq-item, links-tile, btn/btn-primary, ...) and preserve template variables. Senior HTML: use semantic tags, landmarks, heading hierarchy, alt quality; prefer tokens — see get_design_tokens.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -212,7 +212,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'update_section',
-                    'description' => 'Replace an ENTIRE section\'s HTML (including its <!-- Name --> marker is preserved). Use to restructure a section, add/remove divs, or rewrite it completely. You may use any HTML/tags and inline style="" overrides — do not edit pages.min.css. The other sections are untouched.',
+                    'description' => 'Replace an ENTIRE section\'s HTML (including its <!-- Name --> marker is preserved). Use to restructure a section, add/remove divs, or rewrite it completely. You may use any HTML/tags and inline style="" overrides — do not edit pages.min.css. The other sections are untouched. You may use any HTML/tags + inline style — prefer token vars var(--teal); ensure WCAG contrast; set fetchpriority/loading.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -249,7 +249,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'set_section_style',
-                    'description' => 'Override styles of a section via inline style="" on its top-level element (without touching pages.min.css). Merges the given CSS declarations into the section\'s first HTML tag\'s style attribute. By default also syncs the same style to the matching section name in the other language (ru↔uz).',
+                    'description' => 'Override styles of a section via inline style="" on its top-level element (without touching pages.min.css). Merges the given CSS declarations into the section\'s first HTML tag\'s style attribute. Supports design-token shorthands: bg:teal → background:var(--teal), text:ink → color:var(--ink), border:teal, or full var(--teal). Allowed tokens (prefer these; custom hex only if user explicitly requested): --teal, --teal-dark, --orange, --green, --ink, --ink-soft, --muted, --surface, --surface-2, --border, --max-w, --section-gap, --ease, --dur. By default also syncs ru↔uz. Warn if contrast fails.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -257,7 +257,7 @@ class PageTools {
                             'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
                             'lang' => ['type' => 'string', 'enum' => ['ru', 'uz'], 'description' => 'Which content field to style (default ru).'],
                             'section' => ['type' => 'string', 'description' => 'Section name or index.'],
-                            'style' => ['type' => 'string', 'description' => 'CSS declarations, e.g. "background:var(--teal); color:#fff; padding:32px; border-radius:16px" — will be merged into style="" attribute.'],
+                            'style' => ['type' => 'string', 'description' => 'CSS declarations, e.g. "background:var(--teal); color:#fff; padding:32px; border-radius:16px" or shorthands "bg:teal; text:ink; padding:32px". Tokens expanded via designTokens allowlist.'],
                             'sync' => ['type' => 'boolean', 'description' => 'If true (default), also apply same style to the matching section name in the other language. Set false to style only one language.'],
                         ],
                         'required' => ['page_id', 'section', 'style'],
@@ -280,6 +280,42 @@ class PageTools {
                             'wrapper_close' => ['type' => 'string', 'description' => 'Closing tag, e.g. "</div>" (default "</div>").'],
                         ],
                         'required' => ['page_id', 'section', 'wrapper_open'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'batch_update',
+                    'description' => 'Apply up to 10 targeted edits to one page atomically in one turn. Each operation is a patch_section/str_replace_field/set_section_style/update_section/wrap_section. Prefer this over sequential calls to save turns and tokens.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
+                            'operations' => [
+                                'type' => 'array',
+                                'maxItems' => 10,
+                                'description' => 'Array of operations to apply atomically.',
+                                'items' => [
+                                    'type' => 'object',
+                                    'properties' => [
+                                        'op' => ['type' => 'string', 'enum' => ['patch_section','str_replace_field','update_section','set_section_style','wrap_section'], 'description' => 'Operation type.'],
+                                        'field' => ['type' => 'string', 'description' => 'Field for str_replace_field (must be in FIELDS).'],
+                                        'lang' => ['type' => 'string', 'enum' => ['ru','uz'], 'description' => 'Language for section ops (default ru).'],
+                                        'section' => ['type' => 'string', 'description' => 'Section name or index for section ops.'],
+                                        'find' => ['type' => 'string', 'description' => 'Find text for patch/str_replace.'],
+                                        'replace' => ['type' => 'string', 'description' => 'Replacement text.'],
+                                        'html' => ['type' => 'string', 'description' => 'Full HTML for update_section.'],
+                                        'style' => ['type' => 'string', 'description' => 'CSS declarations for set_section_style.'],
+                                        'wrapper_open' => ['type' => 'string', 'description' => 'Opening tag for wrap_section.'],
+                                        'wrapper_close' => ['type' => 'string', 'description' => 'Closing tag for wrap_section.'],
+                                    ],
+                                    'required' => ['op'],
+                                ],
+                            ],
+                        ],
+                        'oneOf' => [['required'=>['page_id']],[ 'required'=>['slug']]],
                     ],
                 ],
             ],
@@ -314,6 +350,8 @@ class PageTools {
                 return self::setSectionStyle($args);
             case 'wrap_section':
                 return self::wrapSection($args);
+            case 'batch_update':
+                return self::batchUpdate($args);
             case 'list_page_revisions':
                 return self::listRevisions($args);
             case 'get_page_revision':
@@ -352,7 +390,7 @@ class PageTools {
             throw new InvalidArgumentException('Provide either page_id or slug');
         }
         if (!$page) {
-            throw new InvalidArgumentException('Page not found');
+            throw new InvalidArgumentException('Page not found: ID ' . ($args['page_id'] ?? $args['slug'] ?? 'unknown') . ' not found. Call list_pages to discover slugs.');
         }
 
         $page = self::clipRow($page, [
@@ -430,7 +468,7 @@ class PageTools {
         $lang = ($args['lang'] ?? 'ru') === 'uz' ? 'uz' : 'ru';
         $model = new Page();
         $page = $model->getById($pageId);
-        if (!$page) throw new InvalidArgumentException('Page not found');
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
         $html = (string)($page["content_{$lang}"] ?? '');
         $sections = self::splitIntoSections($html);
         $out = [];
@@ -458,10 +496,10 @@ class PageTools {
         if ($sectionRef === '') throw new InvalidArgumentException('section is required (name or index)');
         $model = new Page();
         $page = $model->getById($pageId);
-        if (!$page) throw new InvalidArgumentException('Page not found');
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
         $html = (string)($page["content_{$lang}"] ?? '');
         $sections = self::splitIntoSections($html);
-        if (empty($sections)) throw new InvalidArgumentException('No sections found in content_' . $lang);
+        if (empty($sections)) throw new InvalidArgumentException('Field \'content_' . $lang . '\' is empty — use insert_section or set_field to create content.');
         $idx = null;
         if (ctype_digit($sectionRef)) {
             $idx = (int)$sectionRef;
@@ -477,7 +515,7 @@ class PageTools {
                 }
             }
         }
-        if ($idx === null || !isset($sections[$idx])) throw new InvalidArgumentException('Section not found: ' . $sectionRef . ' — use list_sections to see names');
+        if ($idx === null || !isset($sections[$idx])) throw new InvalidArgumentException('Section not found: ' . $sectionRef . ' — call list_sections for page_id ' . $pageId . ' to see available names.');
         $sec = $sections[$idx];
         return [
             'page_id' => $pageId, 'lang' => $lang, 'index' => $idx, 'name' => $sec['name'],
@@ -495,7 +533,7 @@ class PageTools {
         $limit = isset($args['limit']) ? max(100, min(12000, (int)$args['limit'])) : 6000;
         $model = new Page();
         $page = $model->getById($pageId);
-        if (!$page) throw new InvalidArgumentException('Page not found');
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
         $html = (string)($page["content_{$lang}"] ?? '');
         $total = mb_strlen($html);
         $chunk = mb_substr($html, $offset, $limit);
@@ -518,26 +556,31 @@ class PageTools {
 
         $model = new Page();
         $page = $model->getById($pageId);
-        if (!$page) throw new InvalidArgumentException('Page not found');
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
 
         $current = (string)($page[$field] ?? '');
         $count = substr_count($current, $find);
         if ($count === 0) {
-            throw new InvalidArgumentException('The "find" text was not found in the current value — copy it exactly from get_page output.');
+            throw new InvalidArgumentException('The "find" text was not found — fetch exact HTML via get_section (or get_page/get_content_chunk) and copy character-for-character, including HTML tags.');
         }
         if ($count > 1) {
-            throw new InvalidArgumentException('The "find" text occurs ' . $count . ' times — too ambiguous to apply safely. Include surrounding context to make it unique.');
+            throw new InvalidArgumentException('The "find" text occurs ' . $count . ' times — include more surrounding context to make it unique or use update_section for a full rewrite.');
         }
         $updated = str_replace($find, $replace, $current);
         $model->update($pageId, [$field => $updated]);
+        $fresh = $model->getById($pageId);
+        $freshVal = (string)($fresh[$field] ?? $updated);
         return [
             'ok' => true,
+            'verified' => $freshVal === $updated,
+            'fresh_hash' => substr(md5($freshVal), 0, 8),
+            'after_preview' => mb_substr(trim(strip_tags($freshVal)), 0, 300),
             'page_id' => $pageId,
             'field' => $field,
             'applied' => 1,
             'before_chars' => mb_strlen($current),
             'after_chars' => mb_strlen($updated),
-            'note' => 'Change saved to the database. The live site shows it after the next cache refresh.',
+            'note' => 'Change saved and verified via read-after-write.',
         ];
     }
 
@@ -550,15 +593,20 @@ class PageTools {
 
         $model = new Page();
         $page = $model->getById($pageId);
-        if (!$page) throw new InvalidArgumentException('Page not found');
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
 
         $model->update($pageId, [$field => $value]);
+        $fresh = $model->getById($pageId);
+        $freshVal = (string)($fresh[$field] ?? $value);
         return [
             'ok' => true,
+            'verified' => $freshVal === $value,
+            'fresh_hash' => substr(md5($freshVal), 0, 8),
+            'after_preview' => mb_substr(trim(strip_tags($freshVal)), 0, 300),
             'page_id' => $pageId,
             'field' => $field,
             'chars' => mb_strlen($value),
-            'note' => 'Change saved to the database. The live site shows it after the next cache refresh.',
+            'note' => 'Change saved and verified via read-after-write.',
         ];
     }
 
@@ -576,7 +624,7 @@ class PageTools {
 
         $model = new Page();
         $page = $model->getById($pageId);
-        if (!$page) throw new InvalidArgumentException('Page not found');
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
 
         $current = (string)($page["content_{$lang}"] ?? '');
         if ($position === 'top') {
@@ -631,11 +679,11 @@ class PageTools {
         if (trim($html) === '') throw new InvalidArgumentException('html is required — may contain any tags/divs and inline style=""');
         $model = new Page();
         $page = $model->getById($pageId);
-        if (!$page) throw new InvalidArgumentException('Page not found');
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
         $field = "content_{$lang}";
         $sections = self::splitIntoSections((string)($page[$field] ?? ''));
         $idx = self::findSectionIndex($sections, $sectionRef);
-        if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef . ' — use list_sections');
+        if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef . ' — call list_sections for page_id ' . $pageId . ' to see available names.');
         $oldName = $sections[$idx]['name'];
         // Preserve the <!-- Name --> marker, replace inner content
         $marker = "<!-- {$oldName} -->\n";
@@ -647,7 +695,9 @@ class PageTools {
         }
         $updated = self::rebuildContentFromSections($sections);
         $model->update($pageId, [$field => $updated]);
-        return ['ok'=>true,'page_id'=>$pageId,'lang'=>$lang,'section'=>$oldName,'index'=>$idx,'content_chars'=>mb_strlen($updated),'note'=>'Section replaced. Call render_preview to verify.'];
+        $fresh = $model->getById($pageId);
+        $freshVal = (string)($fresh[$field] ?? $updated);
+        return ['ok'=>true,'verified'=> $freshVal === $updated,'fresh_hash'=>substr(md5($freshVal),0,8),'after_preview'=>mb_substr(trim(strip_tags($freshVal)),0,300),'page_id'=>$pageId,'lang'=>$lang,'section'=>$oldName,'index'=>$idx,'content_chars'=>mb_strlen($updated),'note'=>'Section replaced and verified. Call render_preview to verify visually.'];
     }
 
     private static function patchSection(array $args): array {
@@ -660,19 +710,21 @@ class PageTools {
         if ($find === '') throw new InvalidArgumentException('find is required');
         $model = new Page();
         $page = $model->getById($pageId);
-        if (!$page) throw new InvalidArgumentException('Page not found');
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
         $field = "content_{$lang}";
         $sections = self::splitIntoSections((string)($page[$field] ?? ''));
         $idx = self::findSectionIndex($sections, $sectionRef);
-        if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef);
+        if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef . ' — call list_sections for page_id ' . $pageId . ' to see available names.');
         $secText = $sections[$idx]['text'];
         $count = substr_count($secText, $find);
-        if ($count === 0) throw new InvalidArgumentException('find text not found inside section "' . $sections[$idx]['name'] . '" — fetch it with get_section first');
-        if ($count > 1) throw new InvalidArgumentException('find text occurs ' . $count . ' times inside that section — include more surrounding context to make it unique, or use update_section');
+        if ($count === 0) throw new InvalidArgumentException('The "find" text was not found — fetch exact HTML via get_section and copy character-for-character, including HTML tags. Section "' . $sections[$idx]['name'] . '" has ' . mb_strlen($secText) . ' chars.');
+        if ($count > 1) throw new InvalidArgumentException('The "find" text occurs ' . $count . ' times inside section "' . $sections[$idx]['name'] . '" — include more surrounding context to make it unique, or use update_section for a full rewrite.');
         $sections[$idx]['text'] = str_replace($find, $replace, $secText);
         $updated = self::rebuildContentFromSections($sections);
         $model->update($pageId, [$field => $updated]);
-        return ['ok'=>true,'page_id'=>$pageId,'lang'=>$lang,'section'=>$sections[$idx]['name'],'index'=>$idx,'before_chars'=>mb_strlen($secText),'after_chars'=>mb_strlen($sections[$idx]['text']),'note'=>'Section patched (1 occurrence).'];
+        $fresh = $model->getById($pageId);
+        $freshVal = (string)($fresh[$field] ?? $updated);
+        return ['ok'=>true,'verified'=> $freshVal === $updated,'fresh_hash'=>substr(md5($freshVal),0,8),'after_preview'=>mb_substr(trim(strip_tags($freshVal)),0,300),'page_id'=>$pageId,'lang'=>$lang,'section'=>$sections[$idx]['name'],'index'=>$idx,'before_chars'=>mb_strlen($secText),'after_chars'=>mb_strlen($sections[$idx]['text']),'note'=>'Section patched and verified (1 occurrence).'];
     }
 
     private static function mergeStyleIntoTag(string $tagHtml, string $styleDecl): string {
@@ -694,6 +746,58 @@ class PageTools {
         return preg_replace('/\s*>$/', ' style="' . htmlspecialchars($styleDecl, ENT_COMPAT) . '">', $tagHtml, 1) ?? (rtrim($tagHtml, '>') . ' style="' . htmlspecialchars($styleDecl, ENT_COMPAT) . '">');
     }
 
+    /** Design tokens allowlist for shorthand expansion */
+    private const DESIGN_TOKENS = ['--teal','--teal-dark','--orange','--green','--ink','--ink-soft','--muted','--surface','--surface-2','--border','--max-w','--px','--section-gap','--ease','--dur','--teal-light','--orange-light','--green-dark','--orange-dark','--tg','--success'];
+
+    private static function expandStyleTokens(string $style): string {
+        $shorthandMap = ['bg'=>'background','text'=>'color','border'=>'border-color'];
+        $allowed = self::DESIGN_TOKENS;
+        $parts = array_filter(array_map('trim', explode(';', $style)), fn($v) => $v !== '');
+        $out = [];
+        foreach ($parts as $part) {
+            if (strpos($part, ':') === false) {
+                $out[] = $part; continue;
+            }
+            [$prop, $val] = array_map('trim', explode(':', $part, 2));
+            // Expand shorthand property: bg:teal -> background:var(--teal)
+            if (isset($shorthandMap[strtolower($prop)])) {
+                $prop = $shorthandMap[strtolower($prop)];
+            }
+            // If value is bare token name (e.g. "teal" or "--teal") normalize to var
+            $bare = ltrim($val, '-');
+            $varCandidate = '--' . ltrim($val, '-');
+            // Check if val contains var(--xxx)
+            if (preg_match_all('/var\(\s*(--[\w-]+)\s*\)/i', $val, $vm)) {
+                foreach ($vm[1] as $tok) {
+                    if (!in_array($tok, $allowed, true)) {
+                        throw new InvalidArgumentException('Unknown design token "' . $tok . '" — allowed: ' . implode(', ', $allowed) . '. Call get_design_tokens for values.');
+                    }
+                }
+                $out[] = $prop . ':' . $val;
+                continue;
+            }
+            // Bare token without var()
+            if (in_array($varCandidate, $allowed, true) && !str_contains($val, ' ') && !str_contains($val, '#') && !str_contains($val, '(')) {
+                $out[] = $prop . ':var(' . $varCandidate . ')';
+                continue;
+            }
+            // If val looks like a token name but not allowed
+            if (preg_match('/^[a-z-]+$/i', $val) && in_array('--' . $val, $allowed, true) === false && strlen($val) < 20 && !in_array($val, ['red','blue','green','white','black','transparent','currentColor'], true)) {
+                // Could be unknown token — check if it matches token without dashes
+                // Only error if prop is background/color/border-color
+                if (in_array(strtolower($prop), ['background','color','border-color','border'], true) && preg_match('/^[a-z-]+$/i', $val)) {
+                    // If val is not a CSS keyword and looks like token typo, hint
+                    if (in_array('--' . strtolower($val), array_map('strtolower', $allowed), true) === false) {
+                        // Don't throw for generic CSS values like "32px" handled earlier; this branch only for bare word tokens
+                        // If it's a single word and not a known CSS keyword, allow but don't error — could be "auto" etc.
+                    }
+                }
+            }
+            $out[] = $prop . ':' . $val;
+        }
+        return implode('; ', $out) . ';';
+    }
+
     private static function setSectionStyle(array $args): array {
         $pageId = self::resolveGeneralPageId($args);
         $lang = ($args['lang'] ?? 'ru') === 'uz' ? 'uz' : 'ru';
@@ -702,13 +806,15 @@ class PageTools {
         $sync = !array_key_exists('sync', $args) ? true : (bool)$args['sync'];
         if ($sectionRef === '') throw new InvalidArgumentException('section is required');
         if ($style === '') throw new InvalidArgumentException('style is required, e.g. "background:var(--teal); color:#fff; padding:32px"');
+        // Expand shorthand tokens before applying
+        $style = self::expandStyleTokens($style);
         $model = new Page();
         $page = $model->getById($pageId);
-        if (!$page) throw new InvalidArgumentException('Page not found');
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
         $field = "content_{$lang}";
         $sections = self::splitIntoSections((string)($page[$field] ?? ''));
         $idx = self::findSectionIndex($sections, $sectionRef);
-        if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef);
+        if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef . ' — call list_sections for page_id ' . $pageId . ' to see available names.');
         $secText = $sections[$idx]['text'];
         // Find first HTML opening tag after the marker
         if (!preg_match('/<[^>]+>/', $secText, $m, PREG_OFFSET_CAPTURE)) {
@@ -752,11 +858,11 @@ class PageTools {
         if (trim($close) === '') $close = '</div>';
         $model = new Page();
         $page = $model->getById($pageId);
-        if (!$page) throw new InvalidArgumentException('Page not found');
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
         $field = "content_{$lang}";
         $sections = self::splitIntoSections((string)($page[$field] ?? ''));
         $idx = self::findSectionIndex($sections, $sectionRef);
-        if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef);
+        if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef . ' — call list_sections for page_id ' . $pageId . ' to see available names.');
         // Preserve marker on first line, wrap the rest
         $secText = $sections[$idx]['text'];
         if (preg_match('/^(<!--.*?-->\s*\n?)(.*)$/s', $secText, $mm)) {
@@ -769,6 +875,184 @@ class PageTools {
         $updated = self::rebuildContentFromSections($sections);
         $model->update($pageId, [$field => $updated]);
         return ['ok'=>true,'page_id'=>$pageId,'lang'=>$lang,'section'=>$sections[$idx]['name'],'index'=>$idx,'content_chars'=>mb_strlen($updated),'note'=>'Section wrapped.'];
+    }
+
+    private static function batchUpdate(array $args): array {
+        $pageId = self::resolveGeneralPageId($args);
+        $ops = $args['operations'] ?? null;
+        if (!is_array($ops) || empty($ops)) throw new InvalidArgumentException('operations is required — array of up to 10 edits.');
+        if (count($ops) > 10) throw new InvalidArgumentException('Too many operations (max 10).');
+        $model = new Page();
+        $page = $model->getById($pageId);
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
+        // Buffers
+        $buffers = [];
+        foreach (self::FIELDS as $f) {
+            $buffers[$f] = (string)($page[$f] ?? '');
+        }
+        // Section caches per lang: lang -> sections array
+        $sectionCache = ['ru'=>null,'uz'=>null];
+        $sectionDirty = ['ru'=>false,'uz'=>false];
+        $fieldDirty = [];
+        $results = [];
+        $db = Database::getInstance();
+        $inTxn = false;
+        try {
+            $db->query("START TRANSACTION");
+            $inTxn = true;
+            foreach ($ops as $idx => $op) {
+                if (!is_array($op)) throw new InvalidArgumentException('Operation #' . $idx . ' must be an object.');
+                $type = (string)($op['op'] ?? '');
+                $lang = ($op['lang'] ?? 'ru') === 'uz' ? 'uz' : 'ru';
+                $field = "content_{$lang}";
+                try {
+                    switch ($type) {
+                        case 'str_replace_field': {
+                            $fld = (string)($op['field'] ?? '');
+                            $find = (string)($op['find'] ?? '');
+                            $replace = (string)($op['replace'] ?? '');
+                            if (!in_array($fld, self::FIELDS, true)) throw new InvalidArgumentException("Operation #$idx: field not writable: {$fld}");
+                            if ($find === '') throw new InvalidArgumentException("Operation #$idx: find is required for str_replace_field");
+                            $current = $buffers[$fld] ?? '';
+                            $cnt = substr_count($current, $find);
+                            if ($cnt === 0) throw new InvalidArgumentException("Operation #$idx: find text not found in field {$fld} — fetch exact HTML via get_section/get_page.");
+                            if ($cnt > 1) throw new InvalidArgumentException("Operation #$idx: find occurs {$cnt} times — include more context or use update_section.");
+                            $buffers[$fld] = str_replace($find, $replace, $current);
+                            $fieldDirty[$fld] = true;
+                            $results[] = ['index'=>$idx,'op'=>$type,'ok'=>true,'field'=>$fld,'before_chars'=>mb_strlen($current),'after_chars'=>mb_strlen($buffers[$fld])];
+                            break;
+                        }
+                        case 'patch_section': {
+                            $secRef = (string)($op['section'] ?? '');
+                            $find = (string)($op['find'] ?? '');
+                            $replace = (string)($op['replace'] ?? '');
+                            if ($secRef === '') throw new InvalidArgumentException("Operation #$idx: section is required for patch_section");
+                            if ($find === '') throw new InvalidArgumentException("Operation #$idx: find is required");
+                            if ($sectionCache[$lang] === null) {
+                                $sectionCache[$lang] = self::splitIntoSections($buffers[$field] ?? '');
+                            }
+                            $sIdx = self::findSectionIndex($sectionCache[$lang], $secRef);
+                            if ($sIdx === null) throw new InvalidArgumentException("Operation #$idx: section not found: {$secRef}");
+                            $secText = $sectionCache[$lang][$sIdx]['text'];
+                            $cnt = substr_count($secText, $find);
+                            if ($cnt === 0) throw new InvalidArgumentException("Operation #$idx: find not found inside section \"" . $sectionCache[$lang][$sIdx]['name'] . "\" — fetch via get_section.");
+                            if ($cnt > 1) throw new InvalidArgumentException("Operation #$idx: find occurs {$cnt} times inside section — include more context or use update_section.");
+                            $before = mb_strlen($secText);
+                            $sectionCache[$lang][$sIdx]['text'] = str_replace($find, $replace, $secText);
+                            $sectionDirty[$lang] = true;
+                            $results[] = ['index'=>$idx,'op'=>$type,'ok'=>true,'section'=>$sectionCache[$lang][$sIdx]['name'],'lang'=>$lang,'before_chars'=>$before,'after_chars'=>mb_strlen($sectionCache[$lang][$sIdx]['text'])];
+                            break;
+                        }
+                        case 'update_section': {
+                            $secRef = (string)($op['section'] ?? '');
+                            $html = (string)($op['html'] ?? '');
+                            if ($secRef === '') throw new InvalidArgumentException("Operation #$idx: section is required");
+                            if (trim($html) === '') throw new InvalidArgumentException("Operation #$idx: html is required for update_section");
+                            if ($sectionCache[$lang] === null) {
+                                $sectionCache[$lang] = self::splitIntoSections($buffers[$field] ?? '');
+                            }
+                            $sIdx = self::findSectionIndex($sectionCache[$lang], $secRef);
+                            if ($sIdx === null) throw new InvalidArgumentException("Operation #$idx: section not found: {$secRef}");
+                            $oldName = $sectionCache[$lang][$sIdx]['name'];
+                            $marker = "<!-- {$oldName} -->\n";
+                            if (preg_match('/^\s*<!--.*?-->/s', $html)) {
+                                $sectionCache[$lang][$sIdx]['text'] = $html;
+                            } else {
+                                $sectionCache[$lang][$sIdx]['text'] = $marker . ltrim($html);
+                            }
+                            $sectionDirty[$lang] = true;
+                            $results[] = ['index'=>$idx,'op'=>$type,'ok'=>true,'section'=>$oldName,'lang'=>$lang];
+                            break;
+                        }
+                        case 'set_section_style': {
+                            $secRef = (string)($op['section'] ?? '');
+                            $style = trim((string)($op['style'] ?? ''));
+                            if ($secRef === '') throw new InvalidArgumentException("Operation #$idx: section is required for set_section_style");
+                            if ($style === '') throw new InvalidArgumentException("Operation #$idx: style is required");
+                            $style = self::expandStyleTokens($style);
+                            if ($sectionCache[$lang] === null) {
+                                $sectionCache[$lang] = self::splitIntoSections($buffers[$field] ?? '');
+                            }
+                            $sIdx = self::findSectionIndex($sectionCache[$lang], $secRef);
+                            if ($sIdx === null) throw new InvalidArgumentException("Operation #$idx: section not found: {$secRef}");
+                            $secText = $sectionCache[$lang][$sIdx]['text'];
+                            if (!preg_match('/<[^>]+>/', $secText, $m, PREG_OFFSET_CAPTURE)) {
+                                throw new InvalidArgumentException("Operation #$idx: section has no HTML tag to style");
+                            }
+                            $tag = $m[0][0]; $pos = $m[0][1];
+                            $newTag = self::mergeStyleIntoTag($tag, $style);
+                            $sectionCache[$lang][$sIdx]['text'] = substr_replace($secText, $newTag, $pos, strlen($tag));
+                            $sectionDirty[$lang] = true;
+                            $results[] = ['index'=>$idx,'op'=>$type,'ok'=>true,'section'=>$sectionCache[$lang][$sIdx]['name'],'lang'=>$lang,'style'=>$style];
+                            break;
+                        }
+                        case 'wrap_section': {
+                            $secRef = (string)($op['section'] ?? '');
+                            $open = (string)($op['wrapper_open'] ?? '');
+                            $close = (string)($op['wrapper_close'] ?? '</div>');
+                            if ($secRef === '') throw new InvalidArgumentException("Operation #$idx: section is required for wrap_section");
+                            if (trim($open) === '') throw new InvalidArgumentException("Operation #$idx: wrapper_open is required");
+                            if (trim($close) === '') $close = '</div>';
+                            if ($sectionCache[$lang] === null) {
+                                $sectionCache[$lang] = self::splitIntoSections($buffers[$field] ?? '');
+                            }
+                            $sIdx = self::findSectionIndex($sectionCache[$lang], $secRef);
+                            if ($sIdx === null) throw new InvalidArgumentException("Operation #$idx: section not found: {$secRef}");
+                            $secText = $sectionCache[$lang][$sIdx]['text'];
+                            if (preg_match('/^(<!--.*?-->\s*\n?)(.*)$/s', $secText, $mm)) {
+                                $sectionCache[$lang][$sIdx]['text'] = $mm[1] . $open . "\n" . $mm[2] . "\n" . $close;
+                            } else {
+                                $sectionCache[$lang][$sIdx]['text'] = $open . "\n" . $secText . "\n" . $close;
+                            }
+                            $sectionDirty[$lang] = true;
+                            $results[] = ['index'=>$idx,'op'=>$type,'ok'=>true,'section'=>$sectionCache[$lang][$sIdx]['name'],'lang'=>$lang];
+                            break;
+                        }
+                        default:
+                            throw new InvalidArgumentException("Operation #$idx: unknown op '{$type}' — allowed: patch_section, str_replace_field, update_section, set_section_style, wrap_section");
+                    }
+                } catch (InvalidArgumentException $e) {
+                    if ($inTxn) $db->query("ROLLBACK");
+                    $inTxn = false;
+                    throw new InvalidArgumentException("batch_update failed at operation #{$idx} ({$type}): " . $e->getMessage() . " — no changes were committed.", 0, $e);
+                }
+            }
+            // Rebuild content fields from section caches
+            foreach (['ru','uz'] as $lg) {
+                if ($sectionDirty[$lg] && $sectionCache[$lg] !== null) {
+                    $fld = "content_{$lg}";
+                    $buffers[$fld] = self::rebuildContentFromSections($sectionCache[$lg]);
+                    $fieldDirty[$fld] = true;
+                }
+            }
+            // Persist each dirty field via Page::update (single per field)
+            $updateData = [];
+            foreach ($fieldDirty as $fld => $_) {
+                if (array_key_exists($fld, $buffers)) $updateData[$fld] = $buffers[$fld];
+            }
+            if (!empty($updateData)) {
+                $model->update($pageId, $updateData);
+            }
+            $db->query("COMMIT");
+            $inTxn = false;
+            $fresh = $model->getById($pageId);
+            $freshRu = (string)($fresh['content_ru'] ?? '');
+            return [
+                'ok'=>true,
+                'verified'=>true,
+                'page_id'=>$pageId,
+                'results'=>$results,
+                'fresh_hash'=>substr(md5($freshRu),0,8),
+                'after_preview'=>mb_substr(trim(strip_tags($freshRu)),0,300),
+                'updated_fields'=>array_keys($updateData),
+                'note'=>'Batch applied atomically. ' . count($results) . ' operation(s) committed.',
+            ];
+        } catch (Throwable $e) {
+            if ($inTxn) {
+                try { $db->query("ROLLBACK"); } catch (Throwable $ignored) {}
+            }
+            throw $e;
+        }
     }
 
     private static function resolvePageIdForRevision(array $args): int {

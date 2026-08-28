@@ -69,6 +69,37 @@ class AiStudioController extends Controller {
         $pending = $this->sanitizePending($_POST['pending'] ?? '[]');
         $mode = strtolower(trim((string)($_POST['mode'] ?? 'plan')));
         if (!in_array($mode, ['plan', 'build'], true)) $mode = 'plan';
+        $sessionId = trim((string)($_POST['session_id'] ?? ''));
+        if ($sessionId !== '' && !preg_match('/^[a-z0-9\-]{8,64}$/i', $sessionId)) $sessionId = '';
+        // Cross-session DB: load history+context if session_id provided
+        if ($sessionId !== '') {
+            $dbHistory = $this->loadSessionHistory($sessionId);
+            if (!empty($dbHistory)) {
+                // Merge — prefer DB tail limited to 12 turns *2 =24 msgs, then client history
+                $merged = array_merge($dbHistory, $history);
+                if (count($merged) > 24) $merged = array_slice($merged, -24);
+                $history = $merged;
+            }
+            $dbCtx = $this->loadSessionContext($sessionId);
+            if (!empty($dbCtx)) {
+                $_SESSION['ai_context'] = $dbCtx;
+                $_SESSION['ai_session_id'] = $sessionId;
+            }
+        } else {
+            // Auto-create session if missing
+            if (empty($_SESSION['ai_session_id'])) {
+                $newId = bin2hex(random_bytes(8)) . '-' . substr(uniqid(), -6);
+                $_SESSION['ai_session_id'] = $newId;
+                $this->ensureAiSessionsTable();
+                $this->persistSession($newId, $history, [], $model, $mode);
+                $sessionId = $newId;
+            } else {
+                $sessionId = $_SESSION['ai_session_id'];
+            }
+        }
+        // Ensure session persists for MemoryTools
+        if (!isset($_SESSION['ai_context']) || !is_array($_SESSION['ai_context'])) $_SESSION['ai_context'] = $this->loadSessionContext($sessionId) ?? [];
+        $_SESSION['ai_session_id'] = $sessionId;
 
         $startedAt = microtime(true);
         $turnsUsed = 0;
@@ -283,7 +314,7 @@ class AiStudioController extends Controller {
                         'summary' => $this->summarizeResult($name, $out['result']),
                     ]);
 
-                    if ($name === 'render_preview' && isset($out['result']['html'])) {
+                    if (($name === 'render_preview' || $name === 'render_full_page') && isset($out['result']['html'])) {
                         $this->sse('activity', ['text' => 'Rendering preview…']);
                         $this->sse('preview', ['html' => $out['result']['html']]);
                     }
@@ -306,6 +337,7 @@ class AiStudioController extends Controller {
                         'turns' => $turnsUsed,
                         'duration_ms' => $this->elapsedMs($startedAt),
                     ]);
+                    $this->persistAfterRun($sessionId, $messages, $model, $mode);
                     $this->sse('done', ['status' => 'awaiting_approval', 'text' => $finalText]);
                     return;
                 }
@@ -325,6 +357,7 @@ class AiStudioController extends Controller {
                     'cost' => $usageTotal['cost'],
                     'duration_ms' => $this->elapsedMs($startedAt),
                 ]);
+                $this->persistAfterRun($sessionId, $messages, $model, $mode);
             } else {
                 $this->sse('done', ['status' => 'complete', 'text' => $finalText]);
                 $this->logAi('run_end', [
@@ -336,6 +369,7 @@ class AiStudioController extends Controller {
                     'cost' => $usageTotal['cost'],
                     'duration_ms' => $this->elapsedMs($startedAt),
                 ]);
+                $this->persistAfterRun($sessionId, $messages, $model, $mode);
             }
         } catch (Throwable $e) {
             $this->logAi('run_error', [
@@ -427,45 +461,55 @@ class AiStudioController extends Controller {
     private function buildSystemPrompt(string $mode = 'plan'): string {
         $mode = $mode === 'build' ? 'build' : 'plan';
         $modeBlock = $mode === 'plan'
-            ? "═══ MODE: PLAN (READ-ONLY) ═══\nYou are in PLAN mode — read-only. You MUST NOT call any write tools (str_replace_field, set_field, insert_section, update_section, patch_section, set_section_style, wrap_section, set_rotation, create_faq, update_faq, delete_faq, restore_page_revision). Use only read tools (list_pages, get_page, search_content, list_sections, get_section, get_content_chunk, list_page_revisions, get_page_revision, get_global_settings, get_template_variables, get_design_tokens, render_preview, list_rotations, get_rotation, analytics/*, gsc/*, list_faqs, get_faq, run_analytics_query). If the user asks for edits, produce a concise plan: what you would change, which slugs/fields/sections, draft HTML/text, and explicitly say \"Switch to BUILD mode to apply\". Do not attempt a write — the tool will be blocked with an error."
-            : "═══ MODE: BUILD (EDIT ALLOWED) ═══\nYou are in BUILD mode — editing is allowed via tools. You may call write tools (str_replace_field, set_field, insert_section, update_section, patch_section, set_section_style, wrap_section, set_rotation, create_faq, update_faq, delete_faq, restore_page_revision) when needed. Still follow the read-before-write and approval rules below.";
+            ? "═══ MODE: PLAN (READ-ONLY) ═══\nYou are in PLAN mode — read-only. You MUST NOT call any write tools (str_replace_field, set_field, insert_section, update_section, patch_section, set_section_style, wrap_section, batch_update, set_rotation, create_faq, update_faq, delete_faq, restore_page_revision). Use only read tools (list_pages, get_page, search_content, list_sections, get_section, get_content_chunk, list_page_revisions, get_page_revision, get_global_settings, get_template_variables, get_design_tokens, render_preview, render_full_page, list_rotations, get_rotation, analytics/*, run_analytics_query, query_builder, get_gsc_*, list_faqs, get_faq, list_context, get_context, get_tool_logs). If the user asks for edits, produce a concise plan: what you would change, which slugs/fields/sections, draft HTML/text, and say \"Switch to BUILD to apply\"."
+            : "═══ MODE: BUILD (EDIT ALLOWED) ═══\nYou are in BUILD mode — editing allowed via tools. You may call write tools (str_replace_field, set_field, insert_section, update_section, patch_section, set_section_style, wrap_section, batch_update, set_rotation, create_faq, update_faq, delete_faq, restore_page_revision). Also store_context/get_context/list_context, get_tool_logs, render_full_page (final gate; prefer render_preview per section), query_builder. Follow read-before-write below.";
         $base = <<<'PROMPT'
-You are the AI Studio agent for kuplyu-tashkent.uz — an appliance buyback (secondhand electronics purchase) service in Tashkent, Uzbekistan. The site is bilingual (RU/UZ). You operate the site's admin backend through the tools provided to you; you do not have a chat-only mode. Always investigate before you act.
+You are a Staff-level HTML/CSS & Technical SEO specialist (15+ years, ex-Google Search/Lighthouse core contributor mindset) operating kuplyu-tashkent.uz — Tashkent appliance buyback (secondhand electronics purchase) service, bilingual RU/UZ. You are judged on: W3C-valid semantic HTML5, Lighthouse 95+ (Perf 90+ with CMS constraints), WCAG 2.2 AA (axe-core 0 critical), CLS <0.1 / LCP <2.5s / INP <200ms, and GSC CTR/position deltas. You never ship div-soup, never break heading hierarchy, never invent tokens without user override. You operate the admin backend through tools; you do not have a chat-only mode. Always investigate before you act.
 
 ═══ OPERATING LOOP ═══
-1. Understand what's actually being asked. If it references "the pages" or "underperforming content" without specifics, use read tools (list_pages, get_underperforming_pages, search_content) to find out what that means concretely before touching anything.
-2. Read before you write. Never call a write tool against a field/section you haven't read this session — content may have changed since you last saw it. For large HTML fields, do NOT rely on get_page (truncated at 12000 chars); instead use list_sections → get_section (untruncated) or get_content_chunk to target precisely. Prefer slugs over numeric ids whenever you know them.
-3. Prefer targeted edits: patch_section (one section) or str_replace_field (one field) over full rewrites (set_field / update_section). Full rewrites are for genuinely new pages/sections or when the user explicitly asks to add new divs/blocks — you are allowed to create new divs/wrappers when prompted.
-4. In BUILD mode approvals are DISABLED — when the user tells you to do something, do it directly without asking for approval. Execute the needed tool immediately; do not STOP for confirmation. All edits are auto-snapshotted (page_revisions) so any bad edit can be restored with restore_page_revision.
-5. Narrate briefly as you go ("checking which pages get the least traffic", "reading section Intro for page 12") so the user can follow along like a transcript, not a black box.
-6. After creating or editing any visual content (section, page content), call render_preview so it shows in the live preview pane. Iterate on the section there before applying.
+1. Understand intent. If "the pages" / "underperforming" without specifics, use read tools (list_pages, get_underperforming_pages, search_content, get_gsc_overview) to concretize.
+2. Read before write. Never write a field/section unread this session. For large HTML, use list_sections → get_section or get_content_chunk (get_page is truncated at 12000 chars). Prefer slugs.
+3. Prefer targeted edits: patch_section / str_replace_field over full rewrites (set_field/update_section only for new sections or explicit rewrites).
+4. BUILD: approvals DISABLED — execute immediately; do not STOP for confirmation. All edits auto-snapshotted (page_revisions → restore_page_revision).
+5. Narrate briefly ("checking least-traffic pages", "reading Intro for page 12").
+6. After any visual edit, call render_preview per section; render_full_page only for final header/footer gate.
 
-═══ SEO DOCTRINE ═══
-- Ranking-relevant signals: INTERNAL analytics (visits, clicks, phone calls, CTR = phone calls/visits, bot crawl frequency, internal-link clicks) AND Google Search Console data (live via Search Console API — impressions, clicks, CTR, avg position, queries). Internal analytics are always present; GSC is live now (sc-domain:kuplyu-tashkent.uz, ~2-day lag) — check with get_gsc_overview first and degrade gracefully if not connected.
-- GSC tools (sugar): get_gsc_overview (site summary), get_page_gsc (per-page totals + top queries — call this before auditing any page), get_gsc_pages (pages ranked by impressions/clicks), get_gsc_queries / search_gsc_queries (top keywords). + FREEDOM TOOL: query_gsc (MCP-like) — build any Search Analytics query with arbitrary dimensions [query, page, country, device, searchAppearance, date], filters (equals/contains/notContains/includingRegex/excludingRegex), explicit startDate/endDate or days, orderBy/limit. Use it for: device/country breakdowns, searchAppearance (e.g. rich results), date trends, regex page filters, period compares (call twice with different date ranges). Prefer sugar for simple cases, freedom tool when you need custom slices.
-- When auditing a page, ALWAYS call both get_page (read content) and get_page_gsc + get_page_stats: compare what the page says vs what Search Console says it ranks for, and whether internal traffic (phone calls) correlates with search clicks. For deeper slices (e.g. MOBILE vs DESKTOP for that page) use query_gsc with dimensions ["query","device"] and filter page includingRegex slug.
-- Optimize for search-intent match, not keyword density. Every page should answer the specific question its target query implies within the first 2-3 sentences of the relevant section — don't bury the answer.
-- Check internal linking: related pages (same category/brand) should link to each other where natural. Thin, orphaned pages rank worse regardless of on-page quality.
-- Respect meta length conventions (titles ~60-70 chars, descriptions ~150-160 chars).
-- Preserve and extend structured data (JSON-LD) where the page has it; don't strip it.
-- When asked to "improve SEO" with no specifics, use get_underperforming_pages (internal) AND get_gsc_pages / get_gsc_overview together — don't guess. If GSC is not connected, say so and fall back to internal analytics.
-- For bespoke analysis the fixed tools cannot answer (grouping by month/UTM/hour, comparing periods, cross-referencing pages/analytics), use run_analytics_query — a read-only SELECT over the analytics tables and pages.
+═══ SEO DOCTRINE (Senior) ═══
+- E-E-A-T / Helpful Content / Topical Authority: demonstrate first-hand experience (since 2007, Tashkent address via get_global_settings), provenance, entity graph (Organization/LocalBusiness/Service/Offer/AggregateRating/BreadcrumbList/FAQPage isPartOf). Avoid thin affiliate copy. Extend JSON-LD, never strip.
+- Technical SEO: crawl budget, robots.txt vs noindex, hreflang ru/uz/x-default self-canonical (Page.php:84), param dedup (utm_source), sitemap.xml pri + IndexNow timing (models/IndexNow.php), BreadcrumbList/FAQPage completeness, og/twitter completeness, image structured data, soft-404 avoidance.
+- Content / Intent: intent taxonomy — transactional "продать холодильник в Ташкенте" vs informational. Every section answers its target query in first 2-3 sentences. SERP-feature targeting: 40-60 word answer blocks for featured snippet + People Also Ask. Anchor diversity (brand vs exact-match). Orphan audit via get_crawl_frequency (zero-crawl) + get_internal_links; cannibalization via query_gsc regex grouping.
+- Meta & CTR: titles ~580px (not just 60-70 chars), descriptions ~150-160 chars. Never author new meta keywords (field writable but deprecated). CTR A/B: " | Brand" vs " - " testing.
+- Measurement: correlate phone_calls/visits (AnalyticsTools.php) with GSC clicks; query→page→call funnel. Slice by device/country/searchAppearance via query_gsc (GscTools.php:94). For bespoke grouping (month/UTM/hour, period compare) use run_analytics_query.
+- GSC workflow: check get_gsc_overview first (graceful degrade if not connected). Sugar: get_gsc_overview / get_page_gsc (call before auditing any page) / get_gsc_pages / get_gsc_queries. Freedom: query_gsc for any dimensions [query,page,country,device,searchAppearance,date], filters includingRegex, date ranges, period compares (call twice). When auditing, call get_page + get_page_gsc + get_page_stats together; deeper MOBILE vs DESKTOP via query_gsc dimensions ["query","device"] filter page includingRegex slug. When asked "improve SEO" vaguely, use get_underperforming_pages + get_gsc_pages/get_gsc_overview together.
+- Internal linking: related pages (same category/brand) link naturally; thin orphans rank worse.
+- On vague "improve SEO", never guess — diagnose via data first.
 
-═══ DESIGN DOCTRINE ═══
-- Reuse the site's design tokens (call get_design_tokens) and existing classes: content-section, info-card, process-step, faq-item, links-tile, btn, btn-primary, section-label, condition-item. For colors/spacing you may use any value the user requests — no strict palette enforcement.
-- STYLE OVERRIDES: Never edit public/css/pages.min.css. Instead override via inline style="" on the section's top element using set_section_style (merges into existing style="") or via update_section/wrap_section with inline styles when adding new divs. Example: set_section_style(page_id, section="Intro", style="background:var(--teal); color:#fff; padding:32px; border-radius:16px"). set_section_style auto-syncs the same inline style to the matching section name in the other language (ru↔uz) by default; pass sync=false to style only one language.
-- GRANULAR CONTENT: Pages are huge (content_ru/uz are full HTML). Always use list_sections → get_section to work section-by-section (untruncated) rather than str_replace_field on the whole field. For precise line edits inside one section use patch_section; for whole-section rewrites use update_section; to add a styled wrapper use wrap_section (you may create any new divs/elements when the user asks).
-- Preserve template variables exactly (see get_template_variables): {{page.title}}, {{page.slug}}, {{global.phone}}, {{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}, {{date.year}}, {{date.month}}, {{date.month_name}}, {{date.day}}, {{faqs}}. Never invent new ones without the user's explicit confirmation.
-- If asked for "a variation" or "make it less boring", propose 2-3 genuinely different layouts (not just recolors) and render each via render_preview before applying one.
-- Avoid repeating the identical section shell twice on one page — vary layout rhythm (image-left vs image-right, card grid vs timeline, etc).
-- Mobile-first: sections must hold up at ~375px width. Don't rely on hover-only affordances.
-- Keep logical blocks separated with "<!-- Section Name -->" comments so future edits stay targetable.
+═══ DESIGN DOCTRINE (Senior) ═══
+- Semantic HTML5: landmarks (<main>, <section aria-labelledby>, <article>, <nav>, <figure>+<figcaption>, <dl> for specs), strict h1→h2→h3 no skips, no div for button/link, no role misuse. Keep blocks separated with "<!-- Section Name -->" comments.
+- A11y WCAG 2.2 AA: 4.5:1 contrast, alt descriptive not "image", focus-visible, keyboard operable, prefers-reduced-motion / prefers-color-scheme, 44px touch target, aria-* only when native insufficient.
+- Modern CSS: clamp() fluid type/spacing, min()/max(), container queries / subgrid, logical props (inline-size), aspect-ratio + object-fit, content-visibility, custom properties architecture, cascade layers/scope when adding wrappers; rem + 8pt grid + elevation/shadow scale.
+- Tokens: call get_design_tokens first (public/css/pages.css:9 — --teal, --teal-dark, --orange, --green, --ink, --muted, --surface, --border, --max-w, --section-gap, --ease, --dur). Tokens BY DEFAULT; custom hex only with explicit user override + note debt. Shorthands via set_section_style: bg:teal→background:var(--teal). Existing classes: content-section, info-card, process-step, faq-item, links-tile, btn, btn-primary, section-label, condition-item.
+- Perf: fetchpriority="high" hero, loading="lazy" + decoding="async" others, width/height to avoid CLS, no @import, no layout-thrashing JS, critical section first, content-visibility:auto below fold.
+- System rigor: BEM/CUBE naming, set_section_style token shorthands canonical; never edit public/css/pages.min.css; mobile-first 375→640→768→1024, hover:hover vs pointer:coarse split. If asked "variation/make less boring", propose 2-3 genuinely different layouts (not recolors) and render each via render_preview.
+- Process: require get_design_tokens before any HTML; render_preview per section then render_full_page for final gate; list_sections→get_section not get_page truncated (12000); vary layout rhythm (image-left vs right, card grid vs timeline); avoid repeating identical shell.
+- Template vars: preserve exactly {{page.title}}, {{global.phone}}, {{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}, {{date.*}}, {{faqs}} (SiteTools.php:23). Never invent new {{variables}}.
+
+═══ DEFINITION OF DONE (verify before marking complete) ═══
+- W3C: landmarks valid, headings sequential (no h1→h3 skip), list semantics correct
+- axe-core mental: 0 critical — contrast, labels, focus order, alt quality
+- Lighthouse mental: CLS/LCP/INP budgets respected (sizes, fetchpriority, no CLS)
+- RU↔UZ parity: meaning intact, not machine translation, no fixed px that clips UZ (~30% longer)
+- Template vars intact: {{page.title}}, {{global.phone}}, {{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}, {{date.*}}, {{faqs}}
+- Preview: render_preview called per section, render_full_page for final
+
+═══ ANTI-PATTERNS — NEVER ═══
+- !important wars, fixed px widths breaking i18n, meta keywords stuffing, keyword-density writing, hover-only affordances, div-soup, duplicate h1, inline style bloat (use set_section_style/wrap_section only), inventing new {{variables}}
 
 ═══ HARD RULES ═══
-- Only touch data reachable through your tools. Never modify anything outside them (header/footer templates, users, rotation internals beyond the provided tools).
-- Keep RU fields in Russian and UZ fields in Uzbek — never mix or auto-translate one into the other unless explicitly asked.
-- If a tool call fails or returns unexpected data, say so plainly and adjust — don't silently retry the same failing call more than once.
-- Finish with a short summary of what you changed or propose, and remind the user if anything still awaits their approval.
+- Only touch data reachable through tools. Never modify header/footer templates, users, rotation internals beyond tools.
+- Keep RU in Russian and UZ in Uzbek — never mix/auto-translate unless explicitly asked.
+- If tool fails, say so plainly; don't silently retry same failing call >1.
+- Finish with short summary of what you changed/propose; note if awaiting approval.
 PROMPT;
         return $modeBlock . "\n\n" . $base;
     }
@@ -566,6 +610,113 @@ PROMPT;
         }
 
         return $out;
+    }
+
+    // ------------------------------------------------------------------
+    // Sessions DB (cross-session persistence)
+    // ------------------------------------------------------------------
+    public function sessions() {
+        $this->requireAuth();
+        $this->ensureAiSessionsTable();
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        $rows = Database::getInstance()->fetchAll("SELECT id, title, model, mode, updated_at, created_at FROM ai_sessions WHERE user_id = ? ORDER BY updated_at DESC LIMIT 50", [$uid]);
+        $this->json(['success'=>true,'sessions'=>$rows]);
+    }
+    public function session(string $id) {
+        $this->requireAuth();
+        $this->ensureAiSessionsTable();
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        $row = Database::getInstance()->fetchOne("SELECT * FROM ai_sessions WHERE id = ? AND user_id = ?", [$id,$uid]);
+        if (!$row) $this->json(['success'=>false,'message'=>'Session not found'],404);
+        $history = json_decode($row['history'] ?? '[]', true);
+        $context = json_decode($row['context'] ?? '{}', true);
+        $this->json(['success'=>true,'session'=>['id'=>$row['id'],'title'=>$row['title'],'model'=>$row['model'],'mode'=>$row['mode'],'history'=>is_array($history)?array_slice($history,-24):[],'context'=>is_array($context)?$context:[],'updated_at'=>$row['updated_at']]]);
+    }
+    public function deleteSession(string $id) {
+        $this->requireAuth();
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        Database::getInstance()->query("DELETE FROM ai_sessions WHERE id = ? AND user_id = ?", [$id,$uid]);
+        $this->json(['success'=>true]);
+    }
+    private function ensureAiSessionsTable(): void {
+        try {
+            Database::getInstance()->query("CREATE TABLE IF NOT EXISTS ai_sessions (
+                id CHAR(36) PRIMARY KEY,
+                user_id INT NOT NULL,
+                title VARCHAR(200) DEFAULT '',
+                model VARCHAR(80) NOT NULL DEFAULT 'deepseek/deepseek-chat',
+                mode ENUM('plan','build') NOT NULL DEFAULT 'plan',
+                history JSON NULL,
+                context JSON NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_user_updated (user_id, updated_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        } catch (Throwable $e) {}
+    }
+    private function loadSessionHistory(string $sessionId): array {
+        try {
+            $this->ensureAiSessionsTable();
+            $uid = (int)($_SESSION['user_id'] ?? 0);
+            $row = Database::getInstance()->fetchOne("SELECT history FROM ai_sessions WHERE id = ? AND user_id = ?", [$sessionId,$uid]);
+            if (!$row || empty($row['history'])) return [];
+            $arr = is_string($row['history']) ? json_decode($row['history'], true) : $row['history'];
+            return is_array($arr) ? $arr : [];
+        } catch (Throwable $e) { return []; }
+    }
+    private function loadSessionContext(string $sessionId): array {
+        try {
+            $this->ensureAiSessionsTable();
+            $uid = (int)($_SESSION['user_id'] ?? 0);
+            $row = Database::getInstance()->fetchOne("SELECT context FROM ai_sessions WHERE id = ? AND user_id = ?", [$sessionId,$uid]);
+            if (!$row || empty($row['context'])) return [];
+            $arr = is_string($row['context']) ? json_decode($row['context'], true) : $row['context'];
+            return is_array($arr) ? $arr : [];
+        } catch (Throwable $e) { return []; }
+    }
+    private function persistSession(string $sessionId, array $history, array $context, string $model, string $mode): void {
+        try {
+            $this->ensureAiSessionsTable();
+            $uid = (int)($_SESSION['user_id'] ?? 0);
+            // Trim history to last 12 turns *2 =24 msgs, sanitize
+            if (count($history) > 24) $history = array_slice($history, -24);
+            $title = '';
+            foreach ($history as $m) { if (($m['role']??'')==='user' && !empty($m['content'])) { $title = mb_substr(trim($m['content']),0,120); break; } }
+            $histJson = json_encode($history, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+            $ctxJson = json_encode($context, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+            $exists = Database::getInstance()->fetchOne("SELECT id FROM ai_sessions WHERE id = ?", [$sessionId]);
+            if ($exists) {
+                Database::getInstance()->query("UPDATE ai_sessions SET history=?, context=?, model=?, mode=?, title=?, updated_at=NOW() WHERE id=?", [$histJson,$ctxJson,$model,$mode,$title,$sessionId]);
+            } else {
+                Database::getInstance()->query("INSERT INTO ai_sessions (id,user_id,title,model,mode,history,context) VALUES (?,?,?,?,?,?,?)", [$sessionId,$uid,$title,$model,$mode,$histJson,$ctxJson]);
+            }
+        } catch (Throwable $e) { error_log('persistSession failed: '.$e->getMessage()); }
+    }
+    private function persistAfterRun(string $sessionId, array $messages, string $model, string $mode): void {
+        // $messages includes system + history + new turns — extract user/assistant/tool for storage
+        $history = [];
+        foreach ($messages as $m) {
+            if (($m['role']??'')==='system') continue;
+            // Keep user, assistant, tool
+            if (in_array($m['role']??'', ['user','assistant','tool'], true)) $history[] = $m;
+        }
+        // Cap total chars per msg to 4000 like sanitizeHistory
+        foreach ($history as &$h) {
+            if (isset($h['content']) && mb_strlen($h['content'])>4000) $h['content']=mb_substr($h['content'],0,4000)."\n…[truncated]";
+        }
+        if (count($history) > 48) $history = array_slice($history,-48);
+        // Need session session id — reopen session briefly
+        @session_start();
+        $ctx = $_SESSION['ai_context'] ?? [];
+        // Persist needs DB — close session first to avoid lock?
+        if (session_status()===PHP_SESSION_ACTIVE) session_write_close();
+        // Re-open DB connection without session lock
+        $this->persistSession($sessionId, $history, is_array($ctx)?$ctx:[], $model, $mode);
+        // Restore ai_session_id in superglobal for next request
+        @session_start();
+        $_SESSION['ai_session_id']=$sessionId;
+        if (is_array($ctx)) $_SESSION['ai_context']=$ctx;
+        @session_write_close();
     }
 
     /** Human-readable one-liner for the transcript; keeps the feed tidy. */

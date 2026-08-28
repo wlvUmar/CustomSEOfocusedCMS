@@ -30,7 +30,7 @@ class SiteTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_design_tokens',
-                    'description' => 'The site\'s design tokens parsed from the real stylesheet (public/css/pages.css): colors (--teal, --orange, --green, --ink...), spacing, max width, section gaps, easing. Use these to keep new sections on-brand — do not invent your own color palette.',
+                    'description' => 'The site\'s design tokens parsed from the real stylesheet (public/css/pages.css): colors (--teal, --orange, --green, --ink...), spacing, max width, section gaps, easing. Use these to keep new sections on-brand — do not invent your own color palette. Call this before writing any section; do not invent palette; map bg:teal → background:var(--teal).',
                     'parameters' => ['type' => 'object', 'properties' => []],
                 ],
             ],
@@ -52,6 +52,23 @@ class SiteTools {
                     ],
                 ],
             ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'render_full_page',
+                    'description' => 'Render a full page document with header and footer, using real page data and rotation (if any). Prefer render_preview for per-section iteration; call render_full_page for final header/footer check. Returns HTML with header + content + footer.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id (alternative to slug).'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
+                            'lang' => ['type' => 'string', 'enum' => ['ru', 'uz'], 'description' => 'Language (default ru).'],
+                            'html_override' => ['type' => 'string', 'description' => 'Optional HTML to use instead of stored page content (for previewing unsaved edits).'],
+                            'month' => ['type' => 'integer', 'description' => 'Optional rotation month 1-12 (default current month).'],
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -65,6 +82,8 @@ class SiteTools {
                 return self::designTokens();
             case 'render_preview':
                 return self::renderPreview($args);
+            case 'render_full_page':
+                return self::renderFullPage($args);
         }
         throw new InvalidArgumentException("Unknown tool: {$name}");
     }
@@ -190,8 +209,8 @@ class SiteTools {
 
     private static function renderPreview(array $args): array {
         $html = (string)($args['html'] ?? '');
-        if (trim($html) === '') throw new InvalidArgumentException('html is required');
-        if (mb_strlen($html) > 200 * 1024) throw new InvalidArgumentException('html too large (max 200KB)');
+        if (trim($html) === '') throw new InvalidArgumentException('html is required — pass the HTML fragment you want to preview (e.g. from get_section html).');
+        if (mb_strlen($html) > 200 * 1024) throw new InvalidArgumentException('html too large (max 200KB) — trim content or preview one section at a time via get_section.');
         // Strip scripts and event handlers for preview sandbox XSS hardening (H9).
         $html = (string)preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $html);
         $html = (string)preg_replace('/\bon\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html);
@@ -223,5 +242,103 @@ class SiteTools {
             . '</html>';
 
         return ['html' => $doc, 'chars' => mb_strlen($doc), 'lang' => $lang];
+    }
+
+    private static function renderFullPage(array $args): array {
+        $lang = ($args['lang'] ?? 'ru') === 'uz' ? 'uz' : 'ru';
+        $htmlOverride = isset($args['html_override']) ? (string)$args['html_override'] : null;
+        $month = isset($args['month']) ? max(1, min(12, (int)$args['month'])) : (int)date('n');
+        $page = null;
+        if (!empty($args['page_id'])) {
+            require_once BASE_PATH . '/models/Page.php';
+            $page = (new Page())->getById((int)$args['page_id']);
+        } elseif (!empty($args['slug'])) {
+            require_once BASE_PATH . '/models/Page.php';
+            $page = Database::getInstance()->fetchOne("SELECT * FROM pages WHERE slug = ?", [(string)$args['slug']]);
+            if (!$page) {
+                $page = (new Page())->getBySlug((string)$args['slug']);
+            }
+        } else {
+            throw new InvalidArgumentException('Provide page_id or slug for render_full_page');
+        }
+        if (!$page) throw new InvalidArgumentException('Page not found — call list_pages to discover slugs.');
+        $pageId = (int)$page['id'];
+        $pageSlug = $page['slug'] ?? '';
+        $pageTitle = $page["title_{$lang}"] ?? '';
+        // Rotation override
+        $hasRotation = false;
+        $rawContent = $htmlOverride !== null && trim($htmlOverride) !== '' ? $htmlOverride : (string)($page["content_{$lang}"] ?? '');
+        if (empty($htmlOverride) && !empty($page['enable_rotation'])) {
+            try {
+                $rot = Database::getInstance()->fetchOne("SELECT * FROM content_rotations WHERE page_id = ? AND active_month = ? LIMIT 1", [$pageId, $month]);
+                if ($rot) {
+                    $hasRotation = true;
+                    if (!empty($rot["content_{$lang}"])) $rawContent = (string)$rot["content_{$lang}"];
+                    if (!empty($rot["title_{$lang}"])) $pageTitle = (string)$rot["title_{$lang}"];
+                }
+            } catch (Throwable $e) { /* ignore */ }
+        }
+        if (mb_strlen($rawContent) > 200 * 1024) throw new InvalidArgumentException('html_override too large (max 200KB)');
+        // XSS strip same as renderPreview
+        $sanitized = (string)preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $rawContent);
+        $sanitized = (string)preg_replace('/\bon\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $sanitized);
+        $sanitized = (string)preg_replace('/\b(href|src)\s*=\s*["\']\s*javascript:[^"\']*["\']/i', '', $sanitized);
+        $data = self::buildTemplateData($lang, $pageTitle, $pageSlug, $pageSlug);
+        $rendered = renderTemplate($sanitized, $data);
+        // Build full document with header/footer shell
+        $baseUrl = defined('BASE_URL') ? BASE_URL : '';
+        $seoSettings = $data['seo'] ?? [];
+        $siteName = $seoSettings["site_name_{$lang}"] ?? 'Site';
+        $headerHtml = '<header><div class="container"><nav><a href="' . $baseUrl . '/" class="logo-link"><span class="site-name">' . htmlspecialchars($siteName, ENT_QUOTES) . '</span></a></div></nav></header>';
+        $footerHtml = '<footer><div class="container"><p>&copy; ' . date('Y') . ' ' . htmlspecialchars($siteName, ENT_QUOTES) . '</p></div></footer>';
+        // Try to capture real header/footer via ob_start for fidelity, fallback to synthetic
+        try {
+            if (is_file(BASE_PATH . '/views/templates/header.php') && is_file(BASE_PATH . '/views/templates/footer.php')) {
+                // Prepare globals header expects
+                $page_for_header = $page;
+                $page_for_header["content_{$lang}"] = $rendered;
+                $page_for_header["title_{$lang}"] = $pageTitle;
+                $seo = $seoSettings;
+                $faqs = $data['faqs'] ?? [];
+                $lang_for_tpl = $lang;
+                // We'll capture header+footer separately but keep simple fallback if it errors
+                ob_start();
+                // Need to provide variables header.php expects: $page, $seo, $lang, $faqs, $contactUi etc.
+                $page = $page_for_header;
+                $lang = $lang_for_tpl;
+                $contactUi = ['phone' => $seoSettings['phone'] ?? '', 'email' => $seoSettings['email'] ?? ''];
+                $sitewideSchema = null;
+                @include BASE_PATH . '/views/templates/header.php';
+                $capturedHeader = ob_get_clean();
+                ob_start();
+                @include BASE_PATH . '/views/templates/footer.php';
+                $capturedFooter = ob_get_clean();
+                if (trim($capturedHeader) !== '' && strpos($capturedHeader, '<!DOCTYPE') !== false) {
+                    // header.php already outputs full doc start — extract body? For render_full_page we want full doc, so we can use captured header+rendered+footer but header already contains <html> etc.
+                    // Simpler: if header produced full doc, use it + rendered + footer as full page
+                    $fullCaptured = $capturedHeader . "\n<div class=\"content-body\">" . $rendered . "</div>\n" . $capturedFooter;
+                    if (mb_strlen($fullCaptured) > 200 * 1024) $fullCaptured = mb_substr($fullCaptured,0,200*1024);
+                    return ['html'=>$fullCaptured,'chars'=>mb_strlen($fullCaptured),'lang'=>$lang_for_tpl,'hasRotation'=>$hasRotation,'page_id'=>$pageId,'slug'=>$pageSlug];
+                }
+            }
+        } catch (Throwable $e) { /* fallback */ }
+        $doc = '<!DOCTYPE html>' . "\n"
+            . '<html lang="' . $lang . '">' . "\n"
+            . '<head>' . "\n"
+            . '<meta charset="utf-8">' . "\n"
+            . '<meta name="viewport" content="width=device-width, initial-scale=1">' . "\n"
+            . '<link rel="stylesheet" href="' . $baseUrl . '/css/pages.css">' . "\n"
+            . '<style>html,body{background:var(--surface)}*{opacity:1!important;transform:none!important;transition:none!important;animation:none!important}</style>' . "\n"
+            . '</head>' . "\n"
+            . '<body>' . "\n"
+            . $headerHtml . "\n"
+            . '<main><div class="content-body">' . "\n"
+            . $rendered . "\n"
+            . '</div></main>' . "\n"
+            . $footerHtml . "\n"
+            . '</body>' . "\n"
+            . '</html>';
+        if (mb_strlen($doc) > 200 * 1024) $doc = mb_substr($doc,0,200*1024);
+        return ['html'=>$doc,'chars'=>mb_strlen($doc),'lang'=>$lang,'hasRotation'=>$hasRotation,'page_id'=>$pageId,'slug'=>$pageSlug];
     }
 }

@@ -52,6 +52,27 @@ class AnalyticsQueryTools {
                     ],
                 ],
             ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'query_builder',
+                    'description' => 'Sugar over analytics tables — build a grouped metric query without writing SQL. Maps to allowlisted SELECTs over analytics_monthly, analytics_hourly, analytics, gsc_data. Prefer this for simple aggregates; use run_analytics_query for custom joins.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'metric' => ['type' => 'string', 'enum' => ['visits','clicks','phone_calls','ctr'], 'description' => 'Metric to aggregate (default visits).'],
+                            'group_by' => ['type' => 'string', 'enum' => ['page','date','language','utm_source'], 'description' => 'Group dimension (default page).'],
+                            'period' => ['type' => 'string', 'enum' => ['last_3_months','last_30_days','today','custom'], 'description' => 'Period preset (default last_3_months).'],
+                            'start_date' => ['type' => 'string', 'description' => 'Start date Y-m-d for custom period.'],
+                            'end_date' => ['type' => 'string', 'description' => 'End date Y-m-d for custom period.'],
+                            'filters' => ['type' => 'object', 'description' => 'Optional filters: slug, utm_source, language', 'properties' => [
+                                'slug' => ['type'=>'string'], 'utm_source'=>['type'=>'string'], 'language'=>['type'=>'string','enum'=>['ru','uz']],
+                            ]],
+                            'limit' => ['type' => 'integer', 'description' => 'Max rows 1-50 (default 15).'],
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -59,13 +80,16 @@ class AnalyticsQueryTools {
         if ($name === 'run_analytics_query') {
             return self::runQuery($args);
         }
+        if ($name === 'query_builder') {
+            return self::queryBuilder($args);
+        }
         throw new InvalidArgumentException("Unknown tool: {$name}");
     }
 
     private static function runQuery(array $args): array {
         $sql = trim((string)($args['query'] ?? ''));
         if ($sql === '') {
-            throw new InvalidArgumentException('query is required');
+            throw new InvalidArgumentException('query is required — example: "SELECT page_slug, SUM(total_visits) AS v FROM analytics_monthly WHERE year = 2026 GROUP BY page_slug ORDER BY v DESC LIMIT 10".');
         }
 
         self::assertSafe($sql);
@@ -118,6 +142,73 @@ class AnalyticsQueryTools {
             'truncated' => $truncated,
             'note' => 'Read-only analytics query over the allowlisted tables.',
         ];
+    }
+
+    private static function queryBuilder(array $args): array {
+        $metric = $args['metric'] ?? 'visits';
+        if (!in_array($metric, ['visits','clicks','phone_calls','ctr'], true)) $metric = 'visits';
+        $groupBy = $args['group_by'] ?? 'page';
+        if (!in_array($groupBy, ['page','date','language','utm_source'], true)) $groupBy = 'page';
+        $period = $args['period'] ?? 'last_3_months';
+        $limit = isset($args['limit']) ? max(1, min(50, (int)$args['limit'])) : 15;
+        $filters = is_array($args['filters'] ?? null) ? $args['filters'] : [];
+        $slug = trim((string)($filters['slug'] ?? ''));
+        $utm = trim((string)($filters['utm_source'] ?? ''));
+        $language = ($filters['language'] ?? '') === 'uz' ? 'uz' : (($filters['language'] ?? '') === 'ru' ? 'ru' : '');
+
+        // Build WHERE for monthly table
+        $where = [];
+        $params = [];
+        // Period
+        if ($period === 'last_3_months') {
+            $where[] = "DATE(CONCAT(year,'-',month,'-01')) >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)";
+        } elseif ($period === 'last_30_days') {
+            // For monthly fallback, use last 30 days via hourly/daily not available, approximate via year/month same
+            $where[] = "DATE(CONCAT(year,'-',month,'-01')) >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)";
+        } elseif ($period === 'today') {
+            $where[] = "year = YEAR(CURDATE()) AND month = MONTH(CURDATE())";
+        } elseif ($period === 'custom') {
+            $sd = trim((string)($args['start_date'] ?? ''));
+            $ed = trim((string)($args['end_date'] ?? ''));
+            if ($sd !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $sd)) {
+                $sy = (int)substr($sd,0,4); $sm = (int)substr($sd,5,2);
+                $where[] = "DATE(CONCAT(year,'-',month,'-01')) >= DATE('{$sy}-{$sm}-01')";
+            }
+            if ($ed !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $ed)) {
+                $ey = (int)substr($ed,0,4); $em = (int)substr($ed,5,2);
+                $where[] = "DATE(CONCAT(year,'-',month,'-01')) <= DATE('{$ey}-{$em}-01')";
+            }
+        }
+        if ($slug !== '') { $where[] = "page_slug = ?"; $params[] = $slug; }
+        if ($utm !== '') { $where[] = "utm_source = ?"; $params[] = $utm; }
+        if ($language !== '') { $where[] = "language = ?"; $params[] = $language; }
+
+        $whereSql = empty($where) ? '' : 'WHERE ' . implode(' AND ', $where);
+
+        // Select / group mapping
+        $groupCol = match($groupBy) { 'page'=>'page_slug', 'date'=>"CONCAT(year,'-',LPAD(month,2,'0'))", 'language'=>'language', 'utm_source'=>'utm_source', default=>'page_slug' };
+        $metricSql = match($metric) {
+            'visits' => 'SUM(total_visits) AS visits',
+            'clicks' => 'SUM(total_clicks) AS clicks',
+            'phone_calls' => 'SUM(total_phone_calls) AS phone_calls',
+            'ctr' => 'ROUND(CASE WHEN SUM(total_visits)=0 THEN 0 ELSE 100.0*SUM(total_phone_calls)/SUM(total_visits) END,2) AS ctr_percent',
+            default => 'SUM(total_visits) AS visits',
+        };
+        $orderBy = match($metric) { 'visits'=>'visits', 'clicks'=>'clicks', 'phone_calls'=>'phone_calls', 'ctr'=>'ctr_percent', default=>'visits' };
+
+        $sql = "SELECT {$groupCol} AS grp, {$metricSql} FROM analytics_monthly {$whereSql} GROUP BY grp ORDER BY {$orderBy} DESC LIMIT {$limit}";
+        self::assertSafe($sql);
+        $rows = Database::getInstance()->fetchAll($sql, $params);
+        $out = [];
+        foreach ($rows as $r) {
+            $clean = [];
+            foreach ($r as $k=>$v) {
+                if (is_string($v) && mb_strlen($v) > self::MAX_CELL) $v = mb_substr($v,0,self::MAX_CELL).'…';
+                $clean[$k] = $v;
+            }
+            $out[] = $clean;
+        }
+        return ['ok'=>true,'sql'=>$sql,'params'=>$params,'metric'=>$metric,'group_by'=>$groupBy,'period'=>$period,'rows'=>$out,'count'=>count($out)];
     }
 
     private static function assertSafe(string $sql): void {
