@@ -286,8 +286,47 @@ class PageTools {
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'add_section_marker',
+                    'description' => 'Insert a "<!-- Name -->" section delimiter into a page\'s content field at an exact anchor. Use when list_sections returns 0-1 sections (raw HTML) or you need to split Top of document into logical blocks so update_section/patch_section can target them. The insertion is snapshotted via page_revisions.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
+                            'lang' => ['type' => 'string', 'enum' => ['ru', 'uz'], 'description' => 'Which content field (default ru).'],
+                            'find' => ['type' => 'string', 'description' => 'Exact existing substring to anchor insertion (must occur exactly once in the field; copy from get_content_chunk/get_section). If empty, offset is used instead.'],
+                            'name' => ['type' => 'string', 'description' => 'New section name for the HTML comment, e.g. "Features" (1-80 chars, must be unique in that field).'],
+                            'position' => ['type' => 'string', 'enum' => ['before', 'after'], 'description' => 'Insert marker before or after the find text (default before).'],
+                            'offset' => ['type' => 'integer', 'description' => 'If find is empty, char offset (0-based) to insert at.'],
+                        ],
+                        'required' => ['name'],
+                    ],
+                    'oneOf' => [['required'=>['page_id']],[ 'required'=>['slug']]],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'auto_sectionize',
+                    'description' => 'Heuristically split raw HTML into sections by <h2>/<h3>/<section> boundaries and insert "<!-- Name -->" markers. Use only when page has <2 sections and content >2000 chars. Dry-run first to preview.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
+                            'lang' => ['type' => 'string', 'enum' => ['ru', 'uz'], 'description' => 'Which content field (default ru).'],
+                            'dry_run' => ['type' => 'boolean', 'description' => 'If true (default) only preview proposed inserts without writing.'],
+                            'min_section_chars' => ['type' => 'integer', 'description' => 'Ignore sections shorter than this (default 80).'],
+                        ],
+                        'oneOf' => [['required'=>['page_id']],[ 'required'=>['slug']]],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'batch_update',
-                    'description' => 'Apply up to 10 targeted edits to one page atomically in one turn. Each operation is a patch_section/str_replace_field/set_section_style/update_section/wrap_section. Prefer this over sequential calls to save turns and tokens.',
+                    'description' => 'Apply up to 10 targeted edits to one page atomically in one turn. Each operation is a patch_section/str_replace_field/set_section_style/update_section/wrap_section/add_section_marker. Prefer this over sequential calls to save turns and tokens.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -300,16 +339,19 @@ class PageTools {
                                 'items' => [
                                     'type' => 'object',
                                     'properties' => [
-                                        'op' => ['type' => 'string', 'enum' => ['patch_section','str_replace_field','update_section','set_section_style','wrap_section'], 'description' => 'Operation type.'],
+                                        'op' => ['type' => 'string', 'enum' => ['patch_section','str_replace_field','update_section','set_section_style','wrap_section','add_section_marker'], 'description' => 'Operation type.'],
                                         'field' => ['type' => 'string', 'description' => 'Field for str_replace_field (must be in FIELDS).'],
                                         'lang' => ['type' => 'string', 'enum' => ['ru','uz'], 'description' => 'Language for section ops (default ru).'],
                                         'section' => ['type' => 'string', 'description' => 'Section name or index for section ops.'],
-                                        'find' => ['type' => 'string', 'description' => 'Find text for patch/str_replace.'],
+                                        'find' => ['type' => 'string', 'description' => 'Find text for patch/str_replace/add_section_marker.'],
                                         'replace' => ['type' => 'string', 'description' => 'Replacement text.'],
                                         'html' => ['type' => 'string', 'description' => 'Full HTML for update_section.'],
                                         'style' => ['type' => 'string', 'description' => 'CSS declarations for set_section_style.'],
                                         'wrapper_open' => ['type' => 'string', 'description' => 'Opening tag for wrap_section.'],
                                         'wrapper_close' => ['type' => 'string', 'description' => 'Closing tag for wrap_section.'],
+                                        'name' => ['type' => 'string', 'description' => 'Section name for add_section_marker.'],
+                                        'position' => ['type' => 'string', 'enum' => ['before','after'], 'description' => 'Position for add_section_marker (before/after).'],
+                                        'offset' => ['type' => 'integer', 'description' => 'Char offset for add_section_marker when find is empty.'],
                                     ],
                                     'required' => ['op'],
                                 ],
@@ -350,6 +392,10 @@ class PageTools {
                 return self::setSectionStyle($args);
             case 'wrap_section':
                 return self::wrapSection($args);
+            case 'add_section_marker':
+                return self::addSectionMarker($args);
+            case 'auto_sectionize':
+                return self::autoSectionize($args);
             case 'batch_update':
                 return self::batchUpdate($args);
             case 'list_page_revisions':
@@ -877,6 +923,225 @@ class PageTools {
         return ['ok'=>true,'page_id'=>$pageId,'lang'=>$lang,'section'=>$sections[$idx]['name'],'index'=>$idx,'content_chars'=>mb_strlen($updated),'note'=>'Section wrapped.'];
     }
 
+    private static function addSectionMarker(array $args): array {
+        $pageId = self::resolveGeneralPageId($args);
+        $lang = ($args['lang'] ?? 'ru') === 'uz' ? 'uz' : 'ru';
+        $find = (string)($args['find'] ?? '');
+        $name = trim((string)($args['name'] ?? ''));
+        $position = ($args['position'] ?? 'before') === 'after' ? 'after' : 'before';
+        $offset = array_key_exists('offset', $args) ? (int)$args['offset'] : null;
+        if ($name === '') throw new InvalidArgumentException('name is required — section name for the new <!-- Name --> marker (1-80 chars).');
+        if (mb_strlen($name) > 80) throw new InvalidArgumentException('Section name too long (max 80 chars).');
+        if (str_contains($name, '--') || str_contains($name, '<') || str_contains($name, '>')) throw new InvalidArgumentException('Section name must not contain "--", "<" or ">"');
+        if ($find === '' && $offset === null) throw new InvalidArgumentException('Either find (exact anchor text) or offset is required to locate insertion point.');
+        $model = new Page();
+        $page = $model->getById($pageId);
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
+        $field = "content_{$lang}";
+        $current = (string)($page[$field] ?? '');
+        // Duplicate name check (case-insensitive)
+        $existing = self::splitIntoSections($current);
+        foreach ($existing as $s) {
+            if (mb_strtolower($s['name']) === mb_strtolower($name)) {
+                throw new InvalidArgumentException('Section name "' . $name . '" already exists in field content_' . $lang . ' — choose a unique name. Existing: ' . implode(', ', array_map(fn($x)=>$x['name'], $existing)));
+            }
+        }
+        $marker = "<!-- {$name} -->";
+        $updated = null;
+        $insertedAt = null;
+        if ($find !== '') {
+            $cnt = substr_count($current, $find);
+            if ($cnt === 0) throw new InvalidArgumentException('The "find" text was not found — fetch exact HTML via get_content_chunk (offset/limit) or get_section and copy character-for-character, including HTML tags.');
+            if ($cnt > 1) throw new InvalidArgumentException('The "find" text occurs ' . $cnt . ' times — include more surrounding context to make it unique or use offset.');
+            $pos = mb_strpos($current, $find);
+            if ($position === 'before') {
+                $updated = mb_substr($current, 0, $pos) . $marker . "\n" . mb_substr($current, $pos);
+                $insertedAt = $pos;
+            } else {
+                $end = $pos + mb_strlen($find);
+                $updated = mb_substr($current, 0, $end) . "\n" . $marker . "\n" . mb_substr($current, $end);
+                $insertedAt = $end;
+            }
+        } else {
+            $total = mb_strlen($current);
+            $off = (int)$offset;
+            if ($off < 0) $off = 0;
+            if ($off > $total) $off = $total;
+            $updated = mb_substr($current, 0, $off) . ($off > 0 && mb_substr($current, $off - 1, 1) !== "\n" ? "\n" : '') . $marker . "\n" . mb_substr($current, $off);
+            $insertedAt = $off;
+        }
+        // Warn if insertion point is suspiciously inside a tag (heuristic)
+        $note = 'Marker inserted.';
+        if ($find !== '') {
+            $pre = mb_substr($updated, max(0, $insertedAt - 60), 60);
+            $post = mb_substr($updated, $insertedAt, 60);
+            // If we see unclosed < ... without > nearby, likely inside tag
+            if (preg_match('/<[^>]*$/', $pre) && !preg_match('/^[^<]*>/', $post)) {
+                $note .= ' Warning: insertion appears inside an HTML tag — choose a find boundary between tags.';
+            }
+        }
+        $model->update($pageId, [$field => $updated]);
+        $fresh = $model->getById($pageId);
+        $freshVal = (string)($fresh[$field] ?? $updated);
+        $sections = self::splitIntoSections($freshVal);
+        $outSections = array_map(fn($s)=>['name'=>$s['name'],'chars'=>mb_strlen($s['text'])], $sections);
+        return [
+            'ok'=>true,
+            'verified'=> $freshVal === $updated,
+            'fresh_hash'=>substr(md5($freshVal),0,8),
+            'page_id'=>$pageId,
+            'lang'=>$lang,
+            'name'=>$name,
+            'position'=>$position,
+            'inserted_at'=>$insertedAt,
+            'content_chars'=>mb_strlen($freshVal),
+            'sections_after'=>$outSections,
+            'total_sections'=>count($sections),
+            'note'=>$note . ' Call list_sections to verify and then update_section/patch_section on the new section.',
+        ];
+    }
+
+    private static function autoSectionize(array $args): array {
+        $pageId = self::resolveGeneralPageId($args);
+        $lang = ($args['lang'] ?? 'ru') === 'uz' ? 'uz' : 'ru';
+        $dryRun = !array_key_exists('dry_run', $args) ? true : (bool)$args['dry_run'];
+        $minChars = isset($args['min_section_chars']) ? max(20, min(2000, (int)$args['min_section_chars'])) : 80;
+        $model = new Page();
+        $page = $model->getById($pageId);
+        if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found.');
+        $field = "content_{$lang}";
+        $html = (string)($page[$field] ?? '');
+        if (trim($html) === '') throw new InvalidArgumentException('Field content_' . $lang . ' is empty — use insert_section to create content.');
+        $existing = self::splitIntoSections($html);
+        if (count($existing) > 1) {
+            return [
+                'ok'=>false,
+                'page_id'=>$pageId,
+                'lang'=>$lang,
+                'existing_sections'=>array_map(fn($s)=>$s['name'], $existing),
+                'count'=>count($existing),
+                'note'=>'Page already has ' . count($existing) . ' sections — auto_sectionize is for raw HTML with 0-1 sections. Use add_section_marker for manual splitting.',
+            ];
+        }
+        // Heuristic: find <h2>, <h3>, <section> boundaries
+        $proposals = [];
+        $seenNames = [];
+        // First try <h2> tags
+        if (preg_match_all('/<h2\b[^>]*>(.*?)<\/h2>/is', $html, $matches, PREG_OFFSET_CAPTURE)) {
+            foreach ($matches[0] as $idx => $m) {
+                $fullTag = $m[0];
+                $offsetBytes = $m[1];
+                // Convert byte offset to char offset for mb_* safety — approximate via substr
+                $charOffset = mb_strlen(substr($html, 0, $offsetBytes));
+                $inner = trim(strip_tags($matches[1][$idx][0] ?? ''));
+                $inner = preg_replace('/\s+/u', ' ', $inner);
+                $name = mb_substr($inner, 0, 60);
+                if (mb_strlen($inner) < 2) $name = 'Section ' . ($idx + 1);
+                // Ensure unique
+                $base = $name;
+                $suffix = 1;
+                while (in_array(mb_strtolower($name), array_map('mb_strtolower', $seenNames), true)) {
+                    $name = $base . ' ' . (++$suffix);
+                }
+                $seenNames[] = $name;
+                // Skip if section would be too short (distance to next h2)
+                $nextOffset = isset($matches[0][$idx+1]) ? mb_strlen(substr($html, 0, $matches[0][$idx+1][1])) : mb_strlen($html);
+                $len = $nextOffset - $charOffset;
+                if ($len < $minChars) continue;
+                $proposals[] = [
+                    'find' => $fullTag,
+                    'name' => $name,
+                    'position' => 'before',
+                    'offset' => $charOffset,
+                    'preview' => mb_substr($fullTag, 0, 80),
+                ];
+            }
+        }
+        // Fallback: <h3> if no h2
+        if (empty($proposals) && preg_match_all('/<h3\b[^>]*>(.*?)<\/h3>/is', $html, $matches, PREG_OFFSET_CAPTURE)) {
+            foreach ($matches[0] as $idx => $m) {
+                $fullTag = $m[0];
+                $offsetBytes = $m[1];
+                $charOffset = mb_strlen(substr($html, 0, $offsetBytes));
+                $inner = trim(strip_tags($matches[1][$idx][0] ?? ''));
+                $inner = preg_replace('/\s+/u', ' ', $inner);
+                $name = mb_substr($inner, 0, 60);
+                if (mb_strlen($inner) < 2) $name = 'Section ' . ($idx + 1);
+                $base = $name; $suffix=1;
+                while (in_array(mb_strtolower($name), array_map('mb_strtolower', $seenNames), true)) {
+                    $name = $base . ' ' . (++$suffix);
+                }
+                $seenNames[]=$name;
+                $nextOffset = isset($matches[0][$idx+1]) ? mb_strlen(substr($html, 0, $matches[0][$idx+1][1])) : mb_strlen($html);
+                $len = $nextOffset - $charOffset;
+                if ($len < $minChars) continue;
+                $proposals[] = ['find'=>$fullTag,'name'=>$name,'position'=>'before','offset'=>$charOffset,'preview'=>mb_substr($fullTag,0,80)];
+            }
+        }
+        // Fallback: <section> tags
+        if (empty($proposals) && preg_match_all('/<section\b[^>]*>/i', $html, $matches, PREG_OFFSET_CAPTURE)) {
+            foreach ($matches[0] as $idx => $m) {
+                $fullTag = $m[0];
+                $offsetBytes = $m[1];
+                $charOffset = mb_strlen(substr($html, 0, $offsetBytes));
+                $name = 'Section ' . ($idx + 1);
+                $proposals[] = ['find'=>$fullTag,'name'=>$name,'position'=>'before','offset'=>$charOffset,'preview'=>mb_substr($fullTag,0,80)];
+            }
+        }
+        if (empty($proposals)) {
+            return [
+                'ok'=>false,
+                'page_id'=>$pageId,
+                'lang'=>$lang,
+                'proposals'=>[],
+                'note'=>'No <h2>/<h3>/<section> boundaries found to auto-sectionize. Use add_section_marker with a manual find/offset.',
+            ];
+        }
+        if ($dryRun) {
+            return [
+                'ok'=>true,
+                'dry_run'=>true,
+                'page_id'=>$pageId,
+                'lang'=>$lang,
+                'proposals'=>$proposals,
+                'count'=>count($proposals),
+                'note'=>'Dry-run: ' . count($proposals) . ' marker(s) proposed. Re-call with dry_run=false to apply, or use batch_update with add_section_marker for selective insertion.',
+            ];
+        }
+        // Apply: insert markers from last to first so offsets stay valid
+        usort($proposals, fn($a,$b)=> $b['offset'] <=> $a['offset']);
+        $updated = $html;
+        $applied = [];
+        foreach ($proposals as $p) {
+            $cnt = substr_count($updated, $p['find']);
+            if ($cnt !== 1) continue; // skip ambiguous
+            $pos = mb_strpos($updated, $p['find']);
+            $marker = "<!-- {$p['name']} -->\n";
+            $updated = mb_substr($updated, 0, $pos) . $marker . mb_substr($updated, $pos);
+            $applied[] = $p['name'];
+        }
+        if (empty($applied)) {
+            return ['ok'=>false,'page_id'=>$pageId,'lang'=>$lang,'note'=>'No markers applied — find texts were ambiguous. Use add_section_marker manually.'];
+        }
+        $model->update($pageId, [$field => $updated]);
+        $fresh = $model->getById($pageId);
+        $freshVal = (string)($fresh[$field] ?? $updated);
+        $sections = self::splitIntoSections($freshVal);
+        return [
+            'ok'=>true,
+            'dry_run'=>false,
+            'verified'=> $freshVal === $updated,
+            'page_id'=>$pageId,
+            'lang'=>$lang,
+            'applied'=>$applied,
+            'applied_count'=>count($applied),
+            'total_sections'=>count($sections),
+            'sections_after'=>array_map(fn($s)=>['name'=>$s['name'],'chars'=>mb_strlen($s['text'])], $sections),
+            'content_chars'=>mb_strlen($freshVal),
+            'note'=>'Auto-sectionized: ' . count($applied) . ' marker(s) inserted. Call list_sections to verify.',
+        ];
+    }
+
     private static function batchUpdate(array $args): array {
         $pageId = self::resolveGeneralPageId($args);
         $ops = $args['operations'] ?? null;
@@ -1008,8 +1273,66 @@ class PageTools {
                             $results[] = ['index'=>$idx,'op'=>$type,'ok'=>true,'section'=>$sectionCache[$lang][$sIdx]['name'],'lang'=>$lang];
                             break;
                         }
+                        case 'add_section_marker': {
+                            $find = (string)($op['find'] ?? '');
+                            $name = trim((string)($op['name'] ?? ''));
+                            $position = ($op['position'] ?? 'before') === 'after' ? 'after' : 'before';
+                            $hasOffset = array_key_exists('offset', $op) && $op['offset'] !== null && $op['offset'] !== '';
+                            $offset = $hasOffset ? (int)$op['offset'] : null;
+                            if ($name === '') throw new InvalidArgumentException("Operation #$idx: name is required for add_section_marker");
+                            if (mb_strlen($name) > 80) throw new InvalidArgumentException("Operation #$idx: section name too long (max 80 chars)");
+                            if (str_contains($name, '--') || str_contains($name, '<') || str_contains($name, '>')) throw new InvalidArgumentException("Operation #$idx: section name must not contain \"--\", \"<\" or \">\"");
+                            if ($find === '' && $offset === null) throw new InvalidArgumentException("Operation #$idx: find or offset is required for add_section_marker");
+                            // For batch, we operate on buffer directly (not sectionCache) because marker insertion changes section boundaries.
+                            // Flush any pending section dirty state into buffer before raw insertion so we don't lose prior section ops.
+                            if ($sectionDirty[$lang] && $sectionCache[$lang] !== null) {
+                                $buffers[$field] = self::rebuildContentFromSections($sectionCache[$lang]);
+                                $fieldDirty[$field] = true;
+                                $sectionCache[$lang] = null;
+                                $sectionDirty[$lang] = false;
+                            }
+                            $current = $buffers[$field] ?? '';
+                            // Duplicate name check against current buffer sections + pending buffer text
+                            $tmpSections = self::splitIntoSections($current);
+                            foreach ($tmpSections as $s) {
+                                if (mb_strtolower($s['name']) === mb_strtolower($name)) {
+                                    throw new InvalidArgumentException("Operation #$idx: section name \"{$name}\" already exists in field {$field}");
+                                }
+                            }
+                            // Also check duplicate names within same batch (against already applied ops)
+                            foreach ($results as $r) {
+                                if (($r['op'] ?? '') === 'add_section_marker' && isset($r['name']) && mb_strtolower($r['name']) === mb_strtolower($name) && ($r['lang'] ?? $lang) === $lang) {
+                                    throw new InvalidArgumentException("Operation #$idx: duplicate section name \"{$name}\" within batch for lang {$lang}");
+                                }
+                            }
+                            $marker = "<!-- {$name} -->";
+                            if ($find !== '') {
+                                $cnt = substr_count($current, $find);
+                                if ($cnt === 0) throw new InvalidArgumentException("Operation #$idx: find text not found in field {$field} — fetch exact HTML via get_content_chunk/get_section.");
+                                if ($cnt > 1) throw new InvalidArgumentException("Operation #$idx: find occurs {$cnt} times — include more context or use offset.");
+                                $pos = mb_strpos($current, $find);
+                                if ($position === 'before') {
+                                    $buffers[$field] = mb_substr($current, 0, $pos) . $marker . "\n" . mb_substr($current, $pos);
+                                } else {
+                                    $end = $pos + mb_strlen($find);
+                                    $buffers[$field] = mb_substr($current, 0, $end) . "\n" . $marker . "\n" . mb_substr($current, $end);
+                                }
+                            } else {
+                                $total = mb_strlen($current);
+                                $off = (int)$offset;
+                                if ($off < 0) $off = 0;
+                                if ($off > $total) $off = $total;
+                                $buffers[$field] = mb_substr($current, 0, $off) . ($off > 0 && $off < $total && mb_substr($current, $off - 1, 1) !== "\n" ? "\n" : '') . $marker . "\n" . mb_substr($current, $off);
+                            }
+                            $fieldDirty[$field] = true;
+                            // Invalidate section cache for this lang so later section ops in same batch see new boundaries
+                            $sectionCache[$lang] = null;
+                            $sectionDirty[$lang] = false;
+                            $results[] = ['index'=>$idx,'op'=>$type,'ok'=>true,'name'=>$name,'lang'=>$lang,'position'=>$position];
+                            break;
+                        }
                         default:
-                            throw new InvalidArgumentException("Operation #$idx: unknown op '{$type}' — allowed: patch_section, str_replace_field, update_section, set_section_style, wrap_section");
+                            throw new InvalidArgumentException("Operation #$idx: unknown op '{$type}' — allowed: patch_section, str_replace_field, update_section, set_section_style, wrap_section, add_section_marker");
                     }
                 } catch (InvalidArgumentException $e) {
                     if ($inTxn) $db->query("ROLLBACK");
