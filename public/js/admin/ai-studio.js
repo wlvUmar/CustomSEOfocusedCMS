@@ -49,6 +49,8 @@
     let abortCtrl = null;       // AbortController for the in-flight request
     let typingEl = null;
     let lastPreviewHtml = '';
+    let previewSections = [];   // accumulated per-turn section previews (render_preview); full-page replaces
+    let previewTurnSeq = 0;     // bumped per user turn so previews group per turn
     let activityTimerId = null; // interval driving the elapsed-time readout
     let activityStartedAt = 0;
     let currentMode = 'plan';   // 'plan' or 'build'
@@ -507,11 +509,85 @@
         typingEl = null;
     }
 
-    function updatePreview(html) {
-        lastPreviewHtml = html;
-        els.previewHint.textContent = 'Updated ' + new Date().toLocaleTimeString();
+    function extractPreviewFragment(html) {
+        // render_preview wraps a single section in <div class="content-body">…</div>
+        // We pull that inner HTML so multiple sections can be stacked into one doc.
+        try {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const body = doc.querySelector('.content-body');
+            if (body && body.innerHTML.trim().length > 0) return body.innerHTML;
+            // fallback: body innerHTML
+            if (doc.body && doc.body.innerHTML.trim().length > 0) return doc.body.innerHTML;
+        } catch (e) {}
+        return html;
+    }
+    function extractSectionLabel(fragment) {
+        // Prefer first <h2>/<h3> text inside the fragment, else generic
+        const m = fragment.match(/<h[23][^>]*>(.*?)<\/h[23]>/i);
+        if (m) {
+            const t = m[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+            if (t) return t;
+        }
+        return '';
+    }
+    function buildCombinedPreview(sections, sampleHtml) {
+        let cssHref = '';
+        let langAttr = 'ru';
+        try {
+            const doc = new DOMParser().parseFromString(sampleHtml, 'text/html');
+            const link = doc.querySelector('link[rel="stylesheet"]');
+            if (link && link.getAttribute('href')) cssHref = link.getAttribute('href');
+            const htmlEl = doc.querySelector('html');
+            if (htmlEl && htmlEl.getAttribute('lang')) langAttr = htmlEl.getAttribute('lang');
+        } catch (e) {}
+        if (!cssHref) cssHref = (cfg.baseUrl || '') + '/css/pages.css';
+        const parts = sections.map((frag, i) => {
+            const label = extractSectionLabel(frag);
+            const title = label ? label + ' (section ' + (i + 1) + ')' : 'Section ' + (i + 1);
+            return '<section class="ai-preview-stack__section"><div class="ai-preview-stack__label">' + title.replace(/</g, '&lt;') + '</div>' + frag + '</section>';
+        }).join('<hr class="ai-preview-stack__sep">');
+        return '<!DOCTYPE html>\n'
+            + '<html lang="' + langAttr + '">\n'
+            + '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+            + '<link rel="stylesheet" href="' + cssHref + '">'
+            + '<style>.ai-preview-stack__label{font:11px/1.4 system-ui, -apple-system, Segoe UI;color:#6a7282;background:#f3f4f6;border:1px solid #e5e7eb;padding:3px 8px;border-radius:999px;display:inline-block;margin:14px 0 10px} .ai-preview-stack__section:first-child .ai-preview-stack__label{margin-top:0} .ai-preview-stack__sep{border:none;border-top:1px dashed #d1d5db;margin:18px 0}</style>'
+            + '</head>\n'
+            + '<body><div class="content-body">' + parts + '</div></body>\n'
+            + '</html>';
+    }
+    function updatePreview(html, kind) {
+        const isFull = (kind === 'render_full_page') || (typeof html === 'string' && html.indexOf('<header>') !== -1 && html.indexOf('<footer>') !== -1) || (typeof html === 'string' && html.indexOf('preview-banner') !== -1);
+        if (isFull) {
+            // Full page replaces any stacked sections — it's the ground truth.
+            previewSections = [];
+            lastPreviewHtml = html;
+            els.previewHint.textContent = 'Full page · ' + new Date().toLocaleTimeString();
+            els.previewHint.title = 'render_full_page — header+content+footer';
+            els.previewFrame.style.opacity = '0';
+            els.previewFrame.setAttribute('srcdoc', html);
+            return;
+        }
+        // Section preview — accumulate within this turn.
+        const frag = extractPreviewFragment(html);
+        previewSections.push(frag);
+        let combined;
+        let hint;
+        if (previewSections.length === 1) {
+            combined = html; // first section can use original doc as-is (identical to combined)
+            hint = 'Section 1/1 · ' + new Date().toLocaleTimeString();
+        } else {
+            combined = buildCombinedPreview(previewSections, html);
+            hint = previewSections.length + ' sections stacked · ' + new Date().toLocaleTimeString();
+        }
+        lastPreviewHtml = combined;
+        els.previewHint.textContent = hint;
+        els.previewHint.title = previewSections.length + ' render_preview(s) combined in this turn — click Open for full view. A final render_full_page will replace this with the real page.';
         els.previewFrame.style.opacity = '0';
-        els.previewFrame.setAttribute('srcdoc', html);
+        els.previewFrame.setAttribute('srcdoc', combined);
+    }
+    function resetPreviewAccumulation() {
+        previewSections = [];
+        previewTurnSeq++;
     }
 
     els.previewFrame.addEventListener('load', () => {
@@ -838,6 +914,7 @@
     async function runTurn(userText, approved, mode = 'plan') {
         setBusy(true);
         hideApproval();
+        resetPreviewAccumulation();
         addUserBubble(userText);
         els.input.value = '';
         els.input.style.height = 'auto';
@@ -903,8 +980,10 @@
                         setActivity(data.ok ? 'Done: ' + data.tool : 'Failed: ' + data.tool);
                         break;
                     case 'preview':
-                        updatePreview(data.html);
-                        setActivity('Preview rendered');
+                        updatePreview(data.html, data.kind);
+                        if (data.kind === 'render_full_page') setActivity('Full page preview rendered');
+                        else if (previewSections.length > 1) setActivity('Preview rendered (' + previewSections.length + ' sections stacked)');
+                        else setActivity('Preview rendered');
                         break;
                     case 'approval_required':
                         addApprovalEvent(data.plan);
