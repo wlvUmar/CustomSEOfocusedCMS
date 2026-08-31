@@ -55,6 +55,15 @@
     let activityStartedAt = 0;
     let currentMode = 'plan';   // 'plan' or 'build'
 
+    // ---- Safe markdown regexes (must be defined before any renderMarkdown call — initSession runs early) ----
+    const SAFE_URL = /^(https?:|mailto:|tel:)/i;
+    const RE_HEADING = /^(#{1,4})\s+(.*)$/;
+    const RE_HR = /^\s*([-*_])(\s*\1){2,}\s*$/;
+    const RE_QUOTE = /^\s*>/;
+    const RE_LIST = /^\s*([-*+]|\d+\.)\s+(.*)$/;
+    const RE_FENCE = /^\s*```/;
+    const INLINE_RE = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]*\]\([^)]+\))/g;
+
     // ---- Model selector persistence --------------------------------------
     const savedModel = localStorage.getItem('ai-studio-model');
     if (savedModel && Array.prototype.some.call(els.model.options, o => o.value === savedModel)) {
@@ -673,14 +682,7 @@
     // ---- Safe markdown rendering ------------------------------------------
     // Builds DOM nodes only (no innerHTML for model text), so model output can
     // never inject markup. Links are restricted to safe protocols.
-
-    const SAFE_URL = /^(https?:|mailto:|tel:)/i;
-    const RE_HEADING = /^(#{1,4})\s+(.*)$/;
-    const RE_HR = /^\s*([-*_])(\s*\1){2,}\s*$/;
-    const RE_QUOTE = /^\s*>/;
-    const RE_LIST = /^\s*([-*+]|\d+\.)\s+(.*)$/;
-    const RE_FENCE = /^\s*```/;
-    const INLINE_RE = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]*\]\([^)]+\))/g;
+    // (Regexes defined at top to avoid TDZ when initSession restores history)
 
     function renderMarkdown(text) {
         const frag = document.createDocumentFragment();
