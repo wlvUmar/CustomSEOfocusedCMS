@@ -84,7 +84,8 @@ class OpenRouter {
      *                           a truncated response silently breaks JSON parsing
      *                           downstream (looks like "nothing happened").
      * @param int    $retries    Number of extra attempts on transient failures
-     *                           (network errors, 429, 5xx). 0 = no retry.
+     *                           (network errors including timeout with bytes
+     *                            received, 429, 5xx). 0 = no retry. Default 1.
      * @return string            Generated assistant text
      * @throws Exception         On missing key, network, or API errors
      */
@@ -93,7 +94,7 @@ class OpenRouter {
         string $model,
         float $temperature = 0.7,
         int $maxTokens = 4096,
-        int $retries = 1
+        int $retries = 2
     ): string {
         $apiKey = self::getApiKey();
         if ($apiKey === '') {
@@ -157,16 +158,26 @@ class OpenRouter {
                     'HTTP-Referer: ' . (defined('BASE_URL') ? BASE_URL : ''),
                     'X-Title: ' . $xTitle,
                 ],
-                CURLOPT_TIMEOUT        => 120,
+                // Total wall time 180s (was 120 — free reasoning models often need 90-120s TTFB).
+                // Low-speed kills only stalled streams (e.g. 3124 bytes then hang), not slow-but-moving.
+                CURLOPT_TIMEOUT        => 180,
                 CURLOPT_CONNECTTIMEOUT => 15,
+                CURLOPT_LOW_SPEED_LIMIT => 40,
+                CURLOPT_LOW_SPEED_TIME  => 25,
+                CURLOPT_TCP_KEEPALIVE   => 1,
             ]);
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $error = curl_error($ch);
+            $errno = curl_errno($ch);
             curl_close($ch);
             $transient = false;
             if ($error) {
-                $lastError = new Exception('OpenRouter network error: ' . $error);
+                // CURLE_OPERATION_TIMEOUTED (28) after 120s+3124 bytes is a stalled stream — transient.
+                // CURLE_COULDNT_CONNECT (7), CURLE_RECV_ERROR (56), etc. also transient.
+                $isTimeout = $errno === 28 || stripos($error, 'timed out') !== false || stripos($error, 'timeout') !== false;
+                $hint = $isTimeout ? ' (model was slow/stream stalled — try DeepSeek Chat or GPT-4o-mini instead of R1/120B free)' : '';
+                $lastError = new Exception('OpenRouter network error: ' . $error . $hint);
                 $transient = true;
             } elseif ($httpCode === 401) {
                 throw new Exception('OpenRouter API key is invalid or unauthorized');
@@ -180,7 +191,7 @@ class OpenRouter {
                 throw new Exception('OpenRouter API error (HTTP ' . $httpCode . '): ' . mb_substr((string)$response, 0, 500));
             }
             if ($transient) {
-                if ($attempt <= $retries) { usleep(500000 + random_int(0, 500000)); continue; }
+                if ($attempt <= $retries) { usleep(800000 + random_int(0, 700000)); continue; }
                 throw $lastError;
             }
             $data = json_decode($response, true);
@@ -210,7 +221,7 @@ class OpenRouter {
      * @param array  $tools       Tool definitions ([['type'=>'function','function'=>['name'=>..,'description'=>..,'parameters'=>..]], ...])
      * @param float  $temperature
      * @param int    $maxTokens   Output token budget per model call
-     * @param int    $retries     Extra attempts on transient failures (network, 429, 5xx)
+     * @param int    $retries     Extra attempts on transient failures (network incl. timeout, 429, 5xx)
      * @return array              Raw assistant message (content + tool_calls + usage)
      * @throws Exception          On missing key, network, or API errors
      */
@@ -220,7 +231,7 @@ class OpenRouter {
         array $tools,
         float $temperature = 0.5,
         int $maxTokens = 8192,
-        int $retries = 1
+        int $retries = 2
     ): array {
         $apiKey = self::getApiKey();
         if ($apiKey === '') {
