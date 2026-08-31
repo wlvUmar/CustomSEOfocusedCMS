@@ -30,8 +30,10 @@ class SiteTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_design_tokens',
-                    'description' => 'Design tokens + component library: parses public/css/pages.css :root (--teal,--orange,--green,--ink, spacing etc.) + public/css/components.css 178 .c-* plugin classes (c-hero-*,c-stats, c-feature-*, c-process/timeline, c-card/testimonial, c-cta/callout, c-gallery/carousel, c-pricing etc.). Returns live catalog, plus per-page theming note (pages.custom_css injected AFTER both sheets as <style id="page-custom-css"> scoped via body.page-{slug}; tools set_custom_css/set_page_theme write it). Call before writing any section; prefer tokens var(--teal) — custom hex only on explicit request.',
-                    'parameters' => ['type' => 'object', 'properties' => (object)[]],
+                    'description' => 'Design tokens + lean component catalog (cheap). Parses pages.css :root (--teal,--orange,--ink, spacing) + components.css 178 .c-* classes. Returns tokens + categories always; full class list only if include_components=true (use sparingly — costs tokens). Also returns per-page theming note (pages.custom_css AFTER both sheets as <style id="page-custom-css"> scoped via body.page-{slug}; tools set_custom_css/set_page_theme). Prefer var(--teal).',
+                    'parameters' => ['type' => 'object', 'properties' => [
+                        'include_components' => ['type' => 'boolean', 'description' => 'If true, returns up to 80 .c-* class names (costs ~330 tokens). Default false = lean (~220 tokens). Only set true if you need exact class names.'],
+                    ]],
                 ],
             ],
             [
@@ -79,7 +81,7 @@ class SiteTools {
             case 'get_template_variables':
                 return self::templateVariables();
             case 'get_design_tokens':
-                return self::designTokens();
+                return self::designTokens($args);
             case 'render_preview':
                 return self::renderPreview($args);
             case 'render_full_page':
@@ -169,7 +171,7 @@ class SiteTools {
         ];
     }
 
-    private static function designTokens(): array {
+    private static function designTokens(array $args = []): array {
         $candidates = [
             defined('PUBLIC_PATH') ? PUBLIC_PATH . '/css/pages.css' : null,
             BASE_PATH . '/public/css/pages.css',
@@ -200,7 +202,18 @@ class SiteTools {
             if (isset($tokens[$k])) $summary[$k] = $tokens[$k];
         }
 
-        // Plugin component library — parsed live from components.css so AI always sees current catalog
+        // Lean default: categories always (cheap ~220 tokens). Full 80 class list only on include_components=true
+        $includeComponents = !empty($args['include_components']);
+        $perPageNote = 'Per-page: pages.custom_css (AFTER pages+components) as <style id="page-custom-css"> — empty=inherits defaults. Scope body.page-{slug} header/footer or :root vars. Tools: set_custom_css/set_page_theme.';
+        $base = [
+            'note' => 'Tokens from pages.css + 178 .c-* plugin library (components.css). Prefer var(--teal). ' . $perPageNote,
+            'tokens' => $summary,
+            'all_tokens_count' => count($tokens),
+            'component_library' => '178 .c-* — heroes(c-hero-split/centered/mesh/compact/cards/video), stats(c-stats/bar/dark/kpi), features(c-feature-grid/split/icon-grid), process(c-process/timeline/zigzag), cards(c-card/testimonial/team), CTAs(c-cta/callout/banner), media(c-gallery/carousel/map), prose(c-prose/alert/accordion/table), pricing(c-pricing/comparison), utils(c-grid/flex/bg-mesh). Call with include_components=true for 80 class names.',
+            'component_classes_total' => 178,
+            'legacy_classes' => ['content-section','info-card','process-step','faq-item','links-tile','btn'],
+        ];
+        if (!$includeComponents) return $base;
         $componentsCss = '';
         $compCandidates = [
             defined('PUBLIC_PATH') ? PUBLIC_PATH . '/css/components.css' : null,
@@ -214,17 +227,8 @@ class SiteTools {
             $componentClasses = array_values(array_unique($cm[1]));
             sort($componentClasses);
         }
-        $perPageNote = 'Per-page overrides: pages.custom_css (and content_rotations.custom_css) is injected AFTER pages.min.css+components.min.css as <style id="page-custom-css">, so it can fully override header/footer/any component. Author can also put <style> inside content_ru/uz — it is extracted to head. Scope with body.page-{slug} (e.g. body.page-televizor header{background:var(--teal)}). Tokens via body.page-slug{--teal:#...;--surface:#...}. Tools: set_custom_css (replace/append, 20k) + set_page_theme (presets teal|orange|green|indigo|warm|dark|light|custom vars). Empty custom_css = inherits defaults.';
-
-        return [
-            'note' => 'Design tokens from public/css/pages.css + plugin library public/css/components.css. Prefer tokens var(--teal) over new hex. ' . $perPageNote,
-            'tokens' => $summary,
-            'all_tokens_count' => count($tokens),
-            'component_library' => '178 .c-* classes in components.css — use any via HTML without writing CSS. Categories: heroes(c-hero-split/centered/mesh/compact/cards/stats-overlap/video/minimal/gradient-border/testimonial), stats(c-stats/c-stats-bar/dark/bordered/kpi/metrics-row/icon), features(c-feature-grid/list/split/icon-grid/checklist/cards/highlight/comparison/tabs), process(c-process/timeline/timeline-h/steps-bar/zigzag/roadmap), cards(c-card/testimonial/quote/rating/avatar/team/logo-strip/trust-badges), CTAs(c-cta/centered/split/gradient/ghost/callout/banner/notice/promo-bar), media(c-gallery-masonry/grid/media-split/video-embed/before-after/carousel/image-card/map-embed), prose(c-prose/quote/alert/accordion/tabs/table/badge/tags/code), pricing(c-pricing/comparison/feature-table/plan/toggle/discount/guarantee), utilities(c-grid/flex/stack/center/surface/bg-mesh/shape-blob/pattern-dots).',
-            'component_classes' => array_slice($componentClasses, 0, 80),
-            'component_classes_total' => count($componentClasses),
-            'legacy_classes' => ['content-section','info-grid','info-card','process-step','brands-list','faq-item','condition-item','section-label','links-tile','btn','btn-primary'],
-        ];
+        $base['component_classes'] = array_slice($componentClasses, 0, 80);
+        return $base;
     }
 
     private static function sanitizeForPreview(string $html): string {
