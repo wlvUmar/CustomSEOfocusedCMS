@@ -658,9 +658,18 @@
     });
 
     function showApproval(p) {
+        // Batch-aware: p may contain call_ids[] for batch_update multi-op approval
+        const ids = Array.isArray(p.call_ids) && p.call_ids.length ? p.call_ids : (p.call_id ? [p.call_id] : []);
+        p.call_ids = ids;
+        // Keep single call_id for backward compat
+        if (!p.call_id && ids.length) p.call_id = ids[0];
         pendingApproval = p;
         els.approvalPlan.textContent = p.plan;
         els.approvalReason.textContent = p.reason || '';
+        // Single button approves all ops in batch
+        if (els.approve) {
+            els.approve.textContent = ids.length > 1 ? 'Approve all (' + ids.length + ')' : 'Approve';
+        }
         els.approval.hidden = false;
         els.approve.disabled = false;
         els.deny.disabled = false;
@@ -1055,7 +1064,7 @@
                         break;
                     case 'approval_required':
                         addApprovalEvent(data.plan);
-                        showApproval({ call_id: data.call_id, plan: data.plan, reason: data.reason });
+                        showApproval({ call_id: data.call_id, call_ids: data.call_ids, plan: data.plan, reason: data.reason });
                         pendingContext = Array.isArray(data.pending) ? data.pending : null;
                         setActivity('Awaiting your approval…');
                         break;
@@ -1152,7 +1161,8 @@
         els.approve.disabled = true;
         els.deny.disabled = true;
         const plan = pendingApproval.plan;
-        await runTurn('[Approved] Proceed with the requested change: ' + plan, [pendingApproval.call_id], currentMode);
+        const ids = Array.isArray(pendingApproval.call_ids) && pendingApproval.call_ids.length ? pendingApproval.call_ids : (pendingApproval.call_id ? [pendingApproval.call_id] : []);
+        await runTurn('[Approved] Proceed with the requested change: ' + plan, ids, currentMode);
     });
 
     els.deny.addEventListener('click', async () => {
