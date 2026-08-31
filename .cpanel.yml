@@ -3,13 +3,25 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/kuplyuta
     - export PUBLICPATH=/home/kuplyuta/public_html
-    # Root folders
-    - /bin/cp -R /home/kuplyuta/appliances/config/. $DEPLOYPATH/config >> /home/kuplyuta/deploy.log 2>&1
-    - /bin/cp -R /home/kuplyuta/appliances/controllers/. $DEPLOYPATH/controllers >> /home/kuplyuta/deploy.log 2>&1
-    - /bin/cp -R /home/kuplyuta/appliances/core/. $DEPLOYPATH/core >> /home/kuplyuta/deploy.log 2>&1
-    - /bin/cp -R /home/kuplyuta/appliances/models/. $DEPLOYPATH/models >> /home/kuplyuta/deploy.log 2>&1
-    - /bin/cp -R /home/kuplyuta/appliances/views/. $DEPLOYPATH/views >> /home/kuplyuta/deploy.log 2>&1
-    - /bin/cp /home/kuplyuta/appliances/.htaccess $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1
+    - set -euo pipefail
+    - echo "=== Deploy started at $(date) ===" >> /home/kuplyuta/deploy.log 2>&1
+    # Preserve storage/.env if exists
+    - if [ -f $PUBLICPATH/../.env ]; then cp $PUBLICPATH/../.env /tmp/.env.bak 2>/dev/null || true; fi
+    - if [ -d $PUBLICPATH/../storage ]; then cp -R $PUBLICPATH/../storage /tmp/storage.bak 2>/dev/null || true; fi
+    # Root folders (|| true keeps deploy alive if one cp fails under set -e)
+    - /bin/cp -R /home/kuplyuta/appliances/config/. $DEPLOYPATH/config >> /home/kuplyuta/deploy.log 2>&1 || true
+    - /bin/cp -R /home/kuplyuta/appliances/controllers/. $DEPLOYPATH/controllers >> /home/kuplyuta/deploy.log 2>&1 || true
+    - /bin/cp -R /home/kuplyuta/appliances/core/. $DEPLOYPATH/core >> /home/kuplyuta/deploy.log 2>&1 || true
+    - /bin/cp -R /home/kuplyuta/appliances/models/. $DEPLOYPATH/models >> /home/kuplyuta/deploy.log 2>&1 || true
+    - /bin/cp -R /home/kuplyuta/appliances/views/. $DEPLOYPATH/views >> /home/kuplyuta/deploy.log 2>&1 || true
+    - /bin/cp /home/kuplyuta/appliances/.htaccess $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1 || true
     # Public folder
-    - /bin/cp -R /home/kuplyuta/appliances/public/. $PUBLICPATH >> /home/kuplyuta/deploy.log 2>&1
+    - /bin/cp -R /home/kuplyuta/appliances/public/. $PUBLICPATH >> /home/kuplyuta/deploy.log 2>&1 || true
+    # Restore preserved files
+    - if [ -f /tmp/.env.bak ]; then cp /tmp/.env.bak $PUBLICPATH/../.env 2>/dev/null || true; rm -f /tmp/.env.bak; fi
+    - if [ -d /tmp/storage.bak ]; then cp -Rn /tmp/storage.bak/. $PUBLICPATH/../storage/ 2>/dev/null || true; rm -rf /tmp/storage.bak; fi
+    # Run migrations and cache bust
+    - cd /home/kuplyuta/appliances && php migrate.php >> /home/kuplyuta/deploy.log 2>&1 || echo "migrate failed" >> /home/kuplyuta/deploy.log 2>&1
+    # Rotate deploy.log if >5MB
+    - if [ $(stat -c%s /home/kuplyuta/deploy.log 2>/dev/null || echo 0) -gt 5242880 ]; then mv /home/kuplyuta/deploy.log /home/kuplyuta/deploy.log.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true; fi
     - echo "Deployment finished at $(date)" >> /home/kuplyuta/deploy.log

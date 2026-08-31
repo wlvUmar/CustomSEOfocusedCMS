@@ -18,6 +18,7 @@
         <h2><i data-feather="settings"></i> Widget Settings</h2>
 
         <form method="POST" action="<?= BASE_URL ?>/admin/link-widget/toggle" class="inline-form">
+            <?= csrfField() ?>
             <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
             <input type="hidden" name="show" value="<?= $page['show_link_widget'] ? '0' : '1' ?>">
 
@@ -63,6 +64,7 @@
                         <form method="POST"
                               action="<?= BASE_URL ?>/admin/link-widget/remove"
                               class="inline-form">
+                            <?= csrfField() ?>
                             <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
                             <input type="hidden" name="link_to_page_id" value="<?= $link['link_to_page_id'] ?>">
 
@@ -97,6 +99,7 @@
                         </div>
 
                         <form method="POST" action="<?= BASE_URL ?>/admin/link-widget/add">
+                            <?= csrfField() ?>
                             <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
                             <input type="hidden" name="link_to_page_id" value="<?= $availPage['id'] ?>">
 

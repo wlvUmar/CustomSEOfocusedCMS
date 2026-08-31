@@ -173,7 +173,7 @@ class AnalyticsTools {
                 FROM pages p
                 LEFT JOIN analytics_monthly am
                   ON am.page_slug = p.slug
-                 AND DATE(CONCAT(am.year, '-', am.month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)
+                 AND (am.year*12 + am.month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))
                 WHERE p.is_published = 1
                 GROUP BY p.id, p.slug, p.title_ru, p.title_uz, p.is_published
                 HAVING visits <= {$maxVisits}
@@ -218,16 +218,21 @@ class AnalyticsTools {
         if ($slug !== '') {
             $inbound = $model->getInboundLinks($slug, $months);
             $outbound = $model->getOutboundLinks($slug, $months);
-            $map = fn($rows) => array_map(fn($r) => [
-                'slug' => $r['from_slug'] ?? $r['to_slug'],
+            $mapInbound = fn($rows) => array_map(fn($r) => [
+                'from_slug' => $r['from_slug'],
+                'language' => $r['language'] ?? 'ru',
+                'clicks' => (int)$r['clicks'],
+            ], $rows);
+            $mapOutbound = fn($rows) => array_map(fn($r) => [
+                'to_slug' => $r['to_slug'],
                 'language' => $r['language'] ?? 'ru',
                 'clicks' => (int)$r['clicks'],
             ], $rows);
             return [
                 'slug' => $slug,
                 'months' => $months,
-                'inbound' => $map($inbound),
-                'outbound' => $map($outbound),
+                'inbound' => $mapInbound($inbound),
+                'outbound' => $mapOutbound($outbound),
             ];
         }
         $rows = $model->getLinkEffectiveness($months);

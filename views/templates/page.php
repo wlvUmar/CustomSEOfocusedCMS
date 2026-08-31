@@ -92,6 +92,7 @@ $applianceNameForSEO = $applianceName ?? '';
     // The CSS below re-skins ALL of these so old class names still work fine.
     $content = $page["content_$lang"];
     $content = renderTemplate($content, $templateData);
+    $content = sanitizeFrontendHtml($content);
     $content = enhanceContentSEO($content, $page["title_$lang"], $applianceNameForSEO);
     $mediaBySection = [
         'banner' => $pageMediaModel->getPageMedia($page['id'], 'banner'),

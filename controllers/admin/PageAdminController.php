@@ -744,12 +744,22 @@ class PageAdminController extends Controller {
     public function delete() {
         $this->requireAuth();
         
+        if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+            return;
+        }
+        
         $id = $_POST['id'] ?? null;
         if ($id) {
             $this->pageModel->delete($id);
             $_SESSION['success'] = 'Page deleted successfully';
         }
         
+        // Support both JSON (fetch) and form redirect
+        if (!empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) {
+            $this->json(['success' => true]);
+            return;
+        }
         $this->redirect('/admin/pages');
     }
 

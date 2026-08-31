@@ -15,7 +15,7 @@ class SiteTools {
                 'function' => [
                     'name' => 'get_global_settings',
                     'description' => 'Global site settings (seo_settings): site names, phone, email, address, working hours, city, social links. Read these before writing anything that references the business.',
-                    'parameters' => ['type' => 'object', 'properties' => []],
+                    'parameters' => ['type' => 'object', 'properties' => (object)[]],
                 ],
             ],
             [
@@ -23,7 +23,7 @@ class SiteTools {
                 'function' => [
                     'name' => 'get_template_variables',
                     'description' => 'The template variables available in page content fields and how they resolve ({{page.title}}, {{global.phone}}, {{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}, {{date.year}}, {{date.month}}, {{faqs}}...). You must preserve these exactly in any content you write.',
-                    'parameters' => ['type' => 'object', 'properties' => []],
+                    'parameters' => ['type' => 'object', 'properties' => (object)[]],
                 ],
             ],
             [
@@ -31,7 +31,7 @@ class SiteTools {
                 'function' => [
                     'name' => 'get_design_tokens',
                     'description' => 'The site\'s design tokens parsed from the real stylesheet (public/css/pages.css): colors (--teal, --orange, --green, --ink...), spacing, max width, section gaps, easing. Use these to keep new sections on-brand — do not invent your own color palette. Call this before writing any section; do not invent palette; map bg:teal → background:var(--teal).',
-                    'parameters' => ['type' => 'object', 'properties' => []],
+                    'parameters' => ['type' => 'object', 'properties' => (object)[]],
                 ],
             ],
             [
@@ -207,14 +207,63 @@ class SiteTools {
         ];
     }
 
+    private static function sanitizeForPreview(string $html): string {
+        // Layer 1: regex strips
+        $html = (string)preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $html);
+        $html = (string)preg_replace('/<style\b[^>]*>.*?@import[^<]*<\/style>/is', '', $html);
+        $html = (string)preg_replace('/\bon\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html);
+        $html = (string)preg_replace('/\b(href|src|action|formaction|xlink:href|srcdoc)\s*=\s*["\']\s*(javascript|data\s*:\s*text\/html|vbscript):[^"\']*["\']/i', '', $html);
+        $html = (string)preg_replace('/<iframe\b[^>]*>.*?<\/iframe>/is', '', $html);
+        $html = (string)preg_replace('/<(object|embed|link|meta|base)\b[^>]*>/i', '', $html);
+        // Layer 2: DOM-based allowlist cleanup for svg/onload, details ontoggle, style expression, etc.
+        if (class_exists('DOMDocument')) {
+            $prev = libxml_use_internal_errors(true);
+            $doc = new DOMDocument();
+            // Wrap fragment to parse
+            $wrapped = '<div id="__purify_root">' . $html . '</div>';
+            $loaded = $doc->loadHTML('<?xml encoding="utf-8" ?>' . $wrapped, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+            if ($loaded) {
+                $xpath = new DOMXPath($doc);
+                // Remove dangerous elements regardless of case
+                foreach ($xpath->query('//script|//iframe|//object|//embed|//link|//meta|//base|//form') as $el) {
+                    if ($el->parentNode) $el->parentNode->removeChild($el);
+                }
+                // Scrub attributes per element
+                foreach ($xpath->query('//*') as $el) {
+                    if (!($el instanceof DOMElement)) continue;
+                    $toRemove = [];
+                    if ($el->attributes) {
+                        foreach ($el->attributes as $attr) {
+                            $name = strtolower($attr->nodeName);
+                            $val = (string)$attr->nodeValue;
+                            if (str_starts_with($name, 'on')) $toRemove[] = $attr->nodeName;
+                            elseif (in_array($name, ['href','src','action','formaction','xlink:href','srcdoc','cite','data','background'], true)) {
+                                if (preg_match('/^\s*(javascript|data\s*:\s*text\/html|vbscript)\s*:/i', $val)) $toRemove[] = $attr->nodeName;
+                            } elseif ($name === 'style') {
+                                if (preg_match('/expression\s*\(|javascript\s*:|vbscript\s*:|@import/i', $val)) $toRemove[] = $attr->nodeName;
+                            }
+                        }
+                    }
+                    foreach ($toRemove as $n) $el->removeAttribute($n);
+                }
+                $root = $doc->getElementById('__purify_root');
+                if ($root) {
+                    $inner = '';
+                    foreach ($root->childNodes as $child) $inner .= $doc->saveHTML($child);
+                    $html = $inner;
+                }
+            }
+            libxml_clear_errors();
+            libxml_use_internal_errors($prev);
+        }
+        return $html;
+    }
+
     private static function renderPreview(array $args): array {
         $html = (string)($args['html'] ?? '');
         if (trim($html) === '') throw new InvalidArgumentException('html is required — pass the HTML fragment you want to preview (e.g. from get_section html).');
         if (mb_strlen($html) > 200 * 1024) throw new InvalidArgumentException('html too large (max 200KB) — trim content or preview one section at a time via get_section.');
-        // Strip scripts and event handlers for preview sandbox XSS hardening (H9).
-        $html = (string)preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $html);
-        $html = (string)preg_replace('/\bon\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html);
-        $html = (string)preg_replace('/\b(href|src)\s*=\s*["\']\s*javascript:[^"\']*["\']/i', '', $html);
+        $html = self::sanitizeForPreview($html);
         $lang = ($args['lang'] ?? 'ru') === 'uz' ? 'uz' : 'ru';
         $pageTitle = (string)($args['page_title'] ?? '');
         $pageSlug = (string)($args['page_slug'] ?? '');
@@ -279,10 +328,7 @@ class SiteTools {
             } catch (Throwable $e) { /* ignore */ }
         }
         if (mb_strlen($rawContent) > 200 * 1024) throw new InvalidArgumentException('html_override too large (max 200KB)');
-        // XSS strip same as renderPreview
-        $sanitized = (string)preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $rawContent);
-        $sanitized = (string)preg_replace('/\bon\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $sanitized);
-        $sanitized = (string)preg_replace('/\b(href|src)\s*=\s*["\']\s*javascript:[^"\']*["\']/i', '', $sanitized);
+        $sanitized = self::sanitizeForPreview($rawContent);
         $data = self::buildTemplateData($lang, $pageTitle, $pageSlug, $pageSlug);
         $rendered = renderTemplate($sanitized, $data);
         // Build full document with header/footer shell
@@ -291,37 +337,9 @@ class SiteTools {
         $siteName = $seoSettings["site_name_{$lang}"] ?? 'Site';
         $headerHtml = '<header><div class="container"><nav><a href="' . $baseUrl . '/" class="logo-link"><span class="site-name">' . htmlspecialchars($siteName, ENT_QUOTES) . '</span></a></div></nav></header>';
         $footerHtml = '<footer><div class="container"><p>&copy; ' . date('Y') . ' ' . htmlspecialchars($siteName, ENT_QUOTES) . '</p></div></footer>';
-        // Try to capture real header/footer via ob_start for fidelity, fallback to synthetic
-        try {
-            if (is_file(BASE_PATH . '/views/templates/header.php') && is_file(BASE_PATH . '/views/templates/footer.php')) {
-                // Prepare globals header expects
-                $page_for_header = $page;
-                $page_for_header["content_{$lang}"] = $rendered;
-                $page_for_header["title_{$lang}"] = $pageTitle;
-                $seo = $seoSettings;
-                $faqs = $data['faqs'] ?? [];
-                $lang_for_tpl = $lang;
-                // We'll capture header+footer separately but keep simple fallback if it errors
-                ob_start();
-                // Need to provide variables header.php expects: $page, $seo, $lang, $faqs, $contactUi etc.
-                $page = $page_for_header;
-                $lang = $lang_for_tpl;
-                $contactUi = ['phone' => $seoSettings['phone'] ?? '', 'email' => $seoSettings['email'] ?? ''];
-                $sitewideSchema = null;
-                @include BASE_PATH . '/views/templates/header.php';
-                $capturedHeader = ob_get_clean();
-                ob_start();
-                @include BASE_PATH . '/views/templates/footer.php';
-                $capturedFooter = ob_get_clean();
-                if (trim($capturedHeader) !== '' && strpos($capturedHeader, '<!DOCTYPE') !== false) {
-                    // header.php already outputs full doc start — extract body? For render_full_page we want full doc, so we can use captured header+rendered+footer but header already contains <html> etc.
-                    // Simpler: if header produced full doc, use it + rendered + footer as full page
-                    $fullCaptured = $capturedHeader . "\n<div class=\"content-body\">" . $rendered . "</div>\n" . $capturedFooter;
-                    if (mb_strlen($fullCaptured) > 200 * 1024) $fullCaptured = mb_substr($fullCaptured,0,200*1024);
-                    return ['html'=>$fullCaptured,'chars'=>mb_strlen($fullCaptured),'lang'=>$lang_for_tpl,'hasRotation'=>$hasRotation,'page_id'=>$pageId,'slug'=>$pageSlug];
-                }
-            }
-        } catch (Throwable $e) { /* fallback */ }
+        // Header/footer captured via synthetic shell only — real templates are not included in agent context (02-architecture #7).
+        // Previously @include header.php with globals swallowed errors and triggered side-effects; now we use deterministic synthetic header/footer.
+        // If fidelity to real header is needed, render via public preview route instead of direct include.
         $doc = '<!DOCTYPE html>' . "\n"
             . '<html lang="' . $lang . '">' . "\n"
             . '<head>' . "\n"

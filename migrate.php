@@ -50,7 +50,7 @@ try {
 // ── Scan migration files ───────────────────────────────────
 
 $dir = BASE_PATH . '/migrations';
-$files = glob($dir . '/*.php');
+$files = array_merge(glob($dir . '/*.php') ?: [], glob($dir . '/*.sql') ?: []);
 if (!$files) {
     echo "No migration files found in $dir\n";
     exit(0);
@@ -83,12 +83,63 @@ foreach ($files as $file) {
 
     echo "  [RUN]  $name ... ";
 
-    $queries = include $file;
-
-    if (!is_array($queries)) {
-        echo "FAILED\n";
-        fwrite(STDERR, "ERROR: Migration $name did not return an array of SQL strings\n");
-        exit(1);
+    $isSql = str_ends_with($name, '.sql');
+    if ($isSql) {
+        $raw = file_get_contents($file);
+        if ($raw === false) {
+            echo "FAILED\n";
+            fwrite(STDERR, "ERROR: Could not read SQL migration $name\n");
+            exit(1);
+        }
+        // Robust split: respect quotes, line comments (--), block comments (/* */)
+        $queries = [];
+        $buf = '';
+        $inSingle = false; $inDouble = false; $inLineComment = false; $inBlockComment = false;
+        $len = strlen($raw);
+        for ($i = 0; $i < $len; $i++) {
+            $c = $raw[$i];
+            $next = $i + 1 < $len ? $raw[$i+1] : '';
+            if ($inLineComment) {
+                if ($c === "\n") { $inLineComment = false; $buf .= $c; }
+                continue;
+            }
+            if ($inBlockComment) {
+                if ($c === '*' && $next === '/') { $inBlockComment = false; $i++; }
+                continue;
+            }
+            if (!$inSingle && !$inDouble) {
+                if ($c === '-' && $next === '-') { $inLineComment = true; $i++; continue; }
+                if ($c === '/' && $next === '*') { $inBlockComment = true; $i++; continue; }
+            }
+            if ($c === "'" && !$inDouble) {
+                // handle escaped '' inside single quotes
+                if ($inSingle && $next === "'") { $buf .= $c . $next; $i++; continue; }
+                $inSingle = !$inSingle;
+            } elseif ($c === '"' && !$inSingle) {
+                $inDouble = !$inDouble;
+            }
+            if ($c === ';' && !$inSingle && !$inDouble) {
+                $trimmed = trim($buf);
+                if ($trimmed !== '') $queries[] = $trimmed . ';';
+                $buf = '';
+            } else {
+                $buf .= $c;
+            }
+        }
+        $trimmed = trim($buf);
+        if ($trimmed !== '') $queries[] = $trimmed . ';';
+        if (!$queries) {
+            echo "FAILED\n";
+            fwrite(STDERR, "ERROR: SQL migration $name contains no statements\n");
+            exit(1);
+        }
+    } else {
+        $queries = include $file;
+        if (!is_array($queries)) {
+            echo "FAILED\n";
+            fwrite(STDERR, "ERROR: Migration $name did not return an array of SQL strings\n");
+            exit(1);
+        }
     }
 
     // Execute each statement; stop on first failure

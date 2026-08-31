@@ -45,7 +45,7 @@ class MemoryTools {
                 'function' => [
                     'name' => 'list_context',
                     'description' => 'List all persisted context keys with an 80-char preview of each value (not full values). Use to discover what is remembered.',
-                    'parameters' => ['type' => 'object', 'properties' => []],
+                    'parameters' => ['type' => 'object', 'properties' => (object)[]],
                 ],
             ],
             [
@@ -190,10 +190,14 @@ class MemoryTools {
         $lines = [];
         foreach ($files as $path) {
             if (!is_file($path)) continue;
-            $content = @file_get_contents($path);
-            if ($content === false || $content === '') continue;
-            // Remove Authorization headers if present
+            // Efficient tail: read last 32KB instead of full 10MB file to avoid memory blow-up
+            $content = self::tailFile($path, 32 * 1024);
+            if ($content === '' ) continue;
+            // Redact secrets: Authorization + api keys / secrets / tokens / passwords + GSC/OpenRouter keys
             $content = preg_replace('/Authorization:\s*[^\n]+/i', 'Authorization: [redacted]', $content);
+            $content = preg_replace('/((?:api[_-]?key|secret|password|token|OPENROUTER_API_KEY|GSC_CLIENT_SECRET|GSC_ENCRYPTION_KEY|BOT_API_SECRET)\s*[:=]\s*)([^\s\n"\'`,;]+)/i', '$1[redacted]', $content);
+            $content = preg_replace('/(sk-[a-zA-Z0-9_\-]{10,})/', '[redacted-sk]', $content);
+            $content = preg_replace('/(Bearer\s+[a-zA-Z0-9_\-\.]+)/i', 'Bearer [redacted]', $content);
             $all = explode("\n", $content);
             $all = array_filter($all, fn($l) => trim($l) !== '');
             // Take last N
@@ -222,5 +226,23 @@ class MemoryTools {
             if ($totalChars > 10000) break;
         }
         return ['logs'=>$capped,'count'=>count($capped),'limit'=>$limit,'filter'=>$filter ?: null];
+    }
+
+    private static function tailFile(string $path, int $maxBytes): string {
+        $size = @filesize($path);
+        if ($size === false || $size <= $maxBytes) {
+            $c = @file_get_contents($path);
+            return $c === false ? '' : $c;
+        }
+        $fh = @fopen($path, 'rb');
+        if (!$fh) return '';
+        @fseek($fh, -$maxBytes, SEEK_END);
+        $data = @stream_get_contents($fh);
+        @fclose($fh);
+        if ($data === false) return '';
+        // Trim to first full line to avoid half-line
+        $pos = strpos($data, "\n");
+        if ($pos !== false) $data = substr($data, $pos + 1);
+        return $data;
     }
 }

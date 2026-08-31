@@ -136,14 +136,14 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <meta name="twitter:image" content="<?= e($ogImage) ?>">
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/pages.min.css') ?: time() ?>">
 
     <?php
     $allSchemas = [];
     
-    // Output Global Schema if verified
+    // Output Global Schema if verified — JSON_HEX_TAG prevents </script> breakout
     if (!empty($sitewideSchema)) {
-        echo '<script type="application/ld+json">' . json_encode($sitewideSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . '</script>';
+        echo '<script type="application/ld+json">' . json_encode($sitewideSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>';
     } else {
         // Fallback or legacy handling (e.g. for error pages or direct view calls without controller?)
         // Assuming controllers always pass it now.
@@ -161,7 +161,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     
     // Output Blog Schema if present
     if (!empty($blogSchema)) {
-        $blogJson = is_array($blogSchema) ? json_encode($blogSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) : $blogSchema;
+        $blogJson = is_array($blogSchema) ? json_encode($blogSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_AMP) : $blogSchema;
         echo '<script type="application/ld+json">' . $blogJson . '</script>';
     }
     ?>

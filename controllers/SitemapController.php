@@ -67,10 +67,14 @@ class SitemapController extends Controller {
         header('Pragma: public');
         
         $baseUrl = $this->getAbsoluteBaseUrl();
-        $pages = $this->pageModel->getAll(false); 
+        $pages = $this->pageModel->getAll(false);
         $templateLastmodTs = $this->getPageTemplateTimestamp();
-        $rotationMonthTs = strtotime(date('Y-m-01'));
-        
+        // Fetch max rotation updated_at per page to reflect rotation edits in lastmod (fixes stale sitemap after rotation-only updates)
+        $rotationMax = [];
+        try {
+            $rows = $this->db->fetchAll("SELECT page_id, MAX(updated_at) as max_rot FROM content_rotations GROUP BY page_id");
+            foreach ($rows as $r) $rotationMax[(int)$r['page_id']] = strtotime($r['max_rot']);
+        } catch (Throwable $e) {}
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
                       xmlns:xhtml="http://www.w3.org/1999/xhtml">' . "\n";
@@ -81,10 +85,11 @@ class SitemapController extends Controller {
         foreach ($pages as $page) {
             $slug = $page['slug'];
             $updated = $page['updated_at'];
-            $lastmodTs = $this->mergeLastmodTimestamps($updated, $templateLastmodTs);
-            if (!empty($page['enable_rotation']) && $rotationMonthTs) {
-                $lastmodTs = max($lastmodTs, $rotationMonthTs);
-            }
+            $rotTs = $rotationMax[(int)($page['id'] ?? 0)] ?? 0;
+            $pageTs = $updated ? strtotime($updated) : 0;
+            $effectivePageTs = max($pageTs, $rotTs);
+            $effectiveUpdated = $effectivePageTs ? date('Y-m-d H:i:s', $effectivePageTs) : $updated;
+            $lastmodTs = $this->mergeLastmodTimestamps($effectiveUpdated, $templateLastmodTs);
             
             $isHome = in_array($slug, ['home', 'main'], true);
             $priority = $isHome ? '1.0' : '0.8';
@@ -201,17 +206,20 @@ class SitemapController extends Controller {
 
     private function getMaxEntityLastmod($items, $templateTs) {
         $max = $templateTs ?: 0;
+        // Include rotation max for pages that have rotations
+        $rotMaxByPage = [];
+        try {
+            $rows = $this->db->fetchAll("SELECT page_id, MAX(updated_at) as max_rot FROM content_rotations GROUP BY page_id");
+            foreach ($rows as $r) $rotMaxByPage[(int)$r['page_id']] = strtotime($r['max_rot']);
+        } catch (Throwable $e) {}
         foreach ($items as $item) {
             $updated = $item['updated_at'] ?? null;
             $ts = $updated ? strtotime($updated) : 0;
+            if (isset($item['id']) && isset($rotMaxByPage[(int)$item['id']])) {
+                $ts = max($ts, $rotMaxByPage[(int)$item['id']]);
+            }
             if ($ts && $ts > $max) {
                 $max = $ts;
-            }
-            if (!empty($item['enable_rotation'])) {
-                $rotationMonthTs = strtotime(date('Y-m-01'));
-                if ($rotationMonthTs && $rotationMonthTs > $max) {
-                    $max = $rotationMonthTs;
-                }
             }
         }
         return $max > 0 ? $max : time();

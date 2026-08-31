@@ -26,19 +26,32 @@ class Router {
     public function dispatch() {
         try {
             $method = $_SERVER['REQUEST_METHOD'];
-            if ($method === 'HEAD') {
+            $isHead = ($method === 'HEAD');
+            if ($isHead) {
                 $method = 'GET';
             }
             $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
             $base = dirname($_SERVER['SCRIPT_NAME']);
-            
             if ($base !== '/' && strpos($uri, $base) === 0) {
                 $uri = substr($uri, strlen($base));
             }
-
             $uri = '/' . trim($uri, '/');
-
             if (!isset($this->routes[$method])) {
+                // Distinguish method mismatch (405) from not found (404) — collect allowed methods for this URI
+                $allowed = [];
+                foreach ($this->routes as $m => $routes) {
+                    foreach ($routes as $pattern => $cb) {
+                        if (preg_match($this->convertPatternToRegex($pattern), $uri)) {
+                            $allowed[] = $m;
+                            break;
+                        }
+                    }
+                }
+                if (!empty($allowed)) {
+                    http_response_code(405);
+                    header('Allow: ' . implode(', ', array_unique($allowed)));
+                    return $this->error(405);
+                }
                 return $this->error(404);
             }
 
@@ -48,6 +61,14 @@ class Router {
                 $regex = $this->convertPatternToRegex($pattern);
                 if (preg_match($regex, $uri, $matches)) {
                     $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+                    if ($isHead) {
+                        ob_start();
+                        $result = call_user_func_array($callback, $params);
+                        ob_end_clean();
+                        // HEAD must not return body — send headers only
+                        if (!headers_sent()) header('Content-Length: 0');
+                        return $result;
+                    }
                     return call_user_func_array($callback, $params);
                 }
             }

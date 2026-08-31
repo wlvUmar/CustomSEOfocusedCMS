@@ -31,6 +31,11 @@ class SchemaController extends Controller {
     }
     
     public function save() {
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/schemas');
+            return;
+        }
         $slug = $_POST['slug'] ?? '';
         $json = $_POST['json'] ?? '';
         
@@ -57,6 +62,11 @@ class SchemaController extends Controller {
     }
     
     public function delete() {
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/schemas');
+            return;
+        }
         $slug = $_POST['slug'] ?? '';
         
         if ($slug) {
@@ -68,6 +78,11 @@ class SchemaController extends Controller {
     }
     
     public function bulkImport() {
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/schemas');
+            return;
+        }
         $json = $_POST['json'] ?? '';
         
         if (empty($json)) {

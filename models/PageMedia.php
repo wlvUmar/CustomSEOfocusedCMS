@@ -180,15 +180,16 @@ class PageMedia {
      * Bulk attach media to multiple pages
      */
     public function bulkAttach($mediaId, $pageIds, $section = 'content') {
-        $this->db->getConnection()->beginTransaction();
+        $wasInTxn = $this->db->inTransaction();
+        if (!$wasInTxn) $this->db->beginTransaction();
         try {
             foreach ($pageIds as $pageId) {
                 $this->attachMedia($pageId, $mediaId, ['section' => $section]);
             }
-            $this->db->getConnection()->commit();
+            if (!$wasInTxn) $this->db->commit();
             return true;
-        } catch (Exception $e) {
-            $this->db->getConnection()->rollBack();
+        } catch (Throwable $e) {
+            if (!$wasInTxn && $this->db->inTransaction()) $this->db->rollBack();
             error_log("Bulk attach error: " . $e->getMessage());
             return false;
         }

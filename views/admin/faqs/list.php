@@ -44,6 +44,7 @@
                 </a>
                 <form method="POST" action="<?= BASE_URL ?>/admin/faqs/delete" style="display:inline;" 
                       onsubmit="return confirm('Delete this FAQ?')">
+                    <?= csrfField() ?>
                     <input type="hidden" name="id" value="<?= $faq['id'] ?>">
                     <button type="submit" class="btn btn-sm btn-danger">
                         <i data-feather="trash-2"></i>
@@ -65,6 +66,7 @@
         
         <div class="modal-body">
             <form method="POST" action="<?= BASE_URL ?>/admin/faqs/bulk-upload" enctype="multipart/form-data">
+                <?= csrfField() ?>
                 <div class="help-text" style="margin-bottom: 20px; padding: 12px; background: #eff6ff; border-radius: 6px; border-left: 3px solid #3b82f6;">
                     <strong>Supported formats:</strong> CSV, JSON<br>
                     <strong>Required fields:</strong> page_slug, question_ru, answer_ru<br>

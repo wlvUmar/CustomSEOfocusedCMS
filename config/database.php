@@ -1,17 +1,18 @@
 <?php
 $envFile = __DIR__ . '/../.env';
 
+// Unified parser — mirrors config/config.php handling of quoted values and '=' in values.
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0 || strpos($line, '=') === false) {
-            continue;
-        }
-        
-        list($key, $value) = explode('=', $line, 2);
+        if (strpos(trim($line), '#') === 0) continue;
+        if (strpos($line, '=') === false) continue;
+        [$key, $value] = explode('=', $line, 2);
         $key = trim($key);
-        $value = trim($value, " \t\n\r\0\x0B\"'");
-        
+        $value = trim($value);
+        if (preg_match('/^(["\'])(.*)\1$/', $value, $m)) {
+            $value = $m[2];
+        }
         putenv("$key=$value");
         $_ENV[$key] = $value;
     }

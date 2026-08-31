@@ -376,7 +376,7 @@ $router->get('/{slug}', function($slug) {
 });
 
 // 404 handler
-$router->notFound(function() { $router->error(404); });
+$router->notFound(function() use ($router) { $router->error(404); });
 
 // Dispatch router
 $router->dispatch();

@@ -121,7 +121,8 @@
                 });
 
                 const newQueryString = buildQueryString(mergedParams);
-                const newHref = pathname + newQueryString;
+                const hash = linkUrl.hash || '';
+                const newHref = pathname + newQueryString + hash;
 
                 link.setAttribute('href', newHref);
             } catch (e) {

@@ -6,7 +6,16 @@
 
     function getCurrentSlug() {
         const pathParts = window.location.pathname.split('/').filter(Boolean);
-        return pathParts[0] && pathParts[0].length > 2 ? pathParts[0] : 'main';
+        if (!pathParts.length) return 'main';
+        // Handle /uz or /slug/uz pattern: first part may be language code
+        if (pathParts[0] === 'uz' || pathParts[0] === 'ru') {
+            return pathParts[1] || 'main';
+        }
+        // Normal slug
+        const first = pathParts[0];
+        // Filter out language suffix if present as last segment
+        if (first === 'main') return 'main';
+        return first;
     }
 
     function getCurrentLanguage() {
@@ -18,9 +27,11 @@
     function postTracking(endpoint, params) {
         try {
             const body = new URLSearchParams(params);
+            const blob = new Blob([body.toString()], { type: 'application/x-www-form-urlencoded' });
 
             if (navigator.sendBeacon) {
-                navigator.sendBeacon((window.baseUrl || '') + endpoint, body);
+                // Use Blob for Safari compatibility (URLSearchParams may serialize as [object])
+                navigator.sendBeacon((window.baseUrl || '') + endpoint, blob);
                 return;
             }
 
@@ -205,11 +216,12 @@
             const url = new URL(href, window.location.origin);
             if (url.origin !== window.location.origin) return null;
             const pathParts = url.pathname.split('/').filter(Boolean);
-            for (let i = 0; i < pathParts.length; i++) {
-                const part = pathParts[i];
-                if (part.length > 2) return part;
+            // Skip language codes
+            const filtered = pathParts.filter(p => p !== 'uz' && p !== 'ru');
+            for (let i = 0; i < filtered.length; i++) {
+                const part = filtered[i];
+                if (part && part !== 'main') return part;
             }
-
             return 'main';
         } catch (e) {
             return null;
@@ -217,6 +229,7 @@
     }
 
     function setupTracking() {
+        // Use bubble phase (false) to avoid intercepting before app handlers (project-08#2)
         document.addEventListener('click', function (e) {
             const link = e.target.closest('a');
 
@@ -241,7 +254,7 @@
             if (toSlug) {
                 trackInternalLink(toSlug);
             }
-        }, true);
+        }, false);
     }
 
     if (document.readyState === 'loading') {

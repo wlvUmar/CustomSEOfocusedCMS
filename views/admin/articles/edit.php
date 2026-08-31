@@ -32,6 +32,7 @@ $title = $isEdit ? 'Edit Article' : 'New Article';
     <?php endif; ?>
 
     <form method="POST" action="<?= BASE_URL ?>/admin/articles/save" enctype="multipart/form-data" class="article-form">
+        <?= csrfField() ?>
         <?php if ($isEdit): ?>
             <input type="hidden" name="id" value="<?= $article['id'] ?>">
         <?php endif; ?>

@@ -5,6 +5,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <h1>Global SEO Settings & JSON-LD Schemas</h1>
 
 <form method="POST" action="<?= BASE_URL ?>/admin/seo/save" class="admin-form">
+    <?= csrfField() ?>
     <div class="tabs">
         <button type="button" class="tab-btn active" onclick="switchTab('general')">General Info</button>
         <button type="button" class="tab-btn" onclick="switchTab('meta')">Default Meta</button>

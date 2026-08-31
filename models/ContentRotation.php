@@ -27,23 +27,43 @@ class ContentRotation {
 
     /**
      * Get rotation by ID (for manual mode)
+     * 06-01: $includeInactive allows pinning inactive variants shown in UI (views/admin/pages/edit.php:260).
      */
-    public function getRotationById($rotationId) {
-        $sql = "SELECT * FROM content_rotations WHERE id = ? AND is_active = 1 LIMIT 1";
+    public function getRotationById($rotationId, bool $includeInactive = false) {
+        $sql = "SELECT * FROM content_rotations WHERE id = ?";
+        if (!$includeInactive) $sql .= " AND is_active = 1";
+        $sql .= " LIMIT 1";
         return $this->db->fetchOne($sql, [$rotationId]);
     }
 
     /**
      * Set manual rotation for a page
+     * 06-02: snapshot revision before UPDATE so pin is undoable; 06-01: allow inactive pin.
      */
     public function setManualRotation($pageId, $rotationId) {
         require_once BASE_PATH . '/models/Page.php';
         $pageModel = new Page();
         
-        // Verify rotation belongs to this page
-        $rotation = $this->getRotationById($rotationId);
+        // Verify rotation belongs to this page — allow inactive (06-01)
+        $rotation = $this->getRotationById($rotationId, true);
         if (!$rotation || $rotation['page_id'] != $pageId) {
             return false;
+        }
+        // Warn but allow inactive pin — UI shows (Inactive) explicitly
+        if (empty($rotation['is_active'])) {
+            error_log("[ContentRotation] pinning inactive rotation {$rotationId} to page {$pageId}");
+        }
+        // 06-02: revision snapshot before mutation (never block the pin)
+        try {
+            if (!class_exists('PageRevision', false)) {
+                require_once BASE_PATH . '/models/PageRevision.php';
+            }
+            $pageRow = $pageModel->getById($pageId);
+            if ($pageRow && class_exists('PageRevision', true)) {
+                PageRevision::createSnapshot((int)$pageId, $pageRow, ['selected_rotation_id']);
+            }
+        } catch (Throwable $e) {
+            error_log('[ContentRotation] revision snapshot failed for setManualRotation page ' . $pageId . ': ' . $e->getMessage());
         }
         
         $sql = "UPDATE pages SET selected_rotation_id = ? WHERE id = ?";
@@ -96,8 +116,9 @@ class ContentRotation {
     }
 
     public function getCoverageStats($pageId) {
+        // 06-03: covered = active months only; inactive rows no longer count as covered
         $rotations = $this->getByPageId($pageId);
-        $coverage = array_fill(1, 12, false);
+        $activeCovered = [];
         $stats = [
             'total_months' => 12,
             'covered_months' => 0,
@@ -107,16 +128,16 @@ class ContentRotation {
         ];
         
         foreach ($rotations as $r) {
-            $coverage[$r['active_month']] = true;
             if ($r['is_active']) {
-                $stats['active_months'][] = $r['active_month'];
+                $activeCovered[(int)$r['active_month']] = true;
+                $stats['active_months'][] = (int)$r['active_month'];
             } else {
-                $stats['inactive_months'][] = $r['active_month'];
+                $stats['inactive_months'][] = (int)$r['active_month'];
             }
         }
         
         for ($i = 1; $i <= 12; $i++) {
-            if ($coverage[$i]) {
+            if (isset($activeCovered[$i])) {
                 $stats['covered_months']++;
             } else {
                 $stats['missing_months'][] = $i;
@@ -126,17 +147,19 @@ class ContentRotation {
         return $stats;
     }
 
-    public function monthHasContent($pageId, $month) {
+    public function monthHasContent($pageId, $month, bool $activeOnly = true) {
         $sql = "SELECT COUNT(*) as count FROM content_rotations WHERE page_id = ? AND active_month = ?";
+        if ($activeOnly) $sql .= " AND is_active = 1";
         $result = $this->db->fetchOne($sql, [$pageId, $month]);
         return $result['count'] > 0;
     }
 
     public function getPagesWithIncompleteRotation() {
+        // 06-03: only active rotations count toward coverage
         $sql = "SELECT p.id, p.slug, p.title_ru, p.title_uz, 
-                COUNT(DISTINCT cr.active_month) as covered_months
+                COUNT(DISTINCT cr_active.active_month) as covered_months
                 FROM pages p
-                LEFT JOIN content_rotations cr ON p.id = cr.page_id
+                LEFT JOIN content_rotations cr_active ON p.id = cr_active.page_id AND cr_active.is_active = 1
                 WHERE p.enable_rotation = 1 AND p.is_published = 1
                 GROUP BY p.id
                 HAVING covered_months < 12
@@ -150,8 +173,17 @@ class ContentRotation {
             return false;
         }
 
-        if ($this->monthHasContent($source['page_id'], $targetMonth)) {
+        // 06-04: active-only check; if target has only inactive row, overwrite it instead of blocking
+        if ($this->monthHasContent($source['page_id'], $targetMonth, true)) {
             return false;
+        }
+        // If an inactive row exists for target month, replace it atomically
+        $inactive = $this->db->fetchOne(
+            "SELECT id FROM content_rotations WHERE page_id = ? AND active_month = ? AND is_active = 0 LIMIT 1",
+            [$source['page_id'], $targetMonth]
+        );
+        if ($inactive) {
+            $this->db->query("DELETE FROM content_rotations WHERE id = ?", [$inactive['id']]);
         }
 
         $data = [

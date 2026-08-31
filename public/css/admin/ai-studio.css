@@ -62,10 +62,11 @@
 .ai-studio__topbar-right{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-left:auto; }
 .ai-studio__controls{ display:flex; align-items:center; gap:8px; }
 .ai-studio__model-label{ font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--ai-muted); }
-#ai-model{ padding:6px 28px 6px 10px; border:1px solid var(--ai-line); border-radius:8px; background:#fff; font-size:.82rem; font-weight:500; color:var(--ai-ink); appearance:none;
+#ai-model{ padding:6px 28px 6px 10px; border:1px solid var(--ai-line); border-radius:8px; background:#fff; font-size:.82rem; font-weight:500; color:var(--ai-ink); appearance:none; max-width:260px; text-overflow:ellipsis; white-space:nowrap; overflow:hidden;
     background-image: linear-gradient(45deg, transparent 50%, #94a3b8 50%), linear-gradient(135deg, #94a3b8 50%, transparent 50%);
     background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%; background-size:5px 5px, 5px 5px; background-repeat:no-repeat; height:32px; }
 #ai-model:focus{ outline:none; border-color:#0f172a; box-shadow:0 0 0 2px #e2e8f0; }
+@media (max-width:640px){ #ai-model{ max-width:160px; } }
 
 /* GSC inline (moved into topbar) */
 .ai-gsc-inline{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--ai-line); background:var(--ai-canvas); border-radius:999px; font-size:.76rem; }

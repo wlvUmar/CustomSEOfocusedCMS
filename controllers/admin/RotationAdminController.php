@@ -182,6 +182,12 @@ class RotationAdminController extends Controller {
     public function setRotationMode() {
         $this->requireAuth();
         
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/pages');
+            return;
+        }
+        
         $pageId = intval($_POST['page_id'] ?? 0);
         $mode = $_POST['rotation_mode'] ?? 'auto';
         
@@ -218,6 +224,12 @@ class RotationAdminController extends Controller {
      */
     public function selectRotation() {
         $this->requireAuth();
+        
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/rotations/manage/' . intval($_POST['page_id'] ?? 0));
+            return;
+        }
         
         $pageId = intval($_POST['page_id'] ?? 0);
         $rotationId = intval($_POST['rotation_id'] ?? 0);
@@ -260,6 +272,12 @@ class RotationAdminController extends Controller {
     public function clearManualSelection() {
         $this->requireAuth();
         
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/pages');
+            return;
+        }
+        
         $pageId = intval($_POST['page_id'] ?? 0);
         
         if (!$pageId) {
@@ -289,6 +307,12 @@ class RotationAdminController extends Controller {
      */
     public function clone() {
         $this->requireAuth();
+        
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/rotations/overview');
+            return;
+        }
         
         $sourceId = intval($_POST['source_id'] ?? 0);
         $targetMonth = intval($_POST['target_month'] ?? 0);
@@ -322,6 +346,12 @@ class RotationAdminController extends Controller {
      */
     public function bulkAction() {
         $this->requireAuth();
+        
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/rotations/overview');
+            return;
+        }
         
         $action = $_POST['action'] ?? '';
         $ids = $_POST['ids'] ?? [];
@@ -361,6 +391,12 @@ class RotationAdminController extends Controller {
     public function delete() {
         $this->requireAuth();
         
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/rotations/overview');
+            return;
+        }
+        
         $id = $_POST['id'] ?? null;
         $pageId = $_POST['page_id'] ?? null;
         
@@ -382,6 +418,12 @@ class RotationAdminController extends Controller {
     public function preview() {
         $this->requireAuth();
         
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            http_response_code(403);
+            echo 'CSRF validation failed';
+            exit;
+        }
+        
         $contentRu = $_POST['content_ru'] ?? '';
         $contentUz = $_POST['content_uz'] ?? '';
         $lang = $_POST['lang'] ?? 'ru';
@@ -399,6 +441,12 @@ class RotationAdminController extends Controller {
     }
         public function bulkUpload() {
             $this->requireAuth();
+            
+            if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                $_SESSION['error'] = 'CSRF token validation failed';
+                $this->redirect('/admin/rotations/overview');
+                return;
+            }
             
             if (!isset($_FILES['file'])) {
                 $_SESSION['error'] = 'No file uploaded';

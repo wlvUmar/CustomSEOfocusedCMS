@@ -11,6 +11,7 @@
         <h2 class="section-title"><i data-feather="code"></i> Schema Editor</h2>
         
         <form action="<?= BASE_URL ?>/admin/schemas/save" method="POST" id="schemaForm">
+            <?= csrfField() ?>
             <div class="form-group">
                 <label>Page Slug</label>
                 <select name="slug" id="slugSelect" class="form-control" onchange="loadSchema()">
@@ -41,6 +42,7 @@
     <div class="dashboard-section">
         <h2 class="section-title"><i data-feather="upload-cloud"></i> Bulk Import</h2>
         <form action="<?= BASE_URL ?>/admin/schemas/bulk-import" method="POST">
+            <?= csrfField() ?>
             <div class="form-group">
                 <label>Bulk JSON Data</label>
                 <textarea name="json" class="form-control code-editor" rows="10" placeholder='{ "slug1": { ... }, "slug2": { ... } }' style="font-family: monospace;"></textarea>

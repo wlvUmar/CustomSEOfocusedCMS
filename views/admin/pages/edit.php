@@ -143,7 +143,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         
         <div class="form-group">
             <label>Slug (URL)*</label>
-            <input type="text" name="slug" value="<?= $page['slug'] ?? '' ?>" required>
+            <input type="text" name="slug" value="<?= e($page['slug'] ?? '') ?>" required>
         </div>
         
         <div class="form-group">
@@ -190,23 +190,23 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <div class="form-row">
             <div class="form-group">
                 <label>Title (RU)*</label>
-                <input type="text" name="title_ru" value="<?= $page['title_ru'] ?? '' ?>" required>
+                <input type="text" name="title_ru" value="<?= e($page['title_ru'] ?? '') ?>" required>
             </div>
             
             <div class="form-group">
                 <label>Title (UZ)*</label>
-                <input type="text" name="title_uz" value="<?= $page['title_uz'] ?? '' ?>" required>
+                <input type="text" name="title_uz" value="<?= e($page['title_uz'] ?? '') ?>" required>
             </div>
         </div>
         
         <div class="form-group">
             <label>Content (RU)</label>
-            <textarea name="content_ru" id="content_ru" class="tinymce"><?= $page['content_ru'] ?? '' ?></textarea>
+            <textarea name="content_ru" id="content_ru" class="tinymce"><?= e($page['content_ru'] ?? '') ?></textarea>
         </div>
         
         <div class="form-group">
             <label>Content (UZ)</label>
-            <textarea name="content_uz" id="content_uz" class="tinymce"><?= $page['content_uz'] ?? '' ?></textarea>
+            <textarea name="content_uz" id="content_uz" class="tinymce"><?= e($page['content_uz'] ?? '') ?></textarea>
         </div>
         
         <div class="form-row">
@@ -292,36 +292,36 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <div class="form-row">
             <div class="form-group">
                 <label>Meta Title (RU)</label>
-                <input type="text" name="meta_title_ru" value="<?= $page['meta_title_ru'] ?? '' ?>">
+                <input type="text" name="meta_title_ru" value="<?= e($page['meta_title_ru'] ?? '') ?>">
             </div>
             
             <div class="form-group">
                 <label>Meta Title (UZ)</label>
-                <input type="text" name="meta_title_uz" value="<?= $page['meta_title_uz'] ?? '' ?>">
+                <input type="text" name="meta_title_uz" value="<?= e($page['meta_title_uz'] ?? '') ?>">
             </div>
         </div>
         
         <div class="form-row">
             <div class="form-group">
                 <label>Meta Keywords (RU)</label>
-                <textarea name="meta_keywords_ru" rows="2"><?= $page['meta_keywords_ru'] ?? '' ?></textarea>
+                <textarea name="meta_keywords_ru" rows="2"><?= e($page['meta_keywords_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>Meta Keywords (UZ)</label>
-                <textarea name="meta_keywords_uz" rows="2"><?= $page['meta_keywords_uz'] ?? '' ?></textarea>
+                <textarea name="meta_keywords_uz" rows="2"><?= e($page['meta_keywords_uz'] ?? '') ?></textarea>
             </div>
         </div>
         
         <div class="form-row">
             <div class="form-group">
                 <label>Meta Description (RU)</label>
-                <textarea name="meta_description_ru" rows="3"><?= $page['meta_description_ru'] ?? '' ?></textarea>
+                <textarea name="meta_description_ru" rows="3"><?= e($page['meta_description_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>Meta Description (UZ)</label>
-                <textarea name="meta_description_uz" rows="3"><?= $page['meta_description_uz'] ?? '' ?></textarea>
+                <textarea name="meta_description_uz" rows="3"><?= e($page['meta_description_uz'] ?? '') ?></textarea>
             </div>
         </div>
     </div>
@@ -332,46 +332,46 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <div class="form-row">
             <div class="form-group">
                 <label>OG Title (RU) - For Facebook/Social</label>
-                <input type="text" name="og_title_ru" value="<?= $page['og_title_ru'] ?? '' ?>">
+                <input type="text" name="og_title_ru" value="<?= e($page['og_title_ru'] ?? '') ?>">
             </div>
             
             <div class="form-group">
                 <label>OG Title (UZ)</label>
-                <input type="text" name="og_title_uz" value="<?= $page['og_title_uz'] ?? '' ?>">
+                <input type="text" name="og_title_uz" value="<?= e($page['og_title_uz'] ?? '') ?>">
             </div>
         </div>
         
         <div class="form-row">
             <div class="form-group">
                 <label>OG Description (RU)</label>
-                <textarea name="og_description_ru" rows="2"><?= $page['og_description_ru'] ?? '' ?></textarea>
+                <textarea name="og_description_ru" rows="2"><?= e($page['og_description_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>OG Description (UZ)</label>
-                <textarea name="og_description_uz" rows="2"><?= $page['og_description_uz'] ?? '' ?></textarea>
+                <textarea name="og_description_uz" rows="2"><?= e($page['og_description_uz'] ?? '') ?></textarea>
             </div>
         </div>
         
         <div class="form-group">
             <label>OG Image URL (Full URL)</label>
-            <input type="text" name="og_image" value="<?= $page['og_image'] ?? '' ?>">
+            <input type="text" name="og_image" value="<?= e($page['og_image'] ?? '') ?>">
         </div>
         
         <div class="form-group">
             <label>Canonical URL (Leave empty for auto)</label>
-            <input type="text" name="canonical_url" value="<?= $page['canonical_url'] ?? '' ?>">
+            <input type="text" name="canonical_url" value="<?= e($page['canonical_url'] ?? '') ?>">
         </div>
         
         <div class="form-row">
             <div class="form-group">
                 <label>JSON-LD Schema (RU)</label>
-                <textarea name="jsonld_ru" rows="8" class="code"><?= $page['jsonld_ru'] ?? '' ?></textarea>
+                <textarea name="jsonld_ru" rows="8" class="code"><?= e($page['jsonld_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>JSON-LD Schema (UZ)</label>
-                <textarea name="jsonld_uz" rows="8" class="code"><?= $page['jsonld_uz'] ?? '' ?></textarea>
+                <textarea name="jsonld_uz" rows="8" class="code"><?= e($page['jsonld_uz'] ?? '') ?></textarea>
             </div>
         </div>
     </div>

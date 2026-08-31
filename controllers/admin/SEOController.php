@@ -22,6 +22,12 @@ class SEOController extends Controller {
     public function save() {
         $this->requireAuth();
         
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/seo');
+            return;
+        }
+        
         $data = [
             // Basic info
             'site_name_ru' => trim($_POST['site_name_ru']),

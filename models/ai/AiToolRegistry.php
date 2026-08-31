@@ -5,6 +5,7 @@
 // new *Tools.php class and listing it in TOOL_CLASSES — the loop itself
 // never changes.
 
+// Autoloader (core/Autoloader.php) handles these when available; explicit requires kept as fallback for BC (02-architecture #6)
 require_once BASE_PATH . '/models/ai/tools/PageTools.php';
 require_once BASE_PATH . '/models/ai/tools/RotationTools.php';
 require_once BASE_PATH . '/models/ai/tools/AnalyticsTools.php';
@@ -56,22 +57,28 @@ class AiToolRegistry {
         'list_faqs', 'get_faq',
         // GSC read
         'get_gsc_overview', 'get_page_gsc', 'get_gsc_queries', 'get_gsc_pages', 'search_gsc_queries', 'query_gsc',
-        // Memory + debug read-only
-        'list_context', 'get_context', 'get_tool_logs',
+        // Memory + debug read-only (get_tool_logs is BUILD-only due to secret leakage risk — 01-security #9)
+        'list_context', 'get_context',
     ];
 
+    private static ?array $cachedDefs = null;
     public static function definitions(): array {
+        if (self::$cachedDefs !== null) return self::$cachedDefs;
         $defs = [];
         foreach (self::TOOL_CLASSES as $class) {
             $defs = array_merge($defs, $class::definitions());
         }
+        self::$cachedDefs = $defs;
         return $defs;
     }
 
     public static function definitionsForMode(string $mode): array {
         $mode = $mode === 'build' ? 'build' : 'plan';
-        if ($mode === 'build') return self::definitions();
-        return array_values(array_filter(self::definitions(), fn($d) => in_array($d['function']['name'] ?? '', self::PLAN_ALLOWLIST, true)));
+        $all = self::definitions();
+        if ($mode === 'build') return $all;
+        // Use hash set for O(1) lookup instead of linear scan per tool
+        $allow = array_flip(self::PLAN_ALLOWLIST);
+        return array_values(array_filter($all, fn($d) => isset($allow[$d['function']['name'] ?? ''])));
     }
 
     public static function isPlanAllowed(string $name): bool {
@@ -88,8 +95,25 @@ class AiToolRegistry {
      * same id on the retry turn.
      */
     public static function callId(string $name, array $args): string {
-        $sorted = self::sortKeysRecursive($args);
+        $norm = self::normalizeArgs($args);
+        $sorted = self::sortKeysRecursive($norm);
         return sha1($name . ':' . json_encode($sorted, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    private static function normalizeArgs(array $args): array {
+        // 03-code-bugs #8: normalize int↔string so {"page_id":1} and {"page_id":"1"} hash identically
+        foreach ($args as $k => $v) {
+            if (is_array($v)) {
+                $args[$k] = self::normalizeArgs($v);
+            } elseif (is_int($v) || is_float($v)) {
+                $args[$k] = (string)$v;
+            } elseif (is_string($v) && is_numeric($v) && $v !== '') {
+                // canonicalize numeric strings: "001" → "1", "1.0" → "1"
+                $num = $v + 0;
+                $args[$k] = (string)$num;
+            }
+        }
+        return $args;
     }
 
     private static function sortKeysRecursive(array $arr): array {
@@ -124,23 +148,20 @@ class AiToolRegistry {
             ];
         }
 
-        // BUILD mode is auto-execute — approvals disabled per owner request.
-        // Guarded logic is retained only for PLAN mode (which already blocks writes) or if you re-enable it later.
+        // Guarded tools require approval even in BUILD to prevent wholesale wipe (01-security #5). Owner-requested BUILD auto-execute retained for small edits.
         $isGuarded = false;
         $guardReason = '';
-        if ($mode !== 'build') {
-            $isGuarded = isset(self::GUARDED_TOOLS[$name]);
-            $guardReason = self::GUARDED_TOOLS[$name] ?? '';
-            // str_replace_field / patch_section are only guarded when they would replace with a large payload.
-            if (!$isGuarded && in_array($name, ['str_replace_field','patch_section'], true) && isset($args['replace']) && mb_strlen((string)$args['replace']) > 800) {
-                $isGuarded = true;
-                $guardReason = 'Large ' . $name . ' (>800 chars) is considered destructive — requires approval.';
-            }
-            if (!$isGuarded && $name === 'update_section' && isset($args['html']) && mb_strlen((string)$args['html']) > 800) {
-                $isGuarded = true;
-                $guardReason = 'Large update_section (>800 chars) is considered destructive — requires approval.';
-            }
+        $isGuarded = isset(self::GUARDED_TOOLS[$name]);
+        $guardReason = self::GUARDED_TOOLS[$name] ?? '';
+        if (!$isGuarded && in_array($name, ['str_replace_field','patch_section'], true) && isset($args['replace']) && mb_strlen((string)$args['replace']) > 800) {
+            $isGuarded = true;
+            $guardReason = 'Large ' . $name . ' (>800 chars) is considered destructive — requires approval.';
         }
+        if (!$isGuarded && $name === 'update_section' && isset($args['html']) && mb_strlen((string)$args['html']) > 800) {
+            $isGuarded = true;
+            $guardReason = 'Large update_section (>800 chars) is considered destructive — requires approval.';
+        }
+        // In BUILD, small non-guarded writes auto-execute; in PLAN they are already blocked above, so guard here covers BUILD destructive path.
         if ($isGuarded && !in_array($callId, $approved, true)) {
             $planArgs = [];
             foreach ($args as $k => $v) {

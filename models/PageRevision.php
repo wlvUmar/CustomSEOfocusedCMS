@@ -22,15 +22,22 @@ class PageRevision {
 
             // Auto-detect source if caller passed 'unknown'
             if ($source === 'unknown') {
-                $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 8);
+                $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
                 $isAi = false;
+                $aiClasses = ['PageTools','AiToolRegistry','AiStudioController','RotationTools','SiteTools','MemoryTools','AnalyticsTools','AnalyticsQueryTools'];
                 foreach ($bt as $frame) {
                     $cls = $frame['class'] ?? '';
                     $fn  = $frame['function'] ?? '';
-                    if ($cls === 'PageTools' || $cls === 'AiToolRegistry' || $cls === 'AiStudioController') {
-                        $isAi = true; break;
+                    if (in_array($cls, $aiClasses, true) || $cls === 'PageRevision') {
+                        // Only treat as AI if class is known AI tool, not generic ai substring
+                        if (in_array($cls, ['PageTools','AiToolRegistry','AiStudioController'], true)) { $isAi = true; break; }
                     }
-                    if (strpos($fn, 'ai') !== false) { /* fallback */ }
+                }
+                if (!$isAi) {
+                    foreach ($bt as $frame) {
+                        $cls = $frame['class'] ?? '';
+                        if (in_array($cls, $aiClasses, true)) { $isAi = true; break; }
+                    }
                 }
                 $source = $isAi ? 'ai' : 'admin';
             }
@@ -76,7 +83,7 @@ class PageRevision {
         $limit = max(1, min(50, $limit));
         return $this->db->fetchAll(
             "SELECT id, page_id, changed_fields, source, created_by, created_by_name, created_at,
-                    CHAR_LENGTH(snapshot) AS snapshot_chars
+                    LENGTH(snapshot) AS snapshot_bytes, CHAR_LENGTH(snapshot) AS snapshot_chars
              FROM page_revisions WHERE page_id = ? ORDER BY id DESC LIMIT $limit",
             [$pageId]
         );

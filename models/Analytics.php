@@ -9,12 +9,12 @@ class Analytics {
     } 
 
     public function getMonthlyData($months = 6, $slug = '', $utmSource = '') {
-        $months = (int)$months;
+        $months = max(1, min(24, (int)$months));
 
         $sql = "SELECT YEAR(date) as year, MONTH(date) as month, SUM(visits) as visits, SUM(clicks) as clicks, SUM(phone_calls) as phone_calls
                 FROM analytics_hourly
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
-        $params = [$months];
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)";
+        $params = [];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
@@ -35,12 +35,12 @@ class Analytics {
     }
 
     public function getPageStats($months = 6, $slug = '', $utmSource = '') {
-        $months = (int)$months;
+        $months = max(1, min(24, (int)$months));
 
         $sql = "SELECT page_slug, language, SUM(visits) as visits, SUM(clicks) as clicks, SUM(phone_calls) as phone_calls
                 FROM analytics_hourly
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
-        $params = [$months];
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)";
+        $params = [];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
@@ -99,9 +99,8 @@ class Analytics {
         $params = [];
         $needsPrefix = true;
         if ($months !== null) {
-            $months = (int)$months;
-            $sql .= " WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
-            $params[] = $months;
+            $months = max(1, min(24, (int)$months));
+            $sql .= " WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)";
             $needsPrefix = false;
         }
         if ($slug !== '') {
@@ -177,15 +176,15 @@ class Analytics {
     }
 
     public function getSitewideChartData($months = 6, $pageSlug = '__site__', $slug = '', $utmSource = '') {
-        $months = (int)$months;
+        $months = max(1, min(24, (int)$months));
         $pageSlug = trim((string)$pageSlug) ?: '__site__';
         $sql = "SELECT
                     YEAR(date) as year,
                     MONTH(date) as month,
                     SUM(visits) as visits
                 FROM analytics_hourly
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
-        $params = [$months];
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)";
+        $params = [];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
@@ -218,15 +217,15 @@ class Analytics {
     }
 
     public function getSitewideDailyChartData($type = 'visits', $months = 1, $pageSlug = '__site__', $slug = '', $utmSource = '') {
-        $months = (int)$months;
+        $months = max(1, min(24, (int)$months));
         $pageSlug = trim((string)$pageSlug) ?: '__site__';
         $field = ($type === 'visits') ? 'visits' : (($type === 'phone_calls') ? 'phone_calls' : 'clicks');
         $sql = "SELECT
                     date as visit_date,
                     SUM($field) as value
                 FROM analytics_hourly
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
-        $params = [$months];
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)";
+        $params = [];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
@@ -259,14 +258,14 @@ class Analytics {
     }
 
     public function getSitewideWeeklyChartData($months = 3, $pageSlug = '__site__', $slug = '', $utmSource = '') {
-        $months = (int)$months;
+        $months = max(1, min(24, (int)$months));
         $pageSlug = trim((string)$pageSlug) ?: '__site__';
         $sql = "SELECT
                     DATE(DATE_SUB(date, INTERVAL WEEKDAY(date) DAY)) as week_start,
                     SUM(visits) as visits
                 FROM analytics_hourly
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
-        $params = [$months];
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)";
+        $params = [];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
@@ -327,20 +326,18 @@ class Analytics {
         $result = [];
         $cursor = new DateTime($startDate);
         $end = new DateTime($endDate);
+        $spansYear = $cursor->format('Y') !== $end->format('Y');
+        $labelFor = fn(DateTime $d) => $labelMode === 'weekday' ? $d->format('D') : ($spansYear ? $d->format('M j Y') : $d->format('M j'));
         while ($cursor <= $end) {
-            $label = $labelMode === 'weekday'
-                ? $cursor->format('D')
-                : $cursor->format('M j');
+            $label = $labelFor($cursor);
             $result[$label] = 0;
             $cursor->modify('+1 day');
         }
 
         foreach ($data as $row) {
             $dateObj = new DateTime($row['visit_date']);
-            $dateLabel = $labelMode === 'weekday'
-                ? $dateObj->format('D')
-                : $dateObj->format('M j');
-            $result[$dateLabel] = (int)($row['value'] ?? 0);
+            $dateLabel = $labelFor($dateObj);
+            $result[$dateLabel] = ($result[$dateLabel] ?? 0) + (int)($row['value'] ?? 0);
         }
 
         return $result;
@@ -417,20 +414,18 @@ class Analytics {
         $result = [];
         $cursor = new DateTime($startDate);
         $end = new DateTime($endDate);
+        $spansYear2 = $cursor->format('Y') !== $end->format('Y');
+        $labelFor2 = fn(DateTime $d) => $labelMode === 'weekday' ? $d->format('D') : ($spansYear2 ? $d->format('M j Y') : $d->format('M j'));
         while ($cursor <= $end) {
-            $label = $labelMode === 'weekday'
-                ? $cursor->format('D')
-                : $cursor->format('M j');
+            $label = $labelFor2($cursor);
             $result[$label] = 0;
             $cursor->modify('+1 day');
         }
 
         foreach ($data as $row) {
             $dateObj = new DateTime($row['date']);
-            $dateLabel = $labelMode === 'weekday'
-                ? $dateObj->format('D')
-                : $dateObj->format('M j');
-            $result[$dateLabel] = (int)($row['value'] ?? 0);
+            $dateLabel = $labelFor2($dateObj);
+            $result[$dateLabel] = ($result[$dateLabel] ?? 0) + (int)($row['value'] ?? 0);
         }
 
         return $result;
@@ -483,15 +478,15 @@ class Analytics {
      * Get daily aggregated data for charts
      */
     public function getDailyChartData($type = 'visits', $months = 1, $slug = '', $utmSource = '') {
-        $months = (int)$months;
+        $months = max(1, min(24, (int)$months));
         $field = ($type === 'visits') ? 'visits' : (($type === 'phone_calls') ? 'phone_calls' : 'clicks');
         
         $sql = "SELECT 
                     date,
                     SUM($field) as value
                 FROM analytics_hourly
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
-        $params = [$months];
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)";
+        $params = [];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
@@ -513,8 +508,12 @@ class Analytics {
         
         $result = [];
         foreach ($data as $row) {
+            // Include year when data spans Jan to avoid M j collision (project-10 #6)
             $dateLabel = date('M j', strtotime($row['date']));
-            $result[$dateLabel] = (int)($row['value'] ?? 0);
+            if (count($data) > 60 && date('Y', strtotime($row['date'])) !== date('Y')) {
+                $dateLabel = date('M j Y', strtotime($row['date']));
+            }
+            $result[$dateLabel] = ($result[$dateLabel] ?? 0) + (int)($row['value'] ?? 0);
         }
         
         return $result;
@@ -524,7 +523,7 @@ class Analytics {
      * Get weekly aggregated data for charts
      */
     public function getWeeklyChartData($type = 'visits', $months = 3, $slug = '', $utmSource = '') {
-        $months = (int)$months;
+        $months = max(1, min(24, (int)$months));
         $field = ($type === 'visits') ? 'visits' : (($type === 'phone_calls') ? 'phone_calls' : 'clicks');
         
         $sql = "SELECT 
@@ -532,8 +531,8 @@ class Analytics {
                     DATE(DATE_SUB(date, INTERVAL WEEKDAY(date) DAY)) as week_start,
                     SUM($field) as value
                 FROM analytics_hourly
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
-        $params = [$months];
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)";
+        $params = [];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
@@ -588,7 +587,7 @@ class Analytics {
                         SUM(times_shown) as times_shown,
                         MAX(unique_days) as unique_days
                     FROM analytics_rotations
-                    WHERE DATE(CONCAT(year, '-', rotation_month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
+                    WHERE (year*12 + rotation_month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL $months MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL $months MONTH)))
                     GROUP BY page_slug, year, rotation_month
                 ) ar
                 LEFT JOIN (
@@ -663,14 +662,14 @@ class Analytics {
         $pageSlug = (string)$pageSlug;
 
         $sql = "SELECT 
-                    DATE(DATE_SUB(a.date, INTERVAL DAYOFWEEK(a.date)-1 DAY)) as week_start,
+                    DATE(DATE_SUB(a.date, INTERVAL WEEKDAY(a.date) DAY)) as week_start,
                     SUM(a.visits) as visits,
                     SUM(a.clicks) as clicks,
                     SUM(a.phone_calls) as phone_calls
                 FROM analytics a
                 WHERE a.page_slug = ?
                     AND a.date >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
-                GROUP BY YEARWEEK(a.date)
+                GROUP BY YEARWEEK(a.date, 1)
                 ORDER BY week_start ASC";
 
         return $this->db->fetchAll($sql, [$pageSlug]);
@@ -725,18 +724,18 @@ class Analytics {
      * Get daily bot activity for chart
      */
     public function getDailyBotActivity($days = 30) {
-        $days = (int)$days;
+        $days = max(1, min(365, (int)$days));
         
         $sql = "SELECT 
                     visit_date,
                     bot_type,
                     SUM(visits) as visits
                 FROM analytics_bot_visits
-                WHERE visit_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                WHERE visit_date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY)
                 GROUP BY visit_date, bot_type
                 ORDER BY visit_date ASC";
                 
-        $data = $this->db->fetchAll($sql, [$days]);
+        $data = $this->db->fetchAll($sql);
         
         return $data;
     }
@@ -802,7 +801,7 @@ class Analytics {
                         SUM(total_clicks) as total_clicks
                     FROM analytics_monthly
                     WHERE page_slug = ?
-                      AND DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL $months MONTH)
+                      AND (year*12 + month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL $months MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL $months MONTH)))
                     GROUP BY year, month
                 ) am
                 LEFT JOIN (
@@ -1048,9 +1047,9 @@ class Analytics {
     /**
      * Get top performing pages by conversion rate
      */
-    public function getTopPerformers($months = 3, $limit = 500, $slug = '', $utmSource = '') {
-        $months = (int)$months;
-        $limit = (int)$limit;
+     public function getTopPerformers($months = 3, $limit = 500, $slug = '', $utmSource = '') {
+        $months = max(1, min(24, (int)$months));
+        $limit = max(1, min(500, (int)$limit));
         $utmFiltered = $utmSource !== '';
         $sql = "SELECT 
                     page_slug,
@@ -1061,8 +1060,8 @@ class Analytics {
                     ROUND((SUM(phone_calls) / NULLIF(SUM(visits), 0)) * 100, 2) as ctr,
                     COUNT(DISTINCT DATE_FORMAT(date, '%Y-%m')) as active_months
                 FROM analytics_hourly
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
-        $params = [$months];
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)";
+        $params = [];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
@@ -1080,8 +1079,7 @@ class Analytics {
         $sql .= " GROUP BY " . ($utmFiltered ? "page_slug, utm_source" : "page_slug") . "
                 HAVING visits > 0 OR phone_calls > 0
                 ORDER BY ctr DESC, visits DESC
-                LIMIT ?";
-        $params[] = $limit;
+                LIMIT {$limit}";
         
         return $this->db->fetchAll($sql, $params);
     }
@@ -1123,15 +1121,15 @@ class Analytics {
      * Get language preference statistics
      */
     public function getLanguageStats($months = 3, $slug = '', $utmSource = '') {
-        $months = (int)$months;
+        $months = max(1, min(24, (int)$months));
         $sql = "SELECT 
                     language,
                     SUM(visits) as visits,
                     SUM(clicks) as clicks,
                     COUNT(DISTINCT page_slug) as unique_pages
                 FROM analytics_hourly
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
-        $params = [$months];
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)";
+        $params = [];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
@@ -1184,54 +1182,59 @@ class Analytics {
      * Get most popular navigation paths
      */
     public function getPopularPaths($months = 3, $limit = 20) {
+        $months = max(1, min(24, (int)$months));
+        $limit = max(1, min(100, (int)$limit));
         $sql = "SELECT 
                     from_slug,
                     to_slug,
                     SUM(total_clicks) as clicks,
                     COUNT(DISTINCT CONCAT(year, '-', month)) as active_months
                 FROM analytics_internal_links_monthly
-                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                WHERE (year*12 + month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))
                 GROUP BY from_slug, to_slug
                 ORDER BY clicks DESC
-                LIMIT ?";
+                LIMIT {$limit}";
         
-        return $this->db->fetchAll($sql, [$months, $limit]);
+        return $this->db->fetchAll($sql);
     }
 
     /**
      * Get outbound links from a specific page
      */
     public function getOutboundLinks($slug, $months = 3) {
+        $months = max(1, min(24, (int)$months));
         $sql = "SELECT 
                     to_slug,
                     language,
                     SUM(total_clicks) as clicks
                 FROM analytics_internal_links_monthly
                 WHERE from_slug = ?
-                  AND DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                  AND (year*12 + month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))
                 GROUP BY to_slug, language
                 ORDER BY clicks DESC";
         
-        return $this->db->fetchAll($sql, [$slug, $months]);
+        return $this->db->fetchAll($sql, [$slug]);
     }
 
 
     public function getInboundLinks($slug, $months = 3) {
+        $months = max(1, min(24, (int)$months));
         $sql = "SELECT 
                     from_slug,
                     language,
                     SUM(total_clicks) as clicks
                 FROM analytics_internal_links_monthly
                 WHERE to_slug = ?
-                  AND DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                  AND (year*12 + month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))
                 GROUP BY from_slug, language
                 ORDER BY clicks DESC";
         
-        return $this->db->fetchAll($sql, [$slug, $months]);
+        return $this->db->fetchAll($sql, [$slug]);
     }
 
 
     public function getLinkEffectiveness($months = 3) {
+        $months = max(1, min(24, (int)$months));
         $sql = "SELECT 
                     il.from_slug,
                     il.to_slug,
@@ -1251,7 +1254,7 @@ class Analytics {
                         month,
                         SUM(total_clicks) as total_clicks
                     FROM analytics_internal_links_monthly
-                    WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                    WHERE (year*12 + month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))
                     GROUP BY from_slug, to_slug, language, year, month
                 ) il
                 LEFT JOIN (
@@ -1273,7 +1276,7 @@ class Analytics {
                 ORDER BY click_through_rate DESC
                 LIMIT 50";
         
-        return $this->db->fetchAll($sql, [$months]);
+        return $this->db->fetchAll($sql);
     }
 
     /**
@@ -1304,35 +1307,35 @@ class Analytics {
      * Get top navigation flows for visualization
      */
     public function getNavigationFlow($days = 30) {
-        // Get most common source -> dest pairs
+        $days = max(1, min(365, (int)$days));
         $sql = "SELECT 
                     from_slug, 
                     to_slug, 
                     SUM(clicks) as weight
                 FROM analytics_internal_links
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY)
                 GROUP BY from_slug, to_slug
                 ORDER BY weight DESC
                 LIMIT 10";
                 
-        return $this->db->fetchAll($sql, [$days]);
+        return $this->db->fetchAll($sql);
     }
 
     /**
      * Get monthly trend of internal link clicks
      */
     public function getDailyNavigationTrends($days = 30) {
-        $days = (int)$days;
+        $days = max(1, min(365, (int)$days));
         
         $sql = "SELECT 
                     date,
                     SUM(clicks) as clicks
                 FROM analytics_internal_links
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY)
                 GROUP BY date
                 ORDER BY date ASC";
                 
-        $data = $this->db->fetchAll($sql, [$days]);
+        $data = $this->db->fetchAll($sql);
         
         $labels = [];
         $values = [];
@@ -1358,21 +1361,37 @@ class Analytics {
 
 
     public function getGrowthTrends($months = 6) {
-        $months = (int)$months;
-        
-        $sql = "SELECT 
-                    year,
-                    month,
-                    SUM(total_visits) as visits,
-                    SUM(total_clicks) as clicks,
-                    LAG(SUM(total_visits)) OVER (ORDER BY year, month) as prev_visits,
-                    LAG(SUM(total_clicks)) OVER (ORDER BY year, month) as prev_clicks
-                FROM analytics_monthly
-                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
-                GROUP BY year, month
-                ORDER BY year, month";
-        
-        $results = $this->db->fetchAll($sql, [$months]);
+        $months = max(1, min(24, (int)$months));
+        // Fallback for MySQL <8: compute lag in PHP if window function unavailable
+        try {
+            $sql = "SELECT 
+                        year,
+                        month,
+                        SUM(total_visits) as visits,
+                        SUM(total_clicks) as clicks,
+                        LAG(SUM(total_visits)) OVER (ORDER BY year, month) as prev_visits,
+                        LAG(SUM(total_clicks)) OVER (ORDER BY year, month) as prev_clicks
+                    FROM analytics_monthly
+                    WHERE (year*12 + month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))
+                    GROUP BY year, month
+                    ORDER BY year, month";
+            
+            $results = $this->db->fetchAll($sql);
+        } catch (Throwable $e) {
+            // MySQL 5.7: manual lag
+            $sql = "SELECT year, month, SUM(total_visits) as visits, SUM(total_clicks) as clicks
+                    FROM analytics_monthly
+                    WHERE (year*12 + month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))
+                    GROUP BY year, month ORDER BY year, month";
+            $raw = $this->db->fetchAll($sql);
+            $results = [];
+            $prevV = null; $prevC = null;
+            foreach ($raw as $r) {
+                $r['prev_visits'] = $prevV; $r['prev_clicks'] = $prevC;
+                $results[] = $r;
+                $prevV = $r['visits']; $prevC = $r['clicks'];
+            }
+        }
         
         // Calculate growth percentages
         foreach ($results as &$row) {
@@ -1396,8 +1415,8 @@ class Analytics {
      * Get rotation impact metrics for dashboard insight card
      * Shows the actual impact of content rotation vs static pages
      */
-    public function getRotationImpact($months = 3) {
-        $months = (int)$months;
+     public function getRotationImpact($months = 3) {
+        $months = max(1, min(24, (int)$months));
         
         // Get phone call CTR for pages WITH rotation enabled
         $rotationCtrSql = "SELECT 
@@ -1408,9 +1427,9 @@ class Analytics {
             FROM analytics_monthly am
             JOIN pages p ON am.page_slug = p.slug
             WHERE p.enable_rotation = 1
-            AND DATE(CONCAT(am.year, '-', am.month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
+            AND (am.year*12 + am.month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))";
         
-        $rotationData = $this->db->fetchOne($rotationCtrSql, [$months]);
+        $rotationData = $this->db->fetchOne($rotationCtrSql);
         
         $rotationCtr = $rotationData['avg_ctr'] ?? 0;
 
@@ -1424,18 +1443,18 @@ class Analytics {
      * Get quick rotation stats for dashboard insight card
      */
     public function getRotationStats($months = 3) {
-        $months = (int)$months;
+        $months = max(1, min(24, (int)$months));
         
         $sql = "SELECT 
                     COUNT(DISTINCT page_slug) as active_rotations,
                     SUM(times_shown) as total_shows,
                     (SELECT page_slug FROM analytics_rotations 
-                     WHERE DATE(CONCAT(year, '-', rotation_month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                     WHERE (year*12 + rotation_month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))
                      GROUP BY page_slug ORDER BY SUM(times_shown) DESC LIMIT 1) as top_page
                 FROM analytics_rotations
-                WHERE DATE(CONCAT(year, '-', rotation_month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
+                WHERE (year*12 + rotation_month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))";
         
-        return $this->db->fetchOne($sql, [$months, $months]) ?: [
+        return $this->db->fetchOne($sql) ?: [
             'active_rotations' => 0,
             'total_shows' => 0,
             'top_page' => 'N/A'
@@ -1446,18 +1465,18 @@ class Analytics {
      * Get quick navigation stats for dashboard insight card
      */
     public function getNavigationStats($months = 3) {
-        $months = (int)$months;
+        $months = max(1, min(24, (int)$months));
         
         $sql = "SELECT 
                     SUM(total_clicks) as total_clicks,
                     CONCAT(from_slug, ' → ', to_slug) as top_path
                 FROM analytics_internal_links_monthly
-                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                WHERE (year*12 + month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))
                 GROUP BY from_slug, to_slug
                 ORDER BY total_clicks DESC
                 LIMIT 1";
         
-        $topPath = $this->db->fetchOne($sql, [$months]);
+        $topPath = $this->db->fetchOne($sql);
         
         // Get total clicks and average CTR
         $statsSql = "SELECT 
@@ -1472,9 +1491,9 @@ class Analytics {
                         ailm.from_slug = am.page_slug AND 
                         ailm.year = am.year AND 
                         ailm.month = am.month
-                    WHERE DATE(CONCAT(ailm.year, '-', ailm.month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)";
+                    WHERE (ailm.year*12 + ailm.month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))";
         
-        $stats = $this->db->fetchOne($statsSql, [$months]);
+        $stats = $this->db->fetchOne($statsSql);
         
         return [
             'total_clicks' => $stats['total_clicks'] ?? 0,
@@ -1487,18 +1506,18 @@ class Analytics {
      * Get quick crawl insights for dashboard insight card
      */
     public function getCrawlInsights($days = 7) {
-        $days = (int)$days;
+        $days = max(1, min(365, (int)$days));
         
         $sql = "SELECT 
                     COUNT(DISTINCT page_slug) as pages_crawled,
                     bot_type as top_bot
                 FROM analytics_bot_visits
-                WHERE visit_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                WHERE visit_date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY)
                 GROUP BY bot_type
                 ORDER BY SUM(visits) DESC
                 LIMIT 1";
         
-        $data = $this->db->fetchOne($sql, [$days]);
+        $data = $this->db->fetchOne($sql);
         
         // Get stale pages (not crawled in last $days)
         $staleSql = "SELECT COUNT(DISTINCT page_slug) as stale_count
@@ -1506,10 +1525,10 @@ class Analytics {
                      WHERE NOT EXISTS (
                          SELECT 1 FROM analytics_bot_visits abv2
                          WHERE abv2.page_slug = abv1.page_slug
-                         AND abv2.visit_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+                         AND abv2.visit_date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY)
                      )";
         
-        $stale = $this->db->fetchOne($staleSql, [$days]);
+        $stale = $this->db->fetchOne($staleSql);
         
         return [
             'pages_crawled' => $data['pages_crawled'] ?? 0,
@@ -1581,7 +1600,7 @@ class Analytics {
      * Get monthly utm_source trends
      */
     public function getUtmSourceMonthlyTrends($months = 6) {
-        $months = (int)$months;
+        $months = max(1, min(24, (int)$months));
         
         $sql = "SELECT 
                     year,
@@ -1590,18 +1609,18 @@ class Analytics {
                     SUM(total_clicks) as clicks,
                     SUM(total_phone_calls) as phone_calls
                 FROM analytics_monthly
-                WHERE DATE(CONCAT(year, '-', month, '-01')) >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+                WHERE (year*12 + month) >= (YEAR(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH))*12 + MONTH(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH)))
                 GROUP BY year, month, utm_source
                 ORDER BY year DESC, month DESC, clicks DESC";
         
-        return $this->db->fetchAll($sql, [$months]);
+        return $this->db->fetchAll($sql);
     }
 
     /**
      * Get top utm sources for dashboard
      */
     public function getTopUtmSources($limit = 5, $days = 30, $slug = '', $utmSource = '') {
-        $days = (int)$days;
+        $days = max(1, min(365, (int)$days));
         
         $sql = "SELECT 
                     IFNULL(NULLIF(utm_source, ''), 'direct') as utm_source,
@@ -1610,8 +1629,8 @@ class Analytics {
                     SUM(phone_calls) as phone_calls,
                     COUNT(DISTINCT page_slug) as pages_affected
                 FROM analytics_hourly
-                WHERE date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)";
-        $params = [$days];
+                WHERE date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY)";
+        $params = [];
         if ($slug !== '') {
             $sql .= " AND page_slug = ?";
             $params[] = $slug;
@@ -1630,9 +1649,8 @@ class Analytics {
                 ORDER BY SUM(visits) DESC";
         
         if (!empty($limit)) {
-            $limit = (int)$limit;
-            $sql .= " LIMIT ?";
-            $params[] = $limit;
+            $limit = max(1, min(100, (int)$limit));
+            $sql .= " LIMIT {$limit}";
         }
         
         return $this->db->fetchAll($sql, $params);

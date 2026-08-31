@@ -101,26 +101,26 @@ function siteBaseUrl() {
     $baseUrl = defined('BASE_URL') ? (string)BASE_URL : '';
     $baseUrl = trim($baseUrl);
 
-    // If already absolute, use it as-is.
+    // If already absolute, use it as-is — this is the only trusted production path.
     if ($baseUrl !== '' && strpos($baseUrl, '://') !== false) {
         return rtrim($baseUrl, '/');
     }
 
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? '');
-    $host = trim((string)$host);
-
-    if ($host === '') {
-        // CLI context: return relative BASE_URL (path) if provided, otherwise empty.
-        return rtrim($baseUrl, '/');
+    // BASE_URL not configured as absolute — fail-closed to canonical production host.
+    // Previous code fell back to $_SERVER['HTTP_HOST'] which enables host-header
+    // poisoning (e.g. sitemap emitting http://192.168.100.7 or evil.com).
+    if ($baseUrl === '') {
+        error_log('[siteBaseUrl] BASE_URL empty, fallback to canonical https://kuplyu-tashkent.uz');
+        return 'https://kuplyu-tashkent.uz';
     }
 
-    // If BASE_URL is a path prefix (e.g. /myapp), append it to the host.
-    if ($baseUrl !== '' && strpos($baseUrl, '/') === 0) {
-        return $protocol . '://' . rtrim($host, '/') . rtrim($baseUrl, '/');
+    // BASE_URL is a path prefix (e.g. /myapp) — still need a host, use canonical.
+    if (strpos($baseUrl, '/') === 0) {
+        return 'https://kuplyu-tashkent.uz' . rtrim($baseUrl, '/');
     }
 
-    return $protocol . '://' . rtrim($host, '/');
+    // Bare hostname without scheme
+    return 'https://' . rtrim($baseUrl, '/');
 }
 
 function siteUrl($path = '') {
@@ -448,16 +448,66 @@ function renderTemplate($text, $data = []) {
  * Builds the HTML fragment for a set of media rows in a given section.
  * Returns '' if $items is empty.
  */
+function sanitizeFrontendHtml(string $html): string {
+    if ($html === '') return '';
+    // Layer 1: regex strip of dangerous protocols/tags before DOM parse (fast path)
+    $html = preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $html);
+    $html = preg_replace('/<iframe\b[^>]*>.*?<\/iframe>/is', '', $html);
+    $html = preg_replace('/<object\b[^>]*>.*?<\/object>/is', '', $html);
+    $html = preg_replace('/<embed\b[^>]*>/i', '', $html);
+    // Layer 2: DOM purify — remove on* attrs, javascript:/data: hrefs, style expression
+    $doc = new DOMDocument();
+    libxml_use_internal_errors(true);
+    $doc->loadHTML('<?xml encoding="UTF-8"><div>' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+    libxml_clear_errors();
+    $xpath = new DOMXPath($doc);
+    foreach ($xpath->query('//@*[starts-with(name(),"on")]') as $attr) {
+        if ($attr instanceof DOMAttr && $attr->ownerElement) $attr->ownerElement->removeAttribute($attr->nodeName);
+    }
+    foreach ($xpath->query('//*[@href or @src or @action or @xlink:href]') as $el) {
+        if (!($el instanceof DOMElement)) continue;
+        foreach (['href','src','action','xlink:href'] as $a) {
+            if (!$el->hasAttribute($a)) continue;
+            $v = trim($el->getAttribute($a));
+            if (preg_match('/^\s*(javascript|data:text\/html|vbscript):/i', $v)) {
+                $el->removeAttribute($a);
+            }
+        }
+        if ($el->hasAttribute('style')) {
+            $s = $el->getAttribute('style');
+            if (preg_match('/expression|@import|javascript:/i', $s)) $el->removeAttribute('style');
+        }
+    }
+    foreach (['script','iframe','object','embed','link','meta','base'] as $tag) {
+        foreach (iterator_to_array($doc->getElementsByTagName($tag)) as $n) $n->parentNode->removeChild($n);
+    }
+    $inner = '';
+    $wrapper = $doc->getElementsByTagName('div')->item(0);
+    if ($wrapper) foreach ($wrapper->childNodes as $c) $inner .= $doc->saveHTML($c);
+    else $inner = $doc->saveHTML();
+    return preg_replace('/^<\?xml[^>]*>\s*/', '', $inner) ?? $inner;
+}
+
 function renderPageMedia(array $items, string $section, string $lang): string {
     if (empty($items)) return '';
 
     $baseUrl = siteBaseUrl();
 
+    // Helper: emit width/height to avoid CLS (project-09 #4). Uses media width/height if present.
+    $dims = function($m): string {
+        $w = isset($m['width']) ? (int)$m['width'] : 0;
+        $h = isset($m['height']) ? (int)$m['height'] : 0;
+        // Common uploads are ~800x600 banner, gallery thumbs; only emit if both known
+        if ($w > 0 && $h > 0) return ' width="' . $w . '" height="' . $h . '"';
+        if ($w > 0) return ' width="' . $w . '" height="auto"';
+        return '';
+    };
+
     if ($section === 'banner') {
         $m = $items[0];
         $src = absoluteUrl('/uploads/' . $m['filename'], $baseUrl);
         $alt = e($m['alt_text_' . $lang] ?? '');
-        return '<div class="auto-banner-section"><img src="' . $src . '" alt="' . $alt . '" class="img-full" loading="lazy"></div>';
+        return '<div class="auto-banner-section"><img src="' . $src . '" alt="' . $alt . '" class="img-full"' . $dims($m) . ' loading="lazy" decoding="async"></div>';
     }
 
     if ($section === 'gallery') {
@@ -467,7 +517,7 @@ function renderPageMedia(array $items, string $section, string $lang): string {
             $src = absoluteUrl('/uploads/' . $m['filename'], $baseUrl);
             $alt = e($m['alt_text_' . $lang] ?? '');
             $cap = e($m['caption_' . $lang] ?? '');
-            $html .= '<figure class="gallery-item"><img src="' . $src . '" alt="' . $alt . '" loading="lazy">'
+            $html .= '<figure class="gallery-item"><img src="' . $src . '" alt="' . $alt . '"' . $dims($m) . ' loading="lazy" decoding="async">'
                    . ($cap ? '<figcaption>' . $cap . '</figcaption>' : '') . '</figure>';
         }
         return $html . '</div></div>';
@@ -482,7 +532,7 @@ function renderPageMedia(array $items, string $section, string $lang): string {
             $alignment = !empty($m['alignment']) ? $m['alignment'] : 'center';
             $alignClass = 'img-' . $alignment;
             $style = !empty($m['width']) ? ' style="max-width:' . (int)$m['width'] . 'px"' : '';
-            $html .= '<figure><img src="' . $src . '" alt="' . $alt . '" class="' . $alignClass . '"' . $style . ' loading="lazy">'
+            $html .= '<figure><img src="' . $src . '" alt="' . $alt . '" class="' . $alignClass . '"' . $style . $dims($m) . ' loading="lazy" decoding="async">'
                    . ($cap ? '<figcaption>' . $cap . '</figcaption>' : '') . '</figure><div class="clear"></div>';
         }
         return $html . '</div>';
@@ -1421,7 +1471,7 @@ function enhanceContentSEO($content, $pageTitle = '', $applianceName = '') {
     $dom->loadHTML('<?xml encoding="UTF-8">' . $content, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
     libxml_clear_errors();
     
-    // Enhance image alt text
+    // Enhance image alt text + CLS: add width/height where missing
     $images = $dom->getElementsByTagName('img');
     foreach ($images as $img) {
         $alt = $img->getAttribute('alt');
@@ -1432,6 +1482,17 @@ function enhanceContentSEO($content, $pageTitle = '', $applianceName = '') {
         // Add loading="lazy" for performance
         if (!$img->hasAttribute('loading')) {
             $img->setAttribute('loading', 'lazy');
+        }
+        // Add decoding async if missing
+        if (!$img->hasAttribute('decoding')) $img->setAttribute('decoding', 'async');
+        // CLS: inject width/height from file if absent
+        if (!$img->hasAttribute('width') || !$img->hasAttribute('height')) {
+            $src = $img->getAttribute('src') ?? '';
+            $dims = getPublicImageDimensions($src);
+            if ($dims) {
+                if (!$img->hasAttribute('width')) $img->setAttribute('width', (string)$dims['width']);
+                if (!$img->hasAttribute('height')) $img->setAttribute('height', (string)$dims['height']);
+            }
         }
     }
     
