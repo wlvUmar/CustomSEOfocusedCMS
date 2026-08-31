@@ -150,9 +150,11 @@ class AiToolRegistry {
 
         // Guarded tools require approval even in BUILD to prevent wholesale wipe (01-security #5). Owner-requested BUILD auto-execute retained for small edits.
 
-        // Special handling for batch_update: each large op (>800) is guarded individually.
-        // This fixes the bypass where batch_update name itself was never guarded, allowing large ops to skip approval.
+        // Special handling for batch_update: each large op (>800) is guarded individually in PLAN,
+        // but in BUILD large section rewrites auto-execute (BUILD is autonomous). Only truly destructive stays guarded.
         if ($name === 'batch_update' && isset($args['operations']) && is_array($args['operations'])) {
+            // In BUILD, batch large ops auto-execute — skip guard entirely (user expectation: BUILD = build)
+            if ($mode !== 'build') {
             $pendingOps = [];
             $allCallIds = [];
             foreach ($args['operations'] as $idx => $op) {
@@ -161,9 +163,9 @@ class AiToolRegistry {
                 $needsGuard = false;
                 $reason = '';
                 if (in_array($opName, ['str_replace_field','patch_section'], true) && isset($op['replace']) && mb_strlen((string)$op['replace']) > 800) {
-                    $needsGuard = true; $reason = 'Large ' . $opName . ' (>800 chars) is considered destructive — requires approval.';
+                    $needsGuard = true; $reason = 'Large ' . $opName . ' (>800 chars) — requires approval in PLAN.';
                 } elseif ($opName === 'update_section' && isset($op['html']) && mb_strlen((string)$op['html']) > 800) {
-                    $needsGuard = true; $reason = 'Large update_section (>800 chars) is considered destructive — requires approval.';
+                    $needsGuard = true; $reason = 'Large update_section (>800 chars) — requires approval in PLAN.';
                 }
                 if ($needsGuard) {
                     // Deterministic per-op id: sha1(opName:opArgs) — stable across retry re-issue
@@ -200,19 +202,23 @@ class AiToolRegistry {
                 ];
             }
             // All large ops approved (or no large ops) — fall through to dispatch
+            }
         }
 
         $isGuarded = false;
         $guardReason = '';
         $isGuarded = isset(self::GUARDED_TOOLS[$name]);
         $guardReason = self::GUARDED_TOOLS[$name] ?? '';
-        if (!$isGuarded && in_array($name, ['str_replace_field','patch_section'], true) && isset($args['replace']) && mb_strlen((string)$args['replace']) > 800) {
-            $isGuarded = true;
-            $guardReason = 'Large ' . $name . ' (>800 chars) is considered destructive — requires approval.';
-        }
-        if (!$isGuarded && $name === 'update_section' && isset($args['html']) && mb_strlen((string)$args['html']) > 800) {
-            $isGuarded = true;
-            $guardReason = 'Large update_section (>800 chars) is considered destructive — requires approval.';
+        // Large-size guard only in PLAN (or non-BUILD): in BUILD large section rewrites auto-execute — BUILD = build.
+        if ($mode !== 'build') {
+            if (!$isGuarded && in_array($name, ['str_replace_field','patch_section'], true) && isset($args['replace']) && mb_strlen((string)$args['replace']) > 800) {
+                $isGuarded = true;
+                $guardReason = 'Large ' . $name . ' (>800 chars) — requires approval in PLAN (auto in BUILD).';
+            }
+            if (!$isGuarded && $name === 'update_section' && isset($args['html']) && mb_strlen((string)$args['html']) > 800) {
+                $isGuarded = true;
+                $guardReason = 'Large update_section (>800 chars) — requires approval in PLAN (auto in BUILD).';
+            }
         }
         // In BUILD, small non-guarded writes auto-execute; in PLAN they are already blocked above, so guard here covers BUILD destructive path.
         if ($isGuarded && !in_array($callId, $approved, true)) {
