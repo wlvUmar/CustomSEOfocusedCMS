@@ -167,6 +167,32 @@ class AiStudioController extends Controller {
         $ctxSnapshot = $_SESSION['ai_context'] ?? $this->loadSessionContext($sessionId) ?? [];
         if (!is_array($ctxSnapshot)) $ctxSnapshot = [];
 
+        // Register shutdown handler to persist even if PHP-FPM kills the worker (request_terminate_timeout / host buffer)
+        $finalText = '';
+        $usageTotal = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'cost' => 0.0];
+        $didWriteHtml = false;
+        $didPreview = false;
+        $messages = []; // will be filled below, captured by reference for shutdown
+        $shutdownDone = false;
+        $shutdownState = ['messages' => &$messages, 'finalText' => &$finalText, 'sessionId' => $sessionId, 'model' => $model, 'mode' => $mode, 'ctxSnapshot' => $ctxSnapshot, 'startedAt' => $startedAt, 'done' => &$shutdownDone];
+        register_shutdown_function(function() use (&$shutdownState) {
+            $e = error_get_last();
+            $isFatal = $e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true);
+            if (!$shutdownState['done']) {
+                $msg = $isFatal ? 'fatal: ' . $e['message'] . ' at ' . $e['file'] . ':' . $e['line'] : 'killed: PHP worker terminated (timeout/host buffer) without done';
+                @error_log(json_encode(['ts'=>date('Y-m-d H:i:s'), 'event'=>'run_killed_shutdown', 'session_id'=>substr($shutdownState['sessionId'],0,12), 'message'=>$msg, 'messages_count'=>count($shutdownState['messages'] ?? [])], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) . "\n", 3, BASE_PATH . '/logs/ai-studio.log');
+                @error_log(json_encode(['ts'=>date('Y-m-d H:i:s'), 'event'=>'run_killed_shutdown', 'session_id'=>substr($shutdownState['sessionId'],0,16), 'message'=>$msg, 'messages'=>array_slice($shutdownState['messages'] ?? [], -4)], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE) . "\n", 3, BASE_PATH . '/logs/ai-studio-debug.log');
+                // Best-effort persist (DB) even though headers already sent
+                try {
+                    $c = new AiStudioController();
+                    // Use reflection to call private persistAfterRun without session
+                    $ref = new ReflectionMethod($c, 'persistAfterRun');
+                    $ref->setAccessible(true);
+                    $ref->invoke($c, $shutdownState['sessionId'], $shutdownState['messages'] ?? [], $shutdownState['model'], $shutdownState['mode'], $shutdownState['ctxSnapshot'] ?? []);
+                } catch (Throwable $ignored) {}
+            }
+        });
+
         // Unlock session for concurrent admin tabs / GSC calls (C3).
         if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
         @ignore_user_abort(true);
@@ -222,12 +248,6 @@ class AiStudioController extends Controller {
             $alreadyInHistory ? [] : [['role' => 'user', 'content' => $message]]
         );
 
-        $finalText = '';
-        $usageTotal = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'cost' => 0.0];
-        // Track whether visual HTML was written without preview (04-05 soft gate)
-        $didWriteHtml = false;
-        $didPreview = false;
-
         try {
             for ($turn = 1; $turn <= self::MAX_TOOL_TURNS; $turn++) {
                 if (connection_aborted()) {
@@ -236,7 +256,7 @@ class AiStudioController extends Controller {
                         'turns' => $turnsUsed,
                         'duration_ms' => $this->elapsedMs($startedAt),
                     ]);
-                    try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot); } catch (Throwable $e) { error_log('persist on abort failed: ' . $e->getMessage()); }
+                    try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot); $shutdownDone = true; } catch (Throwable $e) { error_log('persist on abort failed: ' . $e->getMessage()); }
                     // Try to tell the client we stopped — if the TCP is already dead the bytes are just dropped.
                     try { $this->sse('done', ['status' => 'aborted', 'text' => $finalText]); } catch (Throwable $e) {}
                     return; // client pressed Stop — don't spend more tokens
@@ -299,7 +319,7 @@ class AiStudioController extends Controller {
                 }
                 if (connection_aborted()) {
                     $this->logAi('run_end', ['status'=>'aborted_after_model','turns'=>$turnsUsed,'duration_ms'=>$this->elapsedMs($startedAt)]);
-                    try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot); } catch (Throwable $e) { error_log('persist on abort_after_model failed: ' . $e->getMessage()); }
+                    try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot); $shutdownDone = true; } catch (Throwable $e) { error_log('persist on abort_after_model failed: ' . $e->getMessage()); }
                     try { $this->sse('done', ['status'=>'aborted','text'=>$finalText]); } catch (Throwable $e) {}
                     return;
                 }
@@ -524,6 +544,7 @@ class AiStudioController extends Controller {
                         'duration_ms' => $this->elapsedMs($startedAt),
                     ]);
                     $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
+                    $shutdownDone = true;
                     $this->sse('done', ['status' => 'awaiting_approval', 'text' => $finalText]);
                     return;
                 }
@@ -553,6 +574,7 @@ class AiStudioController extends Controller {
                     'duration_ms' => $this->elapsedMs($startedAt),
                 ]);
                 $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
+                $shutdownDone = true;
             } else {
                 $this->sse('done', ['status' => 'complete', 'text' => $finalText]);
                 $this->logAi('run_end', [
@@ -566,6 +588,7 @@ class AiStudioController extends Controller {
                     'preview_missing' => ($didWriteHtml && !$didPreview) ? 1 : 0,
                 ]);
                 $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
+                $shutdownDone = true;
             }
         } catch (Throwable $e) {
             $this->logAi('run_error', [
@@ -581,7 +604,7 @@ class AiStudioController extends Controller {
                     'messages_snapshot' => array_slice($messages ?? [], -6),
                 ]);
             }
-            try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot ?? []); } catch (Throwable $ignored) { error_log('persist on error failed: ' . $ignored->getMessage()); }
+            try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot ?? []); $shutdownDone = true; } catch (Throwable $ignored) { error_log('persist on error failed: ' . $ignored->getMessage()); }
             try { $this->sse('error', ['message' => $e->getMessage()]); } catch (Throwable $ignored) {}
             try { $this->sse('done', ['status' => 'error']); } catch (Throwable $ignored) {}
         }
