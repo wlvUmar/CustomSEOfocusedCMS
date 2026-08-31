@@ -116,7 +116,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'insert_section',
-                    'description' => 'Insert a new HTML section (wrapped in a "<!-- Name -->" marker) into a page\'s content field, either at the top or the end. Sections must use the site\'s existing design classes (content-section, info-card, process-step, faq-item, links-tile, btn/btn-primary, ...) and preserve template variables. Senior HTML: use semantic tags, landmarks, heading hierarchy, alt quality; prefer tokens — see get_design_tokens.',
+                    'description' => 'Insert a new HTML section (wrapped in a "<!-- Name -->" marker) into a page\'s content field, either at the top or the end. Use EITHER legacy classes (content-section, info-card, process-step, faq-item, links-tile, btn/btn-primary) OR plugin .c-* classes (178 in components.css — c-hero-split, c-stats/bar/dark, c-feature-grid/split, c-process/timeline, c-card/testimonial, c-cta/callout, c-gallery/carousel, c-pricing etc. — call get_design_tokens for live catalog). Preserve template variables. Senior HTML: semantic tags, landmarks, heading hierarchy, alt quality; prefer tokens — see get_design_tokens.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [

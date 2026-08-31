@@ -30,7 +30,7 @@ class SiteTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_design_tokens',
-                    'description' => 'The site\'s design tokens parsed from the real stylesheet (public/css/pages.css): colors (--teal, --orange, --green, --ink...), spacing, max width, section gaps, easing. Use these to keep new sections on-brand — do not invent your own color palette. Call this before writing any section; do not invent palette; map bg:teal → background:var(--teal).',
+                    'description' => 'Design tokens + component library: parses public/css/pages.css :root (--teal,--orange,--green,--ink, spacing etc.) + public/css/components.css 178 .c-* plugin classes (c-hero-*,c-stats, c-feature-*, c-process/timeline, c-card/testimonial, c-cta/callout, c-gallery/carousel, c-pricing etc.). Returns live catalog, plus per-page theming note (pages.custom_css injected AFTER both sheets as <style id="page-custom-css"> scoped via body.page-{slug}; tools set_custom_css/set_page_theme write it). Call before writing any section; prefer tokens var(--teal) — custom hex only on explicit request.',
                     'parameters' => ['type' => 'object', 'properties' => (object)[]],
                 ],
             ],
@@ -200,10 +200,30 @@ class SiteTools {
             if (isset($tokens[$k])) $summary[$k] = $tokens[$k];
         }
 
+        // Plugin component library — parsed live from components.css so AI always sees current catalog
+        $componentsCss = '';
+        $compCandidates = [
+            defined('PUBLIC_PATH') ? PUBLIC_PATH . '/css/components.css' : null,
+            BASE_PATH . '/public/css/components.css',
+        ];
+        foreach (array_filter($compCandidates) as $p) {
+            if (is_file($p)) { $componentsCss = (string)file_get_contents($p); break; }
+        }
+        $componentClasses = [];
+        if ($componentsCss !== '' && preg_match_all('/\.(c-[a-z0-9_-]+)/', $componentsCss, $cm)) {
+            $componentClasses = array_values(array_unique($cm[1]));
+            sort($componentClasses);
+        }
+        $perPageNote = 'Per-page overrides: pages.custom_css (and content_rotations.custom_css) is injected AFTER pages.min.css+components.min.css as <style id="page-custom-css">, so it can fully override header/footer/any component. Author can also put <style> inside content_ru/uz — it is extracted to head. Scope with body.page-{slug} (e.g. body.page-televizor header{background:var(--teal)}). Tokens via body.page-slug{--teal:#...;--surface:#...}. Tools: set_custom_css (replace/append, 20k) + set_page_theme (presets teal|orange|green|indigo|warm|dark|light|custom vars). Empty custom_css = inherits defaults.';
+
         return [
-            'note' => 'Design tokens from public/css/pages.css. Prefer these over new colors. The site\'s known section classes: content-section, info-card, process-step, faq-item, links-tile, btn/btn-primary, section-label, condition-item.',
+            'note' => 'Design tokens from public/css/pages.css + plugin library public/css/components.css. Prefer tokens var(--teal) over new hex. ' . $perPageNote,
             'tokens' => $summary,
             'all_tokens_count' => count($tokens),
+            'component_library' => '178 .c-* classes in components.css — use any via HTML without writing CSS. Categories: heroes(c-hero-split/centered/mesh/compact/cards/stats-overlap/video/minimal/gradient-border/testimonial), stats(c-stats/c-stats-bar/dark/bordered/kpi/metrics-row/icon), features(c-feature-grid/list/split/icon-grid/checklist/cards/highlight/comparison/tabs), process(c-process/timeline/timeline-h/steps-bar/zigzag/roadmap), cards(c-card/testimonial/quote/rating/avatar/team/logo-strip/trust-badges), CTAs(c-cta/centered/split/gradient/ghost/callout/banner/notice/promo-bar), media(c-gallery-masonry/grid/media-split/video-embed/before-after/carousel/image-card/map-embed), prose(c-prose/quote/alert/accordion/tabs/table/badge/tags/code), pricing(c-pricing/comparison/feature-table/plan/toggle/discount/guarantee), utilities(c-grid/flex/stack/center/surface/bg-mesh/shape-blob/pattern-dots).',
+            'component_classes' => array_slice($componentClasses, 0, 80),
+            'component_classes_total' => count($componentClasses),
+            'legacy_classes' => ['content-section','info-grid','info-card','process-step','brands-list','faq-item','condition-item','section-label','links-tile','btn','btn-primary'],
         ];
     }
 
