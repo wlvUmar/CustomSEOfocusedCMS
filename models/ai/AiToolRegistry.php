@@ -149,6 +149,59 @@ class AiToolRegistry {
         }
 
         // Guarded tools require approval even in BUILD to prevent wholesale wipe (01-security #5). Owner-requested BUILD auto-execute retained for small edits.
+
+        // Special handling for batch_update: each large op (>800) is guarded individually.
+        // This fixes the bypass where batch_update name itself was never guarded, allowing large ops to skip approval.
+        if ($name === 'batch_update' && isset($args['operations']) && is_array($args['operations'])) {
+            $pendingOps = [];
+            $allCallIds = [];
+            foreach ($args['operations'] as $idx => $op) {
+                if (!is_array($op)) continue;
+                $opName = (string)($op['op'] ?? '');
+                $needsGuard = false;
+                $reason = '';
+                if (in_array($opName, ['str_replace_field','patch_section'], true) && isset($op['replace']) && mb_strlen((string)$op['replace']) > 800) {
+                    $needsGuard = true; $reason = 'Large ' . $opName . ' (>800 chars) is considered destructive — requires approval.';
+                } elseif ($opName === 'update_section' && isset($op['html']) && mb_strlen((string)$op['html']) > 800) {
+                    $needsGuard = true; $reason = 'Large update_section (>800 chars) is considered destructive — requires approval.';
+                }
+                if ($needsGuard) {
+                    // Deterministic per-op id: sha1(opName:opArgs) — stable across retry re-issue
+                    $opArgs = $op; unset($opArgs['op']);
+                    // Include batch-level page_id/slug for determinism
+                    if (isset($args['page_id'])) $opArgs['_batch_page_id'] = $args['page_id'];
+                    if (isset($args['slug'])) $opArgs['_batch_slug'] = $args['slug'];
+                    $opCallId = self::callId($opName, $opArgs);
+                    $allCallIds[] = $opCallId;
+                    if (!in_array($opCallId, $approved, true)) {
+                        $pendingOps[] = ['idx'=>$idx,'op'=>$opName,'call_id'=>$opCallId,'reason'=>$reason,'args'=>$op];
+                    }
+                }
+            }
+            if (!empty($pendingOps)) {
+                $planParts = [];
+                foreach ($pendingOps as $p) {
+                    $op = $p['args'];
+                    $short = $p['op'] . (isset($op['section']) ? ':' . $op['section'] : '') . (isset($op['field']) ? ':' . $op['field'] : '');
+                    $len = isset($op['html']) ? mb_strlen((string)$op['html']) : (isset($op['replace']) ? mb_strlen((string)$op['replace']) : 0);
+                    $planParts[] = $short . ' (' . $len . ' chars)';
+                }
+                $plan = 'batch_update(' . count($args['operations']) . ' ops, ' . count($pendingOps) . ' need approval: ' . implode(', ', $planParts) . ')';
+                $reason = count($pendingOps) . ' large op(s) in batch require approval (>800 chars each). Approve all to execute atomically.';
+                return [
+                    'type' => 'approval',
+                    'name' => $name,
+                    'call_id' => $callId, // top-level batch id (for dedup)
+                    'call_ids' => array_column($pendingOps, 'call_id'), // per-op ids for batch approval UX
+                    'plan' => $plan,
+                    'args' => $args,
+                    'reason' => $reason,
+                    'pending_ops' => $pendingOps,
+                ];
+            }
+            // All large ops approved (or no large ops) — fall through to dispatch
+        }
+
         $isGuarded = false;
         $guardReason = '';
         $isGuarded = isset(self::GUARDED_TOOLS[$name]);

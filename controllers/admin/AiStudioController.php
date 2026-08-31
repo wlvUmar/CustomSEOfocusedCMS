@@ -161,6 +161,10 @@ class AiStudioController extends Controller {
         $startedAt = microtime(true);
         $turnsUsed = 0;
 
+        // Snapshot context before unlocking session — needed for persistAfterRun after headers_sent and for cached tokens prompt.
+        $ctxSnapshot = $_SESSION['ai_context'] ?? $this->loadSessionContext($sessionId) ?? [];
+        if (!is_array($ctxSnapshot)) $ctxSnapshot = [];
+
         // Unlock session for concurrent admin tabs / GSC calls (C3).
         if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
         @ignore_user_abort(true);
@@ -168,7 +172,7 @@ class AiStudioController extends Controller {
 
         $this->startStream();
 
-        $promptForLog = $this->buildSystemPrompt($mode);
+        $promptForLog = $this->buildSystemPrompt($mode, $ctxSnapshot);
         $this->logAi('run_start', [
             'model' => $model,
             'mode' => $mode,
@@ -217,6 +221,7 @@ class AiStudioController extends Controller {
                         'turns' => $turnsUsed,
                         'duration_ms' => $this->elapsedMs($startedAt),
                     ]);
+                    try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot); } catch (Throwable $e) { error_log('persist on abort failed: ' . $e->getMessage()); }
                     // Try to tell the client we stopped — if the TCP is already dead the bytes are just dropped.
                     try { $this->sse('done', ['status' => 'aborted', 'text' => $finalText]); } catch (Throwable $e) {}
                     return; // client pressed Stop — don't spend more tokens
@@ -228,20 +233,38 @@ class AiStudioController extends Controller {
 
                 $modelStart = microtime(true);
                 // Budget guard: estimate chars → tokens (~4 chars/token), drop oldest history if over 60k tokens
+                // Reliable: never evict pending pair or first user intent — keep them pinned even when trimming.
                 $estChars = array_sum(array_map(fn($m) => mb_strlen(json_encode($m, JSON_UNESCAPED_UNICODE) ?: ''), $messages));
                 if ($estChars > 200000) {
-                    // Trim oldest non-system messages to stay under 64k token window (~250k chars)
                     $keep = count($messages) - (int)(($estChars - 180000)/4000);
-                    if ($keep < 6) $keep = 6;
+                    $minKeep = !empty($pending) ? 8 : 6;
+                    if ($keep < $minKeep) $keep = $minKeep;
                     $system = $messages[0];
                     $rest = array_slice($messages, 1);
+                    // Pin first user intent if trimming would drop it
+                    $firstUser = null;
+                    foreach ($rest as $idx => $m) { if (($m['role']??'')==='user') { $firstUser = $m; break; } }
                     $rest = array_slice($rest, -$keep);
+                    if ($firstUser !== null) {
+                        $hasFirst = false;
+                        foreach ($rest as $m) { if (($m['role']??'')==='user' && ($m['content']??'')===($firstUser['content']??'')) { $hasFirst=true; break; } }
+                        if (!$hasFirst) { array_unshift($rest, $firstUser); }
+                    }
+                    // Ensure pending pair (2 msgs) stays if it was trimmed
+                    if (!empty($pending) && count($pending)===2) {
+                        foreach ($pending as $p) {
+                            $found=false;
+                            foreach ($rest as $rm) { if (json_encode($rm)===json_encode($p)) { $found=true; break; } }
+                            if (!$found) $rest[] = $p;
+                        }
+                    }
                     $messages = array_merge([$system], $rest);
                     $this->sse('activity', ['text' => 'Context trimmed to fit token budget']);
                 }
                 $response = OpenRouter::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192);
                 if (connection_aborted()) {
                     $this->logAi('run_end', ['status'=>'aborted_after_model','turns'=>$turnsUsed,'duration_ms'=>$this->elapsedMs($startedAt)]);
+                    try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot); } catch (Throwable $e) { error_log('persist on abort_after_model failed: ' . $e->getMessage()); }
                     try { $this->sse('done', ['status'=>'aborted','text'=>$finalText]); } catch (Throwable $e) {}
                     return;
                 }
@@ -329,6 +352,8 @@ class AiStudioController extends Controller {
 
                     if ($out['type'] === 'approval') {
                         $haltForApproval = true;
+                        // Batch-aware: batch_update may require multiple per-op approvals
+                        $approvalCallIds = isset($out['call_ids']) && is_array($out['call_ids']) ? $out['call_ids'] : [$out['call_id']];
                         // Carry the exact interrupted call into the follow-up run
                         // (Approve/Deny), so the model re-issues the same
                         // arguments — and thus the same deterministic call_id —
@@ -352,6 +377,7 @@ class AiStudioController extends Controller {
                                 'content' => json_encode([
                                     'status' => 'approval_required',
                                     'call_id' => $out['call_id'],
+                                    'call_ids' => $approvalCallIds,
                                     'plan' => $out['plan'],
                                     'note' => 'Re-issue the exact same tool call (same name and arguments) to execute this change.',
                                 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -359,6 +385,7 @@ class AiStudioController extends Controller {
                         ];
                         $this->sse('approval_required', [
                             'call_id' => $out['call_id'],
+                            'call_ids' => $approvalCallIds,
                             'tool' => $name,
                             'plan' => $out['plan'],
                             'reason' => $out['reason'],
@@ -366,6 +393,7 @@ class AiStudioController extends Controller {
                         ]);
                         $this->logAi('approval_requested', [
                             'call_id' => $out['call_id'],
+                            'call_ids' => $approvalCallIds,
                             'tool' => $name,
                             'plan' => mb_substr((string)($out['plan'] ?? ''), 0, 300),
                         ]);
@@ -445,7 +473,7 @@ class AiStudioController extends Controller {
                         'turns' => $turnsUsed,
                         'duration_ms' => $this->elapsedMs($startedAt),
                     ]);
-                    $this->persistAfterRun($sessionId, $messages, $model, $mode);
+                    $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
                     $this->sse('done', ['status' => 'awaiting_approval', 'text' => $finalText]);
                     return;
                 }
@@ -474,7 +502,7 @@ class AiStudioController extends Controller {
                     'cost' => $usageTotal['cost'],
                     'duration_ms' => $this->elapsedMs($startedAt),
                 ]);
-                $this->persistAfterRun($sessionId, $messages, $model, $mode);
+                $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
             } else {
                 $this->sse('done', ['status' => 'complete', 'text' => $finalText]);
                 $this->logAi('run_end', [
@@ -487,7 +515,7 @@ class AiStudioController extends Controller {
                     'duration_ms' => $this->elapsedMs($startedAt),
                     'preview_missing' => ($didWriteHtml && !$didPreview) ? 1 : 0,
                 ]);
-                $this->persistAfterRun($sessionId, $messages, $model, $mode);
+                $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
             }
         } catch (Throwable $e) {
             $this->logAi('run_error', [
@@ -495,6 +523,7 @@ class AiStudioController extends Controller {
                 'at' => $e->getFile() . ':' . $e->getLine(),
                 'duration_ms' => $this->elapsedMs($startedAt),
             ]);
+            try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot ?? []); } catch (Throwable $ignored) { error_log('persist on error failed: ' . $ignored->getMessage()); }
             try { $this->sse('error', ['message' => $e->getMessage()]); } catch (Throwable $ignored) {}
             try { $this->sse('done', ['status' => 'error']); } catch (Throwable $ignored) {}
         }
@@ -593,8 +622,21 @@ class AiStudioController extends Controller {
     // Prompt + helpers
     // ------------------------------------------------------------------
 
-    private function buildSystemPrompt(string $mode = 'plan'): string {
+    private function buildSystemPrompt(string $mode = 'plan', ?array $ctx = null): string {
         $mode = $mode === 'build' ? 'build' : 'plan';
+        // Inject cached design tokens so continue doesn't re-fetch get_design_tokens (reliable history continuity)
+        $cachedAddon = '';
+        if (is_array($ctx) && isset($ctx['_cached_tokens']) && is_array($ctx['_cached_tokens'])) {
+            $age = isset($ctx['_cached_tokens_at']) ? (time() - (int)$ctx['_cached_tokens_at']) : 999999;
+            // Only use if fresh (<1h); otherwise model should re-fetch
+            if ($age < 3600) {
+                $tokJson = json_encode($ctx['_cached_tokens'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                if ($tokJson !== false && mb_strlen($tokJson) > 20) {
+                    if (mb_strlen($tokJson) > 2000) $tokJson = mb_substr($tokJson, 0, 2000) . '…[truncated]';
+                    $cachedAddon = "\n\n═══ CACHED DESIGN TOKENS (from earlier turn, " . $age . "s ago — do NOT call get_design_tokens again; use this) ═══\n" . $tokJson;
+                }
+            }
+        }
         $modeBlock = $mode === 'plan'
             ? "═══ MODE: PLAN (READ-ONLY) ═══\nYou are in PLAN mode — read-only. You MUST NOT call any write tools (str_replace_field, set_field, insert_section, update_section, patch_section, set_section_style, wrap_section, add_section_marker, auto_sectionize, batch_update, set_rotation, create_faq, update_faq, delete_faq, restore_page_revision). Use only read tools (list_pages, get_page, search_content, list_sections, get_section, get_content_chunk, list_page_revisions, get_page_revision, get_global_settings, get_template_variables, get_design_tokens, render_preview, render_full_page, list_rotations, get_rotation, analytics/*, run_analytics_query, query_builder, get_gsc_*, list_faqs, get_faq, list_context, get_context). If the user asks for edits, produce a concise plan: what you would change, which slugs/fields/sections, draft HTML/text, and say \"Switch to BUILD to apply\"."
             : "═══ MODE: BUILD (FREE TO ACT) ═══\nYou are in BUILD — write tools are LIVE. Small edits (<800 chars replace/html) auto-execute; large edits (>800) + set_field/delete_faq/set_rotation/restore_page_revision require user approval (you will receive approval_required — re-issue same call after user approves). NEVER ask 'should I proceed?' for <800 — just CALL the tool. Every write is auto-snapshotted to page_revisions (restore_page_revision to undo), so it is safe. Minimal read rule (conditional): if user named a concrete target (slug/section), read target ONCE (list_sections → get_section OR get_content_chunk) then WRITE same turn (get_page truncated 12k already includes sections_hint); only if request is vague (\"the pages\", \"underperforming\") do you need list_pages/get_underperforming_pages/search_content to discover targets. Do NOT re-read what you already have, do NOT audit unrelated pages/analytics when user gave explicit target. Act in same turn you read.";
@@ -621,14 +663,13 @@ You are a Staff-level HTML/CSS & Technical SEO specialist (15+ years) operating 
 ═══ ANTI-PATTERNS / HARD RULES ═══
 - Never !important wars, fixed px breaking i18n, meta keywords stuffing, div-soup, duplicate h1, hover-only. Only touch data via tools. RU/UZ separate. On failure say plainly; don't retry >1. PLAN ends "Switch to BUILD to apply"; BUILD ends summary of CHANGED.
 PROMPT;
-        return $modeBlock . "\n\n" . $base;
+        return $modeBlock . "\n\n" . $base . $cachedAddon;
     }
 
     private function sanitizeHistory($history): array {
         $decoded = json_decode((string)$history, true);
         $messages = [];
         if (is_array($decoded)) {
-            $seen = [];
             foreach ($decoded as $turn) {
                 if (!is_array($turn)) continue;
                 // 06-05: keep tool role as well so grounding survives cap; client-supplied tool results are validated (tool_call_id + content length) downstream.
@@ -645,13 +686,11 @@ PROMPT;
                 // Per-message cap to prevent token blow-up (H5). Truncate, don't drop.
                 if (mb_strlen($content) > 4000) $content = mb_substr($content, 0, 4000) . "\n…[truncated]";
                 if ($role && $content !== '') {
-                    // Deduplicate exact consecutive duplicates to prevent poisoning via replay
+                    // Only deduplicate consecutive duplicates (not global seen) — two identical get_section previews
+                    // at different points in history are legitimate (e.g., re-reading after write).
                     $hash = $role . ':' . sha1($content);
-                    if (isset($seen[$hash])) continue;
-                    // Also skip duplicate of previous message to avoid merge amplification
                     $lastHash = end($messages) ? (end($messages)['role'] . ':' . sha1(end($messages)['content'])) : null;
                     if ($hash === $lastHash) continue;
-                    $seen[$hash] = true;
                     $messages[] = ['role' => $role, 'content' => $content];
                 }
                 if (count($messages) >= 48) break; // hard cap before slice
@@ -825,7 +864,7 @@ PROMPT;
             }
         } catch (Throwable $e) { error_log('persistSession failed: '.$e->getMessage()); }
     }
-    private function persistAfterRun(string $sessionId, array $messages, string $model, string $mode): void {
+    private function persistAfterRun(string $sessionId, array $messages, string $model, string $mode, ?array $ctxSnapshot = null): void {
         // $messages includes system + history + new turns — extract user/assistant/tool for storage
         $history = [];
         foreach ($messages as $m) {
@@ -833,25 +872,32 @@ PROMPT;
             // Keep user, assistant, tool
             if (in_array($m['role']??'', ['user','assistant','tool'], true)) $history[] = $m;
         }
+        // Compact verbatim tool HTML before persisting to avoid blowing 4k cap + 24-msg window (reliable fix).
+        $history = $this->compactHistoryForPersist($history);
         // Cap total chars per msg to 4000 like sanitizeHistory
         foreach ($history as &$h) {
             if (isset($h['content']) && mb_strlen($h['content'])>4000) $h['content']=mb_substr($h['content'],0,4000)."\n…[truncated]";
         }
         if (count($history) > 24) $history = array_slice($history,-24);
-        // 06-02: after startStream() headers are already sent, so @session_start() silently fails
-        // and $_SESSION restoration is lost. Persist via DB and only manipulate session if headers not sent.
-        $ctx = [];
-        if (!headers_sent() && session_status() !== PHP_SESSION_ACTIVE) {
-            session_start();
+        // Prefer snapshot captured before startStream() — after headers_sent $_SESSION is inaccessible.
+        $ctx = $ctxSnapshot;
+        if ($ctx === null) {
+            $ctx = [];
+            if (!headers_sent() && session_status() !== PHP_SESSION_ACTIVE) {
+                session_start();
+            }
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                $ctx = $_SESSION['ai_context'] ?? [];
+                session_write_close();
+            } else {
+                // headers already sent — fallback to DB context (captured before stream or load)
+                $ctx = $this->loadSessionContext($sessionId);
+                if (!is_array($ctx)) $ctx = [];
+            }
         }
-        if (session_status() === PHP_SESSION_ACTIVE) {
-            $ctx = $_SESSION['ai_context'] ?? [];
-            session_write_close();
-        } else {
-            // headers already sent — fallback to DB context (captured before stream or load)
-            $ctx = $this->loadSessionContext($sessionId);
-            if (!is_array($ctx)) $ctx = [];
-        }
+        if (!is_array($ctx)) $ctx = [];
+        // Cache design tokens / global settings if seen in this run (so continue never re-reads them).
+        $ctx = $this->mergeTokensIntoContext($ctx, $messages);
         $this->persistSession($sessionId, $history, is_array($ctx)?$ctx:[], $model, $mode);
         if (!headers_sent()) {
             if (session_status() !== PHP_SESSION_ACTIVE) session_start();
@@ -863,6 +909,76 @@ PROMPT;
         } else {
             error_log('persistAfterRun: headers already sent, DB persisted but session superglobal not restored for ' . $sessionId);
         }
+    }
+
+    private function compactHistoryForPersist(array $history): array {
+        // Replace verbatim bulky tool results (e.g. get_section html, get_page content) with compact summaries
+        // so history window holds actions/intent, not HTML dumps. Verbatim is kept in page_revisions.
+        $out = [];
+        foreach ($history as $m) {
+            if (($m['role'] ?? '') === 'tool' && isset($m['content']) && mb_strlen($m['content']) > 1200) {
+                $decoded = json_decode($m['content'], true);
+                if (is_array($decoded)) {
+                    // Already a write-result with verified hash/preview — compress to 400 chars summary
+                    if (isset($decoded['ok']) || isset($decoded['html']) || isset($decoded['chunk']) || isset($decoded['preview_json'])) {
+                        $compact = [
+                            '_compacted' => true,
+                            'original_chars' => mb_strlen($m['content']),
+                            'summary' => array_slice($decoded, 0, 6),
+                        ];
+                        // Keep hash/preview if present for continuity
+                        if (isset($decoded['hash'])) $compact['hash'] = $decoded['hash'];
+                        if (isset($decoded['fresh_hash'])) $compact['fresh_hash'] = $decoded['fresh_hash'];
+                        if (isset($decoded['after_preview'])) $compact['after_preview'] = mb_substr((string)$decoded['after_preview'], 0, 200);
+                        // If get_section html is large, keep only preview + hash, drop html
+                        if (isset($compact['summary']['html']) && mb_strlen((string)$compact['summary']['html']) > 500) {
+                            $compact['summary']['html'] = mb_substr((string)$compact['summary']['html'], 0, 200) . '…[compacted]';
+                        }
+                        if (isset($compact['summary']['chunk']) && mb_strlen((string)$compact['summary']['chunk']) > 500) {
+                            $compact['summary']['chunk'] = mb_substr((string)$compact['summary']['chunk'], 0, 200) . '…[compacted]';
+                        }
+                        $m['content'] = json_encode($compact, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    } elseif (mb_strlen($m['content']) > 2000) {
+                        // Generic large tool result — keep first 800 chars + marker
+                        $m['content'] = mb_substr($m['content'], 0, 800) . "\n…[compacted " . mb_strlen($m['content']) . "→800]";
+                    }
+                } elseif (mb_strlen($m['content']) > 2000) {
+                    $m['content'] = mb_substr($m['content'], 0, 800) . "\n…[compacted " . mb_strlen($m['content']) . "→800]";
+                }
+            }
+            $out[] = $m;
+        }
+        return $out;
+    }
+
+    private function mergeTokensIntoContext(array $ctx, array $messages): array {
+        // Extract design tokens / global settings from tool results in this run and cache in context
+        // so next continue turn can see them without re-calling get_design_tokens.
+        foreach ($messages as $m) {
+            if (($m['role'] ?? '') !== 'tool' || empty($m['content'])) continue;
+            $decoded = json_decode($m['content'], true);
+            if (!is_array($decoded)) continue;
+            // PageTools::getDesignTokens returns tokens array, SiteTools global settings
+            if (isset($decoded['tokens']) || isset($decoded['design_tokens']) || (isset($decoded['ok']) && isset($decoded['tokens']))) {
+                $ctx['_cached_tokens'] = $decoded;
+                $ctx['_cached_tokens_at'] = time();
+            }
+            if (isset($decoded['global_settings']) || isset($decoded['phone']) || (isset($decoded['ok']) && isset($decoded['site_name']))) {
+                $ctx['_cached_global_settings'] = $decoded;
+                $ctx['_cached_global_settings_at'] = time();
+            }
+        }
+        // Cap context size to prevent unbounded growth
+        if (count($ctx) > 20) {
+            // Keep cached tokens/settings + last 15 keys
+            $keep = ['_cached_tokens','_cached_tokens_at','_cached_global_settings','_cached_global_settings_at'];
+            $newCtx = [];
+            foreach ($keep as $k) if (isset($ctx[$k])) $newCtx[$k] = $ctx[$k];
+            $others = array_diff_key($ctx, array_flip($keep));
+            if (count($others) > 15) $others = array_slice($others, -15, null, true);
+            $ctx = array_merge($newCtx, $others);
+        }
+        return $ctx;
     }
 
     /** Human-readable one-liner for the transcript; keeps the feed tidy. */
