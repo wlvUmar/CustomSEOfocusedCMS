@@ -414,67 +414,125 @@ $bodyClasses = trim($pageSlugClass . ' ' . $pageLangClass . ($isAdmin ? ' admin-
     </div>
 
     <script>
-    window.BOT_MODAL_ENABLED = <?= !empty($botModalEnabled) ? 'true' : 'false' ?>;    
+    window.BOT_MODAL_ENABLED = <?= !empty($botModalEnabled) ? 'true' : 'false' ?>;
     var BOT_MODAL_SESSION_KEY = 'botModalShown';
+    var BOT_MODAL_LS_KEY = 'botModalShownAt';
+    var BOT_MODAL_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — less annoying than per-session
 
-    function closeBotModal(remember) {
-       const modal = document.getElementById('bot-modal');
-       if (modal) modal.classList.remove('is-open');
-       if (remember) markBotModalSeen();
+    function isBotModalCooledDown() {
+        try {
+            var at = localStorage.getItem(BOT_MODAL_LS_KEY);
+            if (at && (Date.now() - parseInt(at, 10) < BOT_MODAL_COOLDOWN_MS)) return true;
+            if (sessionStorage.getItem(BOT_MODAL_SESSION_KEY)) return true;
+        } catch (e) {}
+        return false;
     }
-
-    function openBotModal() {
-       if (sessionStorage.getItem(BOT_MODAL_SESSION_KEY)) return;
-       const modal = document.getElementById('bot-modal');
-       if (modal) modal.classList.add('is-open');
-       markBotModalSeen();
-    }
-
     function markBotModalSeen() {
-       try { sessionStorage.setItem(BOT_MODAL_SESSION_KEY, '1'); } catch (e) {}
+        try { sessionStorage.setItem(BOT_MODAL_SESSION_KEY, '1'); localStorage.setItem(BOT_MODAL_LS_KEY, String(Date.now())); } catch (e) {}
+    }
+    function lockBodyScroll(lock) {
+        if (lock) {
+            var sb = window.innerWidth - document.documentElement.clientWidth;
+            document.documentElement.style.scrollbarGutter = 'stable';
+            document.body.style.overflow = 'hidden';
+            if (sb > 0) document.body.style.paddingRight = sb + 'px';
+        } else {
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            document.documentElement.style.scrollbarGutter = '';
+        }
+    }
+    function closeBotModal(remember) {
+        var modal = document.getElementById('bot-modal');
+        if (!modal || !modal.classList.contains('is-open')) return;
+        modal.classList.remove('is-open');
+        lockBodyScroll(false);
+        if (remember) markBotModalSeen();
+        // allow focus return
+        setTimeout(function() {
+            var prev = document.activeElement;
+            if (prev) try { prev.blur(); } catch(e) {}
+        }, 0);
+    }
+    function openBotModal() {
+        if (isBotModalCooledDown()) return;
+        var modal = document.getElementById('bot-modal');
+        if (!modal || modal.classList.contains('is-open')) return;
+        // don't open if page hidden or user already typing
+        if (document.visibilityState === 'hidden') return;
+        if (document.querySelector('input:focus, textarea:focus')) return;
+        modal.classList.add('is-open');
+        lockBodyScroll(true);
+        markBotModalSeen();
+        // trap focus to close button for a11y, no layout thrash
+        try { modal.querySelector('.bot-modal__close')?.focus({preventScroll:true}); } catch(e) {}
     }
 
-    // Close modal when clicking overlay
+    // Close modal when clicking overlay — passive, no reflow
     document.getElementById('bot-modal')?.addEventListener('click', function(e) {
-       if (e.target === this) closeBotModal(true);
-    });
-
+        if (e.target === this) closeBotModal(true);
+    }, {passive: true});
     // Close on Escape
     document.addEventListener('keydown', function(e) {
-       if (e.key === 'Escape') closeBotModal(true);
+        if (e.key === 'Escape') closeBotModal(true);
     });
 
-    // Trigger once per session: after a short, real engagement window, not
-    // the very first pixel of scroll. Fires on whichever happens first —
-    // ~8s of dwell time or scrolling past a third of the page.
-    //
-    // NOTE: this only ever shows ONCE per browser session (sessionStorage).
-    // If you're testing and it "isn't popping up", you likely already
-    // triggered/dismissed it earlier in this tab — open a new private/
-    // incognito window, or run `sessionStorage.removeItem('botModalShown')`
-    // in the console, to see it again.
+    // Trigger: less annoying — 25s dwell + 60% scroll + exit-intent, max once per 7 days
+    // To test: localStorage.removeItem('botModalShownAt'); sessionStorage.removeItem('botModalShown')
     (function() {
-       if (!window.BOT_MODAL_ENABLED) return;
-       if (sessionStorage.getItem(BOT_MODAL_SESSION_KEY)) return;
+        if (!window.BOT_MODAL_ENABLED) return;
+        if (isBotModalCooledDown()) return;
+        // respect reduced-motion — delay longer
+        var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReduced) return; // don't auto-open for motion-sensitive users
 
-       let fired = false;
-       function maybeOpen() {
-           if (fired || sessionStorage.getItem(BOT_MODAL_SESSION_KEY)) return;
-           fired = true;
-           openBotModal();
-       }
+        var fired = false;
+        var dwellMs = 25000;
+        function maybeOpen() {
+            if (fired || isBotModalCooledDown()) return;
+            if (document.visibilityState === 'hidden') return;
+            fired = true;
+            openBotModal();
+            cleanup();
+        }
+        function cleanup() {
+            clearTimeout(dwellTimer);
+            window.removeEventListener('scroll', onScroll, {passive: true});
+            document.removeEventListener('mouseout', onExitIntent);
+            document.removeEventListener('visibilitychange', onVis);
+        }
+        function onVis() {
+            if (document.visibilityState === 'visible' && fired) return;
+        }
+        var dwellTimer = setTimeout(maybeOpen, dwellMs);
 
-       const dwellTimer = setTimeout(maybeOpen, 8000);
-
-       function onScroll() {
-           const scrolled = window.scrollY;
-           const max = document.documentElement.scrollHeight - window.innerHeight;
-           if (max > 0 && scrolled / max > 0.3) {
-               clearTimeout(dwellTimer);
-               maybeOpen();
-               window.removeEventListener('scroll', onScroll);
-           }
-       }
-       window.addEventListener('scroll', onScroll, { passive: true });
+        // throttle scroll to rAF — avoids freeze
+        var ticking = false;
+        function onScroll() {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(function() {
+                ticking = false;
+                var scrolled = window.scrollY;
+                var docEl = document.documentElement;
+                var max = docEl.scrollHeight - window.innerHeight;
+                if (max > 120 && scrolled / max > 0.6) {
+                    maybeOpen();
+                }
+            });
+        }
+        function onExitIntent(e) {
+            // mouse leaves viewport at top — user likely to bounce
+            if (e.clientY <= 2 && window.scrollY > 200) {
+                maybeOpen();
+            }
+        }
+        window.addEventListener('scroll', onScroll, {passive: true});
+        document.addEventListener('mouseout', onExitIntent, {passive: true});
+        document.addEventListener('visibilitychange', onVis, {passive: true});
+        // also cleanup on page hide to not hold timer
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') clearTimeout(dwellTimer);
+        }, {once: true});
     })();
     </script>
