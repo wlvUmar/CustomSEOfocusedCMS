@@ -304,9 +304,28 @@ class PageController extends Controller {
         
         $page["content_$currentLang"] = renderTemplate($page["content_$currentLang"], $templateData);
         $page["content_$currentLang"] = processMediaPlaceholders($page["content_$currentLang"], $page['id']);
+        // Merge custom_css: rotation may override base page custom_css if rotation active
+        if ($rotationUsed && !empty($rotationContent['custom_css'])) {
+            $page['custom_css'] = $rotationContent['custom_css'];
+        }
+        // Extract <style> blocks author may have put inside content_ for full control (header/footer)
+        // This keeps content body clean but moves CSS to <head> via header.php
+        if (!empty($page["content_$currentLang"]) && stripos($page["content_$currentLang"], '<style') !== false) {
+            [$clean, $extracted] = extractAndSanitizePageStyles($page["content_$currentLang"]);
+            if ($extracted !== '') {
+                $page["content_$currentLang"] = $clean;
+                $page['custom_css'] = trim(($page['custom_css'] ?? '') . ($page['custom_css'] ? "\n\n" : '') . $extracted);
+            }
+        }
+        // Sanitize custom_css (never block save, just clean vectors)
+        if (!empty($page['custom_css'])) {
+            $page['custom_css'] = sanitizeCssBlock($page['custom_css']);
+        }
+        $pageCustomCss = $page['custom_css'] ?? '';
         $page["clientID"] = getGaClientId();
         $data = [
             'page' => $page,
+            'pageCustomCss' => $pageCustomCss,
             'seo' => $seoSettings,
             'faqs' => $faqs,
             'blogSchema' => $blogSchema,

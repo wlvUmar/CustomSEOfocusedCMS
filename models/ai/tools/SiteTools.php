@@ -279,6 +279,7 @@ class SiteTools {
             . '<meta charset="utf-8">' . "\n"
             . '<meta name="viewport" content="width=device-width, initial-scale=1">' . "\n"
             . '<link rel="stylesheet" href="' . $baseUrl . '/css/pages.css">' . "\n"
+            . '<link rel="stylesheet" href="' . $baseUrl . '/css/components.min.css">' . "\n"
             . '<style>html,body{background:var(--surface)}'
             . '*{opacity:1!important;transform:none!important;transition:none!important;animation:none!important}'
             . '</style>' . "\n"
@@ -346,6 +347,7 @@ class SiteTools {
             . '<meta charset="utf-8">' . "\n"
             . '<meta name="viewport" content="width=device-width, initial-scale=1">' . "\n"
             . '<link rel="stylesheet" href="' . $baseUrl . '/css/pages.css">' . "\n"
+            . '<link rel="stylesheet" href="' . $baseUrl . '/css/components.min.css">' . "\n"
             . '<style>html,body{background:var(--surface)}*{opacity:1!important;transform:none!important;transition:none!important;animation:none!important}</style>' . "\n"
             . '</head>' . "\n"
             . '<body>' . "\n"

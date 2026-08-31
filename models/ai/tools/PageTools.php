@@ -326,6 +326,41 @@ class PageTools {
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'set_custom_css',
+                    'description' => 'Set per-page custom CSS that is injected AFTER pages.min.css + components.min.css, so it can fully override header/footer/any component. Empty string clears override (reverts to global defaults). Use body.page-{slug} prefix to scope (e.g. body.page-televizor header{background:var(--teal)}). Also supports :root token overrides body.page-slug{--teal:#0a4f5c;--surface:#fdfcf8}. Use components library classes (c-stats, c-feature-grid, etc.) or create one-off styles here. CSS is sanitized (blocks @import/javascript vectors). Prefer tokens var(--teal)/var(--orange) over new hex unless user asked for custom palette.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
+                            'css' => ['type' => 'string', 'description' => 'CSS to set for this page (max 20000 chars). Empty string clears custom_css and restores defaults. Supports any selectors; recommend body.page-slug header/footer scoping.'],
+                            'mode' => ['type' => 'string', 'enum' => ['replace','append'], 'description' => 'replace (default) overwrites, append concatenates to existing custom_css'],
+                        ],
+                        'oneOf' => [['required'=>['page_id']],[ 'required'=>['slug']]],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'set_page_theme',
+                    'description' => 'Quickly re-theme a page by overriding :root/design tokens. This writes to custom_css as body.page-{slug}{--teal:#...;--orange:#...;--surface:#...;--ink:#...} so ALL components (pages.css + 100+ c-*) instantly recolor without rewriting HTML. Use for giving each page distinct palette (e.g. televisor=cool teal, mebel=warm wood). Accepts preset (teal|orange|green|indigo|warm|dark|light) or explicit vars. Empty preset clears theme vars only, keeping other custom_css.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
+                            'preset' => ['type' => 'string', 'enum' => ['teal','orange','green','indigo','warm','dark','light','custom'], 'description' => 'Preset palette. custom requires vars.'],
+                            'vars' => ['type' => 'object', 'description' => 'Explicit CSS variable overrides, e.g. {"--teal":"#0a4f5c","--orange":"#e8610a","--surface":"#fdfcf8"} (keys must start with --). Used when preset=custom or to tweak a preset.'],
+                            'clear' => ['type' => 'boolean', 'description' => 'If true, removes previously set theme vars from custom_css (keeps other rules).'],
+                        ],
+                        'oneOf' => [['required'=>['page_id']],[ 'required'=>['slug']]],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'batch_update',
                     'description' => 'Apply up to 10 targeted edits to one page atomically in one turn (saves turns). Each op is patch_section/str_replace_field/update_section/set_section_style/wrap_section/add_section_marker. Each op with replace/html >800 chars individually requires approval before batch executes — keep ops small. Prefer over sequential calls.',
                     'parameters' => [
@@ -397,6 +432,10 @@ class PageTools {
                 return self::addSectionMarker($args);
             case 'auto_sectionize':
                 return self::autoSectionize($args);
+            case 'set_custom_css':
+                return self::setCustomCss($args);
+            case 'set_page_theme':
+                return self::setPageTheme($args);
             case 'batch_update':
                 return self::batchUpdate($args);
             case 'list_page_revisions':
@@ -1440,6 +1479,103 @@ class PageTools {
             }
             throw $e;
         }
+    }
+
+    // ── custom_css + theme helpers ──────────────────────────────────────────
+    private static function setCustomCss(array $args): array {
+        $pageId = self::resolveGeneralPageId($args);
+        $mode = ($args['mode'] ?? 'replace') === 'append' ? 'append' : 'replace';
+        $css = (string)($args['css'] ?? '');
+        if (mb_strlen($css) > 20000) throw new InvalidArgumentException('css too large (max 20000 chars). Split into smaller chunks or clear first.');
+        $model = new Page();
+        $page = $model->getById($pageId);
+        if (!$page) throw new InvalidArgumentException("Page not found: ID $pageId");
+        // Handle append mode: merge with existing
+        if ($mode === 'append' && trim($css) !== '') {
+            $existing = (string)($page['custom_css'] ?? '');
+            $css = $existing !== '' ? $existing . "\n\n" . $css : $css;
+        }
+        // Sanitize (blocks vectors) — empty string is valid (clear)
+        if (trim($css) !== '') {
+            require_once BASE_PATH . '/core/helpers.php';
+            $css = sanitizeCssBlock($css);
+        } else {
+            $css = null;
+        }
+        $model->update($pageId, ['custom_css' => $css]);
+        $fresh = $model->getById($pageId);
+        return ['ok'=>true,'page_id'=>$pageId,'slug'=>$fresh['slug'],'custom_css'=> $fresh['custom_css'] ?? null,'mode'=>$mode,'chars'=> mb_strlen((string)($fresh['custom_css'] ?? ''))];
+    }
+
+    private static function setPageTheme(array $args): array {
+        $pageId = self::resolveGeneralPageId($args);
+        $preset = trim((string)($args['preset'] ?? ''));
+        $clear = !empty($args['clear']);
+        $vars = $args['vars'] ?? null;
+        if (!is_array($vars) && $vars !== null) throw new InvalidArgumentException('vars must be an object like {"--teal":"#0a4f5c"}');
+        $model = new Page();
+        $page = $model->getById($pageId);
+        if (!$page) throw new InvalidArgumentException("Page not found: ID $pageId");
+        $slug = $page['slug'] ?? 'page';
+        $slugClass = 'page-' . preg_replace('/[^a-z0-9]+/', '-', strtolower($slug));
+        $presets = [
+            'teal' => ['--teal'=>'#0f5f6f','--teal-dark'=>'#094956','--teal-light'=>'#e0f2f5','--surface'=>'#f8f9fa'],
+            'orange' => ['--teal'=>'#9a3412','--teal-dark'=>'#7c2d12','--orange'=>'#f97316','--surface'=>'#fff7ed','--ink'=>'#431407'],
+            'green' => ['--teal'=>'#065f46','--teal-dark'=>'#064e3b','--orange'=>'#059669','--surface'=>'#ecfdf5','--teal-light'=>'#d1fae5'],
+            'indigo' => ['--teal'=>'#3730a3','--teal-dark'=>'#312e81','--orange'=>'#7c3aed','--surface'=>'#eef2ff','--teal-light'=>'#e0e7ff'],
+            'warm' => ['--teal'=>'#92400e','--teal-dark'=>'#78350f','--orange'=>'#ea580c','--surface'=>'#fffbeb','--ink'=>'#451a03','--border'=>'#fde68a'],
+            'dark' => ['--teal'=>'#14b8a6','--teal-dark'=>'#0f766e','--orange'=>'#f97316','--surface'=>'#0f1117','--surface-2'=>'#1f2937','--ink'=>'#f9fafb','--ink-soft'=>'#d1d5db','--muted'=>'#9ca3af','--border'=>'#374151'],
+            'light' => ['--teal'=>'#0f5f6f','--teal-dark'=>'#094956','--surface'=>'#ffffff','--surface-2'=>'#f8f9fa','--border'=>'#e5e7eb','--ink'=>'#111827'],
+        ];
+        $chosen = [];
+        if ($preset !== '' && $preset !== 'custom') {
+            if (!isset($presets[$preset])) throw new InvalidArgumentException("Unknown preset: $preset — allowed: teal,orange,green,indigo,warm,dark,light,custom");
+            $chosen = $presets[$preset];
+        } elseif ($preset === 'custom' && empty($vars)) {
+            throw new InvalidArgumentException('preset=custom requires vars object');
+        }
+        if (is_array($vars)) {
+            foreach ($vars as $k=>$v) {
+                if (!is_string($k) || !str_starts_with($k, '--')) throw new InvalidArgumentException("vars keys must start with --, got: $k");
+                $chosen[trim($k)] = trim((string)$v);
+            }
+        }
+        $currentCss = (string)($page['custom_css'] ?? '');
+        // If clear, strip any existing body.page-slug theme block
+        $themeSelector = "body.{$slugClass}";
+        if ($clear) {
+            // Remove theme block: body.page-slug{--*:...} (simple scan)
+            $pattern = '/\/\* theme:' . preg_quote($slugClass, '/') . ' \*\/\s*' . preg_quote($themeSelector, '/') . '\s*\{[^}]*\}\s*/';
+            $currentCss = preg_replace($pattern, '', $currentCss);
+            // Fallback: strip any body.page-slug{--...} var block if marker missing
+            $currentCss = preg_replace('/' . preg_quote($themeSelector, '/') . '\s*\{[^}]*--[^}]*\}/', '', $currentCss);
+            $currentCss = trim($currentCss);
+            require_once BASE_PATH . '/core/helpers.php';
+            $currentCss = sanitizeCssBlock($currentCss);
+            $model->update($pageId, ['custom_css' => $currentCss !== '' ? $currentCss : null]);
+            $fresh = $model->getById($pageId);
+            return ['ok'=>true,'page_id'=>$pageId,'slug'=>$slug,'cleared'=>true,'custom_css'=>$fresh['custom_css'] ?? null];
+        }
+        if (empty($chosen)) throw new InvalidArgumentException('No theme vars provided — pass preset or vars.');
+        // Build theme block
+        $decls = [];
+        foreach ($chosen as $k=>$v) {
+            if ($v === '' || $v === null) continue;
+            $decls[] = "$k: $v;";
+        }
+        $block = "/* theme:$slugClass */\n{$themeSelector} { " . implode(' ', $decls) . " }";
+        // Replace existing theme block if present, else append
+        $hasTheme = strpos($currentCss, "/* theme:$slugClass */") !== false;
+        if ($hasTheme) {
+            $currentCss = preg_replace('/\/\* theme:' . preg_quote($slugClass, '/') . ' \*\/\s*' . preg_quote($themeSelector, '/') . '\s*\{[^}]*\}/', $block, $currentCss);
+        } else {
+            $currentCss = trim($currentCss) !== '' ? $currentCss . "\n\n" . $block : $block;
+        }
+        require_once BASE_PATH . '/core/helpers.php';
+        $currentCss = sanitizeCssBlock($currentCss);
+        $model->update($pageId, ['custom_css' => $currentCss]);
+        $fresh = $model->getById($pageId);
+        return ['ok'=>true,'page_id'=>$pageId,'slug'=>$slug,'preset'=>$preset ?: 'custom','vars'=>$chosen,'custom_css'=>$fresh['custom_css'] ?? null];
     }
 
     private static function resolvePageIdForRevision(array $args): int {

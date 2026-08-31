@@ -46,15 +46,15 @@ class Page {
         }
     }
 
-    public function create($data) {
+     public function create($data) {
         $sql = "INSERT INTO pages (
-                    slug, title_ru, title_uz, content_ru, content_uz, 
+                    slug, title_ru, title_uz, content_ru, content_uz, custom_css,
                     meta_title_ru, meta_title_uz, meta_keywords_ru, meta_keywords_uz, 
                     meta_description_ru, meta_description_uz, 
                     og_title_ru, og_title_uz, og_description_ru, og_description_uz, og_image,
                     canonical_url, jsonld_ru, jsonld_uz, 
                     is_published, enable_rotation, rotation_mode, selected_rotation_id, sort_order, parent_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         if (empty($data['slug'])) throw new InvalidArgumentException('Slug is required');
         $this->assertSlugUnique((string)$data['slug']);
@@ -78,6 +78,7 @@ class Page {
             $data['title_uz'],
             $data['content_ru'],
             $data['content_uz'],
+            $data['custom_css'] ?? null,
             $data['meta_title_ru'] ?? null,
             $data['meta_title_uz'] ?? null,
             $data['meta_keywords_ru'] ?? null,
@@ -154,7 +155,7 @@ class Page {
         
         $sql = "UPDATE pages SET 
                     slug = ?, title_ru = ?, title_uz = ?, 
-                    content_ru = ?, content_uz = ?, 
+                    content_ru = ?, content_uz = ?, custom_css = ?,
                     meta_title_ru = ?, meta_title_uz = ?, 
                     meta_keywords_ru = ?, meta_keywords_uz = ?, 
                     meta_description_ru = ?, meta_description_uz = ?, 
@@ -172,6 +173,7 @@ class Page {
             array_key_exists('title_uz', $data) ? $data['title_uz'] : $currentPage['title_uz'],
             array_key_exists('content_ru', $data) ? $data['content_ru'] : $currentPage['content_ru'],
             array_key_exists('content_uz', $data) ? $data['content_uz'] : $currentPage['content_uz'],
+            array_key_exists('custom_css', $data) ? $data['custom_css'] : ($currentPage['custom_css'] ?? null),
             array_key_exists('meta_title_ru', $data) ? $data['meta_title_ru'] : $currentPage['meta_title_ru'],
             array_key_exists('meta_title_uz', $data) ? $data['meta_title_uz'] : $currentPage['meta_title_uz'],
             array_key_exists('meta_keywords_ru', $data) ? $data['meta_keywords_ru'] : $currentPage['meta_keywords_ru'],

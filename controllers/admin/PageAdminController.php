@@ -690,6 +690,7 @@ class PageAdminController extends Controller {
             'title_uz' => trim($_POST['title_uz']),
             'content_ru' => $_POST['content_ru'] ?? '',
             'content_uz' => $_POST['content_uz'] ?? '',
+            'custom_css' => trim($_POST['custom_css'] ?? '') ?: null,
             'meta_title_ru' => trim($_POST['meta_title_ru']) ?: null,
             'meta_title_uz' => trim($_POST['meta_title_uz']) ?: null,
             'meta_keywords_ru' => trim($_POST['meta_keywords_ru']) ?: null,

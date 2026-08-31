@@ -58,7 +58,8 @@ $brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"]
     <meta name="twitter:image" content="<?= e($ogImage) ?>">
     
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/pages.min.css') ?: time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/components.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/components.min.css') ?: time() ?>">
     
 
     <!-- Sitewide JSON-LD Schemas (Organization + WebSite) -->
@@ -116,9 +117,10 @@ $brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"]
         padding-top: 50px;
     }
     </style>
-    <?php endif; ?>
+     <?php endif; ?>
 </head>
-<body<?= $isAdmin ? ' class="admin-mode"' : '' ?>>
+<?php $articleSlugClass = 'page-article-' . (int)($article['id'] ?? 0); $articleLangClass='lang-'.($lang ?? 'ru'); $articleBodyClasses=trim($articleSlugClass.' '.$articleLangClass.($isAdmin ? ' admin-mode' : '')); ?>
+<body class="<?= e($articleBodyClasses) ?>">
     
     <?php if ($isAdmin): ?>
     <div class="admin-toolbar">

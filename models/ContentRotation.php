@@ -226,12 +226,12 @@ class ContentRotation {
 
     public function create($data) {
         $sql = "INSERT INTO content_rotations (
-                    page_id, title_ru, title_uz, content_ru, content_uz, 
+                    page_id, title_ru, title_uz, content_ru, content_uz, custom_css,
                     description_ru, description_uz, active_month, is_active,
                     meta_title_ru, meta_title_uz, meta_description_ru, meta_description_uz,
                     meta_keywords_ru, meta_keywords_uz, og_title_ru, og_title_uz,
                     og_description_ru, og_description_uz, og_image, jsonld_ru, jsonld_uz
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $this->db->query($sql, [
             $data['page_id'],
@@ -239,6 +239,7 @@ class ContentRotation {
             $data['title_uz'] ?? null,
             $data['content_ru'] ?? '',
             $data['content_uz'] ?? '',
+            $data['custom_css'] ?? null,
             $data['description_ru'] ?? null,
             $data['description_uz'] ?? null,
             $data['active_month'],
@@ -264,7 +265,7 @@ class ContentRotation {
     public function update($id, $data) {
         $sql = "UPDATE content_rotations SET 
                 title_ru = ?, title_uz = ?,
-                content_ru = ?, content_uz = ?, 
+                content_ru = ?, content_uz = ?, custom_css = ?,
                 description_ru = ?, description_uz = ?,
                 active_month = ?, is_active = ?,
                 meta_title_ru = ?, meta_title_uz = ?,
@@ -280,6 +281,7 @@ class ContentRotation {
             $data['title_uz'] ?? null,
             $data['content_ru'] ?? '',
             $data['content_uz'] ?? '',
+            $data['custom_css'] ?? null,
             $data['description_ru'] ?? null,
             $data['description_uz'] ?? null,
             $data['active_month'],

@@ -448,6 +448,54 @@ function renderTemplate($text, $data = []) {
  * Builds the HTML fragment for a set of media rows in a given section.
  * Returns '' if $items is empty.
  */
+/**
+ * Extract <style> blocks from HTML, sanitize CSS, return [cleanHtml, css].
+ * Allows per-page overrides: authors can put <style> in content_ru/uz or
+ * in custom_css column. The CSS is moved to <head> so it can target
+ * header/footer even though content_ lives inside .content-body.
+ */
+function sanitizeCssBlock(string $css): string {
+    if ($css === '') return '';
+    // Strip dangerous vectors
+    // Block @import to external origins — allow none for per-page (prevents SSRF)
+    $css = preg_replace('/@import\s+[^;]+;?/i', '', $css);
+    // Remove dangerous functions / protocols
+    if (preg_match('/expression\s*\(|javascript\s*:|vbscript\s*:|-moz-binding|behaviour\s*:|behavior\s*:/i', $css)) {
+        $css = preg_replace('/expression\s*\([^)]*\)/i', '', $css);
+        $css = preg_replace('/javascript\s*:/i', '', $css);
+        $css = preg_replace('/vbscript\s*:/i', '', $css);
+        $css = preg_replace('/-moz-binding[^;}]*/i', '', $css);
+    }
+    // Neutralize data:text/html vector but keep data:image
+    $css = preg_replace('/url\s*\(\s*["\']?\s*data\s*:\s*text\/html[^)]*\)/i', 'url("")', $css);
+    // Block url(javascript:
+    $css = preg_replace('/url\s*\(\s*["\']?\s*javascript:[^)]*\)/i', 'url("")', $css);
+    return trim($css);
+}
+
+function extractAndSanitizePageStyles(string $html): array {
+    if ($html === '' || stripos($html, '<style') === false) {
+        return [$html, ''];
+    }
+    $cssParts = [];
+    // Extract all <style> blocks (including with attributes)
+    $html = preg_replace_callback('/<style\b[^>]*>(.*?)<\/style>/is', function($m) use (&$cssParts) {
+        $block = sanitizeCssBlock((string)($m[1] ?? ''));
+        if ($block !== '') $cssParts[] = $block;
+        return '';
+    }, $html);
+    $merged = implode("\n\n", array_filter($cssParts));
+    return [$html, $merged];
+}
+
+function getPageSlugClass(?string $slug): string {
+    $slug = strtolower(trim((string)($slug ?? '')));
+    if ($slug === '') return 'page-generic';
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
+    $slug = trim($slug, '-');
+    return $slug !== '' ? 'page-' . $slug : 'page-generic';
+}
+
 function sanitizeFrontendHtml(string $html): string {
     if ($html === '') return '';
     // Layer 1: regex strip of dangerous protocols/tags before DOM parse (fast path)

@@ -8,10 +8,15 @@ $seo = $seo ?? [];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PREVIEW: <?= e($page["title_$lang"]) ?></title>
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/pages.min.css') ?: time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/components.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/components.min.css') ?: time() ?>">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/preview.css">
+    <?php if (!empty($pageCustomCss ?? $page['custom_css'] ?? '')): ?>
+    <style id="page-custom-css"><?= sanitizeCssBlock($pageCustomCss ?? $page['custom_css']) ?></style>
+    <?php endif; ?>
 </head>
-<body class="preview-mode">
+<?php $previewSlugClass = getPageSlugClass($page['slug'] ?? 'preview'); ?>
+<body class="preview-mode <?= e($previewSlugClass) ?> lang-<?= e($lang) ?>">
     
     <!-- Preview Banner -->
     <div class="preview-banner">

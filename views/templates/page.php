@@ -90,8 +90,17 @@ $applianceNameForSEO = $applianceName ?? '';
     // Render the CMS content; it emits .content-section, .info-grid, .info-card,
     // .process-step, .brands-list, .faq-item, etc.
     // The CSS below re-skins ALL of these so old class names still work fine.
-    $content = $page["content_$lang"];
+     $content = $page["content_$lang"];
     $content = renderTemplate($content, $templateData);
+    // Extract any <style> author put in content_ for full header/footer overrides
+    $extractedFromContent = '';
+    if (stripos($content, '<style') !== false) {
+        [$content, $extractedFromContent] = extractAndSanitizePageStyles($content);
+        if ($extractedFromContent !== '') {
+            $GLOBALS['pageExtractedCss'] = trim(($GLOBALS['pageExtractedCss'] ?? '') . ($GLOBALS['pageExtractedCss'] ? "\n\n" : '') . $extractedFromContent);
+            // If header already rendered, inject via JS fallback (shouldn't happen, header reads GLOBALS)
+        }
+    }
     $content = sanitizeFrontendHtml($content);
     $content = enhanceContentSEO($content, $page["title_$lang"], $applianceNameForSEO);
     $mediaBySection = [

@@ -130,6 +130,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     
     <div class="tabs">
         <button type="button" class="tab-btn active" onclick="switchTab('general')">General</button>
+        <button type="button" class="tab-btn" onclick="switchTab('design')">Design</button>
         <button type="button" class="tab-btn" onclick="switchTab('seo')">SEO & Meta</button>
         <button type="button" class="tab-btn" onclick="switchTab('advanced')">Advanced SEO</button>
     </div>
@@ -319,6 +320,28 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </a>
         <?php endif; ?>
     </div>
+
+    <div id="tab-design" class="tab-content">
+        <div class="help-text">
+            <strong>Per-page Design:</strong> Override <code>pages.css</code> and <code>components.css</code> for this page only.<br>
+            Empty = inherits global default. With CSS you get <strong>full control including header/footer</strong> — use <code>body.page-<?= e($page['slug'] ?? 'your-slug') ?> header { ... }</code> or <code>:root { --teal: #0a4f5c; --surface: #fdfcf8; }</code> token overrides.<br>
+            Supports <code>&lt;style&gt;</code> content wrappers extracted to head automatically, so inline <code>&lt;style&gt;</code> in <code>content_ru/uz</code> also moves to head.
+            <br><small>Tip: target <code>body.<?= 'page-' . preg_replace('/[^a-z0-9-]/','-', strtolower($page['slug'] ?? 'slug')) ?> header</code> for page-scoped header. Or use <code>:root</code> variable overrides to re-theme all components at once. CSS is sanitized (blocks @import, javascript:, expression).</small>
+        </div>
+        <div class="form-group">
+            <label>Custom CSS (overrides pages.css + components.css + header/footer)</label>
+            <textarea name="custom_css" rows="16" class="code" placeholder="/* Example: */
+/* Recolor this page */
+body.page-<?= e($page['slug'] ?? 'slug') ?> { --teal: #0a4f5c; --orange: #e8610a; --surface: #fdfcf8; }
+/* Override header gradient */
+body.page-<?= e($page['slug'] ?? 'slug') ?> header { background: linear-gradient(135deg, #0f5f6f 0%, #071a20 100%); }
+/* Override footer */
+body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
+/* Use any of 100+ components: .c-stats, .c-feature-split, .c-pricing, etc. */
+" spellcheck="false" style="font-family: monospace; font-size: 13px;"><?= e($page['custom_css'] ?? '') ?></textarea>
+            <small class="help-subtext">Leave empty to keep global defaults. CSS is injected after <code>pages.min.css</code> + <code>components.min.css</code> so it wins. Allowed: any selectors, CSS variables, @media. Blocked: @import, javascript: vectors. Loaded via <code>&lt;style id=&quot;page-custom-css&quot;&gt;</code> in head.</small>
+        </div>
+    </div>
     
     <div id="tab-seo" class="tab-content">
         <p class="help-text">Leave fields empty to use global defaults. All template variables work here too.</p>
@@ -424,8 +447,9 @@ tinymce.init({
     menubar: false,
     plugins: 'fullscreen code',
     toolbar: 'fullscreen code',
-    content_css: [
-        '<?= BASE_URL ?>/css/pages.min.css'
+     content_css: [
+        '<?= BASE_URL ?>/css/pages.min.css',
+        '<?= BASE_URL ?>/css/components.min.css'
     ],
     content_style: '.hero__content,.content-section,.info-card,.process-step,.brands-list,.faq-item,.condition-item,.review-strip,.links-tile,.faq-section{opacity:1!important;transform:none!important}',
 });
