@@ -146,20 +146,40 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <input type="text" name="slug" value="<?= e($page['slug'] ?? '') ?>" required>
         </div>
         
+        <?php
+        // Normalize current parent for reliable selected handling (NULL/''/0 = root, otherwise int)
+        $currentParentId = $page['parent_id'] ?? null;
+        if ($currentParentId === '' || $currentParentId === 0 || $currentParentId === '0') $currentParentId = null;
+        $isRootSelected = $currentParentId === null;
+        // Fallback: if current parent exists but was filtered from $allPages (e.g. stale descendant exclusion), ensure it is still selectable
+        $parentIdsInList = array_column($allPages ?? [], 'id');
+        $fallbackParent = null;
+        if ($currentParentId !== null && !in_array((int)$currentParentId, array_map('intval', $parentIdsInList), true)) {
+            try {
+                if (!class_exists('Page', false)) require_once BASE_PATH . '/models/Page.php';
+                $fallbackParent = (new Page())->getById((int)$currentParentId);
+            } catch (Throwable $e) { $fallbackParent = null; }
+        }
+        ?>
         <div class="form-group">
             <label>Parent Page (Optional - for hierarchy)</label>
-            <select name="parent_id" class="form-control">
-                <option value="" <?= (!isset($page) || !$page || !($page['parent_id'] ?? null)) ? 'selected' : '' ?>>— Root Level (No Parent) —</option>
+            <select name="parent_id" class="form-control" data-current-parent="<?= $currentParentId !== null ? (int)$currentParentId : '' ?>" id="parent_id_select">
+                <option value="" <?= $isRootSelected ? 'selected' : '' ?>>— Root Level (No Parent) —</option>
+                <?php if ($fallbackParent): ?>
+                    <option value="<?= (int)$fallbackParent['id'] ?>" selected>↳ <?= e($fallbackParent['title_ru'] ?? $fallbackParent['slug']) ?> (current parent)</option>
+                <?php endif; ?>
                 <?php if (!empty($allPages)): ?>
                     <?php 
+                    if (!function_exists('renderParentPageOptions')) {
                     function renderParentPageOptions($pages, $currentPageId = null, $parentId = 0, $depth = 0, $maxDepth = 3, $selectedParentId = null) {
                         $output = '';
                         if ($depth > $maxDepth) return $output;
                         
                         $childPages = array_filter($pages, function($p) use ($parentId, $currentPageId) {
-                            // Skip current page to prevent circular reference
-                            if ($currentPageId && $p['id'] == $currentPageId) return false;
-                            return ($p['parent_id'] ?? 0) == $parentId;
+                            if ($currentPageId && (int)$p['id'] === (int)$currentPageId) return false;
+                            $pid = $p['parent_id'] ?? null;
+                            if ($pid === '' || $pid === null) $pid = 0;
+                            return (int)$pid === (int)$parentId;
                         });
                         
                         usort($childPages, function($a, $b) {
@@ -168,7 +188,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         
                         foreach ($childPages as $p) {
                             $indent = str_repeat('  ', $depth) . ($depth > 0 ? '└ ' : '');
-                            $isSelected = $selectedParentId !== null && $selectedParentId !== '' && $selectedParentId == $p['id'];
+                            $isSelected = $selectedParentId !== null && $selectedParentId !== '' && (string)$selectedParentId === (string)$p['id'];
                             $output .= sprintf(
                                 '<option value="%d" %s>%s%s</option>' . "\n",
                                 $p['id'],
@@ -180,12 +200,26 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         }
                         return $output;
                     }
-                    echo renderParentPageOptions($allPages, $page['id'] ?? null, 0, 0, 3, $page['parent_id'] ?? null);
+                    }
+                    echo renderParentPageOptions($allPages, $page['id'] ?? null, 0, 0, 3, $currentParentId);
                     ?>
                 <?php endif; ?>
             </select>
             <small class="help-subtext">Create a page hierarchy. URLs remain flat, but breadcrumbs will show the path.</small>
         </div>
+        <script>
+        // Defensive: ensure the select reflects the current parent even if PHP rendering was stale/cached
+        (function(){
+            var sel = document.getElementById('parent_id_select');
+            if (!sel) return;
+            var cur = sel.getAttribute('data-current-parent');
+            if (cur !== null && cur !== '' && sel.value !== cur) {
+                // Only override if the expected value exists as an option
+                var has = Array.prototype.some.call(sel.options, function(o){ return o.value === cur; });
+                if (has) sel.value = cur;
+            }
+        })();
+        </script>
         
         <div class="form-row">
             <div class="form-group">
