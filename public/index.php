@@ -1,10 +1,10 @@
 <?php
 ob_start();
 require_once __DIR__ . '/../config/init.php';
-require_once '../core/Database.php';
-require_once '../core/Router.php';
-require_once '../core/Controller.php';
-require_once '../core/helpers.php';
+require_once BASE_PATH . '/core/Database.php';
+require_once BASE_PATH . '/core/Router.php';
+require_once BASE_PATH . '/core/Controller.php';
+require_once BASE_PATH . '/core/helpers.php';
 
 $router = new Router();
 
@@ -376,7 +376,7 @@ $router->get('/{slug}', function($slug) {
 });
 
 // 404 handler
-$router->notFound(function() { $router->error(404); });
+$router->notFound(function() use ($router) { $router->error(404); });
 
 // Dispatch router
 $router->dispatch();

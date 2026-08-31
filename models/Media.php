@@ -28,7 +28,30 @@ class Media {
     public function delete($id) {
         $media = $this->db->fetchOne("SELECT * FROM media WHERE id = ?", [$id]);
         if ($media) {
-            $filepath = UPLOAD_PATH . $media['filename'];
+            $filename = $media['filename'];
+            // Directory traversal guard: filename must be basename only, no path separators
+            if (strpos($filename, '/') !== false || strpos($filename, '\\') !== false || strpos($filename, '..') !== false) {
+                error_log("Media delete blocked - traversal in filename: $filename");
+                return false;
+            }
+            $filepath = UPLOAD_PATH . $filename;
+            $realBase = realpath(UPLOAD_PATH);
+            $realFile = realpath($filepath);
+            // Only unlink if realpath is inside UPLOAD_PATH (or file does not exist yet -> still allow DB delete)
+            if ($realFile !== false && $realBase !== false) {
+                if (strpos($realFile, $realBase) !== 0) {
+                    error_log("Media delete blocked - outside upload dir: $realFile");
+                    return false;
+                }
+                $filepath = $realFile;
+            } elseif ($realBase !== false) {
+                // file may not exist (already deleted) - ensure candidate is inside base before unlink attempt
+                $candidate = $realBase . DIRECTORY_SEPARATOR . $filename;
+                if (strpos($candidate, $realBase) !== 0) {
+                    error_log("Media delete blocked - candidate outside base: $candidate");
+                    return false;
+                }
+            }
             
             // Delete the actual file
             if (file_exists($filepath)) {

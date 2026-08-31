@@ -58,6 +58,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <?php endif; ?>
 
 <form id="bulk-form" method="POST" action="<?= BASE_URL ?>/admin/rotations/bulk-action">
+    <?= csrfField() ?>
     <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
     
     <div class="bulk-actions-bar">
@@ -167,6 +168,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                             
                             <form method="POST" action="<?= BASE_URL ?>/admin/rotations/delete" 
                                   style="display:inline;" onsubmit="return confirm('Delete this rotation?')">
+                                <?= csrfField() ?>
                                 <input type="hidden" name="id" value="<?= $rotation['id'] ?>">
                                 <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
                                 <button type="submit" class="btn btn-sm btn-danger" title="Delete">
@@ -196,6 +198,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </div>
         
         <form method="POST" action="<?= BASE_URL ?>/admin/rotations/clone">
+            <?= csrfField() ?>
             <input type="hidden" name="source_id" id="clone-source-id">
             
             <p>Clone content from <strong id="clone-source-name"></strong> to:</p>
@@ -228,6 +231,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </div>
         
         <form method="POST" action="<?= BASE_URL ?>/admin/rotations/bulk-upload" enctype="multipart/form-data">
+            <?= csrfField() ?>
             <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
             
             <div class="help-text" style="margin-bottom: 20px;">

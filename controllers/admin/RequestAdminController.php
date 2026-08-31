@@ -94,9 +94,10 @@ class RequestAdminController extends Controller {
     }
 
     public function approve() {
-        // Check authentication: either logged in OR has valid token
+        // Auth: logged-in requires CSRF; token-only requires valid POST token (no CSRF)
         $isLoggedIn = isset($_SESSION['user_id']);
-        $token = $_GET['token'] ?? $_POST['token'] ?? null;
+        // Prefer POST token to avoid GET logging in proxy/Referer; fallback to GET for BC links
+        $token = $_POST['token'] ?? $_GET['token'] ?? null;
         $hasValidToken = false;
         $id = $_POST['id'] ?? 0;
         
@@ -107,8 +108,10 @@ class RequestAdminController extends Controller {
         
         if (!$isLoggedIn && !$hasValidToken) {
             $this->requireAuth();
+            return;
         }
         
+        // Logged-in path must always pass CSRF even when token is also present (no bypass)
         if ($isLoggedIn && !validateCSRFToken($_POST['csrf_token'] ?? '')) {
             $this->json(['success' => false, 'message' => 'Invalid CSRF'], 403);
             return;
@@ -152,9 +155,8 @@ class RequestAdminController extends Controller {
     }
 
     public function reject() {
-        // Check authentication: either logged in OR has valid token
         $isLoggedIn = isset($_SESSION['user_id']);
-        $token = $_GET['token'] ?? $_POST['token'] ?? null;
+        $token = $_POST['token'] ?? $_GET['token'] ?? null;
         $hasValidToken = false;
         $id = $_POST['id'] ?? 0;
         
@@ -165,6 +167,7 @@ class RequestAdminController extends Controller {
         
         if (!$isLoggedIn && !$hasValidToken) {
             $this->requireAuth();
+            return;
         }
         
         if ($isLoggedIn && !validateCSRFToken($_POST['csrf_token'] ?? '')) {
@@ -192,9 +195,8 @@ class RequestAdminController extends Controller {
     
     public function delete(): void
     {
-        // Check authentication: either logged in OR has valid token
         $isLoggedIn = isset($_SESSION['user_id']);
-        $token = $_GET['token'] ?? $_POST['token'] ?? null;
+        $token = $_POST['token'] ?? $_GET['token'] ?? null;
         $hasValidToken = false;
         $id = (int)($_POST['id'] ?? 0);
         
@@ -205,10 +207,14 @@ class RequestAdminController extends Controller {
         
         if (!$isLoggedIn && !$hasValidToken) {
             $this->requireAuth();
+            return;
         }
 
-        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {  // ← match how approve/reject validate CSRF
+        // Logged-in must pass CSRF; token-only skips CSRF (no session) but token already validated
+        if ($isLoggedIn && !validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
             $this->redirect('/admin/requests');
+            return;
         }
 
         if (!$id) {
@@ -252,8 +258,35 @@ class RequestAdminController extends Controller {
         if (!$path) {
             $path = $imagePath;
         }
+        // Strip traversal sequences before joining
+        $path = ltrim($path, '/\\');
+        // Handle absolute URLs stored as /uploads/file or uploads/file; extract filename if needed
+        $baseName = basename($path);
+        // If path contains uploads/, prefer the segment after uploads/
+        if (strpos($path, 'uploads/') !== false) {
+            $path = substr($path, strpos($path, 'uploads/') + strlen('uploads/'));
+            $path = ltrim($path, '/\\');
+        } else {
+            // fallback to basename to avoid directory traversal via crafted path
+            $path = $baseName;
+        }
+        if (strpos($path, '..') !== false || strpos($path, '/') !== false || strpos($path, '\\') !== false) {
+            return '';
+        }
 
-        $publicRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
-        return $publicRoot . '/' . ltrim($path, '/');
+        $candidate = rtrim(UPLOAD_PATH, '/\\') . DIRECTORY_SEPARATOR . $path;
+        $realBase = realpath(UPLOAD_PATH) ?: rtrim(UPLOAD_PATH, '/\\');
+        $realCandidate = realpath($candidate);
+        if ($realCandidate !== false) {
+            if (strpos($realCandidate, $realBase) !== 0) {
+                return '';
+            }
+            return $realCandidate;
+        }
+        // file already deleted - return candidate if inside base
+        if (strpos($candidate, $realBase) !== 0) {
+            return '';
+        }
+        return $candidate;
     }
 }

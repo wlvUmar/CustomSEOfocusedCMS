@@ -10,18 +10,24 @@ class RequestAccessToken {
 
     /**
      * Create a new access token for a request (3-day expiration)
+     * Server generates token; client-supplied value is ignored (prevents takeover).
+     * ON DUPLICATE KEY UPDATE now rotates token instead of keeping stale one.
      */
-    public function create($request_id, $token) {
+    public function create($request_id, $token = null) {
+        if ($token !== null) {
+            error_log('[RequestAccessToken] client-supplied token ignored for request ' . $request_id);
+        }
+        $token = bin2hex(random_bytes(32)); // 64 hex chars fits VARCHAR(64)
         $expiresAt = date('Y-m-d H:i:s', strtotime('+3 days'));
         
         $sql = "
             INSERT INTO request_access_tokens (request_id, token, expires_at)
             VALUES (?, ?, ?)
-            ON DUPLICATE KEY UPDATE expires_at = VALUES(expires_at)
+            ON DUPLICATE KEY UPDATE token = VALUES(token), expires_at = VALUES(expires_at)
         ";
         
         $this->db->query($sql, [$request_id, $token, $expiresAt]);
-        return $this->db->lastInsertId();
+        return $token;
     }
 
     /**

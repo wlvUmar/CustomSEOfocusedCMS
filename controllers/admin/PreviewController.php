@@ -121,10 +121,23 @@ class PreviewController extends Controller {
         
         // Render content with template engine
         $page["content_$lang"] = renderTemplate($page["content_$lang"], $templateData);
-        
+        // Merge custom_css from rotation if previewing rotation
+        $previewCustomCss = $page['custom_css'] ?? '';
+        if (!empty($rotationContent['custom_css'])) {
+            $previewCustomCss = $rotationContent['custom_css'];
+        }
+        if (stripos($page["content_$lang"], '<style') !== false) {
+            [$clean, $extracted] = extractAndSanitizePageStyles($page["content_$lang"]);
+            if ($extracted !== '') {
+                $page["content_$lang"] = $clean;
+                $previewCustomCss = trim(($previewCustomCss ? $previewCustomCss . "\n\n" : '') . $extracted);
+            }
+        }
+        if (!empty($previewCustomCss)) $previewCustomCss = sanitizeCssBlock($previewCustomCss);
         // Prepare data for view
         $data = [
             'page' => $page,
+            'pageCustomCss' => $previewCustomCss,
             'seo' => $seoSettings,
             'faqs' => $faqs,
             'lang' => $lang,

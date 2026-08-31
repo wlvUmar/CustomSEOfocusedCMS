@@ -29,10 +29,24 @@ class GscClient {
     public static function getSiteUrl(): string {
         $v = trim((string)(getenv('GSC_SITE_URL') ?: (defined('GSC_SITE_URL') ? GSC_SITE_URL : '')));
         if ($v !== '') return $v;
-        // Fallback to BASE_URL (add trailing slash if https site).
+        // Check DB stored site_url (from OAuth) before falling back to hardcoded domain (02-architecture #8 BC)
+        try {
+            self::ensureTable();
+            $row = Database::getInstance()->fetchOne("SELECT site_url FROM gsc_tokens WHERE id = 1");
+            if ($row && !empty($row['site_url'])) {
+                $dbUrl = trim((string)$row['site_url']);
+                if ($dbUrl !== '') return $dbUrl;
+            }
+        } catch (Throwable $e) {}
         $base = trim((string)(defined('BASE_URL') ? BASE_URL : ''));
         if ($base === '') return 'sc-domain:kuplyu-tashkent.uz';
         return rtrim($base, '/') . '/';
+    }
+
+    public static function getSiteUrlFor(?string $override): string {
+        $o = trim((string)$override);
+        if ($o !== '') return $o;
+        return self::getSiteUrl();
     }
 
     public static function getRedirectUri(): string {
@@ -73,28 +87,40 @@ class GscClient {
     }
 
     private static function encKey(): string {
+        static $warnedReuse = false;
         $k = (string)(getenv('GSC_ENCRYPTION_KEY') ?: (defined('GSC_ENCRYPTION_KEY') ? GSC_ENCRYPTION_KEY : ''));
         if ($k === '') {
-            // Derive from BOT_API_SECRET if available (better than plaintext).
             $k = (string)(getenv('BOT_API_SECRET') ?: '');
+            if ($k !== '' && !$warnedReuse) {
+                error_log("GscClient: GSC_ENCRYPTION_KEY not set — falling back to BOT_API_SECRET (key reuse). Set dedicated GSC_ENCRYPTION_KEY in .env.");
+                $warnedReuse = true;
+            }
         }
         return $k;
+    }
+
+    private static function deriveKey(string $key): string {
+        // Use HKDF-SHA256 instead of raw SHA256 (project-11#5)
+        if (function_exists('hash_hkdf')) {
+            return hash_hkdf('sha256', $key, 32, 'gsc-encrypt', '');
+        }
+        // Fallback to SHA256 if hkdf not available
+        return hash('sha256', $key, true);
     }
 
     private static function encrypt(string $plain): string {
         $key = self::encKey();
         if ($key === '' || !function_exists('openssl_encrypt')) {
             error_log("GscClient: GSC_ENCRYPTION_KEY not set — storing token plaintext is insecure. Set GSC_ENCRYPTION_KEY in .env.");
-            // Fail closed for new installs if BOT_API_SECRET also empty; otherwise allow fallback for BC but warn.
             if ($key === '') {
-                $fallback = (string)(getenv('BOT_API_SECRET') ?: '');
-                if ($fallback === '') {
-                    throw new RuntimeException('GSC_ENCRYPTION_KEY not configured — refusing to store plaintext token. Set GSC_ENCRYPTION_KEY in .env.');
-                }
+                throw new RuntimeException('GSC_ENCRYPTION_KEY not configured — refusing to store plaintext token. Set GSC_ENCRYPTION_KEY in .env.');
             }
             return $plain;
         }
-        $k = hash('sha256', $key, true);
+        if (strlen($key) < 16) {
+            throw new RuntimeException('GSC_ENCRYPTION_KEY too short — need at least 16 chars.');
+        }
+        $k = self::deriveKey($key);
         $iv = random_bytes(12);
         $ct = openssl_encrypt($plain, 'aes-256-gcm', $k, OPENSSL_RAW_DATA, $iv, $tag);
         if ($ct === false) return $plain;
@@ -102,17 +128,43 @@ class GscClient {
     }
 
     private static function decrypt(string $stored): string {
-        if (!str_starts_with($stored, 'gcm$')) return $stored;
+        static $warnedPlain = false;
+        $isEncrypted = str_starts_with($stored, 'gcm$');
         $key = self::encKey();
-        if ($key === '' || !function_exists('openssl_decrypt')) return $stored;
-        $k = hash('sha256', $key, true);
+        // BC: allow plaintext rows but warn once per request and migrate on next save (remaining-bugs #8)
+        if (!$isEncrypted) {
+            if (!$warnedPlain) {
+                error_log("GscClient: token stored as plaintext — will re-encrypt on next save. Re-authenticate recommended.");
+                $warnedPlain = true;
+            }
+            if ($key === '' || !function_exists('openssl_decrypt')) {
+                return $stored;
+            }
+            return $stored;
+        }
+        if ($key === '' || !function_exists('openssl_decrypt')) {
+            throw new RuntimeException('GSC_ENCRYPTION_KEY not configured — cannot decrypt token.');
+        }
+        // Try HKDF first, fallback to legacy sha256 for BC (tokens encrypted before batch 05)
         $raw = base64_decode(substr($stored, 4), true);
-        if ($raw === false || strlen($raw) < 28) return $stored;
+        if ($raw === false || strlen($raw) < 28) {
+            throw new RuntimeException('GSC token corrupt — re-authenticate.');
+        }
         $iv = substr($raw, 0, 12);
         $tag = substr($raw, 12, 16);
         $ct = substr($raw, 28);
+        $k = self::deriveKey($key);
         $pt = openssl_decrypt($ct, 'aes-256-gcm', $k, OPENSSL_RAW_DATA, $iv, $tag);
-        return $pt === false ? $stored : $pt;
+        if ($pt === false) {
+            // Legacy fallback: sha256-derived key
+            $legacyK = hash('sha256', $key, true);
+            $pt = openssl_decrypt($ct, 'aes-256-gcm', $legacyK, OPENSSL_RAW_DATA, $iv, $tag);
+            if ($pt === false) {
+                throw new RuntimeException('GSC token decrypt failed — key mismatch or corrupt. Re-authenticate.');
+            }
+            error_log("GscClient: decrypted with legacy key — will re-encrypt with HKDF on next save.");
+        }
+        return $pt;
     }
 
     public static function saveRefreshToken(string $refreshToken, ?string $siteUrl = null, ?string $email = null): void {
@@ -131,7 +183,12 @@ class GscClient {
         self::ensureTable();
         $row = Database::getInstance()->fetchOne("SELECT refresh_token FROM gsc_tokens WHERE id = 1");
         if (!$row || empty($row['refresh_token'])) return null;
-        return self::decrypt((string)$row['refresh_token']);
+        try {
+            return self::decrypt((string)$row['refresh_token']);
+        } catch (Throwable $e) {
+            error_log("GscClient getRefreshToken decrypt failed: " . $e->getMessage());
+            return null;
+        }
     }
 
     public static function isConnected(): bool {
@@ -145,7 +202,7 @@ class GscClient {
         if ($connected) {
             $row = Database::getInstance()->fetchOne("SELECT site_url, email, updated_at, expires_at FROM gsc_tokens WHERE id = 1");
         }
-        return [
+        $status = [
             'configured' => $configured,
             'connected' => $connected,
             'site_url' => $row['site_url'] ?? self::getSiteUrl(),
@@ -154,6 +211,14 @@ class GscClient {
             'expires_at' => $row['expires_at'] ?? null,
             'redirect_uri' => self::getRedirectUri(),
         ];
+        // Expose available properties for multi-site debug (02-architecture #8) — uses live listSites if connected
+        if ($connected) {
+            try {
+                $sites = self::listSites();
+                if (is_array($sites)) $status['available_sites'] = array_map(fn($s) => $s['siteUrl'] ?? $s['site_url'] ?? '', $sites);
+            } catch (Throwable $e) {}
+        }
+        return $status;
     }
 
     public static function disconnect(): void {
@@ -173,8 +238,12 @@ class GscClient {
         if ($row && !empty($row['access_token']) && !empty($row['expires_at'])) {
             $exp = strtotime((string)$row['expires_at']);
             if ($exp !== false && $exp > time() + 60) {
-                $tok = self::decrypt((string)$row['access_token']);
-                if ($tok !== '') return $tok;
+                try {
+                    $tok = self::decrypt((string)$row['access_token']);
+                    if ($tok !== '') return $tok;
+                } catch (Throwable $e) {
+                    error_log("GscClient getAccessToken decrypt failed: " . $e->getMessage());
+                }
             }
         }
         // Refresh.
@@ -190,9 +259,19 @@ class GscClient {
         $lockDir = dirname($lockFile);
         if (!is_dir($lockDir)) @mkdir($lockDir, 0750, true);
         $fp = @fopen($lockFile, 'c');
-        if ($fp && !@flock($fp, LOCK_EX | LOCK_NB)) {
-            // Another process is refreshing — wait briefly then reuse cached token if available.
-            @flock($fp, LOCK_EX);
+        $hasLock = false;
+        if ($fp) {
+            $hasLock = @flock($fp, LOCK_EX | LOCK_NB);
+            if (!$hasLock) {
+                // Wait up to 10s for holder to release (avoid forever block, project-11#7)
+                for ($wait = 0; $wait < 10; $wait++) {
+                    sleep(1);
+                    if (@flock($fp, LOCK_EX | LOCK_NB)) { $hasLock = true; break; }
+                }
+                if (!$hasLock) {
+                    error_log("GscClient: token lock wait timeout after 10s, proceeding without lock");
+                }
+            }
         }
         try {
             // Re-check if another process already refreshed while we waited.
@@ -201,8 +280,12 @@ class GscClient {
             if ($row && !empty($row['access_token']) && !empty($row['expires_at'])) {
                 $exp = strtotime((string)$row['expires_at']);
                 if ($exp !== false && $exp > time() + 60) {
-                    $tok = self::decrypt((string)$row['access_token']);
-                    if ($tok !== '') return $tok;
+                    try {
+                        $tok = self::decrypt((string)$row['access_token']);
+                        if ($tok !== '') return $tok;
+                    } catch (Throwable $e) {
+                        error_log("GscClient refresh re-check decrypt failed: " . $e->getMessage());
+                    }
                 }
             }
 
@@ -287,7 +370,12 @@ class GscClient {
         if (!is_file($file)) return null;
         $mtime = @filemtime($file);
         if ($mtime === false || (time() - $mtime) > self::CACHE_TTL) return null;
-        $raw = @file_get_contents($file);
+        $fh = @fopen($file, 'r');
+        if (!$fh) return null;
+        @flock($fh, LOCK_SH);
+        $raw = stream_get_contents($fh);
+        @flock($fh, LOCK_UN);
+        @fclose($fh);
         if ($raw === false) return null;
         $data = json_decode($raw, true);
         return is_array($data) ? $data : null;
@@ -296,13 +384,35 @@ class GscClient {
     private static function cacheSet(string $key, array $data): void {
         $dir = BASE_PATH . '/storage/gsc_cache';
         if (!is_dir($dir)) @mkdir($dir, 0750, true);
-        @file_put_contents($dir . '/' . $key . '.json', json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+        $file = $dir . '/' . $key . '.json';
+        // Bounded cache: cap at 200 files, GC oldest if over
+        $files = glob($dir . '/*.json') ?: [];
+        if (count($files) > 200) {
+            usort($files, fn($a,$b) => filemtime($a) <=> filemtime($b));
+            foreach (array_slice($files, 0, count($files) - 180) as $old) {
+                if (is_link($old)) continue; // skip symlink (TOCTOU)
+                @unlink($old);
+            }
+        }
+        $fh = @fopen($file, 'c');
+        if ($fh) {
+            @flock($fh, LOCK_EX);
+            ftruncate($fh, 0);
+            fwrite($fh, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            @flock($fh, LOCK_UN);
+            @fclose($fh);
+        } else {
+            @file_put_contents($file, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+        }
     }
 
     public static function clearCache(): void {
         $dir = BASE_PATH . '/storage/gsc_cache';
         if (!is_dir($dir)) return;
-        foreach (glob($dir . '/*.json') ?: [] as $f) @unlink($f);
+        foreach (glob($dir . '/*.json') ?: [] as $f) {
+            if (is_link($f)) continue;
+            @unlink($f);
+        }
     }
 
     /**
@@ -314,8 +424,8 @@ class GscClient {
      * @param int $rowLimit max 25000 (we default 1000-5000)
      * @return array|null rows or null on auth failure
      */
-    public static function searchAnalytics(string $startDate, string $endDate, array $dimensions = [], array $dimensionFilterGroups = [], int $rowLimit = 1000, string $aggregationType = 'auto'): ?array {
-        $siteUrl = self::getSiteUrl();
+    public static function searchAnalytics(string $startDate, string $endDate, array $dimensions = [], array $dimensionFilterGroups = [], int $rowLimit = 1000, string $aggregationType = 'auto', ?string $siteUrlOverride = null): ?array {
+        $siteUrl = self::getSiteUrlFor($siteUrlOverride);
         $payload = [
             'startDate' => $startDate,
             'endDate' => $endDate,

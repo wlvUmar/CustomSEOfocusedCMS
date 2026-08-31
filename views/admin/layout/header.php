@@ -11,8 +11,8 @@
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/layout.css?v=2">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/core/tables.css?v=2">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/admin/mobile-overflow-fixes.css?v=2">
-    <!-- Chart.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <!-- Chart.js — deferred to avoid blocking TBT on media/pages/edit (project-08#8) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js" defer></script>
     <script>
         window.baseUrl = '<?= BASE_URL ?>';
         window.DEBUG = <?= IS_PRODUCTION ? 'false' : 'true' ?>;

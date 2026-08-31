@@ -46,22 +46,33 @@ class FAQAdminController extends Controller {
         }
         
         $id = $_POST['id'] ?? null;
+        // 06-05: UZ fallback — empty UZ falls back to RU to keep bilingual parity
+        $qRu = trim($_POST['question_ru'] ?? '');
+        $aRu = trim($_POST['answer_ru'] ?? '');
+        $qUz = trim($_POST['question_uz'] ?? '');
+        $aUz = trim($_POST['answer_uz'] ?? '');
+        if ($qUz === '') $qUz = $qRu;
+        if ($aUz === '') $aUz = $aRu;
         $data = [
             'page_slug' => trim($_POST['page_slug']),
-            'question_ru' => trim($_POST['question_ru']),
-            'question_uz' => trim($_POST['question_uz']),
-            'answer_ru' => trim($_POST['answer_ru']),
-            'answer_uz' => trim($_POST['answer_uz']),
+            'question_ru' => $qRu,
+            'question_uz' => $qUz,
+            'answer_ru' => $aRu,
+            'answer_uz' => $aUz,
             'sort_order' => intval($_POST['sort_order'] ?? 0),
             'is_active' => isset($_POST['is_active']) ? 1 : 0
         ];
         
-        if ($id) {
-            $this->faqModel->update($id, $data);
-            $_SESSION['success'] = 'FAQ updated successfully';
-        } else {
-            $this->faqModel->create($data);
-            $_SESSION['success'] = 'FAQ created successfully';
+        try {
+            if ($id) {
+                $this->faqModel->update($id, $data);
+                $_SESSION['success'] = 'FAQ updated successfully';
+            } else {
+                $this->faqModel->create($data);
+                $_SESSION['success'] = 'FAQ created successfully';
+            }
+        } catch (InvalidArgumentException $e) {
+            $_SESSION['error'] = $e->getMessage();
         }
         
         $this->redirect('/admin/faqs');
@@ -69,6 +80,12 @@ class FAQAdminController extends Controller {
 
     public function delete() {
         $this->requireAuth();
+        
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/faqs');
+            return;
+        }
         
         $id = $_POST['id'] ?? null;
         if ($id) {
@@ -80,6 +97,12 @@ class FAQAdminController extends Controller {
     }
     public function bulkUpload() {
         $this->requireAuth();
+        
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/faqs');
+            return;
+        }
         
         if (!isset($_FILES['file'])) {
             $_SESSION['error'] = 'No file uploaded';
@@ -119,21 +142,31 @@ class FAQAdminController extends Controller {
                     continue;
                 }
                 
-                // Prepare data
+                // Prepare data — 06-05 UZ fallback
+                $qRu = trim($row['question_ru']);
+                $aRu = trim($row['answer_ru']);
+                $qUz = trim($row['question_uz'] ?? '');
+                $aUz = trim($row['answer_uz'] ?? '');
+                if ($qUz === '') $qUz = $qRu;
+                if ($aUz === '') $aUz = $aRu;
                 $insertData = [
                     'page_slug' => trim($row['page_slug']),
-                    'question_ru' => trim($row['question_ru']),
-                    'question_uz' => trim($row['question_uz'] ?? ''),
-                    'answer_ru' => trim($row['answer_ru']),
-                    'answer_uz' => trim($row['answer_uz'] ?? ''),
+                    'question_ru' => $qRu,
+                    'question_uz' => $qUz,
+                    'answer_ru' => $aRu,
+                    'answer_uz' => $aUz,
                     'sort_order' => isset($row['sort_order']) ? (int)$row['sort_order'] : 0,
                     'is_active' => isset($row['is_active']) ? (int)$row['is_active'] : 1
                 ];
                 
-                if ($this->faqModel->create($insertData)) {
-                    $created++;
-                } else {
-                    $errors[] = "Row " . ($index + 1) . ": Failed to create FAQ";
+                try {
+                    if ($this->faqModel->create($insertData)) {
+                        $created++;
+                    } else {
+                        $errors[] = "Row " . ($index + 1) . ": Failed to create FAQ";
+                    }
+                } catch (InvalidArgumentException $e) {
+                    $errors[] = "Row " . ($index + 1) . ": " . $e->getMessage();
                 }
             }
             

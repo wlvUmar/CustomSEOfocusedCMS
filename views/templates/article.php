@@ -58,22 +58,35 @@ $brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"]
     <meta name="twitter:image" content="<?= e($ogImage) ?>">
     
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/pages.min.css') ?: time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/components.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/components.min.css') ?: time() ?>">
     
 
     <!-- Sitewide JSON-LD Schemas (Organization + WebSite) -->
     <?php if (!empty($sitewideSchema)): ?>
     <script type="application/ld+json">
-    <?= json_encode($sitewideSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) ?>
+    <?= json_encode($sitewideSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_PRETTY_PRINT) ?>
     </script>
     <?php endif; ?>
     
     <!-- Article-specific JSON-LD Schema -->
-    <?php if (!empty($article["jsonld_$lang"])): ?>
+    <?php
+    if (!empty($article["jsonld_$lang"])):
+        $rawJsonLd = trim((string)$article["jsonld_$lang"]);
+        $decoded = json_decode($rawJsonLd, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            $rawJsonLd = json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_PRETTY_PRINT);
+        } else {
+            // Invalid JSON — do not emit to avoid breaking page; log instead
+            error_log('[article jsonld] invalid JSON for article ' . ($article['id'] ?? '?'));
+            $rawJsonLd = '';
+        }
+        if ($rawJsonLd !== ''):
+    ?>
     <script type="application/ld+json">
-<?= $article["jsonld_$lang"] ?>
+<?= $rawJsonLd ?>
     </script>
-    <?php endif; ?>
+    <?php endif; endif; ?>
     
     <?php if ($isAdmin): ?>
     <style>
@@ -104,9 +117,10 @@ $brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"]
         padding-top: 50px;
     }
     </style>
-    <?php endif; ?>
+     <?php endif; ?>
 </head>
-<body<?= $isAdmin ? ' class="admin-mode"' : '' ?>>
+<?php $articleSlugClass = 'page-article-' . (int)($article['id'] ?? 0); $articleLangClass='lang-'.($lang ?? 'ru'); $articleBodyClasses=trim($articleSlugClass.' '.$articleLangClass.($isAdmin ? ' admin-mode' : '')); ?>
+<body class="<?= e($articleBodyClasses) ?>">
     
     <?php if ($isAdmin): ?>
     <div class="admin-toolbar">
@@ -199,14 +213,17 @@ $brandAuthor = $authorName ?? ($seo["org_name_$lang"] ?? $seo["site_name_$lang"]
 
                 <!-- Featured Image -->
                 <?php if (!empty($article['image'])): ?>
+                    <?php $artDims = getImageDimensions($article['image']); ?>
                     <div class="article-card-image">
                         <img src="<?= BASE_URL ?>/uploads/<?= e($article['image']) ?>" 
-                             alt="<?= e($article["title_$lang"]) ?>">
+                             alt="<?= e($article["title_$lang"]) ?>"
+                             <?= $artDims ? 'width="' . (int)$artDims['width'] . '" height="' . (int)$artDims['height'] . '"' : '' ?>
+                             loading="lazy" decoding="async">
                     </div>
                 <?php endif; ?>
 
                 <div class="article-card-body">
-                    <?= $article["content_$lang"] ?>
+                    <?= sanitizeFrontendHtml(enhanceContentSEO($article["content_$lang"] ?? '', $article["title_$lang"] ?? '', '')) ?>
                 </div>
             </article>
 

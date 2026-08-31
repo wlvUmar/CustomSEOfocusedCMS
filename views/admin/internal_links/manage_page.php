@@ -31,6 +31,7 @@
 
 <!-- Widget Toggle -->
 <form method="POST" action="<?= BASE_URL ?>/admin/link-widget/toggle" style="margin-bottom: 30px;">
+    <?= csrfField() ?>
     <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
     <input type="hidden" name="show" value="<?= $page['show_link_widget'] ? '0' : '1' ?>">
     <button type="submit" class="btn <?= $page['show_link_widget'] ? 'btn-danger' : 'btn-primary' ?>">
@@ -62,6 +63,7 @@
                     <small><?= e($link['slug']) ?></small>
                 </div>
                 <form method="POST" action="<?= BASE_URL ?>/admin/link-widget/remove" style="display:inline;">
+                    <?= csrfField() ?>
                     <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
                     <input type="hidden" name="link_to_page_id" value="<?= $link['link_to_page_id'] ?>">
                     <button type="submit" class="btn btn-sm btn-danger" title="Remove link">
@@ -100,6 +102,7 @@
                     <small><?= e($availPage['slug']) ?></small>
                 </div>
                 <form method="POST" action="<?= BASE_URL ?>/admin/link-widget/add">
+                    <?= csrfField() ?>
                     <input type="hidden" name="page_id" value="<?= $page['id'] ?>">
                     <input type="hidden" name="link_to_page_id" value="<?= $availPage['id'] ?>">
                     <button type="submit" class="btn btn-sm btn-primary" title="Add link">

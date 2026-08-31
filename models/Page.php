@@ -8,17 +8,23 @@ class Page {
         $this->db = Database::getInstance();
     }
 
-    public function getBySlug($slug) {
-        $sql = "SELECT * FROM pages WHERE slug = ? AND is_published = 1";
-        return $this->db->fetchOne($sql, [$slug]);
+    public function getBySlug($slug, bool $includeUnpublished = false) {
+        $sql = "SELECT * FROM pages WHERE slug = ?";
+        $params = [$slug];
+        if (!$includeUnpublished) $sql .= " AND is_published = 1";
+        return $this->db->fetchOne($sql, $params);
     }
 
-    public function getAll($includeUnpublished = false) {
+    public function getAll($includeUnpublished = false, ?int $limit = null) {
         $sql = "SELECT * FROM pages";
         if (!$includeUnpublished) {
             $sql .= " WHERE is_published = 1";
         }
         $sql .= " ORDER BY sort_order ASC, id ASC";
+        if ($limit !== null) {
+            $limit = max(1, min(500, $limit));
+            $sql .= " LIMIT {$limit}";
+        }
         return $this->db->fetchAll($sql);
     }
 
@@ -27,21 +33,43 @@ class Page {
         return $this->db->fetchOne($sql, [$id]);
     }
 
-    public function create($data) {
+    public function assertSlugUnique(string $slug, ?int $excludeId = null): void {
+        $slug = trim($slug);
+        if ($slug === '') throw new InvalidArgumentException('Slug cannot be empty');
+        // Reserved slugs
+        if (in_array($slug, ['home','main','admin','api','articles'], true)) {
+            throw new InvalidArgumentException('Slug "' . $slug . '" is reserved');
+        }
+        $row = $this->db->fetchOne("SELECT id FROM pages WHERE slug = ? LIMIT 1", [$slug]);
+        if ($row && (int)$row['id'] !== (int)($excludeId ?? -1)) {
+            throw new InvalidArgumentException('Slug "' . $slug . '" already exists — choose a unique slug');
+        }
+    }
+
+     public function create($data) {
         $sql = "INSERT INTO pages (
-                    slug, title_ru, title_uz, content_ru, content_uz, 
+                    slug, title_ru, title_uz, content_ru, content_uz, custom_css,
                     meta_title_ru, meta_title_uz, meta_keywords_ru, meta_keywords_uz, 
                     meta_description_ru, meta_description_uz, 
                     og_title_ru, og_title_uz, og_description_ru, og_description_uz, og_image,
                     canonical_url, jsonld_ru, jsonld_uz, 
                     is_published, enable_rotation, rotation_mode, selected_rotation_id, sort_order, parent_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
-        $rotationMode = $data['rotation_mode'] ?? 'auto';
-        if ($data['enable_rotation'] ?? 0) {
-            $rotationMode = 'auto';
+        if (empty($data['slug'])) throw new InvalidArgumentException('Slug is required');
+        $this->assertSlugUnique((string)$data['slug']);
+        // Normalize parent_id: empty string → NULL
+        if (array_key_exists('parent_id', $data) && ($data['parent_id'] === '' || $data['parent_id'] === 0 || $data['parent_id'] === '0')) {
+            $data['parent_id'] = null;
+        }
+
+        // Respect explicit rotation_mode if provided (fix project-05 #3: creation ignored manual)
+        if (array_key_exists('rotation_mode', $data) && in_array($data['rotation_mode'], ['auto','manual','disabled'], true)) {
+            $rotationMode = $data['rotation_mode'];
+        } elseif (array_key_exists('enable_rotation', $data)) {
+            $rotationMode = !empty($data['enable_rotation']) ? 'auto' : 'disabled';
         } else {
-            $rotationMode = 'disabled';
+            $rotationMode = $data['rotation_mode'] ?? 'auto';
         }
         
         $this->db->query($sql, [
@@ -50,6 +78,7 @@ class Page {
             $data['title_uz'],
             $data['content_ru'],
             $data['content_uz'],
+            $data['custom_css'] ?? null,
             $data['meta_title_ru'] ?? null,
             $data['meta_title_uz'] ?? null,
             $data['meta_keywords_ru'] ?? null,
@@ -90,9 +119,9 @@ class Page {
         // Never let backup failure block the page save.
         try {
             if (!class_exists('PageRevision', false)) {
-                @require_once BASE_PATH . '/models/PageRevision.php';
+                require_once BASE_PATH . '/models/PageRevision.php';
             }
-            if (class_exists('PageRevision')) {
+            if (class_exists('PageRevision', true)) {
                 // Avoid spamming revisions when only depth was recalculated — depth
                 // is a derived field, not user content. Still snapshot on real edits.
                 $isDepthOnly = (count($data) === 1 && array_key_exists('depth', $data));
@@ -103,8 +132,19 @@ class Page {
         } catch (Throwable $e) {
             error_log('[Page] revision snapshot failed for page ' . $id . ': ' . $e->getMessage());
         }
+        // Slug uniqueness on update (project-09 #3)
+        if (array_key_exists('slug', $data) && $data['slug'] !== $currentPage['slug']) {
+            $this->assertSlugUnique((string)$data['slug'], (int)$id);
+        }
+        // Normalize empty parent_id
+        if (array_key_exists('parent_id', $data) && ($data['parent_id'] === '' || $data['parent_id'] === 0 || $data['parent_id'] === '0')) {
+            $data['parent_id'] = null;
+        }
         $oldParentId = $currentPage['parent_id'] ?? null;
         $newParentId = array_key_exists('parent_id', $data) ? $data['parent_id'] : $oldParentId;
+        // Also normalize retrieved old value for comparison
+        if ($oldParentId === '' || $oldParentId === 0 || $oldParentId === '0') $oldParentId = null;
+        if ($newParentId === '' || $newParentId === 0 || $newParentId === '0') $newParentId = null;
         
         if ($newParentId && !$this->canBeParent($id, $newParentId)) {
             throw new Exception('Invalid parent: circular reference detected');
@@ -115,7 +155,7 @@ class Page {
         
         $sql = "UPDATE pages SET 
                     slug = ?, title_ru = ?, title_uz = ?, 
-                    content_ru = ?, content_uz = ?, 
+                    content_ru = ?, content_uz = ?, custom_css = ?,
                     meta_title_ru = ?, meta_title_uz = ?, 
                     meta_keywords_ru = ?, meta_keywords_uz = ?, 
                     meta_description_ru = ?, meta_description_uz = ?, 
@@ -124,7 +164,7 @@ class Page {
                     og_image = ?, canonical_url = ?,
                     jsonld_ru = ?, jsonld_uz = ?, 
                     is_published = ?, enable_rotation = ?, rotation_mode = ?, selected_rotation_id = ?, sort_order = ?,
-                    parent_id = ?
+                    parent_id = ?, show_link_widget = ?, widget_title_ru = ?, widget_title_uz = ?
                 WHERE id = ?";
         
         $result = $this->db->query($sql, [
@@ -133,6 +173,7 @@ class Page {
             array_key_exists('title_uz', $data) ? $data['title_uz'] : $currentPage['title_uz'],
             array_key_exists('content_ru', $data) ? $data['content_ru'] : $currentPage['content_ru'],
             array_key_exists('content_uz', $data) ? $data['content_uz'] : $currentPage['content_uz'],
+            array_key_exists('custom_css', $data) ? $data['custom_css'] : ($currentPage['custom_css'] ?? null),
             array_key_exists('meta_title_ru', $data) ? $data['meta_title_ru'] : $currentPage['meta_title_ru'],
             array_key_exists('meta_title_uz', $data) ? $data['meta_title_uz'] : $currentPage['meta_title_uz'],
             array_key_exists('meta_keywords_ru', $data) ? $data['meta_keywords_ru'] : $currentPage['meta_keywords_ru'],
@@ -153,6 +194,9 @@ class Page {
             array_key_exists('selected_rotation_id', $data) ? $data['selected_rotation_id'] : $currentPage['selected_rotation_id'],
             array_key_exists('sort_order', $data) ? $data['sort_order'] : $currentPage['sort_order'],
             $newParentId,
+            array_key_exists('show_link_widget', $data) ? $data['show_link_widget'] : ($currentPage['show_link_widget'] ?? 0),
+            array_key_exists('widget_title_ru', $data) ? $data['widget_title_ru'] : ($currentPage['widget_title_ru'] ?? null),
+            array_key_exists('widget_title_uz', $data) ? $data['widget_title_uz'] : ($currentPage['widget_title_uz'] ?? null),
             $id
         ]);
         
@@ -206,7 +250,7 @@ class Page {
      * Get all root pages (no parent)
      */
     public function getRootPages($publishedOnly = true) {
-        $sql = "SELECT * FROM pages WHERE parent_id IS NULL";
+        $sql = "SELECT * FROM pages WHERE (parent_id IS NULL OR parent_id = '' OR parent_id = 0)";
         if ($publishedOnly) {
             $sql .= " AND is_published = 1";
         }
@@ -260,11 +304,12 @@ class Page {
     /**
      * Recursively get children
      */
-    private function getChildrenRecursive($parentId, $publishedOnly = true) {
+    private function getChildrenRecursive($parentId, $publishedOnly = true, int $depth = 0) {
+        if ($depth > 10) return [];
         $children = $this->getChildren($parentId, $publishedOnly);
         
         foreach ($children as &$child) {
-            $child['children'] = $this->getChildrenRecursive($child['id'], $publishedOnly);
+            $child['children'] = $this->getChildrenRecursive($child['id'], $publishedOnly, $depth + 1);
         }
         
         return $children;
@@ -277,14 +322,14 @@ class Page {
         $page = $this->getById($id);
         if (!$page) return [];
         
-        $sql = "SELECT * FROM pages WHERE parent_id ";
+        $sql = "SELECT * FROM pages WHERE ";
         $params = [];
         
-        if ($page['parent_id']) {
-            $sql .= "= ?";
+        if (!empty($page['parent_id']) && $page['parent_id'] !== '' && $page['parent_id'] !== 0 && $page['parent_id'] !== '0') {
+            $sql .= "parent_id = ?";
             $params[] = $page['parent_id'];
         } else {
-            $sql .= "IS NULL";
+            $sql .= "(parent_id IS NULL OR parent_id = '' OR parent_id = 0)";
         }
         
         $sql .= " AND id != ?";
@@ -330,6 +375,19 @@ class Page {
      * Update page depth when parent changes
      */
     private function updateDepth($id) {
+        $db = $this->db;
+        $wasInTxn = $db->inTransaction();
+        if (!$wasInTxn) $db->beginTransaction();
+        try {
+            $this->updateDepthInner($id, 0);
+            if (!$wasInTxn) $db->commit();
+        } catch (Throwable $e) {
+            if (!$wasInTxn && $db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
+    }
+    private function updateDepthInner($id, int $depthGuard) {
+        if ($depthGuard > 20) return;
         $page = $this->getById($id);
         if (!$page) return;
         
@@ -350,7 +408,7 @@ class Page {
         
         $children = $this->getChildren($id, false);
         foreach ($children as $child) {
-            $this->updateDepth($child['id']);
+            $this->updateDepthInner($child['id'], $depthGuard + 1);
         }
     }
 }

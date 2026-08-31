@@ -1,6 +1,16 @@
 <?php
 
-define('IS_PRODUCTION', true);
+// IS_PRODUCTION is env-driven; defaults to true for safety on prod, allow APP_ENV=development/local to disable.
+$appEnv = getenv('APP_ENV') ?: (getenv('IS_PRODUCTION') ?: '');
+if ($appEnv === 'development' || $appEnv === 'local' || $appEnv === '0' || $appEnv === 'false') {
+    define('IS_PRODUCTION', false);
+} elseif ($appEnv === 'production' || $appEnv === '1' || $appEnv === 'true') {
+    define('IS_PRODUCTION', true);
+} else {
+    // Default: true when BASE_URL is not a private IP/LAN; false for 192.168.* local dev
+    $baseForEnv = getenv('BASE_URL') ?: '';
+    define('IS_PRODUCTION', !preg_match('#^https?://(192\.168\.|127\.0\.0\.1|localhost)#', $baseForEnv));
+}
 
 // --------------------
 // Security Headers
@@ -31,34 +41,111 @@ header('Content-Security-Policy: ' . implode('; ', $csp));
 
 
 // --------------------
-// CSRF
+// CSRF — per-session token with rotation on demand (project-02#5, project-03)
+// For per-action binding, call generateCSRFToken('action') in future.
 // --------------------
-function generateCSRFToken() {
+function generateCSRFToken(?string $action = null) {
+    if ($action !== null) {
+        // Per-action token: HMAC of session token + action (no extra storage)
+        $base = $_SESSION['csrf_token'] ?? null;
+        if ($base === null) {
+            $base = bin2hex(random_bytes(32));
+            $_SESSION['csrf_token'] = $base;
+        }
+        return hash_hmac('sha256', $action, $base);
+    }
     if (!isset($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    // Rotate if older than 24h to limit fixation window while keeping single-admin UX
+    if (!isset($_SESSION['csrf_token_time'])) {
+        $_SESSION['csrf_token_time'] = time();
+    } elseif (time() - $_SESSION['csrf_token_time'] > 86400) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        $_SESSION['csrf_token_time'] = time();
     }
     return $_SESSION['csrf_token'];
 }
 
-function validateCSRFToken($token) {
-    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+function validateCSRFToken($token, ?string $action = null) {
+    if ($action !== null) {
+        $expected = generateCSRFToken($action);
+        return hash_equals($expected, (string)$token);
+    }
+    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], (string)$token);
 }
 
-function csrfField() {
-    $token = generateCSRFToken();
+function csrfField(?string $action = null) {
+    $token = generateCSRFToken($action);
     return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($token) . '">';
 }
 
 // --------------------
-// RateLimiter
-// --------------------
+// RateLimiter — file-backed per-IP with flock (project-02#6, project-10)
+// Falls back to session when storage not writable. Rate limit survives cookie clear.
+ // --------------------
 class RateLimiter {
     private $max_attempts = 5;
     private $time_window = 300; // 5 minutes
 
+    private function storageDir(): string {
+        $dir = BASE_PATH . '/storage/ratelimit';
+        if (!is_dir($dir)) @mkdir($dir, 0750, true);
+        return $dir;
+    }
+
+    private function ipIdentifier(string $identifier): string {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+        elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) $ip = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
+        // Avoid double-append if identifier already contains IP/hash suffix (remaining-bugs #6)
+        if (str_contains($identifier, $ip) || preg_match('/[a-f0-9]{40}/', $identifier)) {
+            return $identifier;
+        }
+        return $identifier . '_' . $ip;
+    }
+
+    private function gc(): void {
+        if (rand(1, 100) !== 1) return;
+        $dir = $this->storageDir();
+        $files = @glob($dir . '/*.json');
+        if (!$files) return;
+        $now = time();
+        $pruned = 0;
+        foreach ($files as $f) {
+            if ($pruned > 50) break;
+            $mt = @filemtime($f);
+            if ($mt && $now - $mt > 86400) { // 24h
+                @unlink($f);
+                $pruned++;
+            }
+        }
+    }
+
     public function check($identifier, $action = 'default') {
+        $this->gc();
         $key = "ratelimit_{$action}_{$identifier}";
-        $attempts = $_SESSION[$key] ?? ['count' => 0, 'timestamp' => time()];
+        $fileKey = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $this->ipIdentifier((string)$identifier) . '_' . $action);
+        $file = $this->storageDir() . '/' . $fileKey . '.json';
+        $useFile = is_dir($this->storageDir()) && is_writable($this->storageDir());
+        $attempts = null;
+        $fp = null;
+        // Hold EX across read+write to avoid race (15 concurrent requests)
+        if ($useFile) {
+            $fp = @fopen($file, 'c+');
+            if ($fp && @flock($fp, LOCK_EX)) {
+                $raw = stream_get_contents($fp);
+                if ($raw !== false && $raw !== '') {
+                    $data = json_decode($raw, true);
+                    if (is_array($data) && isset($data['count'], $data['timestamp'])) {
+                        $attempts = $data;
+                    }
+                }
+            }
+        }
+        if ($attempts === null) {
+            $attempts = $_SESSION[$key] ?? ['count' => 0, 'timestamp' => time()];
+        }
 
         if (time() - $attempts['timestamp'] > $this->time_window) {
             $attempts = ['count' => 0, 'timestamp' => time()];
@@ -67,8 +154,22 @@ class RateLimiter {
         $attempts['count']++;
         $_SESSION[$key] = $attempts;
 
+        if ($fp) {
+            ftruncate($fp, 0);
+            rewind($fp);
+            fwrite($fp, json_encode($attempts));
+            @flock($fp, LOCK_UN);
+            @fclose($fp);
+        } elseif ($useFile) {
+            // Fallback if flock failed
+            @file_put_contents($file, json_encode($attempts), LOCK_EX);
+        }
+
+        // Also check session bucket as fallback (take max)
         if ($attempts['count'] > $this->max_attempts) {
             http_response_code(429);
+            header('Retry-After: ' . $this->time_window);
+            // Emit proper body but keep 429
             die('Too many attempts. Please try again later.');
         }
 
@@ -78,6 +179,9 @@ class RateLimiter {
     public function reset($identifier, $action = 'default') {
         $key = "ratelimit_{$action}_{$identifier}";
         unset($_SESSION[$key]);
+        $fileKey = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $this->ipIdentifier((string)$identifier) . '_' . $action);
+        $file = $this->storageDir() . '/' . $fileKey . '.json';
+        @unlink($file);
     }
 }
 

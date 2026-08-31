@@ -91,6 +91,12 @@ class InternalLinksController extends Controller {
     public function autoConnect() {
         $this->requireAuth();
         
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/internal-links');
+            return;
+        }
+        
         $strategy = $_POST['strategy'] ?? 'hierarchy-aware';
         $maxLinks = intval($_POST['max_links'] ?? 5);
         
@@ -284,6 +290,12 @@ class InternalLinksController extends Controller {
     public function bulkAction() {
         $this->requireAuth();
         
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/internal-links');
+            return;
+        }
+        
         $action = $_POST['action'] ?? '';
         $pageIds = $_POST['page_ids'] ?? [];
         $targetPageId = intval($_POST['target_page_id'] ?? 0);
@@ -385,14 +397,15 @@ class InternalLinksController extends Controller {
             return [];
         }
         
+        $limit = max(1, min(50, (int)$limit));
         $sql = "SELECT id FROM pages 
                 WHERE is_published = 1 
                 AND id != ?
                 AND (title_ru LIKE ? OR content_ru LIKE ?)
-                LIMIT ?";
+                LIMIT {$limit}";
         
         $searchTerm = '%' . implode('%', array_slice($keywords, 0, 3)) . '%';
-        $result = $this->db->fetchAll($sql, [$pageId, $searchTerm, $searchTerm, $limit]);
+        $result = $this->db->fetchAll($sql, [$pageId, $searchTerm, $searchTerm]);
         
         return array_column($result, 'id');
     }
@@ -407,14 +420,15 @@ class InternalLinksController extends Controller {
     }
     
     private function getPopularPages($limit = 5) {
+        $limit = max(1, min(100, (int)$limit));
         $sql = "SELECT p.id, p.slug, p.title_ru, COALESCE(SUM(a.visits), 0) as view_count
                 FROM pages p
                 LEFT JOIN analytics a ON p.slug = a.page_slug
                 WHERE p.is_published = 1
                 GROUP BY p.id
                 ORDER BY view_count DESC
-                LIMIT ?";
-        return $this->db->fetchAll($sql, [$limit]);
+                LIMIT {$limit}";
+        return $this->db->fetchAll($sql);
     }
     
     /**
@@ -422,8 +436,8 @@ class InternalLinksController extends Controller {
      */
     private function getHierarchyStats() {
         $totalPages = $this->db->fetchOne("SELECT COUNT(*) as count FROM pages WHERE is_published = 1")['count'];
-        $rootPages = $this->db->fetchOne("SELECT COUNT(*) as count FROM pages WHERE is_published = 1 AND parent_id IS NULL")['count'];
-        $pagesWithChildren = $this->db->fetchOne("SELECT COUNT(DISTINCT parent_id) as count FROM pages WHERE parent_id IS NOT NULL")['count'];
+        $rootPages = $this->db->fetchOne("SELECT COUNT(*) as count FROM pages WHERE is_published = 1 AND (parent_id IS NULL OR parent_id = '' OR parent_id = 0)")['count'];
+        $pagesWithChildren = $this->db->fetchOne("SELECT COUNT(DISTINCT parent_id) as count FROM pages WHERE parent_id IS NOT NULL AND parent_id != '' AND parent_id != 0")['count'];
         
         return [
             'total_root_pages' => $rootPages,

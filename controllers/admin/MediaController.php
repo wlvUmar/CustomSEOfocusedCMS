@@ -80,6 +80,11 @@ class MediaController extends Controller {
     public function upload() {
         $this->requireAuth();
         
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+            return;
+        }
+        
         if (!isset($_FILES['file'])) {
             $postMax = ini_get('post_max_size');
             $uploadMax = ini_get('upload_max_filesize');
@@ -285,6 +290,17 @@ class MediaController extends Controller {
 
     public function bulkUpload() {
         $this->requireAuth();
+        
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $isAjax = !empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false;
+            if ($isAjax) {
+                $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+            } else {
+                $_SESSION['error'] = 'CSRF token validation failed';
+                $this->redirect('/admin/media');
+            }
+            return;
+        }
         
         $isAjax = !empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false;
         

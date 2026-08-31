@@ -5,6 +5,7 @@
 
 require_once BASE_PATH . '/models/Page.php';
 require_once BASE_PATH . '/models/PageRevision.php';
+require_once BASE_PATH . '/models/ai/tools/PageSectionsHelper.php';
 
 class PageTools {
 
@@ -36,7 +37,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_page',
-                    'description' => 'Fetch one page by slug (preferred) or id, with its RU/UZ titles, content, and meta fields. Long HTML fields are truncated to ~12000 chars with a "truncated" flag — targeted edits on the full value should use str_replace_field with the snippets you see here.',
+                    'description' => 'Fetch one page by slug (preferred) or id, with its RU/UZ titles, content, and meta fields. Long HTML fields are truncated to ~12000 chars with a "truncated" flag and a sections_hint (see list_sections/get_section/get_content_chunk for exact find). For targeted edits copy find exactly from truncated preview or fetch the section untruncated.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -82,7 +83,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'str_replace_field',
-                    'description' => 'Apply a precise find-and-replace to one field of one page. The "find" text must appear EXACTLY once in the current stored value (copy it character-for-character from get_page output, including HTML tags). This is the preferred edit tool — use it instead of set_field whenever possible.',
+                    'description' => 'Apply a precise find-and-replace to one field of one page. The "find" text must appear EXACTLY once in the current stored value (copy it character-for-character from get_page/get_section output, including HTML tags). If get_page was truncated, use get_section or get_content_chunk to fetch the exact fragment. Replacements >800 chars require user approval (approval_required). Prefer patch_section for section-scoped edits.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -99,7 +100,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'set_field',
-                    'description' => 'Replace the ENTIRE value of one field of one page. Guarded: the loop will ask the user to confirm before it executes. Prefer str_replace_field for incremental changes.',
+                    'description' => 'Replace the ENTIRE value of one field of one page. Always guarded — requires user approval before execution. Prefer str_replace_field or patch_section for incremental changes (<800 chars auto-executes).',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -212,7 +213,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'update_section',
-                    'description' => 'Replace an ENTIRE section\'s HTML (including its <!-- Name --> marker is preserved). Use to restructure a section, add/remove divs, or rewrite it completely. You may use any HTML/tags and inline style="" overrides — do not edit pages.min.css. The other sections are untouched. You may use any HTML/tags + inline style — prefer token vars var(--teal); ensure WCAG contrast; set fetchpriority/loading.',
+                    'description' => 'Replace an ENTIRE section\'s HTML (<!-- Name --> marker preserved; others untouched). You may use any HTML/tags + inline style="" (prefer token vars var(--teal); ensure WCAG contrast). HTML >800 chars requires approval — keep edits small or use patch_section for targeted fixes. Always follow with render_preview; then render_full_page once.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -230,7 +231,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'patch_section',
-                    'description' => 'Precise find-and-replace scoped to ONE section only (avoids the ambiguous global str_replace_field problem). The find text must appear exactly once inside that section. Use for small line edits, style tweaks, or text fixes within a section.',
+                    'description' => 'Precise find-and-replace scoped to ONE section (avoids global str_replace ambiguity). Find must occur exactly once in that section; copy from get_section. Replacement >800 chars requires approval. Use for small line edits/style tweaks; use update_section for full rewrites.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -325,8 +326,43 @@ class PageTools {
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'set_custom_css',
+                    'description' => 'Set per-page custom CSS that is injected AFTER pages.min.css + components.min.css, so it can fully override header/footer/any component. Empty string clears override (reverts to global defaults). Use body.page-{slug} prefix to scope (e.g. body.page-televizor header{background:var(--teal)}). Also supports :root token overrides body.page-slug{--teal:#0a4f5c;--surface:#fdfcf8}. Use components library classes (c-stats, c-feature-grid, etc.) or create one-off styles here. CSS is sanitized (blocks @import/javascript vectors). Prefer tokens var(--teal)/var(--orange) over new hex unless user asked for custom palette.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
+                            'css' => ['type' => 'string', 'description' => 'CSS to set for this page (max 20000 chars). Empty string clears custom_css and restores defaults. Supports any selectors; recommend body.page-slug header/footer scoping.'],
+                            'mode' => ['type' => 'string', 'enum' => ['replace','append'], 'description' => 'replace (default) overwrites, append concatenates to existing custom_css'],
+                        ],
+                        'oneOf' => [['required'=>['page_id']],[ 'required'=>['slug']]],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'set_page_theme',
+                    'description' => 'Quickly re-theme a page by overriding :root/design tokens. This writes to custom_css as body.page-{slug}{--teal:#...;--orange:#...;--surface:#...;--ink:#...} so ALL components (pages.css + 100+ c-*) instantly recolor without rewriting HTML. Use for giving each page distinct palette (e.g. televisor=cool teal, mebel=warm wood). Accepts preset (teal|orange|green|indigo|warm|dark|light) or explicit vars. Empty preset clears theme vars only, keeping other custom_css.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
+                            'preset' => ['type' => 'string', 'enum' => ['teal','orange','green','indigo','warm','dark','light','custom'], 'description' => 'Preset palette. custom requires vars.'],
+                            'vars' => ['type' => 'object', 'description' => 'Explicit CSS variable overrides, e.g. {"--teal":"#0a4f5c","--orange":"#e8610a","--surface":"#fdfcf8"} (keys must start with --). Used when preset=custom or to tweak a preset.'],
+                            'clear' => ['type' => 'boolean', 'description' => 'If true, removes previously set theme vars from custom_css (keeps other rules).'],
+                        ],
+                        'oneOf' => [['required'=>['page_id']],[ 'required'=>['slug']]],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'batch_update',
-                    'description' => 'Apply up to 10 targeted edits to one page atomically in one turn. Each operation is a patch_section/str_replace_field/set_section_style/update_section/wrap_section/add_section_marker. Prefer this over sequential calls to save turns and tokens.',
+                    'description' => 'Apply up to 10 targeted edits to one page atomically in one turn (saves turns). Each op is patch_section/str_replace_field/update_section/set_section_style/wrap_section/add_section_marker. Each op with replace/html >800 chars individually requires approval before batch executes — keep ops small. Prefer over sequential calls.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -396,6 +432,10 @@ class PageTools {
                 return self::addSectionMarker($args);
             case 'auto_sectionize':
                 return self::autoSectionize($args);
+            case 'set_custom_css':
+                return self::setCustomCss($args);
+            case 'set_page_theme':
+                return self::setPageTheme($args);
             case 'batch_update':
                 return self::batchUpdate($args);
             case 'list_page_revisions':
@@ -411,9 +451,9 @@ class PageTools {
     private static function listPages(array $args): array {
         $limit = isset($args['limit']) ? max(1, min(500, (int)$args['limit'])) : 100;
         $model = new Page();
-        $rows = $model->getAll(true);
+        $rows = $model->getAll(true, $limit);
         $out = [];
-        foreach (array_slice($rows, 0, $limit) as $p) {
+        foreach ($rows as $p) {
             $out[] = [
                 'id' => (int)$p['id'],
                 'slug' => $p['slug'],
@@ -423,7 +463,9 @@ class PageTools {
                 'updated_at' => $p['updated_at'] ?? '',
             ];
         }
-        return ['pages' => $out, 'count' => count($out), 'truncated' => count($rows) > $limit];
+        // Count total for truncated flag without full scan: if we got limit rows, assume truncated if limit < total estimate (cheap COUNT)
+        $total = count($rows) === $limit ? (int)Database::getInstance()->fetchOne("SELECT COUNT(*) as c FROM pages")['c'] : count($rows);
+        return ['pages' => $out, 'count' => count($out), 'truncated' => $total > $limit];
     }
 
     private static function getPage(array $args): array {
@@ -460,6 +502,24 @@ class PageTools {
                 $result[$k] = $page[$k];
             }
         }
+        // Issue #6 mitigation: include lightweight sections_hint so model can jump to get_section without extra list_sections turn
+        try {
+            $hintLang = isset($page['content_ru']) ? 'ru' : 'uz';
+            $hintHtml = (string)($page["content_{$hintLang}"] ?? '');
+            if ($hintHtml !== '') {
+                $secs = self::splitIntoSections($hintHtml);
+                $hints = [];
+                foreach ($secs as $idx => $s) {
+                    $hints[] = ['index'=>$idx,'name'=>$s['name'],'chars'=>mb_strlen($s['text']),'hash'=>substr(md5($s['text']),0,8)];
+                    if (count($hints) >= 12) break;
+                }
+                if (count($secs) > 0) $result['sections_hint'] = $hints;
+                // flag truncation explicitly for model
+                foreach (['content_ru','content_uz'] as $ck) {
+                    if (isset($page[$ck]) && mb_strlen((string)$page[$ck]) > 12000) $result[$ck . '_truncated'] = true;
+                }
+            }
+        } catch (Throwable $e) {}
         return $result;
     }
 
@@ -472,11 +532,13 @@ class PageTools {
         $limit = isset($args['limit']) ? max(1, min(50, (int)$args['limit'])) : 10;
 
         $db = Database::getInstance();
-        $like = '%' . $query . '%';
+        // 03-code-bugs #9 + project-06 #7: escape %/_ to avoid overbroad matches
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $query);
+        $like = '%' . $escaped . '%';
         $rows = $db->fetchAll(
             "SELECT id, slug, title_{$lang} AS title, content_{$lang} AS content, is_published, updated_at
              FROM pages
-             WHERE title_{$lang} LIKE ? OR content_{$lang} LIKE ?
+             WHERE (title_{$lang} LIKE ? ESCAPE '\\' OR content_{$lang} LIKE ? ESCAPE '\\') AND is_published = 1
              ORDER BY updated_at DESC
              LIMIT " . (int)$limit,
             [$like, $like]
@@ -605,7 +667,8 @@ class PageTools {
         if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
 
         $current = (string)($page[$field] ?? '');
-        $count = substr_count($current, $find);
+        // 03-code-bugs #10: use mb_substr_count for Cyrillic/multibyte correctness
+        $count = mb_substr_count($current, $find, 'UTF-8');
         if ($count === 0) {
             throw new InvalidArgumentException('The "find" text was not found — fetch exact HTML via get_section (or get_page/get_content_chunk) and copy character-for-character, including HTML tags.');
         }
@@ -613,10 +676,11 @@ class PageTools {
             throw new InvalidArgumentException('The "find" text occurs ' . $count . ' times — include more surrounding context to make it unique or use update_section for a full rewrite.');
         }
         $updated = str_replace($find, $replace, $current);
+        $warnings = in_array($field, ['content_ru','content_uz'], true) ? self::validateHtmlWarnings($current, $updated) : [];
         $model->update($pageId, [$field => $updated]);
         $fresh = $model->getById($pageId);
         $freshVal = (string)($fresh[$field] ?? $updated);
-        return [
+        $ret = [
             'ok' => true,
             'verified' => $freshVal === $updated,
             'fresh_hash' => substr(md5($freshVal), 0, 8),
@@ -628,6 +692,8 @@ class PageTools {
             'after_chars' => mb_strlen($updated),
             'note' => 'Change saved and verified via read-after-write.',
         ];
+        if (!empty($warnings)) $ret['warnings'] = $warnings;
+        return $ret;
     }
 
     private static function setField(array $args): array {
@@ -641,10 +707,12 @@ class PageTools {
         $page = $model->getById($pageId);
         if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
 
+        $oldVal = (string)($page[$field] ?? '');
+        $warnings = in_array($field, ['content_ru','content_uz'], true) ? self::validateHtmlWarnings($oldVal, $value) : [];
         $model->update($pageId, [$field => $value]);
         $fresh = $model->getById($pageId);
         $freshVal = (string)($fresh[$field] ?? $value);
-        return [
+        $ret = [
             'ok' => true,
             'verified' => $freshVal === $value,
             'fresh_hash' => substr(md5($freshVal), 0, 8),
@@ -654,6 +722,8 @@ class PageTools {
             'chars' => mb_strlen($value),
             'note' => 'Change saved and verified via read-after-write.',
         ];
+        if (!empty($warnings)) $ret['warnings'] = $warnings;
+        return $ret;
     }
 
     private static function insertSection(array $args): array {
@@ -693,27 +763,11 @@ class PageTools {
     // ---------------- Section-level granular tools ----------------
 
     private static function findSectionIndex(array $sections, string $ref): ?int {
-        if (ctype_digit($ref)) {
-            $i = (int)$ref;
-            return isset($sections[$i]) ? $i : null;
-        }
-        foreach ($sections as $i => $s) {
-            if (mb_strtolower($s['name']) === mb_strtolower($ref)) return $i;
-        }
-        foreach ($sections as $i => $s) {
-            $genId = $i . ':' . preg_replace('/[^a-z0-9]+/i', '-', strtolower($s['name']));
-            if ($genId === $ref) return $i;
-        }
-        return null;
+        return PageSectionsHelper::findSectionIndex($sections, $ref);
     }
 
     private static function rebuildContentFromSections(array $sections): string {
-        $out = '';
-        foreach ($sections as $i => $s) {
-            if ($i > 0) $out .= "\n\n";
-            $out .= rtrim($s['text']);
-        }
-        return $out;
+        return PageSectionsHelper::rebuildContentFromSections($sections);
     }
 
     private static function updateSection(array $args): array {
@@ -723,6 +777,8 @@ class PageTools {
         $html = (string)($args['html'] ?? '');
         if ($sectionRef === '') throw new InvalidArgumentException('section is required');
         if (trim($html) === '') throw new InvalidArgumentException('html is required — may contain any tags/divs and inline style=""');
+        // 06-09: sanitize html before persisting (strip dangerous vectors)
+        $html = self::sanitizeSectionHtml($html);
         $model = new Page();
         $page = $model->getById($pageId);
         if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
@@ -731,19 +787,49 @@ class PageTools {
         $idx = self::findSectionIndex($sections, $sectionRef);
         if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef . ' — call list_sections for page_id ' . $pageId . ' to see available names.');
         $oldName = $sections[$idx]['name'];
-        // Preserve the <!-- Name --> marker, replace inner content
-        $marker = "<!-- {$oldName} -->\n";
-        // If supplied html already starts with a marker, honour it
-        if (preg_match('/^\s*<!--.*?-->/s', $html)) {
-            $sections[$idx]['text'] = $html;
-        } else {
-            $sections[$idx]['text'] = $marker . ltrim($html);
+        $oldSec = $sections[$idx]['text'];
+        // 06-08: allow rename via supplied marker <!-- NewName -->
+        $newName = $oldName;
+        $bodyHtml = $html;
+        if (preg_match('/^\s*<!--\s*(.*?)\s*-->\s*\n?(.*)$/s', $html, $mu)) {
+            $candidate = trim($mu[1]);
+            if ($candidate !== '' && mb_strtolower($candidate) !== mb_strtolower($oldName)) {
+                // Check duplicate name exists
+                foreach ($sections as $i => $s) {
+                    if ($i !== $idx && mb_strtolower($s['name']) === mb_strtolower($candidate)) {
+                        throw new InvalidArgumentException('Section name "' . $candidate . '" already exists — choose a unique name or use add_section_marker');
+                    }
+                }
+                if (str_contains($candidate, '--') || str_contains($candidate, '<') || str_contains($candidate, '>') || mb_strlen($candidate) > 80) {
+                    throw new InvalidArgumentException('Invalid section name in marker: "' . $candidate . '"');
+                }
+                $newName = $candidate;
+                $bodyHtml = $mu[2];
+                $sections[$idx]['name'] = $newName;
+            } else {
+                // marker same name — treat as original behavior (full html includes marker)
+                $sections[$idx]['text'] = $html;
+                $warnings = self::validateHtmlWarnings($oldSec, $sections[$idx]['text']);
+                $updated = self::rebuildContentFromSections($sections);
+                $model->update($pageId, [$field => $updated]);
+                $fresh = $model->getById($pageId);
+                $freshVal = (string)($fresh[$field] ?? $updated);
+                $ret = ['ok'=>true,'verified'=> $freshVal === $updated,'fresh_hash'=>substr(md5($freshVal),0,8),'after_preview'=>mb_substr(trim(strip_tags($freshVal)),0,300),'page_id'=>$pageId,'lang'=>$lang,'section'=>$newName,'index'=>$idx,'content_chars'=>mb_strlen($updated),'note'=>'Section replaced and verified. Call render_preview to verify visually.'];
+                if (!empty($warnings)) $ret['warnings'] = $warnings;
+                return $ret;
+            }
         }
+        // Normal replace: marker preserved (possibly renamed) + sanitized body
+        $marker = "<!-- {$newName} -->\n";
+        $sections[$idx]['text'] = $marker . ltrim($bodyHtml);
+        $warnings = self::validateHtmlWarnings($oldSec, $sections[$idx]['text']);
         $updated = self::rebuildContentFromSections($sections);
         $model->update($pageId, [$field => $updated]);
         $fresh = $model->getById($pageId);
         $freshVal = (string)($fresh[$field] ?? $updated);
-        return ['ok'=>true,'verified'=> $freshVal === $updated,'fresh_hash'=>substr(md5($freshVal),0,8),'after_preview'=>mb_substr(trim(strip_tags($freshVal)),0,300),'page_id'=>$pageId,'lang'=>$lang,'section'=>$oldName,'index'=>$idx,'content_chars'=>mb_strlen($updated),'note'=>'Section replaced and verified. Call render_preview to verify visually.'];
+        $ret = ['ok'=>true,'verified'=> $freshVal === $updated,'fresh_hash'=>substr(md5($freshVal),0,8),'after_preview'=>mb_substr(trim(strip_tags($freshVal)),0,300),'page_id'=>$pageId,'lang'=>$lang,'section'=>$newName,'index'=>$idx,'content_chars'=>mb_strlen($updated),'note'=>'Section replaced and verified. Call render_preview to verify visually.' . ($newName !== $oldName ? ' Renamed "'.$oldName.'" → "'.$newName.'"' : '')];
+        if (!empty($warnings)) $ret['warnings'] = $warnings;
+        return $ret;
     }
 
     private static function patchSection(array $args): array {
@@ -762,86 +848,90 @@ class PageTools {
         $idx = self::findSectionIndex($sections, $sectionRef);
         if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef . ' — call list_sections for page_id ' . $pageId . ' to see available names.');
         $secText = $sections[$idx]['text'];
-        $count = substr_count($secText, $find);
+        $count = mb_substr_count($secText, $find, 'UTF-8');
         if ($count === 0) throw new InvalidArgumentException('The "find" text was not found — fetch exact HTML via get_section and copy character-for-character, including HTML tags. Section "' . $sections[$idx]['name'] . '" has ' . mb_strlen($secText) . ' chars.');
         if ($count > 1) throw new InvalidArgumentException('The "find" text occurs ' . $count . ' times inside section "' . $sections[$idx]['name'] . '" — include more surrounding context to make it unique, or use update_section for a full rewrite.');
-        $sections[$idx]['text'] = str_replace($find, $replace, $secText);
+        $newSec = str_replace($find, $replace, $secText);
+        $warnings = self::validateHtmlWarnings($secText, $newSec);
+        $sections[$idx]['text'] = $newSec;
         $updated = self::rebuildContentFromSections($sections);
         $model->update($pageId, [$field => $updated]);
         $fresh = $model->getById($pageId);
         $freshVal = (string)($fresh[$field] ?? $updated);
-        return ['ok'=>true,'verified'=> $freshVal === $updated,'fresh_hash'=>substr(md5($freshVal),0,8),'after_preview'=>mb_substr(trim(strip_tags($freshVal)),0,300),'page_id'=>$pageId,'lang'=>$lang,'section'=>$sections[$idx]['name'],'index'=>$idx,'before_chars'=>mb_strlen($secText),'after_chars'=>mb_strlen($sections[$idx]['text']),'note'=>'Section patched and verified (1 occurrence).'];
+        $ret = ['ok'=>true,'verified'=> $freshVal === $updated,'fresh_hash'=>substr(md5($freshVal),0,8),'after_preview'=>mb_substr(trim(strip_tags($freshVal)),0,300),'page_id'=>$pageId,'lang'=>$lang,'section'=>$sections[$idx]['name'],'index'=>$idx,'before_chars'=>mb_strlen($secText),'after_chars'=>mb_strlen($sections[$idx]['text']),'note'=>'Section patched and verified (1 occurrence).'];
+        if (!empty($warnings)) $ret['warnings'] = $warnings;
+        return $ret;
     }
 
     private static function mergeStyleIntoTag(string $tagHtml, string $styleDecl): string {
-        $styleDecl = trim(trim($styleDecl), ';');
-        if ($styleDecl === '') return $tagHtml;
-        if (!str_ends_with($styleDecl, ';')) $styleDecl .= ';';
-        // If style="" already exists, merge
-        if (preg_match('/\sstyle\s*=\s*"([^"]*)"/i', $tagHtml, $m)) {
-            $existing = rtrim(trim($m[1]), ';');
-            $merged = $existing !== '' ? $existing . '; ' . $styleDecl : $styleDecl;
-            return preg_replace('/\sstyle\s*=\s*"[^"]*"/i', ' style="' . htmlspecialchars($merged, ENT_COMPAT) . '"', $tagHtml, 1);
-        }
-        if (preg_match('/\sstyle\s*=\s*\'([^\']*)\'/i', $tagHtml, $m)) {
-            $existing = rtrim(trim($m[1]), ';');
-            $merged = $existing !== '' ? $existing . '; ' . $styleDecl : $styleDecl;
-            return preg_replace("/\sstyle\s*=\s*'[^']*'/i", " style=\"" . htmlspecialchars($merged, ENT_COMPAT) . "\"", $tagHtml, 1);
-        }
-        // No existing style — inject before >
-        return preg_replace('/\s*>$/', ' style="' . htmlspecialchars($styleDecl, ENT_COMPAT) . '">', $tagHtml, 1) ?? (rtrim($tagHtml, '>') . ' style="' . htmlspecialchars($styleDecl, ENT_COMPAT) . '">');
+        return PageSectionsHelper::mergeStyleIntoTag($tagHtml, $styleDecl);
     }
 
-    /** Design tokens allowlist for shorthand expansion */
+    /** Design tokens allowlist — mirrored from helper (02-architecture #3) */
     private const DESIGN_TOKENS = ['--teal','--teal-dark','--orange','--green','--ink','--ink-soft','--muted','--surface','--surface-2','--border','--max-w','--px','--section-gap','--ease','--dur','--teal-light','--orange-light','--green-dark','--orange-dark','--tg','--success'];
 
     private static function expandStyleTokens(string $style): string {
-        $shorthandMap = ['bg'=>'background','text'=>'color','border'=>'border-color'];
-        $allowed = self::DESIGN_TOKENS;
-        $parts = array_filter(array_map('trim', explode(';', $style)), fn($v) => $v !== '');
-        $out = [];
-        foreach ($parts as $part) {
-            if (strpos($part, ':') === false) {
-                $out[] = $part; continue;
-            }
-            [$prop, $val] = array_map('trim', explode(':', $part, 2));
-            // Expand shorthand property: bg:teal -> background:var(--teal)
-            if (isset($shorthandMap[strtolower($prop)])) {
-                $prop = $shorthandMap[strtolower($prop)];
-            }
-            // If value is bare token name (e.g. "teal" or "--teal") normalize to var
-            $bare = ltrim($val, '-');
-            $varCandidate = '--' . ltrim($val, '-');
-            // Check if val contains var(--xxx)
-            if (preg_match_all('/var\(\s*(--[\w-]+)\s*\)/i', $val, $vm)) {
-                foreach ($vm[1] as $tok) {
-                    if (!in_array($tok, $allowed, true)) {
-                        throw new InvalidArgumentException('Unknown design token "' . $tok . '" — allowed: ' . implode(', ', $allowed) . '. Call get_design_tokens for values.');
-                    }
-                }
-                $out[] = $prop . ':' . $val;
-                continue;
-            }
-            // Bare token without var()
-            if (in_array($varCandidate, $allowed, true) && !str_contains($val, ' ') && !str_contains($val, '#') && !str_contains($val, '(')) {
-                $out[] = $prop . ':var(' . $varCandidate . ')';
-                continue;
-            }
-            // If val looks like a token name but not allowed
-            if (preg_match('/^[a-z-]+$/i', $val) && in_array('--' . $val, $allowed, true) === false && strlen($val) < 20 && !in_array($val, ['red','blue','green','white','black','transparent','currentColor'], true)) {
-                // Could be unknown token — check if it matches token without dashes
-                // Only error if prop is background/color/border-color
-                if (in_array(strtolower($prop), ['background','color','border-color','border'], true) && preg_match('/^[a-z-]+$/i', $val)) {
-                    // If val is not a CSS keyword and looks like token typo, hint
-                    if (in_array('--' . strtolower($val), array_map('strtolower', $allowed), true) === false) {
-                        // Don't throw for generic CSS values like "32px" handled earlier; this branch only for bare word tokens
-                        // If it's a single word and not a known CSS keyword, allow but don't error — could be "auto" etc.
-                    }
+        return PageSectionsHelper::expandStyleTokens($style);
+    }
+
+    /** 06-09: strip dangerous CSS/HTML vectors before persisting */
+    private static function sanitizeSectionHtml(string $html): string {
+        // Layer 1: strip script-ish tags and event handlers similar to SiteTools sanitizeForPreview
+        $html = preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $html);
+        $html = preg_replace('/<iframe\b[^>]*>.*?<\/iframe>/is', '', $html);
+        $html = preg_replace('/<object\b[^>]*>.*?<\/object>/is', '', $html);
+        $html = preg_replace('/<embed\b[^>]*>/i', '', $html);
+        $html = preg_replace('/<link\b[^>]*>/i', '', $html);
+        // Remove style @import / expression, javascript:/vbscript:/data:text/html
+        $html = preg_replace('/\b(javascript|vbscript|data\s*:\s*text\/html)\s*:/i', '', $html);
+        $html = preg_replace('/@import\s+/i', '', $html);
+        $html = preg_replace('/expression\s*\(/i', '', $html);
+        // Strip on* attributes (onclick, onerror, ontoggle, etc.) — both quoted forms
+        $html = preg_replace('/\s+on\w+\s*=\s*"[^"]*"/i', '', $html);
+        $html = preg_replace("/\s+on\w+\s*=\s*'[^']*'/i", '', $html);
+        $html = preg_replace('/\s+on\w+\s*=\s*[^\s>]+/i', '', $html);
+        // Also sanitize style="" values that try to inject url(javascript:)
+        $html = preg_replace('/url\s*\(\s*["\']?\s*javascript:[^)]*\)/i', 'url(#)', $html);
+        return $html;
+    }
+
+    /** Soft validation warnings (04-04) — never blocks, only advises model. */
+    private static function validateHtmlWarnings(string $oldHtml, string $newHtml): array {
+        $warnings = [];
+        try {
+            // Heading hierarchy: h1 count, skip levels
+            $headings = [];
+            if (preg_match_all('/<h([1-4])[^>]*>/i', $newHtml, $m)) $headings = array_map('intval', $m[1]);
+            if (!empty($headings)) {
+                $h1 = count(array_filter($headings, fn($h)=>$h===1));
+                if ($h1 > 1) $warnings[] = 'Multiple <h1> found ('.$h1.') — use one h1 per page, then h2→h3 sequential.';
+                // skip check: h1→h3, h2→h4 etc
+                for ($i=1; $i<count($headings); $i++) {
+                    if ($headings[$i] - $headings[$i-1] > 1) { $warnings[] = 'Heading skip h'.$headings[$i-1].'→h'.$headings[$i].' — keep sequential h1→h2→h3.'; break; }
                 }
             }
-            $out[] = $prop . ':' . $val;
-        }
-        return implode('; ', $out) . ';';
+            // Template vars preservation
+            if (preg_match_all('/\{\{\s*[^}]+\s*\}\}/', $oldHtml, $om)) {
+                $oldVars = array_unique($om[0]);
+                foreach ($oldVars as $v) {
+                    if (strpos($newHtml, $v) === false && strpos($newHtml, trim($v)) === false) {
+                        // allow {{page.title}} etc to be preserved in any whitespace variant
+                        $alt = preg_replace('/\s+/', '', $v);
+                        if (strpos(preg_replace('/\s+/', '', $newHtml), $alt) === false) {
+                            $warnings[] = 'Template var '.trim($v).' was in old section but missing in new HTML — preserve {{page.*}}/{{global.*}}/{{faqs}}.';
+                            break;
+                        }
+                    }
+                }
+            }
+            // Warn on raw custom hex if token available alternative (soft)
+            if (preg_match('/#(?:[0-9a-f]{3}|[0-9a-f]{6})\b/i', $newHtml) && preg_match('/var\(--teal|--ink|--surface|--border/', $oldHtml)) {
+                // only warn if many hex colors introduced
+                $hexCount = preg_match_all('/#(?:[0-9a-f]{3}|[0-9a-f]{6})\b/i', $newHtml, $hm);
+                if ($hexCount > 2) $warnings[] = 'Multiple custom hex colors — prefer design tokens var(--teal)/var(--ink)/var(--surface) via get_design_tokens.';
+            }
+        } catch (Throwable $e) {}
+        return $warnings;
     }
 
     private static function setSectionStyle(array $args): array {
@@ -1163,8 +1253,14 @@ class PageTools {
         $db = Database::getInstance();
         $inTxn = false;
         try {
-            $db->query("START TRANSACTION");
-            $inTxn = true;
+            // 06-10: use PDO transactions (handles autocommit + nesting via inTransaction guard)
+            if (!$db->inTransaction()) {
+                $db->beginTransaction();
+                $inTxn = true;
+            } else {
+                // already in txn (e.g. Page::update snapshot) — use savepoint-style: don't double-begin
+                $inTxn = false;
+            }
             foreach ($ops as $idx => $op) {
                 if (!is_array($op)) throw new InvalidArgumentException('Operation #' . $idx . ' must be an object.');
                 $type = (string)($op['op'] ?? '');
@@ -1335,7 +1431,7 @@ class PageTools {
                             throw new InvalidArgumentException("Operation #$idx: unknown op '{$type}' — allowed: patch_section, str_replace_field, update_section, set_section_style, wrap_section, add_section_marker");
                     }
                 } catch (InvalidArgumentException $e) {
-                    if ($inTxn) $db->query("ROLLBACK");
+                    if ($inTxn && $db->inTransaction()) $db->rollBack();
                     $inTxn = false;
                     throw new InvalidArgumentException("batch_update failed at operation #{$idx} ({$type}): " . $e->getMessage() . " — no changes were committed.", 0, $e);
                 }
@@ -1349,14 +1445,21 @@ class PageTools {
                 }
             }
             // Persist each dirty field via Page::update (single per field)
+            // 06-09 style/HTML sanitization already applied per-op; final buffer also sanitized
             $updateData = [];
             foreach ($fieldDirty as $fld => $_) {
-                if (array_key_exists($fld, $buffers)) $updateData[$fld] = $buffers[$fld];
+                if (array_key_exists($fld, $buffers)) {
+                    // Sanitize any content field final value (extra guard)
+                    if (str_starts_with($fld, 'content_')) {
+                        $buffers[$fld] = self::sanitizeSectionHtml($buffers[$fld]);
+                    }
+                    $updateData[$fld] = $buffers[$fld];
+                }
             }
             if (!empty($updateData)) {
                 $model->update($pageId, $updateData);
             }
-            $db->query("COMMIT");
+            if ($inTxn && $db->inTransaction()) $db->commit();
             $inTxn = false;
             $fresh = $model->getById($pageId);
             $freshRu = (string)($fresh['content_ru'] ?? '');
@@ -1371,11 +1474,108 @@ class PageTools {
                 'note'=>'Batch applied atomically. ' . count($results) . ' operation(s) committed.',
             ];
         } catch (Throwable $e) {
-            if ($inTxn) {
-                try { $db->query("ROLLBACK"); } catch (Throwable $ignored) {}
+            if ($inTxn && $db->inTransaction()) {
+                try { $db->rollBack(); } catch (Throwable $ignored) {}
             }
             throw $e;
         }
+    }
+
+    // ── custom_css + theme helpers ──────────────────────────────────────────
+    private static function setCustomCss(array $args): array {
+        $pageId = self::resolveGeneralPageId($args);
+        $mode = ($args['mode'] ?? 'replace') === 'append' ? 'append' : 'replace';
+        $css = (string)($args['css'] ?? '');
+        if (mb_strlen($css) > 20000) throw new InvalidArgumentException('css too large (max 20000 chars). Split into smaller chunks or clear first.');
+        $model = new Page();
+        $page = $model->getById($pageId);
+        if (!$page) throw new InvalidArgumentException("Page not found: ID $pageId");
+        // Handle append mode: merge with existing
+        if ($mode === 'append' && trim($css) !== '') {
+            $existing = (string)($page['custom_css'] ?? '');
+            $css = $existing !== '' ? $existing . "\n\n" . $css : $css;
+        }
+        // Sanitize (blocks vectors) — empty string is valid (clear)
+        if (trim($css) !== '') {
+            require_once BASE_PATH . '/core/helpers.php';
+            $css = sanitizeCssBlock($css);
+        } else {
+            $css = null;
+        }
+        $model->update($pageId, ['custom_css' => $css]);
+        $fresh = $model->getById($pageId);
+        return ['ok'=>true,'page_id'=>$pageId,'slug'=>$fresh['slug'],'custom_css'=> $fresh['custom_css'] ?? null,'mode'=>$mode,'chars'=> mb_strlen((string)($fresh['custom_css'] ?? ''))];
+    }
+
+    private static function setPageTheme(array $args): array {
+        $pageId = self::resolveGeneralPageId($args);
+        $preset = trim((string)($args['preset'] ?? ''));
+        $clear = !empty($args['clear']);
+        $vars = $args['vars'] ?? null;
+        if (!is_array($vars) && $vars !== null) throw new InvalidArgumentException('vars must be an object like {"--teal":"#0a4f5c"}');
+        $model = new Page();
+        $page = $model->getById($pageId);
+        if (!$page) throw new InvalidArgumentException("Page not found: ID $pageId");
+        $slug = $page['slug'] ?? 'page';
+        $slugClass = 'page-' . preg_replace('/[^a-z0-9]+/', '-', strtolower($slug));
+        $presets = [
+            'teal' => ['--teal'=>'#0f5f6f','--teal-dark'=>'#094956','--teal-light'=>'#e0f2f5','--surface'=>'#f8f9fa'],
+            'orange' => ['--teal'=>'#9a3412','--teal-dark'=>'#7c2d12','--orange'=>'#f97316','--surface'=>'#fff7ed','--ink'=>'#431407'],
+            'green' => ['--teal'=>'#065f46','--teal-dark'=>'#064e3b','--orange'=>'#059669','--surface'=>'#ecfdf5','--teal-light'=>'#d1fae5'],
+            'indigo' => ['--teal'=>'#3730a3','--teal-dark'=>'#312e81','--orange'=>'#7c3aed','--surface'=>'#eef2ff','--teal-light'=>'#e0e7ff'],
+            'warm' => ['--teal'=>'#92400e','--teal-dark'=>'#78350f','--orange'=>'#ea580c','--surface'=>'#fffbeb','--ink'=>'#451a03','--border'=>'#fde68a'],
+            'dark' => ['--teal'=>'#14b8a6','--teal-dark'=>'#0f766e','--orange'=>'#f97316','--surface'=>'#0f1117','--surface-2'=>'#1f2937','--ink'=>'#f9fafb','--ink-soft'=>'#d1d5db','--muted'=>'#9ca3af','--border'=>'#374151'],
+            'light' => ['--teal'=>'#0f5f6f','--teal-dark'=>'#094956','--surface'=>'#ffffff','--surface-2'=>'#f8f9fa','--border'=>'#e5e7eb','--ink'=>'#111827'],
+        ];
+        $chosen = [];
+        if ($preset !== '' && $preset !== 'custom') {
+            if (!isset($presets[$preset])) throw new InvalidArgumentException("Unknown preset: $preset — allowed: teal,orange,green,indigo,warm,dark,light,custom");
+            $chosen = $presets[$preset];
+        } elseif ($preset === 'custom' && empty($vars)) {
+            throw new InvalidArgumentException('preset=custom requires vars object');
+        }
+        if (is_array($vars)) {
+            foreach ($vars as $k=>$v) {
+                if (!is_string($k) || !str_starts_with($k, '--')) throw new InvalidArgumentException("vars keys must start with --, got: $k");
+                $chosen[trim($k)] = trim((string)$v);
+            }
+        }
+        $currentCss = (string)($page['custom_css'] ?? '');
+        // If clear, strip any existing body.page-slug theme block
+        $themeSelector = "body.{$slugClass}";
+        if ($clear) {
+            // Remove theme block: body.page-slug{--*:...} (simple scan)
+            $pattern = '/\/\* theme:' . preg_quote($slugClass, '/') . ' \*\/\s*' . preg_quote($themeSelector, '/') . '\s*\{[^}]*\}\s*/';
+            $currentCss = preg_replace($pattern, '', $currentCss);
+            // Fallback: strip any body.page-slug{--...} var block if marker missing
+            $currentCss = preg_replace('/' . preg_quote($themeSelector, '/') . '\s*\{[^}]*--[^}]*\}/', '', $currentCss);
+            $currentCss = trim($currentCss);
+            require_once BASE_PATH . '/core/helpers.php';
+            $currentCss = sanitizeCssBlock($currentCss);
+            $model->update($pageId, ['custom_css' => $currentCss !== '' ? $currentCss : null]);
+            $fresh = $model->getById($pageId);
+            return ['ok'=>true,'page_id'=>$pageId,'slug'=>$slug,'cleared'=>true,'custom_css'=>$fresh['custom_css'] ?? null];
+        }
+        if (empty($chosen)) throw new InvalidArgumentException('No theme vars provided — pass preset or vars.');
+        // Build theme block
+        $decls = [];
+        foreach ($chosen as $k=>$v) {
+            if ($v === '' || $v === null) continue;
+            $decls[] = "$k: $v;";
+        }
+        $block = "/* theme:$slugClass */\n{$themeSelector} { " . implode(' ', $decls) . " }";
+        // Replace existing theme block if present, else append
+        $hasTheme = strpos($currentCss, "/* theme:$slugClass */") !== false;
+        if ($hasTheme) {
+            $currentCss = preg_replace('/\/\* theme:' . preg_quote($slugClass, '/') . ' \*\/\s*' . preg_quote($themeSelector, '/') . '\s*\{[^}]*\}/', $block, $currentCss);
+        } else {
+            $currentCss = trim($currentCss) !== '' ? $currentCss . "\n\n" . $block : $block;
+        }
+        require_once BASE_PATH . '/core/helpers.php';
+        $currentCss = sanitizeCssBlock($currentCss);
+        $model->update($pageId, ['custom_css' => $currentCss]);
+        $fresh = $model->getById($pageId);
+        return ['ok'=>true,'page_id'=>$pageId,'slug'=>$slug,'preset'=>$preset ?: 'custom','vars'=>$chosen,'custom_css'=>$fresh['custom_css'] ?? null];
     }
 
     private static function resolvePageIdForRevision(array $args): int {
@@ -1449,28 +1649,10 @@ class PageTools {
 
     /**
      * Split an HTML field on its "<!-- Section Name -->" comment markers
-     * (mirrors the page editor's scoped-edit logic).
+     * Delegated to PageSectionsHelper (02-architecture #3) — facade kept for BC.
      */
     public static function splitIntoSections(string $html): array {
-        $parts = preg_split('/(<!--.*?-->)/s', $html, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
-        $sections = [];
-        $currentName = 'Top of document';
-        $buffer = '';
-        foreach ($parts as $part) {
-            if (preg_match('/^<!--\s*(.*?)\s*-->$/s', $part, $m)) {
-                if (trim($buffer) !== '') {
-                    $sections[] = ['name' => $currentName, 'text' => $buffer];
-                }
-                $currentName = trim($m[1]) !== '' ? trim($m[1]) : $currentName;
-                $buffer = $part . "\n";
-            } else {
-                $buffer .= $part;
-            }
-        }
-        if (trim($buffer) !== '') {
-            $sections[] = ['name' => $currentName, 'text' => $buffer];
-        }
-        return $sections;
+        return PageSectionsHelper::splitIntoSections($html);
     }
 
     /** Truncate long string fields to keep tool results small enough to feed back to the model. */

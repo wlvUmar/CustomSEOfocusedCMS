@@ -35,9 +35,18 @@
         
         // Run on page load
         document.addEventListener('DOMContentLoaded', addTableLabels);
-        // Re-run if content is dynamically added
-        const observer = new MutationObserver(addTableLabels);
-        observer.observe(document.body, { childList: true, subtree: true });
+        // Re-run if content is dynamically added — debounced to avoid thrash on media filter typing (project-08#7)
+        let tableObserverTimer = null;
+        const observer = new MutationObserver(function() {
+            if (tableObserverTimer) return;
+            tableObserverTimer = setTimeout(function() {
+                tableObserverTimer = null;
+                addTableLabels();
+            }, 300);
+        });
+        // Observe only main content, not entire body to reduce thrash
+        const target = document.querySelector('.admin-content') || document.body;
+        observer.observe(target, { childList: true, subtree: true });
       })();
     </script>
 </body>

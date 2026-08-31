@@ -136,7 +136,7 @@ function togglePublish(id) {
     fetch('<?= BASE_URL ?>/admin/articles/toggle-publish', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'id=' + id
+        body: 'id=' + id + '&csrf_token=' + encodeURIComponent('<?= generateCSRFToken() ?>')
     })
     .then(res => res.json())
     .then(data => {
@@ -155,7 +155,7 @@ function deleteArticle(id) {
     fetch('<?= BASE_URL ?>/admin/articles/delete', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'id=' + id
+        body: 'id=' + id + '&csrf_token=' + encodeURIComponent('<?= generateCSRFToken() ?>')
     })
     .then(res => res.json())
     .then(data => {

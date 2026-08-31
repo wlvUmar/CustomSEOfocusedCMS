@@ -1,10 +1,23 @@
 <?php
-$envFile = '/home/kuplyuta/.env'; // adjust to actual .env location
+// Resolve .env robustly for both web and cron contexts (remaining-bugs #9)
+$basePath = defined('BASE_PATH') ? BASE_PATH : (getenv('BASE_PATH') ?: __DIR__ . '/..');
+$envFile = $basePath . '/.env';
+if (!is_file($envFile)) {
+    $alt = '/home/kuplyuta/.env';
+    if (is_file($alt)) $envFile = $alt;
+}
 if (is_file($envFile)) {
     foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
         if (str_starts_with(trim($line), '#')) continue;
-        [$key, $value] = array_pad(explode('=', $line, 2), 2, '');
-        putenv(trim($key) . '=' . trim($value));
+        if (!str_contains($line, '=')) continue;
+        [$key, $value] = explode('=', $line, 2);
+        $key = trim($key);
+        $value = trim($value);
+        if (preg_match('/^(["\'])(.*)\1$/', $value, $m)) {
+            $value = $m[2];
+        }
+        putenv($key . '=' . $value);
+        $_ENV[$key] = $value;
     }
 }
 

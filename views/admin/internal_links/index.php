@@ -220,6 +220,7 @@
         </div>
         
         <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/auto-connect">
+            <?= csrfField() ?>
             <div class="form-group">
                 <label><strong>Connection Strategy:</strong></label>
                 <select name="strategy" required>
@@ -264,6 +265,7 @@
         </div>
         
         <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/bulk-action" onsubmit="return validateBulkForm()">
+            <?= csrfField() ?>
             <div class="form-group">
                 <label><strong>Action:</strong></label>
                 <select name="action" id="bulk-action" onchange="toggleTargetField()" required>

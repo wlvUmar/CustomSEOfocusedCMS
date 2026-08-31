@@ -25,9 +25,16 @@ class OpenRouter {
         $cacheFile = BASE_PATH . '/storage/openrouter_models.json';
         $ttl = 600;
         if (is_file($cacheFile) && (time() - filemtime($cacheFile) < $ttl)) {
-            $cached = json_decode((string)file_get_contents($cacheFile), true);
-            if (is_array($cached) && isset($cached['data']) && is_array($cached['data'])) return $cached['data'];
-            if (is_array($cached) && isset($cached[0]['id'])) return $cached;
+            $fh = @fopen($cacheFile, 'r');
+            if ($fh) {
+                @flock($fh, LOCK_SH);
+                $raw = stream_get_contents($fh);
+                @flock($fh, LOCK_UN);
+                @fclose($fh);
+                $cached = json_decode((string)$raw, true);
+                if (is_array($cached) && isset($cached['data']) && is_array($cached['data'])) return $cached['data'];
+                if (is_array($cached) && isset($cached[0]['id'])) return $cached;
+            }
         }
         $apiKey = self::getApiKey();
         $ch = curl_init('https://openrouter.ai/api/v1/models');
@@ -44,9 +51,18 @@ class OpenRouter {
             $data = json_decode($resp, true);
             $list = $data['data'] ?? null;
             if (is_array($list) && $list) {
-                // cache raw response
+                // cache raw response with lock, respect key rotation: include hash of api key in cache validation
                 @mkdir(dirname($cacheFile), 0750, true);
-                @file_put_contents($cacheFile, json_encode($data), LOCK_EX);
+                $fh = @fopen($cacheFile, 'c');
+                if ($fh) {
+                    @flock($fh, LOCK_EX);
+                    ftruncate($fh, 0);
+                    fwrite($fh, json_encode($data));
+                    @flock($fh, LOCK_UN);
+                    @fclose($fh);
+                } else {
+                    @file_put_contents($cacheFile, json_encode($data), LOCK_EX);
+                }
                 return $list;
             }
         }
@@ -102,12 +118,34 @@ class OpenRouter {
             throw new Exception('Failed to encode request payload as JSON: ' . json_last_error_msg());
         }
 
+        $data = self::doRequest($payload, $retries, 'CMS Page Editor', $apiKey);
+
+            $choice = $data['choices'][0] ?? null;
+            $msg = $choice['message'] ?? [];
+            $content = $msg['content'] ?? null;
+            if ((!is_string($content) || trim($content) === '') && isset($msg['reasoning']) && is_string($msg['reasoning']) && trim($msg['reasoning']) !== '') {
+                $content = trim($msg['reasoning']);
+            }
+            $finishReason = $choice['finish_reason'] ?? null;
+
+            if (!is_string($content) || trim($content) === '') {
+                $detail = $data['error']['message'] ?? $data['error'] ?? 'empty completion (finish_reason=' . ($finishReason ?? 'null') . ')';
+                throw new Exception('OpenRouter returned no content: ' . (is_string($detail) ? $detail : json_encode($detail)));
+            }
+
+            if ($finishReason === 'length') {
+                $content = trim((string)$content) . "\n\n[Response truncated: hit {$maxTokens}-token output limit. Try a smaller field/section or raise max_tokens.]";
+                return $content;
+            }
+
+            return trim($content);
+    }
+
+    private static function doRequest(string $payload, int $retries, string $xTitle, string $apiKey): array {
         $attempt = 0;
         $lastError = null;
-
         while ($attempt <= $retries) {
             $attempt++;
-
             $ch = curl_init(self::API_ENDPOINT);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -117,21 +155,16 @@ class OpenRouter {
                     'Content-Type: application/json; charset=utf-8',
                     'Authorization: Bearer ' . $apiKey,
                     'HTTP-Referer: ' . (defined('BASE_URL') ? BASE_URL : ''),
-                    'X-Title: CMS Page Editor',
+                    'X-Title: ' . $xTitle,
                 ],
-                // Larger completions take longer; give big rewrites room to finish
-                // instead of racing a 60s timeout.
                 CURLOPT_TIMEOUT        => 120,
                 CURLOPT_CONNECTTIMEOUT => 15,
             ]);
-
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $error = curl_error($ch);
             curl_close($ch);
-
             $transient = false;
-
             if ($error) {
                 $lastError = new Exception('OpenRouter network error: ' . $error);
                 $transient = true;
@@ -146,48 +179,16 @@ class OpenRouter {
             } elseif ($httpCode < 200 || $httpCode >= 300) {
                 throw new Exception('OpenRouter API error (HTTP ' . $httpCode . '): ' . mb_substr((string)$response, 0, 500));
             }
-
             if ($transient) {
-                if ($attempt <= $retries) {
-                    usleep(500000 + random_int(0, 500000)); // jittered backoff
-                    continue;
-                }
+                if ($attempt <= $retries) { usleep(500000 + random_int(0, 500000)); continue; }
                 throw $lastError;
             }
-
             $data = json_decode($response, true);
             if (!is_array($data)) {
                 throw new Exception('OpenRouter returned an invalid response');
             }
-
-            $choice = $data['choices'][0] ?? null;
-            $msg = $choice['message'] ?? [];
-            $content = $msg['content'] ?? null;
-            if ((!is_string($content) || trim($content) === '') && isset($msg['reasoning']) && is_string($msg['reasoning']) && trim($msg['reasoning']) !== '') {
-                $content = trim($msg['reasoning']);
-            }
-            $finishReason = $choice['finish_reason'] ?? null;
-
-            if (!is_string($content) || trim($content) === '') {
-                $detail = $data['error']['message'] ?? $data['error'] ?? 'empty completion (finish_reason=' . ($finishReason ?? 'null') . ')';
-                $lastError = new Exception('OpenRouter returned no content: ' . (is_string($detail) ? $detail : json_encode($detail)));
-                if ($attempt <= $retries) {
-                    usleep(500000 + random_int(0, 500000));
-                    continue;
-                }
-                throw $lastError;
-            }
-
-            if ($finishReason === 'length') {
-                // Return partial instead of throwing — caller can surface truncated hint (C6).
-                $content = trim((string)$content) . "\n\n[Response truncated: hit {$maxTokens}-token output limit. Try a smaller field/section or raise max_tokens.]";
-                return $content;
-            }
-
-            return trim($content);
+            return $data;
         }
-
-        // Unreachable, but keeps static analysis happy.
         throw $lastError ?? new Exception('OpenRouter request failed');
     }
 
@@ -246,62 +247,19 @@ class OpenRouter {
             throw new Exception('Failed to encode request payload as JSON: ' . json_last_error_msg());
         }
 
+        // Use shared curl helper but handle tool_calls/reasoning_details extraction outside transient loop for clarity
         $attempt = 0;
         $lastError = null;
-
         while ($attempt <= $retries) {
             $attempt++;
-
-            $ch = curl_init(self::API_ENDPOINT);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_POST           => true,
-                CURLOPT_POSTFIELDS     => $payload,
-                CURLOPT_HTTPHEADER     => [
-                    'Content-Type: application/json; charset=utf-8',
-                    'Authorization: Bearer ' . $apiKey,
-                    'HTTP-Referer: ' . (defined('BASE_URL') ? BASE_URL : ''),
-                    'X-Title: CMS AI Studio',
-                ],
-                // Multi-turn tool loops make one call at a time; give each a
-                // comfortable window instead of racing a shorter timeout.
-                CURLOPT_TIMEOUT        => 120,
-                CURLOPT_CONNECTTIMEOUT => 15,
-            ]);
-
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $error = curl_error($ch);
-            curl_close($ch);
-
-            $transient = false;
-
-            if ($error) {
-                $lastError = new Exception('OpenRouter network error: ' . $error);
-                $transient = true;
-            } elseif ($httpCode === 401) {
-                throw new Exception('OpenRouter API key is invalid or unauthorized');
-            } elseif ($httpCode === 429) {
-                $lastError = new Exception('OpenRouter rate limit exceeded. Please try again in a moment');
-                $transient = true;
-            } elseif ($httpCode >= 500) {
-                $lastError = new Exception('OpenRouter API error (HTTP ' . $httpCode . '): ' . mb_substr((string)$response, 0, 500));
-                $transient = true;
-            } elseif ($httpCode < 200 || $httpCode >= 300) {
-                throw new Exception('OpenRouter API error (HTTP ' . $httpCode . '): ' . mb_substr((string)$response, 0, 500));
-            }
-
-            if ($transient) {
-                if ($attempt <= $retries) {
-                    usleep(500000 + random_int(0, 500000)); // jittered backoff
-                    continue;
-                }
-                throw $lastError;
-            }
-
-            $data = json_decode($response, true);
-            if (!is_array($data)) {
-                throw new Exception('OpenRouter returned an invalid response');
+            try {
+                $data = self::doRequest($payload, 0, 'CMS AI Studio', $apiKey);
+            } catch (Exception $e) {
+                // doRequest already handles 401 immediate throw vs transient 429/5xx throws; treat as transient if message contains rate limit/network
+                $msg = $e->getMessage();
+                $isTransient = str_contains($msg, 'rate limit') || str_contains($msg, 'network error') || str_contains($msg, 'HTTP 5');
+                if ($isTransient && $attempt <= $retries) { $lastError = $e; usleep(500000 + random_int(0, 500000)); continue; }
+                throw $e;
             }
 
             $choice = $data['choices'][0] ?? null;
@@ -314,33 +272,24 @@ class OpenRouter {
 
             $message = $choice['message'] ?? [];
             $content = isset($message['content']) && is_string($message['content']) ? $message['content'] : '';
-            // Reasoning models (deepseek-r1, etc.) put thinking in `reasoning` not `content`
             if ($content === '' && isset($message['reasoning']) && is_string($message['reasoning']) && trim($message['reasoning']) !== '') {
                 $content = trim($message['reasoning']);
             }
             if ($content === '' && isset($message['reasoning_details']) && is_array($message['reasoning_details'])) {
-                // Some providers return array of reasoning chunks
                 $parts = array_map(fn($r) => $r['text'] ?? $r['content'] ?? '', $message['reasoning_details']);
                 $joined = trim(implode("\n", array_filter($parts)));
                 if ($joined !== '') $content = $joined;
             }
             $toolCalls = $message['tool_calls'] ?? null;
-            if (!is_array($toolCalls)) {
-                $toolCalls = null;
-            }
+            if (!is_array($toolCalls)) $toolCalls = null;
 
             if ($content === '' && empty($toolCalls)) {
-                // Surface raw payload for debugging; treat as transient so retry can help
                 $detail = $data['error']['message'] ?? $data['error'] ?? null;
                 if ($detail === null) {
                     $detail = 'empty completion (finish_reason=' . ($finishReason ?? 'null') . ', has_reasoning=' . (isset($message['reasoning']) ? 'yes' : 'no') . ') raw=' . mb_substr(json_encode($data, JSON_UNESCAPED_UNICODE), 0, 800);
                 }
                 $lastError = new Exception('OpenRouter returned no content: ' . (is_string($detail) ? $detail : json_encode($detail)));
-                $transient = true;
-                if ($attempt <= $retries) {
-                    usleep(500000 + random_int(0, 500000));
-                    continue;
-                }
+                if ($attempt <= $retries) { usleep(500000 + random_int(0, 500000)); continue; }
                 throw $lastError;
             }
 
@@ -351,8 +300,6 @@ class OpenRouter {
                 'usage'         => $data['usage'] ?? null,
             ];
         }
-
-        // Unreachable, but keeps static analysis happy.
         throw $lastError ?? new Exception('OpenRouter request failed');
     }
 }

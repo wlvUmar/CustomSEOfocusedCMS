@@ -11,7 +11,7 @@
         const formData = new FormData();
         formData.append('file', file);
         
-        fetch('<?= BASE_URL ?>/admin/media/upload', {
+        fetch((window.baseUrl || '') + '/admin/media/upload', {
             method: 'POST',
             body: formData
         })
@@ -50,7 +50,7 @@
         formData.append('id', id);
         if (usageCount > 0) formData.append('force', '1');
         
-        fetch('<?= BASE_URL ?>/admin/media/delete', {
+        fetch((window.baseUrl || '') + '/admin/media/delete', {
             method: 'POST',
             body: formData
         })
@@ -150,7 +150,7 @@
         const promises = Array.from(selectedItems).map(id => {
             const formData = new FormData();
             formData.append('id', id);
-            return fetch('<?= BASE_URL ?>/admin/media/delete', {
+            return fetch((window.baseUrl || '') + '/admin/media/delete', {
                 method: 'POST',
                 body: formData
             });
@@ -166,7 +166,9 @@
         const filename = item.dataset.filename;
         const name = item.dataset.name;
         
-        currentInsertUrl = '<?= UPLOAD_URL ?>' + filename;
+        // UPLOAD_URL available via window.CMS.uploadUrl or fallback to /uploads/
+        const uploadBase = (window.CMS && window.CMS.uploadUrl) || (window.baseUrl ? window.baseUrl + '/uploads/' : '/uploads/');
+        currentInsertUrl = uploadBase + filename;
         currentInsertName = name;
         
         showInsertModal();
@@ -179,11 +181,12 @@
         }
         
         let htmlCode = '';
+        const uploadBase2 = (window.CMS && window.CMS.uploadUrl) || (window.baseUrl ? window.baseUrl + '/uploads/' : '/uploads/');
         selectedItems.forEach(id => {
             const item = document.querySelector(`[data-id="${id}"]`);
             const filename = item.dataset.filename;
             const name = item.dataset.name;
-            const url = '<?= UPLOAD_URL ?>' + filename;
+            const url = uploadBase2 + filename;
             htmlCode += `<img src="${url}" alt="${name}">\n`;
         });
         
@@ -282,9 +285,12 @@
         feather.replace();
     });
 
-    // Close modal on outside click
-    document.getElementById('insert-modal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeInsertModal();
-        }
-    });
+    // Close modal on outside click — guard if not on media page
+    const insertModalEl = document.getElementById('insert-modal');
+    if (insertModalEl) {
+        insertModalEl.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeInsertModal();
+            }
+        });
+    }

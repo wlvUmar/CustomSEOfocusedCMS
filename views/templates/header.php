@@ -136,14 +136,29 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <meta name="twitter:image" content="<?= e($ogImage) ?>">
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
     
-    <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css">
+     <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/pages.min.css') ?: time() ?>">
+     <link rel="stylesheet" href="<?= BASE_URL ?>/css/components.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/components.min.css') ?: time() ?>">
+     <?php
+     // Per-page custom CSS: merges DB custom_css + any <style> extracted from content (see PageController)
+     $pageCustomCss = $pageCustomCss ?? ($page['custom_css'] ?? '');
+     // Also merge extracted CSS stashed by PageController/page.php via global
+     if (!empty($GLOBALS['pageExtractedCss'])) {
+         $pageCustomCss = trim(($pageCustomCss ? $pageCustomCss . "\n\n" : '') . $GLOBALS['pageExtractedCss']);
+     }
+     if (!empty($pageCustomCss)) {
+         $pageCustomCss = sanitizeCssBlock($pageCustomCss);
+     }
+     if (!empty($pageCustomCss)) {
+         echo '<style id="page-custom-css">' . $pageCustomCss . '</style>';
+     }
+     ?>
 
     <?php
     $allSchemas = [];
     
-    // Output Global Schema if verified
+    // Output Global Schema if verified — JSON_HEX_TAG prevents </script> breakout
     if (!empty($sitewideSchema)) {
-        echo '<script type="application/ld+json">' . json_encode($sitewideSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . '</script>';
+        echo '<script type="application/ld+json">' . json_encode($sitewideSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>';
     } else {
         // Fallback or legacy handling (e.g. for error pages or direct view calls without controller?)
         // Assuming controllers always pass it now.
@@ -161,7 +176,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     
     // Output Blog Schema if present
     if (!empty($blogSchema)) {
-        $blogJson = is_array($blogSchema) ? json_encode($blogSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) : $blogSchema;
+        $blogJson = is_array($blogSchema) ? json_encode($blogSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_AMP) : $blogSchema;
         echo '<script type="application/ld+json">' . $blogJson . '</script>';
     }
     ?>
@@ -241,7 +256,12 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     </style> 
     <?php endif; ?>
 </head>
-<body<?= $isAdmin ? ' class="admin-mode"' : '' ?>>
+<?php
+$pageSlugClass = getPageSlugClass($page['slug'] ?? '');
+$pageLangClass = 'lang-' . ($lang ?? 'ru');
+$bodyClasses = trim($pageSlugClass . ' ' . $pageLangClass . ($isAdmin ? ' admin-mode' : ''));
+?>
+<body class="<?= e($bodyClasses) ?>">
     <?php if (defined('GTM_ID')): ?>
     <!-- Google Tag Manager (noscript) -->
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=<?= GTM_ID ?>"

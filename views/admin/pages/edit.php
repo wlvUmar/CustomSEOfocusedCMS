@@ -130,6 +130,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     
     <div class="tabs">
         <button type="button" class="tab-btn active" onclick="switchTab('general')">General</button>
+        <button type="button" class="tab-btn" onclick="switchTab('design')">Design</button>
         <button type="button" class="tab-btn" onclick="switchTab('seo')">SEO & Meta</button>
         <button type="button" class="tab-btn" onclick="switchTab('advanced')">Advanced SEO</button>
     </div>
@@ -143,23 +144,43 @@ require BASE_PATH . '/views/admin/layout/header.php';
         
         <div class="form-group">
             <label>Slug (URL)*</label>
-            <input type="text" name="slug" value="<?= $page['slug'] ?? '' ?>" required>
+            <input type="text" name="slug" value="<?= e($page['slug'] ?? '') ?>" required>
         </div>
         
+        <?php
+        // Normalize current parent for reliable selected handling (NULL/''/0 = root, otherwise int)
+        $currentParentId = $page['parent_id'] ?? null;
+        if ($currentParentId === '' || $currentParentId === 0 || $currentParentId === '0') $currentParentId = null;
+        $isRootSelected = $currentParentId === null;
+        // Fallback: if current parent exists but was filtered from $allPages (e.g. stale descendant exclusion), ensure it is still selectable
+        $parentIdsInList = array_column($allPages ?? [], 'id');
+        $fallbackParent = null;
+        if ($currentParentId !== null && !in_array((int)$currentParentId, array_map('intval', $parentIdsInList), true)) {
+            try {
+                if (!class_exists('Page', false)) require_once BASE_PATH . '/models/Page.php';
+                $fallbackParent = (new Page())->getById((int)$currentParentId);
+            } catch (Throwable $e) { $fallbackParent = null; }
+        }
+        ?>
         <div class="form-group">
             <label>Parent Page (Optional - for hierarchy)</label>
-            <select name="parent_id" class="form-control">
-                <option value="" <?= (!isset($page) || !$page || !($page['parent_id'] ?? null)) ? 'selected' : '' ?>>— Root Level (No Parent) —</option>
+            <select name="parent_id" class="form-control" data-current-parent="<?= $currentParentId !== null ? (int)$currentParentId : '' ?>" id="parent_id_select">
+                <option value="" <?= $isRootSelected ? 'selected' : '' ?>>— Root Level (No Parent) —</option>
+                <?php if ($fallbackParent): ?>
+                    <option value="<?= (int)$fallbackParent['id'] ?>" selected>↳ <?= e($fallbackParent['title_ru'] ?? $fallbackParent['slug']) ?> (current parent)</option>
+                <?php endif; ?>
                 <?php if (!empty($allPages)): ?>
                     <?php 
+                    if (!function_exists('renderParentPageOptions')) {
                     function renderParentPageOptions($pages, $currentPageId = null, $parentId = 0, $depth = 0, $maxDepth = 3, $selectedParentId = null) {
                         $output = '';
                         if ($depth > $maxDepth) return $output;
                         
                         $childPages = array_filter($pages, function($p) use ($parentId, $currentPageId) {
-                            // Skip current page to prevent circular reference
-                            if ($currentPageId && $p['id'] == $currentPageId) return false;
-                            return ($p['parent_id'] ?? 0) == $parentId;
+                            if ($currentPageId && (int)$p['id'] === (int)$currentPageId) return false;
+                            $pid = $p['parent_id'] ?? null;
+                            if ($pid === '' || $pid === null) $pid = 0;
+                            return (int)$pid === (int)$parentId;
                         });
                         
                         usort($childPages, function($a, $b) {
@@ -168,7 +189,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         
                         foreach ($childPages as $p) {
                             $indent = str_repeat('  ', $depth) . ($depth > 0 ? '└ ' : '');
-                            $isSelected = $selectedParentId !== null && $selectedParentId !== '' && $selectedParentId == $p['id'];
+                            $isSelected = $selectedParentId !== null && $selectedParentId !== '' && (string)$selectedParentId === (string)$p['id'];
                             $output .= sprintf(
                                 '<option value="%d" %s>%s%s</option>' . "\n",
                                 $p['id'],
@@ -180,33 +201,47 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         }
                         return $output;
                     }
-                    echo renderParentPageOptions($allPages, $page['id'] ?? null, 0, 0, 3, $page['parent_id'] ?? null);
+                    }
+                    echo renderParentPageOptions($allPages, $page['id'] ?? null, 0, 0, 3, $currentParentId);
                     ?>
                 <?php endif; ?>
             </select>
             <small class="help-subtext">Create a page hierarchy. URLs remain flat, but breadcrumbs will show the path.</small>
         </div>
+        <script>
+        // Defensive: ensure the select reflects the current parent even if PHP rendering was stale/cached
+        (function(){
+            var sel = document.getElementById('parent_id_select');
+            if (!sel) return;
+            var cur = sel.getAttribute('data-current-parent');
+            if (cur !== null && cur !== '' && sel.value !== cur) {
+                // Only override if the expected value exists as an option
+                var has = Array.prototype.some.call(sel.options, function(o){ return o.value === cur; });
+                if (has) sel.value = cur;
+            }
+        })();
+        </script>
         
         <div class="form-row">
             <div class="form-group">
                 <label>Title (RU)*</label>
-                <input type="text" name="title_ru" value="<?= $page['title_ru'] ?? '' ?>" required>
+                <input type="text" name="title_ru" value="<?= e($page['title_ru'] ?? '') ?>" required>
             </div>
             
             <div class="form-group">
                 <label>Title (UZ)*</label>
-                <input type="text" name="title_uz" value="<?= $page['title_uz'] ?? '' ?>" required>
+                <input type="text" name="title_uz" value="<?= e($page['title_uz'] ?? '') ?>" required>
             </div>
         </div>
         
         <div class="form-group">
             <label>Content (RU)</label>
-            <textarea name="content_ru" id="content_ru" class="tinymce"><?= $page['content_ru'] ?? '' ?></textarea>
+            <textarea name="content_ru" id="content_ru" class="tinymce"><?= e($page['content_ru'] ?? '') ?></textarea>
         </div>
         
         <div class="form-group">
             <label>Content (UZ)</label>
-            <textarea name="content_uz" id="content_uz" class="tinymce"><?= $page['content_uz'] ?? '' ?></textarea>
+            <textarea name="content_uz" id="content_uz" class="tinymce"><?= e($page['content_uz'] ?? '') ?></textarea>
         </div>
         
         <div class="form-row">
@@ -285,6 +320,28 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </a>
         <?php endif; ?>
     </div>
+
+    <div id="tab-design" class="tab-content">
+        <div class="help-text">
+            <strong>Per-page Design:</strong> Override <code>pages.css</code> and <code>components.css</code> for this page only.<br>
+            Empty = inherits global default. With CSS you get <strong>full control including header/footer</strong> — use <code>body.page-<?= e($page['slug'] ?? 'your-slug') ?> header { ... }</code> or <code>:root { --teal: #0a4f5c; --surface: #fdfcf8; }</code> token overrides.<br>
+            Supports <code>&lt;style&gt;</code> content wrappers extracted to head automatically, so inline <code>&lt;style&gt;</code> in <code>content_ru/uz</code> also moves to head.
+            <br><small>Tip: target <code>body.<?= 'page-' . preg_replace('/[^a-z0-9-]/','-', strtolower($page['slug'] ?? 'slug')) ?> header</code> for page-scoped header. Or use <code>:root</code> variable overrides to re-theme all components at once. CSS is sanitized (blocks @import, javascript:, expression).</small>
+        </div>
+        <div class="form-group">
+            <label>Custom CSS (overrides pages.css + components.css + header/footer)</label>
+            <textarea name="custom_css" rows="16" class="code" placeholder="/* Example: */
+/* Recolor this page */
+body.page-<?= e($page['slug'] ?? 'slug') ?> { --teal: #0a4f5c; --orange: #e8610a; --surface: #fdfcf8; }
+/* Override header gradient */
+body.page-<?= e($page['slug'] ?? 'slug') ?> header { background: linear-gradient(135deg, #0f5f6f 0%, #071a20 100%); }
+/* Override footer */
+body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
+/* Use any of 100+ components: .c-stats, .c-feature-split, .c-pricing, etc. */
+" spellcheck="false" style="font-family: monospace; font-size: 13px;"><?= e($page['custom_css'] ?? '') ?></textarea>
+            <small class="help-subtext">Leave empty to keep global defaults. CSS is injected after <code>pages.min.css</code> + <code>components.min.css</code> so it wins. Allowed: any selectors, CSS variables, @media. Blocked: @import, javascript: vectors. Loaded via <code>&lt;style id=&quot;page-custom-css&quot;&gt;</code> in head.</small>
+        </div>
+    </div>
     
     <div id="tab-seo" class="tab-content">
         <p class="help-text">Leave fields empty to use global defaults. All template variables work here too.</p>
@@ -292,36 +349,36 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <div class="form-row">
             <div class="form-group">
                 <label>Meta Title (RU)</label>
-                <input type="text" name="meta_title_ru" value="<?= $page['meta_title_ru'] ?? '' ?>">
+                <input type="text" name="meta_title_ru" value="<?= e($page['meta_title_ru'] ?? '') ?>">
             </div>
             
             <div class="form-group">
                 <label>Meta Title (UZ)</label>
-                <input type="text" name="meta_title_uz" value="<?= $page['meta_title_uz'] ?? '' ?>">
+                <input type="text" name="meta_title_uz" value="<?= e($page['meta_title_uz'] ?? '') ?>">
             </div>
         </div>
         
         <div class="form-row">
             <div class="form-group">
                 <label>Meta Keywords (RU)</label>
-                <textarea name="meta_keywords_ru" rows="2"><?= $page['meta_keywords_ru'] ?? '' ?></textarea>
+                <textarea name="meta_keywords_ru" rows="2"><?= e($page['meta_keywords_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>Meta Keywords (UZ)</label>
-                <textarea name="meta_keywords_uz" rows="2"><?= $page['meta_keywords_uz'] ?? '' ?></textarea>
+                <textarea name="meta_keywords_uz" rows="2"><?= e($page['meta_keywords_uz'] ?? '') ?></textarea>
             </div>
         </div>
         
         <div class="form-row">
             <div class="form-group">
                 <label>Meta Description (RU)</label>
-                <textarea name="meta_description_ru" rows="3"><?= $page['meta_description_ru'] ?? '' ?></textarea>
+                <textarea name="meta_description_ru" rows="3"><?= e($page['meta_description_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>Meta Description (UZ)</label>
-                <textarea name="meta_description_uz" rows="3"><?= $page['meta_description_uz'] ?? '' ?></textarea>
+                <textarea name="meta_description_uz" rows="3"><?= e($page['meta_description_uz'] ?? '') ?></textarea>
             </div>
         </div>
     </div>
@@ -332,46 +389,46 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <div class="form-row">
             <div class="form-group">
                 <label>OG Title (RU) - For Facebook/Social</label>
-                <input type="text" name="og_title_ru" value="<?= $page['og_title_ru'] ?? '' ?>">
+                <input type="text" name="og_title_ru" value="<?= e($page['og_title_ru'] ?? '') ?>">
             </div>
             
             <div class="form-group">
                 <label>OG Title (UZ)</label>
-                <input type="text" name="og_title_uz" value="<?= $page['og_title_uz'] ?? '' ?>">
+                <input type="text" name="og_title_uz" value="<?= e($page['og_title_uz'] ?? '') ?>">
             </div>
         </div>
         
         <div class="form-row">
             <div class="form-group">
                 <label>OG Description (RU)</label>
-                <textarea name="og_description_ru" rows="2"><?= $page['og_description_ru'] ?? '' ?></textarea>
+                <textarea name="og_description_ru" rows="2"><?= e($page['og_description_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>OG Description (UZ)</label>
-                <textarea name="og_description_uz" rows="2"><?= $page['og_description_uz'] ?? '' ?></textarea>
+                <textarea name="og_description_uz" rows="2"><?= e($page['og_description_uz'] ?? '') ?></textarea>
             </div>
         </div>
         
         <div class="form-group">
             <label>OG Image URL (Full URL)</label>
-            <input type="text" name="og_image" value="<?= $page['og_image'] ?? '' ?>">
+            <input type="text" name="og_image" value="<?= e($page['og_image'] ?? '') ?>">
         </div>
         
         <div class="form-group">
             <label>Canonical URL (Leave empty for auto)</label>
-            <input type="text" name="canonical_url" value="<?= $page['canonical_url'] ?? '' ?>">
+            <input type="text" name="canonical_url" value="<?= e($page['canonical_url'] ?? '') ?>">
         </div>
         
         <div class="form-row">
             <div class="form-group">
                 <label>JSON-LD Schema (RU)</label>
-                <textarea name="jsonld_ru" rows="8" class="code"><?= $page['jsonld_ru'] ?? '' ?></textarea>
+                <textarea name="jsonld_ru" rows="8" class="code"><?= e($page['jsonld_ru'] ?? '') ?></textarea>
             </div>
             
             <div class="form-group">
                 <label>JSON-LD Schema (UZ)</label>
-                <textarea name="jsonld_uz" rows="8" class="code"><?= $page['jsonld_uz'] ?? '' ?></textarea>
+                <textarea name="jsonld_uz" rows="8" class="code"><?= e($page['jsonld_uz'] ?? '') ?></textarea>
             </div>
         </div>
     </div>
@@ -390,8 +447,9 @@ tinymce.init({
     menubar: false,
     plugins: 'fullscreen code',
     toolbar: 'fullscreen code',
-    content_css: [
-        '<?= BASE_URL ?>/css/pages.min.css'
+     content_css: [
+        '<?= BASE_URL ?>/css/pages.min.css',
+        '<?= BASE_URL ?>/css/components.min.css'
     ],
     content_style: '.hero__content,.content-section,.info-card,.process-step,.brands-list,.faq-item,.condition-item,.review-strip,.links-tile,.faq-section{opacity:1!important;transform:none!important}',
 });

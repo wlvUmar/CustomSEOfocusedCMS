@@ -24,6 +24,16 @@ class FAQ {
     }
 
     public function create($data) {
+        // 06-05: guard orphan + UZ fallback — bilingual parity
+        $slug = trim((string)($data['page_slug'] ?? ''));
+        if ($slug === '') throw new InvalidArgumentException('page_slug is required');
+        $pageExists = $this->db->fetchOne("SELECT id FROM pages WHERE slug = ? LIMIT 1", [$slug]);
+        if (!$pageExists) throw new InvalidArgumentException('page_slug "' . $slug . '" does not exist — FAQ would be orphan');
+        // UZ fallback to RU if empty (prevents blank in UZ rendering page.php:223)
+        $qUz = trim((string)($data['question_uz'] ?? ''));
+        $aUz = trim((string)($data['answer_uz'] ?? ''));
+        if ($qUz === '') $data['question_uz'] = $data['question_ru'] ?? '';
+        if ($aUz === '') $data['answer_uz'] = $data['answer_ru'] ?? '';
         $sql = "INSERT INTO faqs (page_slug, question_ru, question_uz, answer_ru, answer_uz, sort_order, is_active) 
                 VALUES (?, ?, ?, ?, ?, ?, ?)";
         
@@ -41,6 +51,16 @@ class FAQ {
     }
 
     public function update($id, $data) {
+        // 06-05: same guards on update
+        $slug = trim((string)($data['page_slug'] ?? ''));
+        if ($slug !== '') {
+            $pageExists = $this->db->fetchOne("SELECT id FROM pages WHERE slug = ? LIMIT 1", [$slug]);
+            if (!$pageExists) throw new InvalidArgumentException('page_slug "' . $slug . '" does not exist');
+        }
+        $qUz = trim((string)($data['question_uz'] ?? ''));
+        $aUz = trim((string)($data['answer_uz'] ?? ''));
+        if ($qUz === '' && isset($data['question_ru'])) $data['question_uz'] = $data['question_ru'];
+        if ($aUz === '' && isset($data['answer_ru'])) $data['answer_uz'] = $data['answer_ru'];
         $sql = "UPDATE faqs SET page_slug = ?, question_ru = ?, question_uz = ?, 
                 answer_ru = ?, answer_uz = ?, sort_order = ?, is_active = ? 
                 WHERE id = ?";

@@ -39,6 +39,12 @@ class LinkWidgetController extends Controller {
     public function addLink() {
         $this->requireAuth();
         
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/pages');
+            return;
+        }
+        
         $pageId = intval($_POST['page_id'] ?? 0);
         $linkToPageId = intval($_POST['link_to_page_id'] ?? 0);
 
@@ -53,6 +59,12 @@ class LinkWidgetController extends Controller {
     // Remove link
     public function removeLink() {
         $this->requireAuth();
+        
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/pages');
+            return;
+        }
         
         $pageId = intval($_POST['page_id'] ?? 0);
         $linkToPageId = intval($_POST['link_to_page_id'] ?? 0);
@@ -69,6 +81,11 @@ class LinkWidgetController extends Controller {
     public function reorder() {
         $this->requireAuth();
         
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+            return;
+        }
+        
         $pageId = intval($_POST['page_id'] ?? 0);
         $linkIds = $_POST['link_ids'] ?? [];
 
@@ -83,6 +100,12 @@ class LinkWidgetController extends Controller {
     // Toggle widget visibility
     public function toggleWidget() {
         $this->requireAuth();
+        
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            $this->redirect('/admin/pages');
+            return;
+        }
         
         $pageId = intval($_POST['page_id'] ?? 0);
         $show = isset($_POST['show']) && $_POST['show'] === '1';

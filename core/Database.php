@@ -74,17 +74,22 @@ class Database {
         return self::$instance;
     }
 
+    private function __clone() {}
+    public function __wakeup() { throw new LogicException('Database singleton cannot be unserialized'); }
+
     public function getConnection() {
+        $this->ensureAlive();
         return $this->pdo;
     }
 
     public function query($sql, $params = []) {
         $this->ensureAlive();
+        $inTxn = $this->pdo->inTransaction();
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
         } catch (PDOException $e) {
-            if ($this->isConnectionLoss($e)) {
+            if (!$inTxn && $this->isConnectionLoss($e)) {
                 $this->connect();
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute($params);

@@ -100,14 +100,17 @@
                 if (!m.id || seen.has(m.id)) return; seen.add(m.id);
                 const opt = document.createElement('option');
                 opt.value = m.id;
-                const pricing = m.pricing ? ` — $${Number(m.pricing.prompt||0).toFixed(4)}/$${Number(m.pricing.completion||0).toFixed(4)}` : '';
-                const ctx = m.context_length ? ` · ${Math.round(m.context_length/1000)}k` : '';
-                opt.textContent = (m.name || m.id) + (pricing||ctx ? ` (${pricing}${ctx})` : '');
-                // keep curated labels short if they match const
+                const pricing = m.pricing ? `$${Number(m.pricing.prompt||0).toFixed(4)}/$${Number(m.pricing.completion||0).toFixed(4)}` : '';
+                const ctx = m.context_length ? `${Math.round(m.context_length/1000)}k ctx` : '';
+                const details = [pricing, ctx].filter(Boolean).join(' · ');
+                // Short label for curated, name-only for others to avoid overflow (04-08)
                 if (curated.has(m.id)) {
                     const short = { 'deepseek/deepseek-chat':'DeepSeek Chat (default, cheap)','openrouter/free':'Auto: best free model','openai/gpt-oss-120b:free':'GPT-OSS 120B (free)','openai/gpt-oss-20b:free':'GPT-OSS 20B (free, fast)','openai/gpt-4o-mini':'GPT-4o Mini','anthropic/claude-3.5-haiku':'Claude Haiku','google/gemini-2.5-flash':'Gemini 2.5 Flash','deepseek/deepseek-r1':'DeepSeek R1','meta-llama/llama-3.3-70b-instruct':'Llama 3.3 70B'}[m.id];
-                    if (short) opt.textContent = short;
+                    opt.textContent = short || (m.name || m.id);
+                } else {
+                    opt.textContent = (m.name || m.id);
                 }
+                if (details) opt.title = details;
                 frag.appendChild(opt);
             });
             // Preserve current selection if still present, else keep savedModel if in new list
@@ -129,12 +132,31 @@
     function saveSessions(arr) {
         try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(arr.slice(0, 50))); } catch (e) { /* quota */ }
     }
-    function genSessionId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+    function genSessionId() {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+            const a = new Uint8Array(16); crypto.getRandomValues(a);
+            return Array.from(a, b => b.toString(16).padStart(2,'0')).join('').replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/,'$1-$2-$3-$4-$5');
+        }
+        return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+    }
     function sessionTitleFromHistory(hist) {
         const firstUser = hist.find(m => m.role === 'user');
         if (!firstUser) return 'New conversation';
         const t = firstUser.content.trim().slice(0, 48);
         return t.length < firstUser.content.trim().length ? t + '…' : t;
+    }
+    function rebuildTranscriptFromHistory(hist) {
+        if (!els.transcript) return;
+        els.transcript.innerHTML = '';
+        if (!hist || !hist.length) {
+            els.transcript.innerHTML = '<div class="ai-welcome"><div class="ai-welcome__icon"><i data-feather="zap"></i></div><h2 class="ai-welcome__title">Hi, I\'m your AI Studio agent</h2><p class="ai-welcome__text">I can inspect pages, rotation variants, FAQs and analytics, then edit content and show you a live preview. Ask me to improve a page, find underperforming content, or create a new section.</p></div>';
+            return;
+        }
+        hist.forEach(m => {
+            if (m.role === 'user' && typeof m.content === 'string') addUserBubble(m.content);
+            else if (m.role === 'assistant' && typeof m.content === 'string' && m.content) addAgentBubble(m.content);
+        });
     }
     function saveCurrentSession() {
         if (!currentSessionId) return;
@@ -146,7 +168,7 @@
             updatedAt: Date.now(),
             createdAt: (idx >= 0 ? sessions[idx].createdAt : Date.now()),
             history: history.slice(),
-            transcriptHTML: els.transcript ? els.transcript.innerHTML : '',
+            // transcriptHTML intentionally not persisted — rebuilt from history via safe markdown to prevent stored XSS (01-security #8)
             lastPreviewHtml: lastPreviewHtml || '',
             usageText: els.usage ? els.usage.textContent : ''
         };
@@ -190,10 +212,9 @@
         try { localStorage.setItem(CURRENT_KEY, currentSessionId); } catch(e){}
         history = Array.isArray(s.history) ? s.history.slice() : [];
         pendingApproval = null; pendingContext = null;
+        // Rebuild transcript safely from history; legacy transcriptHTML is intentionally ignored to prevent stored XSS
         if (els.transcript) {
-            if (s.transcriptHTML) els.transcript.innerHTML = s.transcriptHTML;
-            else els.transcript.innerHTML = '';
-            // re-enhance missing? MutationObserver will handle next adds
+            rebuildTranscriptFromHistory(history);
         }
         lastPreviewHtml = s.lastPreviewHtml || '';
         if (lastPreviewHtml && els.previewFrame) { els.previewFrame.setAttribute('srcdoc', lastPreviewHtml); els.previewHint.textContent = 'Restored ' + new Date(s.updatedAt).toLocaleTimeString(); }
@@ -230,7 +251,7 @@
         if (els.previewHint) els.previewHint.textContent = 'Renders here after each turn';
         setStatus('Ready'); updateUsage(null); hideActivity(); hideTyping(); if (els.approval) els.approval.hidden = true;
         const sessions = loadSessions();
-        sessions.unshift({ id: currentSessionId, title: 'New conversation', createdAt: Date.now(), updatedAt: Date.now(), history: [], transcriptHTML: els.transcript.innerHTML, lastPreviewHtml: '', usageText: '' });
+        sessions.unshift({ id: currentSessionId, title: 'New conversation', createdAt: Date.now(), updatedAt: Date.now(), history: [], lastPreviewHtml: '', usageText: '' });
         saveSessions(sessions);
         renderHistoryList();
         if (window.feather) try { feather.replace({class:'feather-icon'}); } catch(e){}
@@ -254,7 +275,7 @@
         db.forEach(row => {
             const id=row.id;
             if (!map.has(id)) {
-                map.set(id,{id:id,title:row.title||'Session',updatedAt: new Date(row.updated_at).getTime(),createdAt:new Date(row.created_at).getTime(),history:[],transcriptHTML:'',lastPreviewHtml:'',usageText:''});
+                map.set(id,{id:id,title:row.title||'Session',updatedAt: new Date(row.updated_at).getTime(),createdAt:new Date(row.created_at).getTime(),history:[],lastPreviewHtml:'',usageText:''});
             } else {
                 const ex=map.get(id);
                 ex.title = row.title||ex.title;
@@ -319,6 +340,17 @@
             if (!ok) restoreSession(id);
         };
     })();
+
+    // Scroll FAB visibility
+    if (els.transcript) {
+        els.transcript.addEventListener('scroll', () => {
+            const fab = document.getElementById('ai-scroll-bottom');
+            if (!fab) return;
+            fab.hidden = isNearBottom();
+        });
+        const fabBtn = document.getElementById('ai-scroll-bottom');
+        if (fabBtn) fabBtn.addEventListener('click', () => scrollTranscript(true));
+    }
 
     // ---- GSC: live Connect/Disconnect --------------------------
     (function initGsc() {
@@ -424,8 +456,22 @@
         if (els.activity) els.activity.hidden = true;
     }
 
-    function scrollTranscript() {
+    function isNearBottom() {
+        const el = els.transcript;
+        return (el.scrollHeight - el.scrollTop - el.clientHeight) < 120;
+    }
+    function scrollTranscript(force) {
+        if (!force && !isNearBottom()) {
+            // Show FAB to let user jump down, don't yank scroll
+            if (document.getElementById('ai-scroll-bottom')) {
+                const fab = document.getElementById('ai-scroll-bottom');
+                if (fab) fab.hidden = false;
+            }
+            return;
+        }
         els.transcript.scrollTop = els.transcript.scrollHeight;
+        const fab = document.getElementById('ai-scroll-bottom');
+        if (fab) fab.hidden = true;
     }
 
     function addUserBubble(text) {
@@ -609,12 +655,20 @@
         els.approval.hidden = false;
         els.approve.disabled = false;
         els.deny.disabled = false;
+        // Accessibility: focus Approve for keyboard users, announce via aria-live
+        try { els.approve.focus(); } catch(e){}
     }
 
     function hideApproval() {
         pendingApproval = null;
         els.approval.hidden = true;
     }
+    // Keyboard shortcuts for approval (Enter=Approve, Escape=Deny) when visible
+    document.addEventListener('keydown', (e) => {
+        if (!pendingApproval || els.approval.hidden) return;
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (els.approve && !els.approve.disabled) els.approve.click(); }
+        if (e.key === 'Escape') { e.preventDefault(); if (els.deny && !els.deny.disabled) els.deny.click(); }
+    });
 
     // ---- Safe markdown rendering ------------------------------------------
     // Builds DOM nodes only (no innerHTML for model text), so model output can
@@ -851,6 +905,8 @@
             const { done, value } = await reader.read();
             if (done) break;
             buf += decoder.decode(value, { stream: true });
+            // 06-08: normalize CRLF so proxies that emit \r\n don't stall frame splitting
+            if (buf.indexOf('\r') !== -1) buf = buf.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
             let idx;
             while ((idx = buf.indexOf('\n\n')) !== -1) {
                 parseFrame(buf.slice(0, idx), onEvent);
@@ -858,6 +914,7 @@
             }
         }
         // Anything left over (host buffered the whole body): parse it too.
+        if (buf.indexOf('\r') !== -1) buf = buf.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
         if (buf.trim()) parseFrame(buf, onEvent);
     }
 
@@ -978,6 +1035,15 @@
                     case 'tool_result':
                         addToolEvent(data.tool, data.summary, data.ok);
                         setActivity(data.ok ? 'Done: ' + data.tool : 'Failed: ' + data.tool);
+                        // 04-07: surface PLAN blocked as actionable — highlight toggle
+                        if (!data.ok && data.summary && data.summary.indexOf('Blocked in PLAN') !== -1) {
+                            addAgentBubble('ⓘ PLAN is read-only — switch to BUILD to apply edits. Click the "Plan/Build" toggle in the chat header (now highlighted) then re-send your request.');
+                            if (els.modeToggle) {
+                                els.modeToggle.style.outline = '2px solid #f59e0b';
+                                els.modeToggle.style.outlineOffset = '2px';
+                                setTimeout(() => { els.modeToggle.style.outline = ''; els.modeToggle.style.outlineOffset = ''; }, 4000);
+                            }
+                        }
                         break;
                     case 'preview':
                         updatePreview(data.html, data.kind);
@@ -1009,6 +1075,10 @@
                             setStatus('Done', 'ok');
                         } else if (data.status === 'awaiting_approval') {
                             setStatus('Awaiting approval', 'wait');
+                        } else if (data.status === 'max_turns_exceeded') {
+                            if (!assistantText && data.text) { assistantText = data.text; addAgentBubble(data.text); }
+                            addAgentBubble('⚠ Reached max tool turns (10) — response truncated. Say "continue" to resume or use batch_update to combine edits.');
+                            setStatus('Max turns (10) — continue?', 'error');
                         } else {
                             setStatus('Stopped', 'error');
                         }

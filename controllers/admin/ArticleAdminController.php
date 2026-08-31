@@ -95,6 +95,12 @@ class ArticleAdminController extends Controller {
             header('Location: ' . BASE_URL . '/admin/articles');
             exit;
         }
+
+        if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
+            $_SESSION['error'] = 'CSRF token validation failed';
+            header('Location: ' . BASE_URL . '/admin/articles');
+            exit;
+        }
         
         $id = $_POST['id'] ?? null;
         
@@ -115,17 +121,52 @@ class ArticleAdminController extends Controller {
             'related_page_id' => !empty($_POST['related_page_id']) ? $_POST['related_page_id'] : null
         ];
         
-        // Handle image upload if provided
+        // Handle image upload if provided - validated (issue 9 fix)
         if (!empty($_FILES['image_upload']['name'])) {
+            $file = $_FILES['image_upload'];
+            if (!isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'])) {
+                $_SESSION['error'] = 'Invalid image upload';
+                header('Location: ' . BASE_URL . '/admin/articles' . ($id ? '/edit/' . $id : '/new'));
+                exit;
+            }
+            if ($file['size'] > MAX_UPLOAD_SIZE) {
+                $_SESSION['error'] = 'File too large';
+                header('Location: ' . BASE_URL . '/admin/articles' . ($id ? '/edit/' . $id : '/new'));
+                exit;
+            }
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            $allowedExts = ['jpg','jpeg','png','webp','gif'];
+            if (!in_array($ext, $allowedExts, true)) {
+                $_SESSION['error'] = 'Invalid image type';
+                header('Location: ' . BASE_URL . '/admin/articles' . ($id ? '/edit/' . $id : '/new'));
+                exit;
+            }
+            if (function_exists('finfo_open')) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $realMime = $finfo ? finfo_file($finfo, $file['tmp_name']) : null;
+                if ($finfo) finfo_close($finfo);
+                $realMime = $realMime === 'image/jpg' ? 'image/jpeg' : $realMime;
+                $allowedMimes = ['image/jpeg','image/png','image/webp','image/gif'];
+                if (!in_array($realMime, $allowedMimes, true)) {
+                    $_SESSION['error'] = 'Invalid image type';
+                    header('Location: ' . BASE_URL . '/admin/articles' . ($id ? '/edit/' . $id : '/new'));
+                    exit;
+                }
+            }
             $uploadDir = UPLOAD_PATH;
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
             }
-            $fileName = time() . '_' . basename($_FILES['image_upload']['name']);
+            $fileName = 'article_' . bin2hex(random_bytes(8)) . '.' . $ext;
             $targetPath = $uploadDir . $fileName;
             
-            if (move_uploaded_file($_FILES['image_upload']['tmp_name'], $targetPath)) {
+            if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                @chmod($targetPath, 0644);
                 $data['image'] = $fileName;
+            } else {
+                $_SESSION['error'] = 'Failed to save image';
+                header('Location: ' . BASE_URL . '/admin/articles' . ($id ? '/edit/' . $id : '/new'));
+                exit;
             }
         }
         
@@ -201,6 +242,11 @@ class ArticleAdminController extends Controller {
             $this->json(['success' => false, 'message' => 'Invalid request'], 400);
             return;
         }
+
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+            return;
+        }
         
         $id = $_POST['id'] ?? null;
         
@@ -225,6 +271,11 @@ class ArticleAdminController extends Controller {
         
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->json(['success' => false, 'message' => 'Invalid request'], 400);
+            return;
+        }
+
+        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
             return;
         }
         
