@@ -87,9 +87,10 @@ RewriteRule ^ index.php [QSA,L]
 # ----------------------------------------
 # 8) Error documents — routed via front controller (views/error.php is outside public, so keep /error.php and let Router handle 404 → $router->error)
 # ----------------------------------------
-# Keep /error.php as ErrorDocument target; public/error.php shim will be handled by RewriteRule ^ index.php if missing, which then triggers Router notFound → views/error.php
+# Keep /error.php as ErrorDocument target; RewriteRule routes it to front controller (remaining-bugs #12: preserve original URI via REDIRECT_URL)
 ErrorDocument 400 /error.php?code=400
 ErrorDocument 401 /error.php?code=401
 ErrorDocument 403 /error.php?code=403
-ErrorDocument 404 /index.php?code=404
+ErrorDocument 404 /error.php?code=404
 ErrorDocument 500 /error.php?code=500
+RewriteRule ^error\.php$ index.php [L]

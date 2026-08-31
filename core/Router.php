@@ -30,17 +30,30 @@ class Router {
             if ($isHead) {
                 $method = 'GET';
             }
-            $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+            // Preserve original URI when ErrorDocument triggers (REDIRECT_URL) — remaining-bugs #12
+            $rawUri = $_SERVER['REDIRECT_URL'] ?? $_SERVER['REQUEST_URI'];
+            // If ErrorDocument routed to /error.php?code=404, prefer REDIRECT_URI if available
+            if (isset($_SERVER['REDIRECT_URI'])) $rawUri = $_SERVER['REDIRECT_URI'];
+            elseif (isset($_SERVER['REQUEST_URI']) && str_starts_with($_SERVER['REQUEST_URI'], '/error.php')) {
+                $rawUri = $_SERVER['REDIRECT_URL'] ?? $rawUri;
+            }
+            $uri = parse_url($rawUri, PHP_URL_PATH);
             $base = dirname($_SERVER['SCRIPT_NAME']);
             if ($base !== '/' && strpos($uri, $base) === 0) {
                 $uri = substr($uri, strlen($base));
             }
             $uri = '/' . trim($uri, '/');
+            // Sort routes by specificity before any matching (remaining-bugs #7)
+            foreach ($this->routes as $m => $_) {
+                uksort($this->routes[$m], fn($a, $b) => (strpos($a, '{') !== false) <=> (strpos($b, '{') !== false));
+            }
             if (!isset($this->routes[$method])) {
-                // Distinguish method mismatch (405) from not found (404) — collect allowed methods for this URI
+                // 405 vs 404 — exclude catch-all public pages from Allow (remaining-bugs #7)
                 $allowed = [];
+                $catchAll = ['/{slug}', '/{slug}/{lang}'];
                 foreach ($this->routes as $m => $routes) {
                     foreach ($routes as $pattern => $cb) {
+                        if (in_array($pattern, $catchAll, true)) continue;
                         if (preg_match($this->convertPatternToRegex($pattern), $uri)) {
                             $allowed[] = $m;
                             break;
@@ -54,8 +67,6 @@ class Router {
                 }
                 return $this->error(404);
             }
-
-            uksort($this->routes[$method], fn($a, $b) => (strpos($a, '{') !== false) <=> (strpos($b, '{') !== false));
 
             foreach ($this->routes[$method] as $pattern => $callback) {
                 $regex = $this->convertPatternToRegex($pattern);

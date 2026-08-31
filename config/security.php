@@ -95,15 +95,35 @@ class RateLimiter {
     }
 
     private function ipIdentifier(string $identifier): string {
-        // If identifier looks like an IP, use as-is; else mix in real IP for per-IP bucket
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-        // Cloudflare / proxy
         if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
         elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) $ip = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
+        // Avoid double-append if identifier already contains IP/hash suffix (remaining-bugs #6)
+        if (str_contains($identifier, $ip) || preg_match('/[a-f0-9]{40}/', $identifier)) {
+            return $identifier;
+        }
         return $identifier . '_' . $ip;
     }
 
+    private function gc(): void {
+        if (rand(1, 100) !== 1) return;
+        $dir = $this->storageDir();
+        $files = @glob($dir . '/*.json');
+        if (!$files) return;
+        $now = time();
+        $pruned = 0;
+        foreach ($files as $f) {
+            if ($pruned > 50) break;
+            $mt = @filemtime($f);
+            if ($mt && $now - $mt > 86400) { // 24h
+                @unlink($f);
+                $pruned++;
+            }
+        }
+    }
+
     public function check($identifier, $action = 'default') {
+        $this->gc();
         $key = "ratelimit_{$action}_{$identifier}";
         $fileKey = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $this->ipIdentifier((string)$identifier) . '_' . $action);
         $file = $this->storageDir() . '/' . $fileKey . '.json';

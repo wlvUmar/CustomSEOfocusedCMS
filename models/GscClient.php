@@ -87,12 +87,13 @@ class GscClient {
     }
 
     private static function encKey(): string {
+        static $warnedReuse = false;
         $k = (string)(getenv('GSC_ENCRYPTION_KEY') ?: (defined('GSC_ENCRYPTION_KEY') ? GSC_ENCRYPTION_KEY : ''));
         if ($k === '') {
-            // Fallback to BOT_API_SECRET for BC, but warn — key reuse is discouraged (project-11#5, config#10)
             $k = (string)(getenv('BOT_API_SECRET') ?: '');
-            if ($k !== '') {
+            if ($k !== '' && !$warnedReuse) {
                 error_log("GscClient: GSC_ENCRYPTION_KEY not set — falling back to BOT_API_SECRET (key reuse). Set dedicated GSC_ENCRYPTION_KEY in .env.");
+                $warnedReuse = true;
             }
         }
         return $k;
@@ -127,16 +128,18 @@ class GscClient {
     }
 
     private static function decrypt(string $stored): string {
+        static $warnedPlain = false;
         $isEncrypted = str_starts_with($stored, 'gcm$');
         $key = self::encKey();
-        // BC: allow plaintext rows but warn and migrate on next save (avoids immediate breakage for existing installs)
+        // BC: allow plaintext rows but warn once per request and migrate on next save (remaining-bugs #8)
         if (!$isEncrypted) {
-            error_log("GscClient: token stored as plaintext — will re-encrypt on next save. Re-authenticate recommended.");
+            if (!$warnedPlain) {
+                error_log("GscClient: token stored as plaintext — will re-encrypt on next save. Re-authenticate recommended.");
+                $warnedPlain = true;
+            }
             if ($key === '' || !function_exists('openssl_decrypt')) {
-                // No key to validate — return as-is for BC, but caller should treat as connected
                 return $stored;
             }
-            // If key exists, plaintext is still usable until re-encrypted, but flag for migration
             return $stored;
         }
         if ($key === '' || !function_exists('openssl_decrypt')) {

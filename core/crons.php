@@ -1,8 +1,9 @@
 <?php
-$envFile = '/home/kuplyuta/.env'; // adjust to actual .env location
-// Fallback to BASE_PATH/.env for local/dev when prod path not present
-if (!is_file($envFile) && defined('BASE_PATH')) {
-    $alt = BASE_PATH . '/.env';
+// Resolve .env robustly for both web and cron contexts (remaining-bugs #9)
+$basePath = defined('BASE_PATH') ? BASE_PATH : (getenv('BASE_PATH') ?: __DIR__ . '/..');
+$envFile = $basePath . '/.env';
+if (!is_file($envFile)) {
+    $alt = '/home/kuplyuta/.env';
     if (is_file($alt)) $envFile = $alt;
 }
 if (is_file($envFile)) {

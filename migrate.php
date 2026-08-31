@@ -91,9 +91,10 @@ foreach ($files as $file) {
             fwrite(STDERR, "ERROR: Could not read SQL migration $name\n");
             exit(1);
         }
-        // Robust split: respect quotes, line comments (--), block comments (/* */)
+        // Robust split: respect quotes, line/block comments, DELIMITER // $$ (remaining-bugs #4)
         $queries = [];
         $buf = '';
+        $delimiter = ';';
         $inSingle = false; $inDouble = false; $inLineComment = false; $inBlockComment = false;
         $len = strlen($raw);
         for ($i = 0; $i < $len; $i++) {
@@ -107,21 +108,43 @@ foreach ($files as $file) {
                 if ($c === '*' && $next === '/') { $inBlockComment = false; $i++; }
                 continue;
             }
-            if (!$inSingle && !$inDouble) {
+            if (!$inSingle && !$inDouble && !$inLineComment && !$inBlockComment) {
+                // DELIMITER directive at line start (case-insensitive)
+                $remaining = substr($raw, $i);
+                if (strncasecmp($remaining, 'DELIMITER', 9) === 0 && ($remaining[9] ?? '') !== '' && ctype_space($remaining[9])) {
+                    $eol = strpos($remaining, "\n");
+                    $line = $eol === false ? $remaining : substr($remaining, 0, $eol);
+                    $parts = preg_split('/\s+/', trim($line), 2);
+                    $delimiter = $parts[1] ?? ';';
+                    $i += ($eol === false ? strlen($remaining) - 1 : $eol);
+                    continue;
+                }
                 if ($c === '-' && $next === '-') { $inLineComment = true; $i++; continue; }
                 if ($c === '/' && $next === '*') { $inBlockComment = true; $i++; continue; }
             }
             if ($c === "'" && !$inDouble) {
-                // handle escaped '' inside single quotes
                 if ($inSingle && $next === "'") { $buf .= $c . $next; $i++; continue; }
                 $inSingle = !$inSingle;
             } elseif ($c === '"' && !$inSingle) {
                 $inDouble = !$inDouble;
             }
-            if ($c === ';' && !$inSingle && !$inDouble) {
+            // Check delimiter (default ; or custom) when not in quotes
+            $isDelim = false;
+            if (!$inSingle && !$inDouble) {
+                $dlen = strlen($delimiter);
+                if (substr($raw, $i, $dlen) === $delimiter) {
+                    // Ensure delimiter not part of identifier (e.g., ; must be standalone)
+                    $isDelim = true;
+                    if ($dlen === 1 && $delimiter === ';') {
+                        // ok
+                    }
+                }
+            }
+            if ($isDelim) {
                 $trimmed = trim($buf);
                 if ($trimmed !== '') $queries[] = $trimmed . ';';
                 $buf = '';
+                $i += strlen($delimiter) - 1;
             } else {
                 $buf .= $c;
             }

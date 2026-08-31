@@ -33,8 +33,9 @@ SYNC_DIRS = [
 
 DEBOUNCE = 1.0
 LOG_FILE = "watcher.log"
-# Base local path for git status cwd (fixes NameError: LOCAL_PATH undefined)
+# Base local paths for git status cwd per sync dir (remaining-bugs #5 fix for ../ReviewRequestBot)
 LOCAL_PATH = os.path.abspath(SYNC_DIRS[0]["local"])
+LOCAL_PATHS = {d["local"]: os.path.abspath(d["local"]) for d in SYNC_DIRS}
 
 # ===== IGNORE RULES =====
 IGNORE_DIRS = {".git", "__pycache__", "node_modules", ".idea", ".vscode", "venv", ".venv"}
@@ -215,48 +216,44 @@ def upload_file(path, sync_dir):
 
 # ===== GIT HELPERS =====
 def get_git_status():
-    """Get list of modified and staged files from git status"""
+    """Get list of modified and staged files from git status per SYNC_DIR"""
+    changed = set()
     try:
-        # Hide subprocess window on Windows
         creationflags = 0
         if hasattr(subprocess, 'CREATE_NO_WINDOW'):
             creationflags = subprocess.CREATE_NO_WINDOW
         elif hasattr(subprocess, 'DETACHED_PROCESS'):
             creationflags = subprocess.DETACHED_PROCESS
-        
-        result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=LOCAL_PATH,
-            capture_output=True,
-            text=True,
-            timeout=5,
-            creationflags=creationflags
-        )
-        
-        if result.returncode != 0:
-            logging.warning(f"Git status failed: {result.stderr}")
-            return set()
-        
-        changed = set()
-        for line in result.stdout.strip().split('\n'):
-            if not line or len(line) < 3:
+        for sync_dir in SYNC_DIRS:
+            cwd = os.path.abspath(sync_dir["local"])
+            if not os.path.isdir(os.path.join(cwd, ".git")):
+                # Only run git status where .git exists; also allow "." root
+                if sync_dir["local"] != "." and not os.path.exists(os.path.join(cwd, ".git")):
+                    continue
+            try:
+                result = subprocess.run(
+                    ["git", "status", "--porcelain"],
+                    cwd=cwd,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    creationflags=creationflags
+                )
+            except Exception as e:
+                logging.warning(f"Git status failed for {sync_dir['name']}: {e}")
                 continue
-            
-            # Format: XY filename (X=staged, Y=modified)
-            # M  = modified (staged)
-            #  M = modified (unstaged)
-            # ?? = untracked
-            # A  = added (staged)
-            status = line[:2]
-            filename = line[3:].strip()
-            
-            # Include both staged (M, A, D) and modified (M) files
-            if status[0] in ['M', 'A', 'D', '?'] or status[1] in ['M', 'D']:
-                filepath = os.path.join(LOCAL_PATH, filename)
-                if os.path.exists(filepath):
-                    changed.add(filepath)
-        
-
+            if result.returncode != 0:
+                logging.warning(f"Git status failed for {sync_dir['name']}: {result.stderr}")
+                continue
+            for line in result.stdout.strip().split('\n'):
+                if not line or len(line) < 3:
+                    continue
+                status = line[:2]
+                filename = line[3:].strip()
+                if status[0] in ['M', 'A', 'D', '?'] or status[1] in ['M', 'D']:
+                    filepath = os.path.join(cwd, filename)
+                    if os.path.exists(filepath):
+                        changed.add(filepath)
         return changed
     except Exception as e:
         logging.error(f"Git status check failed: {e}")
@@ -280,11 +277,14 @@ def check_git_changes():
                 with lock:
                     for filepath in new_changes:
                         if not is_ignored(filepath):
-                            # Find matching sync_dir for this file
                             matched = next((d for d in SYNC_DIRS if os.path.abspath(filepath).startswith(os.path.abspath(d["local"]))), SYNC_DIRS[0])
                             pending_changes.append((filepath, matched))
                             git_tracked.add(filepath)
-                            logging.info(f"Git queued: {os.path.relpath(filepath, LOCAL_PATH)}")
+                            try:
+                                rel = os.path.relpath(filepath, os.path.abspath(matched["local"]))
+                            except:
+                                rel = filepath
+                            logging.info(f"Git queued [{matched['name']}]: {rel}")
             
             last_git_files = changed
         except Exception as e:

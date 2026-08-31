@@ -314,7 +314,7 @@ document.addEventListener('click', function(e) {
     }, { threshold: 0.1 });
     staggerSections.forEach(s => staggerObs.observe(s));
 
-    // Generic content sections, info-cards, process-steps, brand items
+    // Generic content sections, info-cards, process-steps, brand items — deferred to avoid layout thrash (remaining-bugs #10)
     const autoItems = document.querySelectorAll(
         '.content-section, .info-card, .process-step, .faq-item, .condition-item'
     );
@@ -323,9 +323,13 @@ document.addEventListener('click', function(e) {
             if (e.isIntersecting) { e.target.classList.add('is-visible'); autoObs.unobserve(e.target); }
         });
     }, { threshold: 0.12 });
-    autoItems.forEach((el, i) => {
-        el.style.transitionDelay = (i % 6) * 70 + 'ms';
-        autoObs.observe(el);
+    const scheduleAuto = (cb) => (window.requestIdleCallback ? requestIdleCallback(cb, {timeout: 300}) : requestAnimationFrame(() => setTimeout(cb, 0)));
+    scheduleAuto(() => {
+        autoItems.forEach((el, i) => {
+            // Batch style writes before observe to reduce recalc
+            el.style.transitionDelay = (i % 6) * 70 + 'ms';
+        });
+        autoItems.forEach(el => autoObs.observe(el));
     });
 
     // Stagger info-cards within a grid
@@ -362,28 +366,10 @@ document.addEventListener('click', function(e) {
         lineObs.observe(processSection);
     }
 
-    // Brands carousel snap indicator
+    // Brands + link tiles — reuse fadeObs to avoid extra observers (remaining-bugs #10: 7 -> 5 observers)
     const brandsList = document.querySelector('.brands-list');
-    if (brandsList) {
-        const brandObs = new IntersectionObserver(entries => {
-            entries.forEach(e => {
-                if (e.isIntersecting) {
-                    e.target.classList.add('is-visible');
-                    brandObs.unobserve(e.target);
-                }
-            });
-        }, { threshold: 0.1 });
-        brandObs.observe(brandsList);
-    }
-
-    // Link tiles
-    const linkTiles = document.querySelectorAll('.links-tile');
-    const linkObs = new IntersectionObserver(entries => {
-        entries.forEach(e => {
-            if (e.isIntersecting) { e.target.classList.add('is-visible'); linkObs.unobserve(e.target); }
-        });
-    }, { threshold: 0.15 });
-    linkTiles.forEach(t => linkObs.observe(t));
+    if (brandsList) fadeObs.observe(brandsList);
+    document.querySelectorAll('.links-tile').forEach(t => fadeObs.observe(t));
 })();
 
 /* ── FAQ accordion: smooth max-height toggle, multiple items can be open ── */
