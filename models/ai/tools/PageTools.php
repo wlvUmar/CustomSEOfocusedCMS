@@ -532,13 +532,16 @@ class PageTools {
         $limit = isset($args['limit']) ? max(1, min(50, (int)$args['limit'])) : 10;
 
         $db = Database::getInstance();
-        // 03-code-bugs #9 + project-06 #7: escape %/_ to avoid overbroad matches
-        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $query);
+        // Robust LIKE escaping: use '!' as ESCAPE to avoid '\' quoting hell.
+        // Previous ESCAPE '\\' was malformed in PHP double-quotes -> MySQL syntax error near '\') when query contained ' or \.
+        // Now: ! -> !!, % -> !%, _ -> !_ . Bound via ? so ' " \ are safe via PDO.
+        $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $query);
+        // Backslash is not special with ESCAPE '!', but normalize for consistency
         $like = '%' . $escaped . '%';
         $rows = $db->fetchAll(
             "SELECT id, slug, title_{$lang} AS title, content_{$lang} AS content, is_published, updated_at
              FROM pages
-             WHERE (title_{$lang} LIKE ? ESCAPE '\\' OR content_{$lang} LIKE ? ESCAPE '\\') AND is_published = 1
+             WHERE (title_{$lang} LIKE ? ESCAPE '!' OR content_{$lang} LIKE ? ESCAPE '!') AND is_published = 1
              ORDER BY updated_at DESC
              LIMIT " . (int)$limit,
             [$like, $like]
