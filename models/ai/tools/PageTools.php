@@ -1275,8 +1275,8 @@ class PageTools {
                             $fld = (string)($op['field'] ?? '');
                             $find = (string)($op['find'] ?? '');
                             $replace = (string)($op['replace'] ?? '');
-                            if (!in_array($fld, self::FIELDS, true)) throw new InvalidArgumentException("Operation #$idx: field not writable: {$fld}");
-                            if ($find === '') throw new InvalidArgumentException("Operation #$idx: find is required for str_replace_field");
+                            if (!in_array($fld, self::FIELDS, true)) throw new InvalidArgumentException("Operation #$idx: field not writable: {$fld} — got " . json_encode($op, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+                            if ($find === '') throw new InvalidArgumentException("Operation #$idx: find is required for str_replace_field — you sent " . mb_substr(json_encode($op, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),0,400) . " — copy find exactly from get_section/get_page including HTML tags");
                             $current = $buffers[$fld] ?? '';
                             $cnt = substr_count($current, $find);
                             if ($cnt === 0) throw new InvalidArgumentException("Operation #$idx: find text not found in field {$fld} — fetch exact HTML via get_section/get_page.");

@@ -15,6 +15,8 @@ class AiStudioController extends Controller {
     private const MAX_HISTORY_TURNS = 12;
     /** JSON-lines operational log for this feature (separate from php_errors.log). */
     private const LOG_FILE = BASE_PATH . '/logs/ai-studio.log';
+    /** Verbose debug dump: raw prompts, messages, tool results (opt-in via ?debug=1 or header, always for errors). */
+    private const DEBUG_LOG_FILE = BASE_PATH . '/logs/ai-studio-debug.log';
 
     public function index() {
         $this->requireAuth();
@@ -182,6 +184,19 @@ class AiStudioController extends Controller {
             'pending_count' => count($pending),
             'prompt_chars' => mb_strlen($promptForLog),
         ]);
+        if ($this->shouldDebug()) {
+            $this->logDebug('prompt_raw', [
+                'model' => $model,
+                'mode' => $mode,
+                'system_prompt' => $promptForLog,
+                'system_prompt_chars' => mb_strlen($promptForLog),
+                'initial_messages' => array_map(fn($m)=>['role'=>$m['role']??'','content'=>isset($m['content'])? mb_substr($m['content'],0,4000):'', 'tool_calls'=>isset($m['tool_calls'])? array_slice($m['tool_calls'],0,3):null], $messages),
+                'history_raw' => $history,
+                'pending_raw' => $pending,
+                'user_message' => $message,
+                'definitions_count' => count(AiToolRegistry::definitionsForMode($mode)),
+            ]);
+        }
 
         $this->sse('activity', ['text' => ($mode === 'plan' ? 'Planning…' : 'Starting…')]);
 
@@ -261,7 +276,27 @@ class AiStudioController extends Controller {
                     $messages = array_merge([$system], $rest);
                     $this->sse('activity', ['text' => 'Context trimmed to fit token budget']);
                 }
+                if ($this->shouldDebug()) {
+                    $this->logDebug('turn_request', [
+                        'turn' => $turn,
+                        'model' => $model,
+                        'messages' => $messages,
+                        'messages_chars' => array_sum(array_map(fn($m)=> mb_strlen(json_encode($m, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?: ''), $messages)),
+                        'definitions' => AiToolRegistry::definitionsForMode($mode),
+                    ]);
+                }
                 $response = OpenRouter::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192);
+                if ($this->shouldDebug()) {
+                    $this->logDebug('turn_response', [
+                        'turn' => $turn,
+                        'model' => $model,
+                        'content' => $response['content'] ?? '',
+                        'content_chars' => mb_strlen($response['content'] ?? ''),
+                        'tool_calls' => $response['tool_calls'] ?? null,
+                        'finish_reason' => $response['finish_reason'] ?? null,
+                        'usage' => $response['usage'] ?? null,
+                    ]);
+                }
                 if (connection_aborted()) {
                     $this->logAi('run_end', ['status'=>'aborted_after_model','turns'=>$turnsUsed,'duration_ms'=>$this->elapsedMs($startedAt)]);
                     try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot); } catch (Throwable $e) { error_log('persist on abort_after_model failed: ' . $e->getMessage()); }
@@ -349,6 +384,21 @@ class AiStudioController extends Controller {
                         'args' => mb_substr((string)json_encode($args, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 0, 500),
                         'duration_ms' => $toolMs,
                     ]);
+                    if ($this->shouldDebug()) {
+                        $this->logDebug('tool_result_raw', [
+                            'turn' => $turn,
+                            'tool' => $name,
+                            'call_id' => $out['call_id'] ?? $toolMsgId,
+                            'type' => $out['type'],
+                            'args' => $args,
+                            'raw_args' => $rawArgs,
+                            'result' => $out['result'] ?? null,
+                            'message' => $out['message'] ?? null,
+                            'plan' => $out['plan'] ?? null,
+                            'reason' => $out['reason'] ?? null,
+                            'duration_ms' => $toolMs,
+                        ]);
+                    }
 
                     if ($out['type'] === 'approval') {
                         $haltForApproval = true;
@@ -523,6 +573,14 @@ class AiStudioController extends Controller {
                 'at' => $e->getFile() . ':' . $e->getLine(),
                 'duration_ms' => $this->elapsedMs($startedAt),
             ]);
+            if ($this->shouldDebug()) {
+                $this->logDebug('run_error_raw', [
+                    'exception' => $e->getMessage(),
+                    'file' => $e->getFile() . ':' . $e->getLine(),
+                    'trace' => mb_substr($e->getTraceAsString(), 0, 4000),
+                    'messages_snapshot' => array_slice($messages ?? [], -6),
+                ]);
+            }
             try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot ?? []); } catch (Throwable $ignored) { error_log('persist on error failed: ' . $ignored->getMessage()); }
             try { $this->sse('error', ['message' => $e->getMessage()]); } catch (Throwable $ignored) {}
             try { $this->sse('done', ['status' => 'error']); } catch (Throwable $ignored) {}
@@ -616,6 +674,29 @@ class AiStudioController extends Controller {
             }
         }
         @error_log($line . "\n", 3, self::LOG_FILE);
+    }
+
+    private function logDebug(string $event, array $payload = []): void {
+        $sid = $_SESSION['ai_session_id'] ?? ($_POST['session_id'] ?? null);
+        $line = json_encode([
+            'ts' => date('Y-m-d H:i:s.v'),
+            'event' => $event,
+            'session_id' => $sid ? substr((string)$sid, 0, 16) : null,
+        ] + $payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($line === false) $line = json_encode(['ts'=>date('Y-m-d H:i:s'), 'event'=>$event, 'error'=>'json_encode failed']);
+        // Rotate debug log at 20MB
+        if (is_file(self::DEBUG_LOG_FILE) && @filesize(self::DEBUG_LOG_FILE) > 20 * 1024 * 1024) {
+            @rename(self::DEBUG_LOG_FILE, self::DEBUG_LOG_FILE . '.' . date('Y-m-d_His'));
+        }
+        @error_log($line . "\n", 3, self::DEBUG_LOG_FILE);
+    }
+
+    private function shouldDebug(): bool {
+        if (isset($_POST['debug']) && $_POST['debug'] === '1') return true;
+        if (isset($_GET['debug']) && $_GET['debug'] === '1') return true;
+        if (getenv('AI_STUDIO_DEBUG') === '1') return true;
+        // Always debug in development for now (can gate by APP_ENV if needed)
+        return true;
     }
 
     // ------------------------------------------------------------------
