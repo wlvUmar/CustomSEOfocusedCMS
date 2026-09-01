@@ -9,8 +9,8 @@ require_once BASE_PATH . '/models/ai/AiToolRegistry.php';
 
 class AiStudioController extends Controller {
 
-    /** Hard cap on model↔tool round trips per HTTP request. Raised 8→10 to reduce truncation on multi-step audits (04-09). */
-    private const MAX_TOOL_TURNS = 10;
+    /** Hard cap on model↔tool round trips per HTTP request. Effectively uncapped (50) per user request to remove limit — raised 10→50. */
+    private const MAX_TOOL_TURNS = 50;
     /** History depth kept for context (client sends the transcript each turn). */
     private const MAX_HISTORY_TURNS = 12;
     /** JSON-lines operational log for this feature (separate from php_errors.log). */
@@ -783,7 +783,7 @@ class AiStudioController extends Controller {
 
     private function buildPlanPrompt(): string {
         return <<<'PROMPT'
-You are a Staff-level HTML/CSS & Technical SEO auditor (15+ years) for kuplyu-tashkent.uz — Tashkent appliance buyback, bilingual RU/UZ. You are READ-ONLY in this session. You investigate, diagnose, and propose a precise execution plan. You never write, never mutate data.
+You are a Staff-level HTML/CSS & Technical SEO auditor (15+ years) for kuplyu-tashkent.uz — Tashkent's #1 appliance & furniture buyback (скупка/выкуп бытовой техники и мебели: холодильники, стиральные машины, телевизоры, газовые плиты, кондиционеры, диваны, кровати, шкафы, столы/стулья), bilingual RU/UZ. You are READ-ONLY in this session. You investigate, diagnose, and propose a precise execution plan. You never write, never mutate data.
 
 AVAILABLE TOOLS (read-only): list_pages, get_page, search_content, list_sections, get_section, get_content_chunk, list_page_revisions, get_page_revision, get_global_settings, get_template_variables, get_design_tokens, render_preview, render_full_page, list_rotations, get_rotation, get_top_pages, get_page_stats, get_underperforming_pages, get_crawl_frequency, get_internal_links, get_rotation_effectiveness, run_analytics_query, query_builder, get_gsc_overview, get_page_gsc, get_gsc_queries, get_gsc_pages, search_gsc_queries, query_gsc, list_faqs, get_faq, list_context, get_context.
 
@@ -802,7 +802,7 @@ PROMPT;
 
     private function buildBuildPrompt(): string {
         return <<<'PROMPT'
-You are an autonomous BUILDER — Staff-level HTML/CSS & Technical SEO specialist (15+ years) for kuplyu-tashkent.uz. Your job is to ACT, not to chat. You ship code via tools. Text without a tool call is wasted.
+You are an autonomous BUILDER — Staff-level HTML/CSS & Technical SEO specialist (15+ years) for kuplyu-tashkent.uz — Tashkent appliance & furniture buyback niche (выкуп техники и мебели: холодильники, стиралки, ТВ, плиты, кондиционеры + диваны, шкафы, кровати, столы; bilingual RU/UZ, intent: "продать б/у технику/мебель в Ташкенте, скупка, выкуп, дорого"). Your job is to ACT, not to chat. You ship code via tools. Text without a tool call is wasted.
 
 YOU MUST CALL A TOOL EVERY TURN. Server enforces tool_choice=required — a text-only reply will be rejected and retried. Never output "got it", "no more confirmations", "понял" alone. Never ask "should I proceed?" / "do you want me to?" — you already have permission.
 

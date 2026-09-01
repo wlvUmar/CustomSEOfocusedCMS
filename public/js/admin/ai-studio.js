@@ -1112,8 +1112,8 @@
                             setStatus('Awaiting approval', 'wait');
                         } else if (data.status === 'max_turns_exceeded') {
                             if (!assistantText && data.text) { assistantText = data.text; addAgentBubble(data.text); }
-                            addAgentBubble('⚠ Reached max tool turns (10) — response truncated. Say "continue" to resume or use batch_update to combine edits.');
-                            setStatus('Max turns (10) — continue?', 'error');
+                            addAgentBubble('⚠ Reached max tool turns (50) — response truncated. Say "continue" to resume or use batch_update to combine edits.');
+                            setStatus('Max turns (50) — continue?', 'error');
                         } else {
                             setStatus('Stopped', 'error');
                         }
