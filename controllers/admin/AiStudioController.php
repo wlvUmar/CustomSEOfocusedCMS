@@ -22,9 +22,17 @@ class AiStudioController extends Controller {
         $this->requireAuth();
         require_once BASE_PATH . '/models/GscClient.php';
         $gsc = GscClient::getStatus();
+        // Provide live models with pricing for initial render (fallback to MODELS if API unreachable);
+        // prices come from OpenRouter API (prompt/completion per token) — see OpenRouter::fetchModels().
+        $live = OpenRouter::fetchModels();
+        $hasPricing = false;
+        foreach ($live as $m) { if (isset($m['pricing'])) { $hasPricing = true; break; } }
+        // If live fetch failed and returned fallback without usable pricing, it still contains pricing now.
         $this->view('admin/ai-studio/index', [
             'pageName' => 'ai-studio',
             'models' => OpenRouter::MODELS,
+            'modelsLive' => $live,
+            'hasPricing' => $hasPricing,
             'gscStatus' => $gsc,
         ]);
     }
@@ -90,13 +98,17 @@ class AiStudioController extends Controller {
         $_SESSION["ratelimit_ai_studio_{$rlKey}"] = $rlData;
 
         $model = trim((string)($_POST['model'] ?? ''));
-        // Model whitelist — empty or unknown falls back to default; sanitize logged value.
-        if ($model === '' || !isset(OpenRouter::MODELS[$model])) {
-            $sanitized = substr(preg_replace('/[^a-z0-9\/\-\.:_]/i', '', $model), 0, 80);
-            if ($model !== '' && $model !== 'deepseek/deepseek-chat') {
-                $this->logAi('model_fallback', ['requested' => $sanitized !== '' ? $sanitized : '[empty]', 'fallback' => 'deepseek/deepseek-chat']);
-            }
-            $model = 'deepseek/deepseek-chat';
+        // Model allowlist: accept any :free, openrouter/free, or live catalogue match.
+        // Prices come from OpenRouter API — see OpenRouter::fetchModels() pricing.
+        $originalModel = $model;
+        $model = OpenRouter::normalizeModel($model);
+        if ($originalModel !== '' && $originalModel !== $model) {
+            $sanitized = substr(preg_replace('/[^a-z0-9\/\-\.:_]/i', '', $originalModel), 0, 80);
+            $this->logAi('model_fallback', ['requested' => $sanitized !== '' ? $sanitized : '[empty]', 'fallback' => $model, 'allowed_via' => OpenRouter::isAllowedModel($originalModel) ? 'heuristic' : 'invalid']);
+        }
+        // If normalize fell back to default but original was free variant not in isAllowedModel edge, keep original if it ends with :free
+        if ($originalModel !== '' && $model === 'deepseek/deepseek-chat' && str_ends_with($originalModel, ':free') && OpenRouter::isAllowedModel($originalModel)) {
+            $model = $originalModel;
         }
         $message = trim((string)($_POST['message'] ?? ''));
         // Hard cap single message to avoid token blow-up (C1/H5).

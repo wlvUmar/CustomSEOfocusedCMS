@@ -362,7 +362,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'batch_update',
-                    'description' => 'Apply up to 10 targeted edits to one page atomically in one turn (saves turns). Each op is patch_section/str_replace_field/update_section/set_section_style/wrap_section/add_section_marker. Each op with replace/html >800 chars individually requires approval before batch executes — keep ops small. Prefer over sequential calls.',
+                    'description' => 'Apply up to 10 targeted edits to one page atomically in one turn (saves turns). Each op is patch_section/str_replace_field/set_field/update_section/set_section_style/wrap_section/add_section_marker. Each op with replace/html/value >800 chars individually requires approval before batch executes — keep ops small. Use set_field when target field is empty (str_replace_field requires non-empty find). Prefer over sequential calls.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -375,12 +375,13 @@ class PageTools {
                                 'items' => [
                                     'type' => 'object',
                                     'properties' => [
-                                        'op' => ['type' => 'string', 'enum' => ['patch_section','str_replace_field','update_section','set_section_style','wrap_section','add_section_marker'], 'description' => 'Operation type.'],
-                                        'field' => ['type' => 'string', 'description' => 'Field for str_replace_field (must be in FIELDS).'],
+                                        'op' => ['type' => 'string', 'enum' => ['patch_section','str_replace_field','set_field','update_section','set_section_style','wrap_section','add_section_marker'], 'description' => 'Operation type.'],
+                                        'field' => ['type' => 'string', 'description' => 'Field for str_replace_field/set_field (must be in FIELDS).'],
                                         'lang' => ['type' => 'string', 'enum' => ['ru','uz'], 'description' => 'Language for section ops (default ru).'],
                                         'section' => ['type' => 'string', 'description' => 'Section name or index for section ops.'],
                                         'find' => ['type' => 'string', 'description' => 'Find text for patch/str_replace/add_section_marker.'],
-                                        'replace' => ['type' => 'string', 'description' => 'Replacement text.'],
+                                        'replace' => ['type' => 'string', 'description' => 'Replacement text for str_replace_field/patch_section (or value alias for set_field).'],
+                                        'value' => ['type' => 'string', 'description' => 'Complete new value for set_field (alternative to replace).'],
                                         'html' => ['type' => 'string', 'description' => 'Full HTML for update_section.'],
                                         'style' => ['type' => 'string', 'description' => 'CSS declarations for set_section_style.'],
                                         'wrapper_open' => ['type' => 'string', 'description' => 'Opening tag for wrap_section.'],
@@ -1276,14 +1277,27 @@ class PageTools {
                             $find = (string)($op['find'] ?? '');
                             $replace = (string)($op['replace'] ?? '');
                             if (!in_array($fld, self::FIELDS, true)) throw new InvalidArgumentException("Operation #$idx: field not writable: {$fld} — got " . json_encode($op, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
-                            if ($find === '') throw new InvalidArgumentException("Operation #$idx: find is required for str_replace_field — you sent " . mb_substr(json_encode($op, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),0,400) . " — copy find exactly from get_section/get_page including HTML tags");
+                            if ($find === '') throw new InvalidArgumentException("Operation #$idx: find is required for str_replace_field — empty strings are invalid. You sent " . mb_substr(json_encode($op, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),0,400) . " — copy find exactly from get_page (for meta_title/meta_description) or get_section/get_content_chunk (for content) including HTML tags. If field is empty, use set_field instead.");
                             $current = $buffers[$fld] ?? '';
+                            if ($current === '' && $find !== '') throw new InvalidArgumentException("Operation #$idx: field {$fld} is currently empty — str_replace_field requires non-empty find. Use set_field (or batch op set_field) to initialize it.");
                             $cnt = substr_count($current, $find);
-                            if ($cnt === 0) throw new InvalidArgumentException("Operation #$idx: find text not found in field {$fld} — fetch exact HTML via get_section/get_page.");
+                            if ($cnt === 0) throw new InvalidArgumentException("Operation #$idx: find text not found in field {$fld} — fetch exact HTML via get_page (meta fields) or get_section/get_content_chunk (content). Current field length " . mb_strlen($current) . " chars.");
                             if ($cnt > 1) throw new InvalidArgumentException("Operation #$idx: find occurs {$cnt} times — include more context or use update_section.");
                             $buffers[$fld] = str_replace($find, $replace, $current);
                             $fieldDirty[$fld] = true;
                             $results[] = ['index'=>$idx,'op'=>$type,'ok'=>true,'field'=>$fld,'before_chars'=>mb_strlen($current),'after_chars'=>mb_strlen($buffers[$fld])];
+                            break;
+                        }
+                        case 'set_field': {
+                            $fld = (string)($op['field'] ?? '');
+                            // In batch, set_field uses 'value' (preferred) or 'replace' for compat
+                            $value = array_key_exists('value', $op) ? (string)$op['value'] : (string)($op['replace'] ?? '');
+                            if (!in_array($fld, self::FIELDS, true)) throw new InvalidArgumentException("Operation #$idx: field not writable: {$fld}");
+                            // Empty value is allowed (clear field) but warn if really empty — keep intentional
+                            $before = $buffers[$fld] ?? '';
+                            $buffers[$fld] = $value;
+                            $fieldDirty[$fld] = true;
+                            $results[] = ['index'=>$idx,'op'=>$type,'ok'=>true,'field'=>$fld,'before_chars'=>mb_strlen($before),'after_chars'=>mb_strlen($value), 'note'=>'set_field in batch'];
                             break;
                         }
                         case 'patch_section': {
@@ -1431,7 +1445,7 @@ class PageTools {
                             break;
                         }
                         default:
-                            throw new InvalidArgumentException("Operation #$idx: unknown op '{$type}' — allowed: patch_section, str_replace_field, update_section, set_section_style, wrap_section, add_section_marker");
+                            throw new InvalidArgumentException("Operation #$idx: unknown op '{$type}' — allowed: patch_section, str_replace_field, set_field, update_section, set_section_style, wrap_section, add_section_marker");
                     }
                 } catch (InvalidArgumentException $e) {
                     if ($inTxn && $db->inTransaction()) $db->rollBack();

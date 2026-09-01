@@ -33,9 +33,39 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <div class="ai-studio__controls">
                 <label class="ai-studio__model-label" for="ai-model">Model</label>
                 <select id="ai-model">
-                    <?php foreach ($models as $key => $label): ?>
-                        <option value="<?= e($key) ?>" <?= $key === 'deepseek/deepseek-chat' ? 'selected' : '' ?>><?= e($label) ?></option>
-                    <?php endforeach; ?>
+                    <?php
+                    // Prefer live list with pricing from OpenRouter API (see OpenRouter::fetchModels); fallback to curated MODELS.
+                    $models = $models ?? [];
+                    $modelsLive = $modelsLive ?? null;
+                    $renderList = null;
+                    if (!empty($modelsLive) && is_array($modelsLive)) {
+                        $renderList = $modelsLive;
+                    }
+                    if (is_array($renderList) && isset($renderList[0]['id'])) {
+                        // live shape: [{id, name, pricing, context_length}]
+                        foreach ($renderList as $m) {
+                            $id = $m['id'] ?? '';
+                            $name = $m['name'] ?? $id;
+                            $pricing = $m['pricing'] ?? null;
+                            $priceLabel = '';
+                            if (is_array($pricing)) {
+                                $p = (float)($pricing['prompt'] ?? 0);
+                                $c = (float)($pricing['completion'] ?? 0);
+                                if ($p == 0 && $c == 0) $priceLabel = 'FREE';
+                                else $priceLabel = '$' . number_format($p * 1e6, 2) . '/$' . number_format($c * 1e6, 2) . ' per 1M';
+                            }
+                            $ctxLabel = !empty($m['context_length']) ? (round($m['context_length']/1000) . 'k') : '';
+                            $suffix = trim(implode(' · ', array_filter([$priceLabel, $ctxLabel])));
+                            $display = e($name) . ($suffix !== '' ? ' — ' . e($suffix) : '');
+                            $sel = $id === 'deepseek/deepseek-chat' ? ' selected' : '';
+                            echo '<option value="' . e($id) . '"' . $sel . ' title="' . e($id . ($suffix ? ' · ' . $suffix : '')) . '">' . $display . '</option>';
+                        }
+                    } else {
+                        foreach ($models as $key => $label) {
+                            echo '<option value="' . e($key) . '"' . ($key === 'deepseek/deepseek-chat' ? ' selected' : '') . '>' . e($label) . '</option>';
+                        }
+                    }
+                    ?>
                 </select>
                 <button id="ai-new-session" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="rotate-ccw"></i> New session</button>
                 <button id="ai-preview-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" aria-pressed="true"><i data-feather="sidebar"></i> <span id="ai-preview-toggle-label">Hide preview</span></button>
