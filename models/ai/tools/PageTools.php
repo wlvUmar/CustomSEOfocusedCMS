@@ -83,13 +83,13 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'str_replace_field',
-                    'description' => 'Apply a precise find-and-replace to one field of one page. The "find" text must appear EXACTLY once in the current stored value (copy it character-for-character from get_page/get_section output, including HTML tags). If get_page was truncated, use get_section or get_content_chunk to fetch the exact fragment. Replacements >800 chars require user approval (approval_required). Prefer patch_section for section-scoped edits.',
+                    'description' => 'Apply a precise find-and-replace to one field of one page. Valid fields: ' . implode(', ', self::FIELDS) . '. The "find" text must appear EXACTLY once in the current stored value — copy it character-for-character from get_page output (for title/meta fields) or get_section/get_content_chunk (for content_*). For meta_title_ru/meta_description_ru you MUST call get_page first and copy the exact value — do not guess. If get_page was truncated, use get_section or get_content_chunk to fetch the exact fragment. Replacements >800 chars require user approval (approval_required). Prefer patch_section for section-scoped edits.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
                             'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
-                            'field' => ['type' => 'string', 'enum' => self::FIELDS, 'description' => 'Target field.'],
-                            'find' => ['type' => 'string', 'description' => 'Exact existing text to locate (must occur exactly once).'],
+                            'field' => ['type' => 'string', 'enum' => self::FIELDS, 'description' => 'Target field. Valid: ' . implode(', ', self::FIELDS) . '. For meta fields use get_page to fetch exact current value.'],
+                            'find' => ['type' => 'string', 'description' => 'Exact existing text to locate (must occur exactly once). Copy verbatim from get_page (meta/title) or get_section (content) — including dashes, spaces, punctuation.'],
                             'replace' => ['type' => 'string', 'description' => 'New text. Use "" to delete the found text.'],
                         ],
                         'required' => ['page_id', 'field', 'find'],
@@ -376,10 +376,10 @@ class PageTools {
                                     'type' => 'object',
                                     'properties' => [
                                         'op' => ['type' => 'string', 'enum' => ['patch_section','str_replace_field','set_field','update_section','set_section_style','wrap_section','add_section_marker'], 'description' => 'Operation type.'],
-                                        'field' => ['type' => 'string', 'description' => 'Field for str_replace_field/set_field (must be in FIELDS).'],
+                                        'field' => ['type' => 'string', 'enum' => self::FIELDS, 'description' => 'Field for str_replace_field/set_field. Valid: ' . implode(', ', self::FIELDS) . '. For meta_title/meta_description you MUST fetch exact value via get_page first.'],
                                         'lang' => ['type' => 'string', 'enum' => ['ru','uz'], 'description' => 'Language for section ops (default ru).'],
                                         'section' => ['type' => 'string', 'description' => 'Section name or index for section ops.'],
-                                        'find' => ['type' => 'string', 'description' => 'Find text for patch/str_replace/add_section_marker.'],
+                                        'find' => ['type' => 'string', 'description' => 'Find text for patch/str_replace/add_section_marker. Must be verbatim from get_page (meta) or get_section (content) — do not guess.'],
                                         'replace' => ['type' => 'string', 'description' => 'Replacement text for str_replace_field/patch_section (or value alias for set_field).'],
                                         'value' => ['type' => 'string', 'description' => 'Complete new value for set_field (alternative to replace).'],
                                         'html' => ['type' => 'string', 'description' => 'Full HTML for update_section.'],
@@ -674,7 +674,9 @@ class PageTools {
         // 03-code-bugs #10: use mb_substr_count for Cyrillic/multibyte correctness
         $count = mb_substr_count($current, $find, 'UTF-8');
         if ($count === 0) {
-            throw new InvalidArgumentException('The "find" text was not found — fetch exact HTML via get_section (or get_page/get_content_chunk) and copy character-for-character, including HTML tags.');
+            $preview = mb_substr($current, 0, 200);
+            $findPreview = mb_substr($find, 0, 120);
+            throw new InvalidArgumentException('The "find" text was not found in field "' . $field . '" (length ' . mb_strlen($current) . ' chars). Current preview: "' . $preview . '". Your find preview: "' . $findPreview . '". Fetch exact value via get_page (for ' . $field . ') or get_section/get_content_chunk (for content_*) and copy verbatim — valid fields: ' . implode(', ', self::FIELDS) . '.');
         }
         if ($count > 1) {
             throw new InvalidArgumentException('The "find" text occurs ' . $count . ' times — include more surrounding context to make it unique or use update_section for a full rewrite.');
@@ -1281,7 +1283,11 @@ class PageTools {
                             $current = $buffers[$fld] ?? '';
                             if ($current === '' && $find !== '') throw new InvalidArgumentException("Operation #$idx: field {$fld} is currently empty — str_replace_field requires non-empty find. Use set_field (or batch op set_field) to initialize it.");
                             $cnt = substr_count($current, $find);
-                            if ($cnt === 0) throw new InvalidArgumentException("Operation #$idx: find text not found in field {$fld} — fetch exact HTML via get_page (meta fields) or get_section/get_content_chunk (content). Current field length " . mb_strlen($current) . " chars.");
+                            if ($cnt === 0) {
+                                $curPreview = mb_substr($current, 0, 180);
+                                $findPreview = mb_substr($find, 0, 120);
+                                throw new InvalidArgumentException("Operation #$idx: find text not found in field {$fld} (length " . mb_strlen($current) . " chars). Current preview: \"{$curPreview}\". Your find preview: \"{$findPreview}\". Fetch exact value via get_page for {$fld} (valid: " . implode(', ', self::FIELDS) . ") or get_section for content — copy verbatim.");
+                            }
                             if ($cnt > 1) throw new InvalidArgumentException("Operation #$idx: find occurs {$cnt} times — include more context or use update_section.");
                             $buffers[$fld] = str_replace($find, $replace, $current);
                             $fieldDirty[$fld] = true;
