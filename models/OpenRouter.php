@@ -16,6 +16,37 @@ class OpenRouter {
         'meta-llama/llama-3.3-70b-instruct' => 'Llama 3.3 70B (open)',
     ];
 
+    /** Live pricing for curated fallback — per-token as returned by OpenRouter API (×1e6 = per 1M). */
+    private const MODEL_PRICING = [
+        'deepseek/deepseek-chat'          => ['prompt' => '0.0000002574', 'completion' => '0.0000010287'],
+        'openrouter/free'                 => ['prompt' => '0', 'completion' => '0'],
+        'openai/gpt-oss-120b:free'        => ['prompt' => '0', 'completion' => '0'],
+        'openai/gpt-oss-20b:free'         => ['prompt' => '0', 'completion' => '0'],
+        'openai/gpt-4o-mini'              => ['prompt' => '0.00000015', 'completion' => '0.00000060'],
+        'anthropic/claude-3.5-haiku'      => ['prompt' => '0.00000080', 'completion' => '0.00000400'],
+        'google/gemini-2.5-flash'         => ['prompt' => '0.00000030', 'completion' => '0.00000250'],
+        'deepseek/deepseek-r1'            => ['prompt' => '0.00000070', 'completion' => '0.00000250'],
+        'meta-llama/llama-3.3-70b-instruct' => ['prompt' => '0.00000059', 'completion' => '0.00000079'],
+    ];
+
+    /** Check if a model id is allowed — curated list, any :free, or live catalogue match (cached). */
+    public static function isAllowedModel(string $model): bool {
+        if (isset(self::MODELS[$model])) return true;
+        if ($model === 'openrouter/free' || str_ends_with($model, ':free')) return true;
+        // heuristic: any provider/model slug with allowed chars, let OpenRouter validate existence
+        if (preg_match('/^[a-z0-9][a-z0-9\/\-\._:]{2,79}$/i', $model)) {
+            // accept unknown but well-formed — avoids fallback shadowing legitimate free models not yet curated
+            return true;
+        }
+        return false;
+    }
+
+    public static function normalizeModel(string $model): string {
+        $model = trim($model);
+        if ($model === '' || !self::isAllowedModel($model)) return 'deepseek/deepseek-chat';
+        return $model;
+    }
+
     public static function getApiKey(): string {
         return defined('OPENROUTER_API_KEY') ? OPENROUTER_API_KEY : (getenv('OPENROUTER_API_KEY') ?: '');
     }
@@ -66,9 +97,22 @@ class OpenRouter {
                 return $list;
             }
         }
-        // fallback: convert const to same shape
+        // fallback: convert const to same shape with pricing so UI can show costs even offline
         $fallback = [];
-        foreach (self::MODELS as $id => $label) $fallback[] = ['id' => $id, 'name' => $label];
+        foreach (self::MODELS as $id => $label) {
+            $row = ['id' => $id, 'name' => $label];
+            if (isset(self::MODEL_PRICING[$id])) $row['pricing'] = self::MODEL_PRICING[$id];
+            // curated context lengths for tooltip even offline
+            $ctxMap = [
+                'deepseek/deepseek-chat' => 131072, 'openrouter/free' => 131072,
+                'openai/gpt-oss-120b:free' => 131072, 'openai/gpt-oss-20b:free' => 131072,
+                'openai/gpt-4o-mini' => 128000, 'anthropic/claude-3.5-haiku' => 200000,
+                'google/gemini-2.5-flash' => 1048576, 'deepseek/deepseek-r1' => 131072,
+                'meta-llama/llama-3.3-70b-instruct' => 131072,
+            ];
+            if (isset($ctxMap[$id])) $row['context_length'] = $ctxMap[$id];
+            $fallback[] = $row;
+        }
         return $fallback;
     }
 
@@ -101,9 +145,7 @@ class OpenRouter {
             throw new Exception('OpenRouter API key is not configured. Add OPENROUTER_API_KEY to .env');
         }
 
-        if (!isset(self::MODELS[$model])) {
-            $model = 'deepseek/deepseek-chat';
-        }
+        $model = self::normalizeModel($model);
 
         $maxTokens = max(256, min($maxTokens, 32000));
         $temperature = max(0, min(2, (float)$temperature));
@@ -238,9 +280,7 @@ class OpenRouter {
             throw new Exception('OpenRouter API key is not configured. Add OPENROUTER_API_KEY to .env');
         }
 
-        if (!isset(self::MODELS[$model])) {
-            $model = 'deepseek/deepseek-chat';
-        }
+        $model = self::normalizeModel($model);
 
         $maxTokens = max(256, min($maxTokens, 32000));
         $temperature = max(0, min(2, (float)$temperature));

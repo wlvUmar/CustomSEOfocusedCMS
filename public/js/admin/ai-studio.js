@@ -105,21 +105,37 @@
             });
             const frag = document.createDocumentFragment();
             const seen = new Set();
+            function fmtPrice(pricing) {
+                if (!pricing) return '';
+                const p = Number(pricing.prompt || 0), c = Number(pricing.completion || 0);
+                if (p === 0 && c === 0) return 'FREE';
+                // OpenRouter pricing is per-token; display per 1M for readability
+                return `$${(p * 1e6).toFixed(2)}/$${(c * 1e6).toFixed(2)} per 1M`;
+            }
+            // Prefer FREE models right after curated, then by name — pricing comes from OpenRouter API
+            list.sort((a,b) => {
+                const ca = curated.has(a.id), cb = curated.has(b.id);
+                if (ca && !cb) return -1; if (!ca && cb) return 1;
+                const pa = a.pricing ? (Number(a.pricing.prompt||0)+Number(a.pricing.completion||0)) : 1;
+                const pb = b.pricing ? (Number(b.pricing.prompt||0)+Number(b.pricing.completion||0)) : 1;
+                const fa = pa === 0, fb = pb === 0;
+                if (fa && !fb) return -1; if (!fa && fb) return 1;
+                return (a.name || a.id).localeCompare(b.name || b.id);
+            });
             list.forEach(m => {
                 if (!m.id || seen.has(m.id)) return; seen.add(m.id);
                 const opt = document.createElement('option');
                 opt.value = m.id;
-                const pricing = m.pricing ? `$${Number(m.pricing.prompt||0).toFixed(4)}/$${Number(m.pricing.completion||0).toFixed(4)}` : '';
-                const ctx = m.context_length ? `${Math.round(m.context_length/1000)}k ctx` : '';
-                const details = [pricing, ctx].filter(Boolean).join(' · ');
-                // Short label for curated, name-only for others to avoid overflow (04-08)
-                if (curated.has(m.id)) {
-                    const short = { 'deepseek/deepseek-chat':'DeepSeek Chat (default, cheap)','openrouter/free':'Auto: best free model','openai/gpt-oss-120b:free':'GPT-OSS 120B (free)','openai/gpt-oss-20b:free':'GPT-OSS 20B (free, fast)','openai/gpt-4o-mini':'GPT-4o Mini','anthropic/claude-3.5-haiku':'Claude Haiku','google/gemini-2.5-flash':'Gemini 2.5 Flash','deepseek/deepseek-r1':'DeepSeek R1','meta-llama/llama-3.3-70b-instruct':'Llama 3.3 70B'}[m.id];
-                    opt.textContent = short || (m.name || m.id);
-                } else {
-                    opt.textContent = (m.name || m.id);
-                }
-                if (details) opt.title = details;
+                const priceLabel = fmtPrice(m.pricing);
+                const ctx = m.context_length ? `${Math.round(m.context_length/1000)}k` : '';
+                const details = [priceLabel, ctx ? ctx + ' ctx' : ''].filter(Boolean).join(' · ');
+                const baseLabel = curated.has(m.id)
+                    ? ({ 'deepseek/deepseek-chat':'DeepSeek Chat (default, cheap)','openrouter/free':'Auto: best free model','openai/gpt-oss-120b:free':'GPT-OSS 120B (free)','openai/gpt-oss-20b:free':'GPT-OSS 20B (free, fast)','openai/gpt-4o-mini':'GPT-4o Mini','anthropic/claude-3.5-haiku':'Claude Haiku','google/gemini-2.5-flash':'Gemini 2.5 Flash','deepseek/deepseek-r1':'DeepSeek R1','meta-llama/llama-3.3-70b-instruct':'Llama 3.3 70B'}[m.id] || (m.name || m.id))
+                    : (m.name || m.id);
+                // Show pricing inline (user requested) plus ctx; keeps FREE obvious, not just tooltip
+                opt.textContent = baseLabel + (details ? ' — ' + details : '');
+                if (details) opt.title = m.id + ' · ' + details;
+                else opt.title = m.id;
                 frag.appendChild(opt);
             });
             // Preserve current selection if still present, else keep savedModel if in new list
