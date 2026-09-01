@@ -65,13 +65,16 @@
     const INLINE_RE = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]*\]\([^)]+\))/g;
 
     // ---- Model selector persistence --------------------------------------
-    const savedModel = localStorage.getItem('ai-studio-model');
-    if (savedModel && Array.prototype.some.call(els.model.options, o => o.value === savedModel)) {
+    let savedModel = null;
+    try { savedModel = localStorage.getItem('ai-studio-model'); } catch(e) {}
+    if (savedModel && els.model && Array.prototype.some.call(els.model.options, o => o.value === savedModel)) {
         els.model.value = savedModel;
     }
-    els.model.addEventListener('change', () => {
-        localStorage.setItem('ai-studio-model', els.model.value);
-    });
+    if (els.model) {
+        els.model.addEventListener('change', () => {
+            try { localStorage.setItem('ai-studio-model', els.model.value); } catch(e) {}
+        });
+    }
 
     // ---- Mode toggle (Plan/Build) -----------------------------------------
     function setMode(mode) {
@@ -95,14 +98,9 @@
             const j = await r.json();
             const list = Array.isArray(j.models) ? j.models : [];
             if (!list.length) return;
-            const cur = els.model.value;
+            const cur = els.model ? els.model.value : '';
             // Keep curated fallback order? Replace with live list sorted by name, curated first.
             const curated = new Set(['deepseek/deepseek-chat','openrouter/free','openai/gpt-oss-120b:free','openai/gpt-oss-20b:free','openai/gpt-4o-mini','anthropic/claude-3.5-haiku','google/gemini-2.5-flash','deepseek/deepseek-r1','meta-llama/llama-3.3-70b-instruct']);
-            list.sort((a,b) => {
-                const ca = curated.has(a.id), cb = curated.has(b.id);
-                if (ca && !cb) return -1; if (!ca && cb) return 1;
-                return (a.name || a.id).localeCompare(b.name || b.id);
-            });
             const frag = document.createDocumentFragment();
             const seen = new Set();
             function fmtPrice(pricing) {
@@ -138,11 +136,21 @@
                 else opt.title = m.id;
                 frag.appendChild(opt);
             });
-            // Preserve current selection if still present, else keep savedModel if in new list
-            const toSelect = (cur && seen.has(cur) ? cur : (savedModel && seen.has(savedModel) ? savedModel : null));
+            // Preserve selection: prioritize fresh localStorage value (user's last choice) over current DOM value — fixes reload revert
+            let freshSaved = null;
+            try { freshSaved = localStorage.getItem('ai-studio-model'); } catch(e) {}
+            const toSelect = (freshSaved && seen.has(freshSaved) ? freshSaved : (savedModel && seen.has(savedModel) ? savedModel : (cur && seen.has(cur) ? cur : null)));
             els.model.innerHTML = ''; els.model.appendChild(frag);
-            if (toSelect) els.model.value = toSelect;
-            else els.model.selectedIndex = 0;
+            if (toSelect) {
+                els.model.value = toSelect;
+                // ensure persistence stays aligned
+                try { localStorage.setItem('ai-studio-model', toSelect); } catch(e) {}
+            } else {
+                // Default to deepseek instead of alphabetical first (which was openrouter/free — the buggy free model)
+                if (seen.has('deepseek/deepseek-chat')) els.model.value = 'deepseek/deepseek-chat';
+                else els.model.selectedIndex = 0;
+                try { localStorage.setItem('ai-studio-model', els.model.value); } catch(e) {}
+            }
         } catch(e){ /* keep static list */ }
     })();
 
