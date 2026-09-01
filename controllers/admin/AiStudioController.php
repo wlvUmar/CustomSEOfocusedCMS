@@ -283,18 +283,15 @@ class AiStudioController extends Controller {
                 $this->sse('turn', ['number' => $turn, 'max' => self::MAX_TOOL_TURNS]);
                 $this->sse('activity', ['text' => 'Thinking… turn ' . $turn . '/' . self::MAX_TOOL_TURNS]);
 
-                // Waste guard: if we already did 5+ consecutive read-only turns in BUILD, nudge to stop
+                // Redirect guard: 5+ consecutive read-only turns in BUILD → nudge to write instead of blocking
                 if ($mode === 'build' && $consecutiveReadOnlyTurns >= 5) {
-                    $this->logAi('waste_guard', ['turn'=>$turn,'consecutive_readonly'=>$consecutiveReadOnlyTurns,'msg'=>'5+ read-only turns without write — forcing stop nudge']);
-                    $this->sse('activity', ['text' => 'Stopping wasteful read loop…']);
+                    $this->logAi('waste_guard', ['turn'=>$turn,'consecutive_readonly'=>$consecutiveReadOnlyTurns,'msg'=>'5+ read-only turns — redirecting to write']);
+                    $this->sse('activity', ['text' => 'Redirecting to useful write…']);
+                    $hint = $consecutiveReadOnlyTurns >= 7
+                        ? 'You have done ' . $consecutiveReadOnlyTurns . ' read-only turns. Redirect: pick ONE concrete improvement for the appliance & furniture buyback funnel (e.g. refine next thinnest section, add internal links via batch_update, or polish hero copy) and WRITE it now — do not re-fetch the same get_page/get_section. If you are truly done, summarize what changed.'
+                        : 'You have done ' . $consecutiveReadOnlyTurns . ' read-only turns without a write. Redirect: use the data you already have — propose a single batch_update (≤5 edits) that improves conversion for Ташкент выкуп техники/мебели and execute it. Do not re-fetch.';
                     $messages[] = ['role' => 'assistant', 'content' => $finalText ?: '...'];
-                    $messages[] = ['role' => 'user', 'content' => 'SYSTEM: You have done ' . $consecutiveReadOnlyTurns . ' consecutive read-only turns without any write. If your build is done (you already did render_preview/render_full_page), STOP and summarize. Otherwise call the exact write tool you still need — do not re-fetch the same page again. Repeated get_page/get_section with same args wastes tokens.'];
-                    // Give model one more chance, but if it still reads, next iteration will hard-stop
-                    if ($consecutiveReadOnlyTurns >= 7) {
-                        $finalText = $finalText ?: 'Build stopped to prevent token waste: 7 consecutive read-only turns.';
-                        $this->sse('error', ['message' => 'Stopped to prevent token waste: 7 read-only turns without writes. Say "continue" if you still need to write.']);
-                        break;
-                    }
+                    $messages[] = ['role' => 'user', 'content' => 'SYSTEM REDIRECT (BUILD): ' . $hint];
                 }
 
                 $modelStart = microtime(true);
@@ -605,10 +602,10 @@ class AiStudioController extends Controller {
                     $callCounts[$key] = ($callCounts[$key] ?? 0) + 1;
                     if ($callCounts[$key] === 3 && AiToolRegistry::isPlanAllowed($nm)) {
                         $this->logAi('repeat_guard', ['turn'=>$turn,'tool'=>$nm,'args'=>mb_substr($ag,0,200),'count'=>3]);
-                        $this->sse('activity', ['text' => 'Warning: repeated ' . $nm . ' ×3 — use cached result, stop re-fetching.']);
-                        // Inject synthetic tool hint for next model turn
+                        $this->sse('activity', ['text' => 'Redirect: repeated ' . $nm . ' ×3 — using cached result.']);
+                        // Inject redirect hint: reuse cached data, pivot to next write
                         $messages[] = ['role' => 'assistant', 'content' => $response['content'] ?? '', 'tool_calls' => $toolCalls];
-                        $messages[] = ['role' => 'tool', 'tool_call_id' => $tcCheck['id'] ?? ('repeat_'.$turn), 'content' => json_encode(['warning'=>'Repeated '.$nm.' with identical args 3× — you already have this data. Do not call it again. If done, summarize and STOP.'], JSON_UNESCAPED_UNICODE)];
+                        $messages[] = ['role' => 'tool', 'tool_call_id' => $tcCheck['id'] ?? ('repeat_'.$turn), 'content' => json_encode(['redirect'=>'Repeated '.$nm.' with identical args 3× — you already have this data. Redirect: use it to craft ONE useful write (e.g. batch_update to polish next section / add links for выкуп техники и мебели) instead of re-fetching.'], JSON_UNESCAPED_UNICODE)];
                     }
                 }
 
@@ -870,13 +867,12 @@ ANTI-CHITCHAT:
 - On "hi" — build a hello-world demo block (hero + stats) immediately.
 - End every run with a one-paragraph summary of what CHANGED (slugs/sections/fields, char counts, preview hashes).
 
-STOP RULE — ANTI-LOOP (cost control):
-- You have completed the user's request when: (a) you called store_context with done flag or (b) you did render_preview + render_full_page after your last write and have no pending writes. Then STOP — output summary and end. Do NOT start auditing other pages (get_page gas-plita, get_page_gsc, get_page_stats, get_crawl_frequency, etc.) unless the user explicitly asked for an audit.
-- Never call the same read tool with identical args more than twice per run (e.g. get_page {"slug":"gas-plita"} 8×). Re-reading wastes $ and hits max turns. Cache your earlier tool results in memory.
-- Never loop over every section via repeated get_section unless user asked to rewrite all sections. Target only sections you intend to edit.
-- Analytics/GSC tools (get_page_gsc, get_page_stats, get_gsc_overview, query_builder, get_internal_links…) are for vague/discovery tasks only. Do not call them after you already shipped the concrete build.
+REDIRECT — STAY USEFUL (no hard stop, just redirect):
+- When you catch yourself re-reading the same page (`get_page {"slug":"gas-plita"} 3×`) or dumping every section via `get_section`, pause and redirect: "I already have this data — what write does the user actually still need?" If the build is already rendered (`render_preview` + `render_full_page` done), pivot to the next valuable write: polish the next section that is still thin, improve internal linking (`get_internal_links` once, then `update_section` with links-tile), or refine the hero copy — do not just re-fetch.
+- Analytics/GSC (`get_page_gsc`, `get_page_stats`, `get_gsc_overview`, `query_builder`) are useful once per vague audit. After you shipped the concrete build, redirect them into UX: use the numbers you already have to justify a rewrite (e.g. "CTR 1.2% → rewrite h2 for featured snippet") and then WRITE.
+- If you feel you are looping with no writes for 3+ turns, redirect: summarize what you changed so far, propose the next single `batch_update` (5 edits max) that moves the needle for the user's niche (appliance & furniture buyback, Ташкент), and execute it.
 
-DEFINITION OF DONE: W3C headings sequential, landmarks valid, RU↔UZ parity, template vars intact, preview per section + final full-page render. Then STOP.
+DEFINITION OF DONE: W3C headings sequential, landmarks valid, RU↔UZ parity, template vars intact, preview per section + final full-page render — then redirect to next high-impact improvement instead of stopping.
 PROMPT;
     }
 
