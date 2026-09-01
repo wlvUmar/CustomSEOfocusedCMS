@@ -9,8 +9,8 @@ require_once BASE_PATH . '/models/ai/AiToolRegistry.php';
 
 class AiStudioController extends Controller {
 
-    /** Hard cap on model↔tool round trips per HTTP request. Effectively uncapped (50) per user request to remove limit — raised 10→50. */
-    private const MAX_TOOL_TURNS = 50;
+    /** Hard cap removed per user request — set to 100 as safety net (was 50). Effectively unlimited for normal tasks. */
+    private const MAX_TOOL_TURNS = 100;
     /** History depth kept for context (client sends the transcript each turn). */
     private const MAX_HISTORY_TURNS = 12;
     /** JSON-lines operational log for this feature (separate from php_errors.log). */
@@ -33,6 +33,7 @@ class AiStudioController extends Controller {
             'models' => OpenRouter::MODELS,
             'modelsLive' => $live,
             'hasPricing' => $hasPricing,
+            'maxTurns' => self::MAX_TOOL_TURNS,
             'gscStatus' => $gsc,
         ]);
     }
@@ -260,6 +261,10 @@ class AiStudioController extends Controller {
             $alreadyInHistory ? [] : [['role' => 'user', 'content' => $message]]
         );
 
+        // Anti-loop guards: track repeats & read-only streaks to stop wasteful token burns
+        $callCounts = [];
+        $consecutiveReadOnlyTurns = 0;
+        $writeTurns = 0;
         try {
             for ($turn = 1; $turn <= self::MAX_TOOL_TURNS; $turn++) {
                 if (connection_aborted()) {
@@ -277,6 +282,20 @@ class AiStudioController extends Controller {
                 $turnsUsed++;
                 $this->sse('turn', ['number' => $turn, 'max' => self::MAX_TOOL_TURNS]);
                 $this->sse('activity', ['text' => 'Thinking… turn ' . $turn . '/' . self::MAX_TOOL_TURNS]);
+
+                // Waste guard: if we already did 5+ consecutive read-only turns in BUILD, nudge to stop
+                if ($mode === 'build' && $consecutiveReadOnlyTurns >= 5) {
+                    $this->logAi('waste_guard', ['turn'=>$turn,'consecutive_readonly'=>$consecutiveReadOnlyTurns,'msg'=>'5+ read-only turns without write — forcing stop nudge']);
+                    $this->sse('activity', ['text' => 'Stopping wasteful read loop…']);
+                    $messages[] = ['role' => 'assistant', 'content' => $finalText ?: '...'];
+                    $messages[] = ['role' => 'user', 'content' => 'SYSTEM: You have done ' . $consecutiveReadOnlyTurns . ' consecutive read-only turns without any write. If your build is done (you already did render_preview/render_full_page), STOP and summarize. Otherwise call the exact write tool you still need — do not re-fetch the same page again. Repeated get_page/get_section with same args wastes tokens.'];
+                    // Give model one more chance, but if it still reads, next iteration will hard-stop
+                    if ($consecutiveReadOnlyTurns >= 7) {
+                        $finalText = $finalText ?: 'Build stopped to prevent token waste: 7 consecutive read-only turns.';
+                        $this->sse('error', ['message' => 'Stopped to prevent token waste: 7 read-only turns without writes. Say "continue" if you still need to write.']);
+                        break;
+                    }
+                }
 
                 $modelStart = microtime(true);
                 // Budget guard: estimate chars → tokens (~4 chars/token), drop oldest history if over 60k tokens
@@ -572,6 +591,27 @@ class AiStudioController extends Controller {
                     ];
                 }
 
+                // Waste tracking: read-only streak & repeat same read
+                $hadWriteThisTurn = false;
+                foreach ($toolCalls as $tcCheck) {
+                    $nm = $tcCheck['function']['name'] ?? '';
+                    if (!AiToolRegistry::isPlanAllowed($nm)) { $hadWriteThisTurn = true; break; }
+                }
+                if ($hadWriteThisTurn) { $writeTurns++; $consecutiveReadOnlyTurns = 0; } else { $consecutiveReadOnlyTurns++; }
+                foreach ($toolCalls as $tcCheck) {
+                    $nm = $tcCheck['function']['name'] ?? '';
+                    $ag = $tcCheck['function']['arguments'] ?? '{}';
+                    $key = $nm . ':' . $ag;
+                    $callCounts[$key] = ($callCounts[$key] ?? 0) + 1;
+                    if ($callCounts[$key] === 3 && AiToolRegistry::isPlanAllowed($nm)) {
+                        $this->logAi('repeat_guard', ['turn'=>$turn,'tool'=>$nm,'args'=>mb_substr($ag,0,200),'count'=>3]);
+                        $this->sse('activity', ['text' => 'Warning: repeated ' . $nm . ' ×3 — use cached result, stop re-fetching.']);
+                        // Inject synthetic tool hint for next model turn
+                        $messages[] = ['role' => 'assistant', 'content' => $response['content'] ?? '', 'tool_calls' => $toolCalls];
+                        $messages[] = ['role' => 'tool', 'tool_call_id' => $tcCheck['id'] ?? ('repeat_'.$turn), 'content' => json_encode(['warning'=>'Repeated '.$nm.' with identical args 3× — you already have this data. Do not call it again. If done, summarize and STOP.'], JSON_UNESCAPED_UNICODE)];
+                    }
+                }
+
                 if ($haltForApproval) {
                     $this->logAi('run_end', [
                         'status' => 'awaiting_approval',
@@ -830,7 +870,13 @@ ANTI-CHITCHAT:
 - On "hi" — build a hello-world demo block (hero + stats) immediately.
 - End every run with a one-paragraph summary of what CHANGED (slugs/sections/fields, char counts, preview hashes).
 
-DEFINITION OF DONE: W3C headings sequential, landmarks valid, RU↔UZ parity, template vars intact, preview per section + final full-page render.
+STOP RULE — ANTI-LOOP (cost control):
+- You have completed the user's request when: (a) you called store_context with done flag or (b) you did render_preview + render_full_page after your last write and have no pending writes. Then STOP — output summary and end. Do NOT start auditing other pages (get_page gas-plita, get_page_gsc, get_page_stats, get_crawl_frequency, etc.) unless the user explicitly asked for an audit.
+- Never call the same read tool with identical args more than twice per run (e.g. get_page {"slug":"gas-plita"} 8×). Re-reading wastes $ and hits max turns. Cache your earlier tool results in memory.
+- Never loop over every section via repeated get_section unless user asked to rewrite all sections. Target only sections you intend to edit.
+- Analytics/GSC tools (get_page_gsc, get_page_stats, get_gsc_overview, query_builder, get_internal_links…) are for vague/discovery tasks only. Do not call them after you already shipped the concrete build.
+
+DEFINITION OF DONE: W3C headings sequential, landmarks valid, RU↔UZ parity, template vars intact, preview per section + final full-page render. Then STOP.
 PROMPT;
     }
 
