@@ -273,7 +273,8 @@ class OpenRouter {
         array $tools,
         float $temperature = 0.5,
         int $maxTokens = 8192,
-        int $retries = 2
+        int $retries = 2,
+        string $toolChoice = 'auto'
     ): array {
         $apiKey = self::getApiKey();
         if ($apiKey === '') {
@@ -285,13 +286,15 @@ class OpenRouter {
         $maxTokens = max(256, min($maxTokens, 32000));
         $temperature = max(0, min(2, (float)$temperature));
 
+        $allowedChoices = ['auto','required','none'];
+        if (!in_array($toolChoice, $allowedChoices, true)) $toolChoice = 'auto';
         $payload = json_encode([
             'model'       => $model,
             'messages'    => $messages,
             'temperature' => $temperature,
             'max_tokens'  => $maxTokens,
             'tools'       => $tools,
-            'tool_choice' => 'auto',
+            'tool_choice' => $toolChoice,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         if ($payload === false) {
@@ -306,11 +309,28 @@ class OpenRouter {
             try {
                 $data = self::doRequest($payload, 0, 'CMS AI Studio', $apiKey);
             } catch (Exception $e) {
-                // doRequest already handles 401 immediate throw vs transient 429/5xx throws; treat as transient if message contains rate limit/network
                 $msg = $e->getMessage();
-                $isTransient = str_contains($msg, 'rate limit') || str_contains($msg, 'network error') || str_contains($msg, 'HTTP 5');
-                if ($isTransient && $attempt <= $retries) { $lastError = $e; usleep(500000 + random_int(0, 500000)); continue; }
-                throw $e;
+                // Fallback: some models/providers reject tool_choice=required — retry once with auto
+                if ($toolChoice === 'required' && (str_contains(strtolower($msg), 'tool_choice') || str_contains($msg, 'HTTP 400'))) {
+                    $fallbackPayload = json_encode([
+                        'model'       => $model,
+                        'messages'    => $messages,
+                        'temperature' => $temperature,
+                        'max_tokens'  => $maxTokens,
+                        'tools'       => $tools,
+                        'tool_choice' => 'auto',
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    try {
+                        $data = self::doRequest($fallbackPayload, 0, 'CMS AI Studio', $apiKey);
+                        // succeeded with auto — continue to normal handling
+                    } catch (Exception $e2) {
+                        throw $e; // keep original required error if fallback also fails
+                    }
+                } else {
+                    $isTransient = str_contains($msg, 'rate limit') || str_contains($msg, 'network error') || str_contains($msg, 'HTTP 5');
+                    if ($isTransient && $attempt <= $retries) { $lastError = $e; usleep(500000 + random_int(0, 500000)); continue; }
+                    throw $e;
+                }
             }
 
             $choice = $data['choices'][0] ?? null;

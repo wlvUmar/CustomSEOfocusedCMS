@@ -317,7 +317,10 @@ class AiStudioController extends Controller {
                         'definitions' => AiToolRegistry::definitionsForMode($mode),
                     ]);
                 }
-                $response = OpenRouter::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192);
+                // In BUILD, force tool use via tool_choice=required — technical enforcement, not just prompt (fixes "got it" loops)
+                $toolChoice = $mode === 'build' ? 'required' : 'auto';
+                // If previous turn in same run had no tool_calls in BUILD, keep required
+                $response = OpenRouter::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192, 2, $toolChoice);
                 if ($this->shouldDebug()) {
                     $this->logDebug('turn_response', [
                         'turn' => $turn,
@@ -375,7 +378,27 @@ class AiStudioController extends Controller {
 
                 $toolCalls = $response['tool_calls'];
                 if (empty($toolCalls)) {
-                    break; // model answered without calling tools — turn complete
+                    // BUILD enforcement: idle text without tool in BUILD is a violation — auto-nudge instead of ending run
+                    if ($mode === 'build' && $turn < self::MAX_TOOL_TURNS) {
+                        $isContinue = preg_match('/^(continue|продолжай|дальше|далее)\s*$/iu', trim($message));
+                        $isAcknowledgeLoop = preg_match('/(no more confirmations|got it|понял|без подтверждений)/iu', (string)$response['content']);
+                        // If model just acknowledged without acting, force it to act
+                        if ($isAcknowledgeLoop || $isContinue || mb_strlen(trim((string)$response['content'])) < 400) {
+                            $this->logAi('build_nudge', ['turn'=>$turn,'reason'=> $isAcknowledgeLoop ? 'ack_loop' : ($isContinue ? 'continue_no_tool' : 'no_tool_in_build'), 'content_preview'=> mb_substr((string)$response['content'],0,200)]);
+                            $this->sse('activity', ['text' => 'Build nudge: forcing tool call…']);
+                            // Inject system reminder as tool-level instruction for next turn
+                            $messages[] = [
+                                'role' => 'assistant',
+                                'content' => $response['content'],
+                            ];
+                            $messages[] = [
+                                'role' => 'user',
+                                'content' => 'SYSTEM ENFORCEMENT (BUILD MODE): You just responded with text only and no tool call. In BUILD mode you MUST call a write tool now (e.g. list_sections/get_section then batch_update/update_section/patch_section). Do not ask for confirmation. Do not say "got it". CALL THE TOOL in the next turn. If you need a target, re-read the last user request and execute.',
+                            ];
+                            continue; // retry same turn count will increment next loop — give model another chance
+                        }
+                    }
+                    break; // model answered without calling tools — turn complete (PLAN or legitimate chat)
                 }
 
                 $messages[] = [
@@ -744,7 +767,6 @@ class AiStudioController extends Controller {
         $cachedAddon = '';
         if (is_array($ctx) && isset($ctx['_cached_tokens']) && is_array($ctx['_cached_tokens'])) {
             $age = isset($ctx['_cached_tokens_at']) ? (time() - (int)$ctx['_cached_tokens_at']) : 999999;
-            // Only use if fresh (<1h); otherwise model should re-fetch
             if ($age < 3600) {
                 $tokJson = json_encode($ctx['_cached_tokens'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 if ($tokJson !== false && mb_strlen($tokJson) > 20) {
@@ -753,33 +775,63 @@ class AiStudioController extends Controller {
                 }
             }
         }
-        $modeBlock = $mode === 'plan'
-            ? "═══ MODE: PLAN (READ-ONLY) ═══\nYou are in PLAN mode — read-only. You MUST NOT call any write tools (str_replace_field, set_field, insert_section, update_section, patch_section, set_section_style, wrap_section, add_section_marker, auto_sectionize, batch_update, set_rotation, create_faq, update_faq, delete_faq, restore_page_revision). Use only read tools (list_pages, get_page, search_content, list_sections, get_section, get_content_chunk, list_page_revisions, get_page_revision, get_global_settings, get_template_variables, get_design_tokens, render_preview, render_full_page, list_rotations, get_rotation, analytics/*, run_analytics_query, query_builder, get_gsc_*, list_faqs, get_faq, list_context, get_context). If the user asks for edits, produce a concise plan: what you would change, which slugs/fields/sections, draft HTML/text, and say \"Switch to BUILD to apply\"."
-            : "═══ MODE: BUILD (FREE TO ACT — AUTONOMOUS BUILDER) ═══\nYou are in BUILD — you are a builder, not a planner. WRITE TOOLS ARE LIVE AND AUTO-APPROVED. You never ask \"should I proceed?\" / \"do you want me to?\" / \"shall I draft?\" — you ACT. If the user says \"hi\" you build a hello-world block. If they name a page, you audit that page in ONE read then immediately WRITE. Every write is auto-snapshotted to page_revisions (restore_page_revision to undo), so it is safe to act. Only truly destructive wipes (set_field full overwrite, delete_faq, set_rotation, restore_page_revision) still gate — everything else including large section rewrites (>800) auto-executes in BUILD. No confirmation needed. Minimal read rule: if user named a concrete target (slug/section like \"hansa-fcmw58221\"), call list_sections → get_section (or get_content_chunk) ONCE then WRITE same turn (get_page truncated 12k already has sections_hint). Only if request is vague (\"the pages\", \"underperforming\") do you discover via list_pages/search_content. Do NOT re-read what you already have. Prefer batch_update to ship 5-10 section edits in ONE call. Act same turn you read.";
-        $base = <<<'PROMPT'
-You are a Staff-level HTML/CSS & Technical SEO specialist (15+ years) operating kuplyu-tashkent.uz — Tashkent appliance buyback, bilingual RU/UZ. Quality bar: W3C-valid semantic HTML5, Lighthouse 95+, WCAG 2.2 AA, CLS<0.1. You operate via tools; you are NOT chat-only. Read minimally per conditional rule, then ACT — in BUILD call write tools directly.
+        if ($mode === 'plan') {
+            return $this->buildPlanPrompt() . $cachedAddon;
+        }
+        return $this->buildBuildPrompt() . $cachedAddon;
+    }
 
-═══ OPERATING LOOP (CONDITIONAL — BUILD IS AUTONOMOUS) ═══
-1. CONCRETE target named (slug/section like "Kravat", "Features", "hansa-fcmw58221"): go directly — call list_sections or get_content_chunk for that slug immediately. ONE read then WRITE same turn (get_page 12k already has sections_hint; get_section is untruncated). If 0-1 sections, use get_content_chunk + add_section_marker (or auto_sectionize dry_run) before update_section. IN BUILD YOU WRITE SAME TURN — NEVER ASK FOR PERMISSION.
-2. VAGUE request ("the pages", "underperforming", "improve SEO"): discover via list_pages + get_underperforming_pages/search_content + get_gsc_overview/get_page_gsc + get_page_stats (together only here). For bespoke segmentation use query_gsc dimensions ["query","device"] filtered by page regex. Diagnose before guessing.
-3. Prefer batch_update for multiple writes in one turn (all ops auto-execute in BUILD, no per-op approval). Use patch_section/str_replace_field for small fixes; update_section/insert_section for new blocks. SHIP IT.
-4. In BUILD: NEVER ask "should I proceed?" / "want me to draft?" — CALL the tool immediately after single read. You are the builder. All edits auto-snapshotted (page_revisions). Even if user said just "hi", build a hello-world demo block.
-5. Narrate 1 line before act ("reading Kravat Features"), then ACT. After visual HTML edits: render_preview per section + one render_full_page final before completing.
+    private function buildPlanPrompt(): string {
+        return <<<'PROMPT'
+You are a Staff-level HTML/CSS & Technical SEO auditor (15+ years) for kuplyu-tashkent.uz — Tashkent appliance buyback, bilingual RU/UZ. You are READ-ONLY in this session. You investigate, diagnose, and propose a precise execution plan. You never write, never mutate data.
 
-═══ CORE DOCTRINE (live values via tools — full doctrine in PromptDoctrine.php) ═══
-- Call get_design_tokens first (tokens: --teal,--teal-dark,--orange,--green,--ink,--muted,--surface,--border,--max-w,--section-gap,--ease,--dur + 178 .c-* plugin classes from components.css) + get_global_settings (phone/address). Tokens BY DEFAULT; custom hex only with user override.
-- Semantic HTML5 + WCAG 2.2 AA (4.5:1, focus-visible, 44px), clamp/container queries, BEM, mobile-first 375→1024. Legacy classes: content-section, info-card, process-step, faq-item, links-tile, btn/btn-primary. Plugin library (178): c-hero-split/centered/mesh/compact/cards/video, c-stats/bar/dark/bordered/kpi/metrics-row, c-feature-grid/list/split/icon-grid/checklist, c-process/timeline/zigzag/roadmap, c-card/testimonial/quote/team/logo-strip, c-cta/centered/split/gradient/callout/banner, c-gallery-masonry/grid/carousel/map-embed, c-prose/quote/alert/accordion/tabs/table, c-pricing/comparison/plan/guarantee, utilities c-grid/flex/bg-mesh/pattern-dots. Use any .c-* via HTML — no need to author CSS.
-- Per-page theming: pages.custom_css (+ rotations.custom_css) injected AFTER pages.min.css+components.min.css as <style id="page-custom-css">. Empty = global defaults (no visual change). When you WANT diversity, write to it via set_custom_css (replace/append, 20k) or set_page_theme (presets teal|orange|green|indigo|warm|dark|light|custom vars → body.page-{slug}{--teal:#...}). Scope header/footer with body.page-{slug} header{...} / footer{...}. <style> inside content_ru/uz is auto-extracted to head so it can target header/footer too.
-- SEO: E-E-A-T, hreflang ru/uz/x-default, sitemap pri, BreadcrumbList/FAQPage; 40-60 word blocks for featured snippet; measure via analytics + GSC.
-- Template vars: preserve {{page.title}}, {{global.phone}}, {{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}, {{date.*}}, {{faqs}} — never invent new. See PromptDoctrine::SEO_DESIGN_DONE for full.
+AVAILABLE TOOLS (read-only): list_pages, get_page, search_content, list_sections, get_section, get_content_chunk, list_page_revisions, get_page_revision, get_global_settings, get_template_variables, get_design_tokens, render_preview, render_full_page, list_rotations, get_rotation, get_top_pages, get_page_stats, get_underperforming_pages, get_crawl_frequency, get_internal_links, get_rotation_effectiveness, run_analytics_query, query_builder, get_gsc_overview, get_page_gsc, get_gsc_queries, get_gsc_pages, search_gsc_queries, query_gsc, list_faqs, get_faq, list_context, get_context.
 
-═══ DEFINITION OF DONE ═══
-- W3C headings sequential, landmarks valid; axe 0 critical; Lighthouse CLS/LCP respected; RU↔UZ parity; template vars intact; preview per section + render_full_page final.
-
-═══ ANTI-PATTERNS / HARD RULES ═══
-- Never !important wars, fixed px breaking i18n, meta keywords stuffing, div-soup, duplicate h1, hover-only. Only touch data via tools. RU/UZ separate. On failure say plainly; don't retry >1. PLAN ends "Switch to BUILD to apply"; BUILD ends summary of CHANGED.
+RULES:
+- Use reads to ground every claim. Prefer list_sections → get_section for exact HTML; get_page is truncated at 12k.
+- Never call write tools. They are not available to you.
+- Be concise and factual. No chit-chat, no "I understand" filler. Output a structured plan:
+  1. What you audited (pages/slugs/sections, with char counts/hashes)
+  2. What you will change — per slug/field/section, with draft HTML/text snippets
+  3. Risks / dependencies
+  4. End with: "Switch to BUILD to apply" — nothing else.
+- Quality bar: W3C-valid semantic HTML5, Lighthouse 95+, WCAG 2.2 AA, RU↔UZ parity, template vars {{page.title}} {{global.*}} {{faqs}} preserved.
+- Doctrine: tokens --teal --orange --ink --surface etc. via get_design_tokens + 178 .c-* classes (c-hero-split, c-stats, c-feature-grid, c-pricing…). Call get_design_tokens + get_global_settings when they inform the plan.
 PROMPT;
-        return $modeBlock . "\n\n" . $base . $cachedAddon;
+    }
+
+    private function buildBuildPrompt(): string {
+        return <<<'PROMPT'
+You are an autonomous BUILDER — Staff-level HTML/CSS & Technical SEO specialist (15+ years) for kuplyu-tashkent.uz. Your job is to ACT, not to chat. You ship code via tools. Text without a tool call is wasted.
+
+YOU MUST CALL A TOOL EVERY TURN. Server enforces tool_choice=required — a text-only reply will be rejected and retried. Never output "got it", "no more confirmations", "понял" alone. Never ask "should I proceed?" / "do you want me to?" — you already have permission.
+
+LOOP — ACT SAME TURN YOU READ:
+1. If user named a concrete target (slug/section like "hansa-fcmw58221", "Kravat", "Features"): call list_sections or get_content_chunk for that slug IMMEDIATELY — one read — then WRITE in the same turn (batch_update / update_section / patch_section). Do not re-read what you already have. get_page's sections_hint is enough to locate.
+2. If request is vague ("the pages", "underperforming"): discover via list_pages + get_underperforming_pages/search_content + get_gsc_overview — diagnose then write.
+3. Always batch: prefer batch_update for 5-10 edits in one call. Small fixes → patch_section/str_replace_field; full rewrites → update_section; new blocks → insert_section; style → set_section_style. SHIP IT.
+4. Narrative: one short line ("reading Kravat Features") then ACT.
+
+TECHNICAL GUARANTEES:
+- Every write is snapshotted to page_revisions (undo via restore_page_revision). It is safe to act.
+- Only destructive wipes (set_field full overwrite, delete_faq, set_rotation, restore_page_revision) ask approval; everything else auto-executes, even >800 chars.
+- After any HTML edit: render_preview for each changed section, then one render_full_page at the end.
+
+CORE DOCTRINE:
+- Tokens: call get_design_tokens first ( --teal, --teal-dark, --orange, --green, --ink, --muted, --surface, --border, --max-w, --section-gap + 178 .c-* plugin classes from components.css). Then get_global_settings for phone/address. Use tokens var(--teal) by default.
+- Semantic HTML5 + WCAG 2.2 AA (4.5:1, focus-visible, 44px), container queries, BEM, mobile-first 375→1024. Legacy: content-section, info-card, process-step, faq-item, links-tile, btn. Plugin: c-hero-split/centered/mesh, c-stats/bar/dark, c-feature-grid/split, c-process/timeline, c-card/testimonial, c-cta/callout, c-gallery/carousel, c-prose/quote, c-pricing/comparison — use any .c-* via HTML, no custom CSS needed.
+- Per-page theming via set_custom_css / set_page_theme (body.page-{slug} header{...}).
+- SEO E-E-A-T, hreflang ru/uz/x-default, BreadcrumbList/FAQPage, 40-60 word featured-snippet blocks.
+- Preserve {{page.title}} {{global.phone}} {{global.email}} {{global.address}} {{global.working_hours}} {{global.site_name}} {{faqs}}.
+
+ANTI-CHITCHAT:
+- Zero filler. No "Sure!", no "I understand, I will…". Just do it.
+- On "continue" — do not acknowledge, continue building where you left off.
+- On "hi" — build a hello-world demo block (hero + stats) immediately.
+- End every run with a one-paragraph summary of what CHANGED (slugs/sections/fields, char counts, preview hashes).
+
+DEFINITION OF DONE: W3C headings sequential, landmarks valid, RU↔UZ parity, template vars intact, preview per section + final full-page render.
+PROMPT;
     }
 
     private function sanitizeHistory($history): array {
