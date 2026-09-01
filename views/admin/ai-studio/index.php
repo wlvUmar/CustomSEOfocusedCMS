@@ -162,9 +162,10 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <script>
     window.AI_STUDIO = {
         baseUrl: <?= json_encode(BASE_URL) ?>,
-        csrf: <?= json_encode(generateCSRFToken()) ?>
+        csrf: <?= json_encode(generateCSRFToken()) ?>,
+        maxTurns: <?= (int)($maxTurns ?? 100) ?>
     };
 </script>
-<script src="<?= BASE_URL ?>/js/admin/ai-studio.js"></script>
+<script src="<?= BASE_URL ?>/js/admin/ai-studio.js?v=<?= @filemtime(BASE_PATH . '/public/js/admin/ai-studio.js') ?: time() ?>"></script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
