@@ -189,13 +189,19 @@
             </div>
 
             <div class="form-group">
-                <label>Section:</label>
-                <select id="attach-section" class="form-control">
-                    <option value="content">Content (inline)</option>
-                    <option value="hero">Hero Banner</option>
-                    <option value="gallery">Gallery</option>
-                    <option value="banner">Banner</option>
-                </select>
+                <label>Section / Slot:</label>
+                <input id="attach-section" class="form-control" list="attach-section-list" placeholder="hero, banner or custom slot like card_fridges">
+                <datalist id="attach-section-list">
+                    <option value="content"></option>
+                    <option value="hero"></option>
+                    <option value="gallery"></option>
+                    <option value="banner"></option>
+                    <option value="card_fridges"></option>
+                    <option value="card_tv"></option>
+                    <option value="card_climate"></option>
+                    <option value="team_photo"></option>
+                </datalist>
+                <small class="help-subtext">Hero/Banner are global. For in-content visuals use slot name from <code>{{media.your_slot}}</code> (e.g. <code>card_fridges</code>). Empty slots stay invisible.</small>
             </div>
 
             <div class="form-row">
@@ -676,6 +682,42 @@ document.addEventListener('click', (event) => {
         alert('Error: ' + err.message);
     });
 });
+
+// Prefill from page editor: ?page_id=123&attach_slot=card_fridges
+(function(){
+    const params = new URLSearchParams(location.search);
+    const slot = params.get('attach_slot');
+    const pageId = params.get('page_id');
+    if(!slot && !pageId) return;
+    // show hint banner
+    const banner = document.createElement('div');
+    banner.style.cssText='margin:12px 0;padding:10px 14px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:8px;font-size:13px';
+    banner.innerHTML = `Attaching to slot <code>{{media.${slot||'content'}}}</code> for page #${pageId||''} — pick an image and it will auto-fill below. <a href="/admin/pages/edit/${pageId||''}" style="margin-left:8px">← back to editor</a>`;
+    const grid=document.getElementById('media-grid');
+    if(grid) grid.parentNode.insertBefore(banner, grid);
+    // When user opens attach modal, prefill values
+    const origShow = window.showAttachModal;
+    window.showAttachModal = function(mediaId){
+        origShow(mediaId);
+        try{
+            if(slot) document.getElementById('attach-section').value = slot;
+            if(pageId){
+                document.getElementById('attach-page-id').value = pageId;
+                // try to fetch page name for display
+                fetch('/admin/media/attachment?media_id='+encodeURIComponent(mediaId)+'&page_id='+encodeURIComponent(pageId), {headers:{'Accept':'application/json'}})
+                    .then(r=>r.json()).then(d=>{
+                        if(d && d.attachment && d.attachment.page_slug){
+                            document.getElementById('attach-page-selected').textContent = d.attachment.page_slug + ' (#'+pageId+')';
+                        } else {
+                            document.getElementById('attach-page-selected').textContent = 'Page #'+pageId+' (slot: '+slot+')';
+                        }
+                    }).catch(()=>{
+                        document.getElementById('attach-page-selected').textContent = 'Page #'+pageId+' (slot: '+slot+')';
+                    });
+            }
+        }catch(e){}
+    };
+})();
 </script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
