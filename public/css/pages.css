@@ -1480,15 +1480,17 @@ main img {
     max-width: 100%;
     height: auto;
     display: block;
-    border-radius: 10px;
-    box-shadow: 0 2px 12px rgba(0,0,0,.09);
-    transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+    border-radius: 12px;
+    border: 1px solid var(--border-soft);
+    box-shadow: 0 4px 16px var(--teal-glow), 0 2px 8px rgba(0,0,0,.06);
+    transition: transform .3s var(--ease), box-shadow .3s var(--ease), border-color .3s var(--ease);
 }
 
 .content-body img:hover,
 main img:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0,0,0,.14);
+    transform: translateY(-2px);
+    border-color: var(--teal-light);
+    box-shadow: 0 8px 24px var(--teal-glow), 0 4px 12px rgba(0,0,0,.08);
 }
 
 main img.img-thumbnail { max-width: 300px; }
@@ -1632,6 +1634,37 @@ main figcaption {
 .media-figure.align-left  { float: left;  max-width: 50%; margin-right: 1.5rem; }
 .media-figure.align-right { float: right; max-width: 50%; margin-left:  1.5rem; }
 .media-figure figcaption  { font-size: .88rem; color: var(--muted); font-style: italic; margin-top: .5rem; text-align: center; }
+
+/* ── Slot media — standardized to palette: teal trust, 12px radius, soft glow ── */
+.page-media.slot-media {
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 16px var(--teal-glow), 0 2px 8px rgba(0,0,0,.06);
+    overflow: hidden;
+    max-width: 720px;
+}
+.page-media.slot-media:hover {
+    border-color: var(--teal-light);
+    box-shadow: 0 8px 24px var(--teal-glow), 0 4px 12px rgba(0,0,0,.08);
+}
+.media-figure.slot-figure { margin: 1.75rem 0; }
+.media-figure.slot-figure figcaption { color: var(--muted); border-top: 1px solid var(--border-soft); padding-top: 6px; margin-top: 10px; }
+.c-gallery-grid.slot-gallery { gap: 12px; margin: 1.5rem 0; }
+.c-gallery-grid.slot-gallery img {
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 10px var(--teal-glow);
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    transition: transform .3s var(--ease), box-shadow .3s var(--ease), border-color .3s var(--ease);
+}
+.c-gallery-grid.slot-gallery img:hover {
+    transform: translateY(-2px);
+    border-color: var(--teal-light);
+    box-shadow: 0 8px 20px var(--teal-glow);
+}
+/* Keep legacy .media-gallery / .gallery-item aligned to same radius/shadow when used via gallery section */
+.gallery-item img { border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 10px var(--teal-glow); }
 
 @media (max-width: 768px) {
     main img.img-left,

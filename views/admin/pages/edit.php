@@ -138,6 +138,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <div id="tab-general" class="tab-content active">
         <div class="help-text">
             <strong>Template Variables:</strong> Use {{variable}} syntax. Available: {{page.title}}, {{global.phone}}, {{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}, {{date.year}}, {{date.month}}
+            <br><strong>Media Slots:</strong> Drop <code>{{media.hero_card}}</code>, <code>{{media.card_fridges}}</code> etc. anywhere in content — attach images in the “Media slots on this page” panel below. Empty slots render nothing (invisible, no layout shift). Attach 1 image → single <code>&lt;img&gt;</code>, 2+ → auto <code>c-gallery-grid</code>. Reserved: <code>hero</code>/<code>banner</code> still use the Hero/Banner uploader — no placeholder needed for them.
             <br><strong>Loops:</strong> {% for item in items %}...{% endfor %}
             <br><strong>Conditionals:</strong> {% if variable %}...{% else %}...{% endif %}
         </div>
@@ -243,6 +244,93 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <label>Content (UZ)</label>
             <textarea name="content_uz" id="content_uz" class="tinymce"><?= e($page['content_uz'] ?? '') ?></textarea>
         </div>
+
+        <?php if (!empty($page['id'])): 
+            // Preload slot attachments for JS panel (hero/banner excluded from slots UI)
+            $slotsData = [];
+            try {
+                if (!class_exists('PageMedia', false)) require_once BASE_PATH . '/models/PageMedia.php';
+                $pm = new PageMedia();
+                $all = $pm->getPageMedia($page['id']);
+                foreach ($all as $row) {
+                    $sec = $row['section'];
+                    if ($sec === 'hero' || $sec === 'banner') continue;
+                    if (!isset($slotsData[$sec])) $slotsData[$sec] = [];
+                    $slotsData[$sec][] = $row;
+                }
+            } catch (Throwable $e) { $slotsData = []; }
+        ?>
+        <div class="form-group" id="media-slots-panel" style="margin-top:18px">
+            <label style="display:flex;align-items:center;gap:8px">Media slots on this page <span id="media-slots-count" style="font-weight:400;color:#6b7280;font-size:12px"></span></label>
+            <div id="media-slots-list" style="display:grid;gap:10px;margin-top:8px"></div>
+            <small class="help-subtext">Detected from <code>{{media.*}}</code> in RU/UZ content. Save the page first, then attach images. Empty slots stay invisible on the site.</small>
+        </div>
+        <script>
+        (function(){
+            const pageId = <?= (int)$page['id'] ?>;
+            const csrf = '<?= $_SESSION['csrf_token'] ?? '' ?>';
+            const baseUrl = '<?= BASE_URL ?>';
+            const slotsData = <?= json_encode($slotsData, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) ?>;
+            const RESERVED = new Set(['hero','banner']);
+            function getEditorContent(id){
+                try{ const ed = tinymce.get(id); if(ed) return ed.getContent(); }catch(e){}
+                const el=document.getElementById(id); return el?el.value:'';
+            }
+            function scanSlots(){
+                const raw = (getEditorContent('content_ru')||'') + '\n' + (getEditorContent('content_uz')||'');
+                const re = /\{\{media\.([a-zA-Z0-9_-]+)\}\}/g;
+                const found=new Set(); let m;
+                while((m=re.exec(raw))){ const k=m[1]; if(!RESERVED.has(k)) found.add(k); }
+                return Array.from(found).sort();
+            }
+            function render(){
+                const slots = scanSlots();
+                const list=document.getElementById('media-slots-list');
+                const countEl=document.getElementById('media-slots-count');
+                if(!list) return;
+                countEl.textContent = slots.length ? `(${slots.length} slot${slots.length>1?'s':''})` : '(no slots detected — add {{media.your_key}} to content)';
+                if(!slots.length){ list.innerHTML='<div style="color:#9ca3af;font-size:13px;padding:10px;border:1px dashed #d1d5db;border-radius:8px">No {{media.*}} tokens found in content. Example: <code>{{media.card_fridges}}</code> then save and attach.</div>'; return; }
+                list.innerHTML='';
+                slots.forEach(slot=>{
+                    const items = slotsData[slot]||[];
+                    const row=document.createElement('div');
+                    row.style.cssText='display:flex;align-items:center;gap:12px;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb';
+                    const thumbs = items.length
+                        ? items.map(it=>`<img src="${baseUrl}/uploads/${it.filename}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb">`).join('')
+                        : '<span style="width:56px;height:56px;display:grid;place-items:center;border:1px dashed #d1d5db;border-radius:6px;color:#9ca3af;font-size:11px;text-align:center">⚠<br>empty</span>';
+                    const meta = items.length ? `${items.length} image${items.length>1?'s':''} — ${items.length===1?'single':'gallery'}` : 'invisible on site until attached';
+                    row.innerHTML=`
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;min-width:64px">${thumbs}</div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-family:monospace;font-size:13px;font-weight:600">{{media.${slot}}}</div>
+                            <div style="font-size:12px;color:#6b7280">${meta}</div>
+                        </div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <a href="${baseUrl}/admin/media?attach_slot=${encodeURIComponent(slot)}&page_id=${pageId}" class="btn btn-secondary btn-sm" target="_blank">Choose image</a>
+                            ${items.length ? `<button type="button" class="btn btn-sm" style="background:#fef2f2;color:#991b1b;border:1px solid #fecaca" data-slot="${slot}" onclick="detachSlot('${slot}')">Detach all</button>` : ''}
+                        </div>`;
+                    list.appendChild(row);
+                });
+            }
+            window.detachSlot = async function(slot){
+                if(!confirm(`Detach all images from {{media.${slot}}}?`)) return;
+                const items = slotsData[slot]||[];
+                for(const it of items){
+                    const fd=new FormData(); fd.append('csrf_token', csrf); fd.append('page_id', pageId); fd.append('media_id', it.media_id); fd.append('section', slot);
+                    await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json'}});
+                }
+                location.reload();
+            };
+            let t=null;
+            function schedule(){ clearTimeout(t); t=setTimeout(render, 600); }
+            document.addEventListener('DOMContentLoaded', render);
+            // Poll for tinymce changes
+            setInterval(()=>{ const cur=scanSlots().join(','); if(window._lastSlots!==cur){window._lastSlots=cur; render();}}, 1500);
+            // Also re-render when tinymce fires change
+            setTimeout(()=>{ try{ tinymce.on('AddEditor', e=>{ e.editor.on('change keyup', schedule); }); ['content_ru','content_uz'].forEach(id=>{ const ed=tinymce.get(id); if(ed) ed.on('change keyup', schedule); }); }catch(e){}}, 1200);
+        })();
+        </script>
+        <?php endif; ?>
         
         <div class="form-row">
             <div class="form-group">

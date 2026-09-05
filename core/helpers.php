@@ -1698,8 +1698,71 @@ function processMediaPlaceholders($content, $pageId) {
         },
         $content
     );
+
+    // Process slot placeholders: {{media.slot_key}} — flexible in-content visuals
+    // Uses page_media.section as slot_key. Reserved hero/banner stay untouched (no placeholder needed).
+    // Empty slot -> '' (zero DOM, invisible, no layout shift). 1 image -> single <img>, N images -> c-gallery-grid.
+    $content = preg_replace_callback(
+        '/\{\{media\.([a-zA-Z0-9_-]+)\}\}/',
+        function($matches) use ($db, $pageId, $lang) {
+            $slot = $matches[1];
+            // hero/banner are managed via {{media-section:hero}} / auto hero bg — keep them out of this namespace
+            if ($slot === 'hero' || $slot === 'banner') return '';
+            
+            $sql = "SELECT m.*, pm.alt_text_ru, pm.alt_text_uz, pm.caption_ru, pm.caption_uz,
+                           pm.width, pm.alignment, pm.css_class, pm.lazy_load, pm.position
+                    FROM page_media pm
+                    JOIN media m ON pm.media_id = m.id
+                    WHERE pm.page_id = ? AND pm.section = ?
+                    ORDER BY pm.position ASC, pm.id ASC";
+            $items = $db->fetchAll($sql, [$pageId, $slot]);
+            if (empty($items)) return '';
+            return renderMediaSlot($items, $lang);
+        },
+        $content
+    );
     
     return $content;
+}
+
+/**
+ * Render slot-based media: {{media.slot_key}}
+ * Invisible when empty (caller returns ''), single -> <img>, multiple -> c-gallery-grid
+ */
+function renderMediaSlot($mediaItems, $lang) {
+    if (empty($mediaItems)) return '';
+    if (count($mediaItems) === 1) {
+        $m = $mediaItems[0];
+        $alt = $m["alt_text_$lang"] ?? $m['original_name'] ?? '';
+        $caption = $m["caption_$lang"] ?? '';
+        $alignment = $m['alignment'] ?? 'center';
+        $cssClass = $m['css_class'] ?? '';
+        $lazy = $m['lazy_load'] ?? 1;
+        $filename = $m['filename'] ?? '';
+        $dims = $filename ? getImageDimensions($filename) : null;
+        $sources = $filename ? buildResponsiveImageSources($filename, getResponsiveImageWidths()) : null;
+        $classes = ['page-media', 'align-' . $alignment, 'slot-media'];
+        if ($cssClass) $classes[] = $cssClass;
+        $classAttr = implode(' ', $classes);
+        $img = '<img src="/uploads/' . htmlspecialchars($filename) . '" alt="' . htmlspecialchars($alt) . '" class="' . htmlspecialchars($classAttr) . '"';
+        if ($dims) $img .= ' width="' . (int)$dims['width'] . '" height="' . (int)$dims['height'] . '"';
+        if ($sources && !empty($sources['fallback'])) $img .= ' srcset="' . htmlspecialchars($sources['fallback']) . '" sizes="(max-width: 768px) 100vw, 720px"';
+        $img .= ($lazy ? ' loading="lazy"' : ' loading="eager"') . ' decoding="async">';
+        if ($caption) {
+            return '<figure class="media-figure align-' . htmlspecialchars($alignment) . ' slot-figure">' . $img . '<figcaption>' . htmlspecialchars($caption) . '</figcaption></figure>';
+        }
+        return $img;
+    }
+    // Gallery: auto-wrap — each thumb gets dims + lazy, grid styling is palette-aligned (components.css:240)
+    $html = '<div class="c-gallery-grid slot-gallery">';
+    foreach ($mediaItems as $m) {
+        $alt = $m["alt_text_$lang"] ?? $m['original_name'] ?? '';
+        $filename = $m['filename'] ?? '';
+        $dims = $filename ? getImageDimensions($filename) : null;
+        $dimAttr = $dims ? ' width="' . (int)$dims['width'] . '" height="' . (int)$dims['height'] . '"' : '';
+        $html .= '<img src="/uploads/' . htmlspecialchars($filename) . '" alt="' . htmlspecialchars($alt) . '"' . $dimAttr . ' loading="lazy" decoding="async">';
+    }
+    return $html . '</div>';
 }
 
 /**
