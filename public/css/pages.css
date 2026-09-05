@@ -1069,7 +1069,8 @@ main{
     .bot-modal__card {
         max-width: 100%;
         border-radius: 18px 18px 0 0;
-        padding: 22px 18px calc(18px + env(safe-area-inset-bottom));
+        padding: 22px 18px 18px;
+        padding-bottom: calc(18px + env(safe-area-inset-bottom));
         transform: translateY(100%);
         opacity: 1;
         box-shadow: 0 -12px 40px rgba(0,0,0,.22);
