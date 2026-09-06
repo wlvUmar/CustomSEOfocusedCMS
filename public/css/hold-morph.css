@@ -1,4 +1,4 @@
-/* hold-morph.css v7 — image-only, header stays, curtain (ratio-correct, no black flash) */
+/* hold-morph.css v8 — image-only, header stays, curtain (ratio-correct, hero tint matched) */
 .links-tile[data-morph="ready"] {
   cursor: pointer;
   touch-action: manipulation;
@@ -50,9 +50,10 @@
 }
 .morph-overlay.is-active { opacity: 1; }
 .morph-overlay.is-hero-tint {
+  /* Match hero/tile scrim so page dim behind clone doesn't read as flash */
   background:
-    linear-gradient(to top, rgba(9,28,35,.28) 0%, rgba(9,28,35,.08) 55%, transparent 100%),
-    rgba(9,28,35,0.10);
+    linear-gradient(to top, rgba(9,28,35,.72) 0%, rgba(9,28,35,.32) 42%, rgba(9,28,35,.10) 72%, transparent 100%),
+    rgba(9,28,35,0.08);
   opacity: 1;
 }
 
@@ -67,6 +68,19 @@
   pointer-events: none;
 }
 .morph-clone__img { width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; }
+/* Exact copy of .hero__overlay — so clone/curtain tint = hero tint (the tint you saw missing) */
+.morph-clone__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(9,28,35,.88) 0%,
+    rgba(9,28,35,.5) 38%,
+    rgba(9,28,35,.16) 70%,
+    rgba(9,28,35,.05) 100%
+  );
+  pointer-events: none;
+}
 
 /* Reserve scrollbar gutter globally so hiding the scrollbar during morph doesn't
    shift layout (the ~15px jump you reported on desktop). Supported in all
@@ -86,7 +100,13 @@ body.morph-lock { overflow: hidden !important; overscroll-behavior: none; scroll
 .morph-curtain__img { width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; }
 .morph-curtain__scrim {
   position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(9,28,35,.62) 0%, rgba(9,28,35,.18) 55%, transparent 100%);
+  background: linear-gradient(
+    to top,
+    rgba(9,28,35,.88) 0%,
+    rgba(9,28,35,.5) 38%,
+    rgba(9,28,35,.16) 70%,
+    rgba(9,28,35,.05) 100%
+  );
 }
 .morph-curtain.is-fading { opacity: 0; transition: opacity .58s ease; }
 

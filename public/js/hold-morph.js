@@ -1,4 +1,4 @@
-// path: ./public/js/hold-morph.js  v7 — image-only, header stays, curtain + hi-res + ratio-correct FLIP
+// path: ./public/js/hold-morph.js  v8 — image-only, header stays, curtain + hi-res + ratio-correct FLIP + hero tint
 (function () {
   'use strict';
 
@@ -284,6 +284,10 @@
     cImg.src = src || (tileImg ? tileImg.src : '');
     cImg.style.objectPosition = 'center center';
     clone.appendChild(cImg);
+    var scrim = document.createElement('div');
+    scrim.className = 'morph-clone__scrim';
+    scrim.setAttribute('aria-hidden','true');
+    clone.appendChild(scrim);
     document.body.appendChild(clone);
     clone.getBoundingClientRect();
 
