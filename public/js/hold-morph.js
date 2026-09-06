@@ -1,4 +1,5 @@
-// path: ./public/js/hold-morph.js  v3 — fix desktop, white surround, snap, beats
+// path: ./public/js/hold-morph.js  v4 — pointer capture (desktop fix),
+// clone fill fixed via hold-morph.css, curtain handoff with head-script
 (function () {
   'use strict';
 
@@ -13,16 +14,26 @@
   try { isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
 
   // --- destination curtain: masks snap on arrival ---
+  // NOTE: a tiny synchronous script in <head> (see header.php patch) already
+  // set html.morph-incoming + body{visibility:hidden} BEFORE first paint, so
+  // there is no flash of the real page before this runs. This function's job
+  // is just to build the curtain and then hand control back (reveal body).
   function showCurtainIfPending(){
+    var revealBody = function(){
+      try {
+        document.documentElement.classList.remove('morph-incoming');
+        if (window.__morphCurtainStyle) { window.__morphCurtainStyle.remove(); window.__morphCurtainStyle = null; }
+      } catch(e){}
+    };
     try {
       var raw = sessionStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
+      if (!raw) { revealBody(); return; }
       var data = JSON.parse(raw);
-      if (!data || !data.src) return;
-      if (Date.now() - (data.ts||0) > 2400) { sessionStorage.removeItem(STORAGE_KEY); return; }
+      if (!data || !data.src) { sessionStorage.removeItem(STORAGE_KEY); revealBody(); return; }
+      if (Date.now() - (data.ts||0) > 2400) { sessionStorage.removeItem(STORAGE_KEY); revealBody(); return; }
       sessionStorage.removeItem(STORAGE_KEY);
       // don't show if no hero on this page (e.g. 404)
-      if (!document.querySelector('.hero, #hero, #hero-bg, .hero__bg')) return;
+      if (!document.querySelector('.hero, #hero, #hero-bg, .hero__bg')) { revealBody(); return; }
 
       var curtain = document.createElement('div');
       curtain.className = 'morph-curtain';
@@ -37,8 +48,11 @@
       curtain.appendChild(img);
       curtain.appendChild(scrim);
       document.body.appendChild(curtain);
-      // prevent scroll jump
+
+      // curtain is up and opaque — safe to reveal body now, no visible change
+      revealBody();
       document.body.style.overflow = 'hidden';
+
       var doFade = function(){
         curtain.classList.add('is-fading');
         setTimeout(function(){
@@ -55,7 +69,9 @@
         // fallback: short delay so curtain covers initial paint snap
         requestAnimationFrame(function(){ setTimeout(doFade, 360); });
       }
-    } catch(e){}
+    } catch(e){
+      revealBody();
+    }
   }
 
   // run curtain ASAP (before DOMContentLoaded if possible)
@@ -132,6 +148,9 @@
     document.body.appendChild(overlay);
     requestAnimationFrame(function(){ overlay.classList.add('is-active'); });
 
+    // tile.is-holding already forces transform:none (see hold-morph.css), so
+    // this rect is stable and matches what the user actually saw — no jump
+    // caused by the hover float still being mid-transition.
     var rect = tile.getBoundingClientRect();
     if (tileImg) {
       var ir = tileImg.getBoundingClientRect();
@@ -185,6 +204,12 @@
     var easing = isReduced ? 'ease-out' : 'cubic-bezier(0.22, 1, 0.36, 1)';
 
     var anim = null;
+    var cleanup = function(){
+      try{ clearTimeout(t); }catch(e){}
+      try{ if(document.body.contains(clone)) clone.remove(); }catch(e){}
+      try{ if(document.body.contains(ctx.overlay)) ctx.overlay.remove(); }catch(e){}
+      document.body.classList.remove('morph-lock');
+    };
     try {
       // two-keyframe FLIP: border-radius anim needs separate handling in some browsers
       anim = clone.animate([
@@ -208,25 +233,19 @@
       if(fired) return; fired=true;
       try{ location.href = href; }catch(e){ location = href; }
       // fallback cleanup if nav blocked
-      setTimeout(function(){
-        try{ if(document.body.contains(clone)) clone.remove(); }catch(e){}
-        try{ if(document.body.contains(ctx.overlay)) ctx.overlay.remove(); }catch(e){}
-        document.body.classList.remove('morph-lock');
-      }, 2000);
+      setTimeout(cleanup, 2000);
     }
     var t = setTimeout(nav, Math.round(dur * NAV_AT));
     if (anim) {
       anim.onfinish = function(){ nav(); };
-      anim.oncancel = function(){ clearTimeout(t); };
+      anim.oncancel = function(){ clearTimeout(t); cleanup(); };
     } else {
       setTimeout(nav, dur + 40);
     }
     function onEsc(e){
       if(e.key==='Escape'){
-        clearTimeout(t);
         if(anim) try{anim.cancel();}catch(e){}
-        try{clone.remove();}catch(e){} try{ctx.overlay.remove();}catch(e){}
-        document.body.classList.remove('morph-lock');
+        cleanup();
         tile.classList.remove('is-holding');
         try{ sessionStorage.removeItem(STORAGE_KEY); }catch(e){}
         document.removeEventListener('keydown', onEsc);
@@ -240,9 +259,20 @@
     var hasImg = !!tile.querySelector('.links-tile__img') || !!tile.getAttribute('data-cover');
     if (!hasImg) { tile.dataset.morph='no-image'; return; }
     tile.dataset.morph='ready';
+    // The real fix for the desktop "pointer race": <a>/<img> are draggable
+    // by default, and Chromium/WebKit arm an internal drag-recognizer on
+    // pointerdown + the first hint of movement — which can eat or delay the
+    // pointermove/timing signals our hold-timer relies on, before our own
+    // 'dragstart' handler ever runs. CSS -webkit-user-drag:none doesn't
+    // reliably suppress this on every engine; the HTML draggable property
+    // does, because it turns off native drag-gesture recognition at the
+    // source instead of reacting to it after it's already begun.
+    tile.draggable = false;
+    var tileImgEl = tile.querySelector('.links-tile__img');
+    if (tileImgEl) tileImgEl.draggable = false;
     injectRing(tile);
 
-    var holdTimer=null, raf=null, startX=0, startY=0, startT=0, isHolding=false, morphStarted=false, suppressUntil=0;
+    var holdTimer=null, raf=null, startX=0, startY=0, startT=0, isHolding=false, morphStarted=false, suppressUntil=0, activePointerId=null;
 
     function setProgress(p){
       var fg = tile.querySelector('.morph-ring__fg');
@@ -254,6 +284,12 @@
         if(p<0.28) lab.textContent='hold';
         else if(p<0.82) lab.textContent=Math.round(p*100)+'%';
         else lab.textContent='open';
+      }
+    }
+    function releaseCapture(){
+      if (activePointerId != null) {
+        try { tile.releasePointerCapture(activePointerId); } catch(e){}
+        activePointerId = null;
       }
     }
     function clearHold(){
@@ -272,10 +308,22 @@
 
     function onDown(e){
       if(morphStarted) return;
+      if(isHolding) return; // ignore a second pointer starting mid-gesture
       if(e.button!=null && e.button!==0) return;
       if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey) return;
       // ignore secondary touch (more than one finger = scroll)
       if(e.touches && e.touches.length>1) return;
+
+      // Pointer capture pins ALL subsequent pointer events (move/up/cancel) to
+      // this tile for this pointerId, regardless of what's visually under the
+      // cursor. This is the desktop fix: without it, the tile's own :hover
+      // lift (translateY/scale, frozen below via .is-holding CSS) plus normal
+      // mouse jitter could shift hit-testing enough to misfire pointerleave
+      // and cancel the hold before 300ms elapses.
+      if (e.pointerId != null) {
+        activePointerId = e.pointerId;
+        try { tile.setPointerCapture(e.pointerId); } catch(err){}
+      }
 
       var p = getPoint(e);
       startX=p.x; startY=p.y; startT=performance.now(); isHolding=true;
@@ -291,6 +339,7 @@
         if(!isHolding) return;
         morphStarted=true;
         clearHold();
+        releaseCapture();
         suppressUntil = Date.now()+2200;
         tile.classList.remove('is-holding');
         var ctx = makeClone(tile);
@@ -306,6 +355,7 @@
 
     function onMove(e){
       if(!isHolding || morphStarted) return;
+      if(activePointerId != null && e.pointerId != null && e.pointerId !== activePointerId) return;
       var p = getPoint(e);
       if(Math.hypot(p.x-startX, p.y-startY) > MOVE_TOL) clearHold();
     }
@@ -314,6 +364,7 @@
       var wasMorph = morphStarted;
       var wasHolding = isHolding;
       clearHold();
+      releaseCapture();
       if(wasMorph){
         suppressUntil = Date.now()+2200;
         if(e.cancelable) try{ e.preventDefault(); }catch(err){}
@@ -321,6 +372,11 @@
       } else if(wasHolding){
         setTimeout(function(){ morphStarted=false; }, 60);
       }
+    }
+
+    function onCancel(){
+      clearHold();
+      releaseCapture();
     }
 
     function onClickCapture(e){
@@ -336,8 +392,11 @@
       tile.addEventListener('pointerdown', onDown, {passive:true});
       tile.addEventListener('pointermove', onMove, {passive:true});
       tile.addEventListener('pointerup', onUp, {passive:false});
-      tile.addEventListener('pointercancel', clearHold, {passive:true});
-      tile.addEventListener('pointerleave', function(){ if(isHolding && !morphStarted) clearHold(); }, {passive:true});
+      tile.addEventListener('pointercancel', onCancel, {passive:true});
+      // With pointer capture held, pointerleave no longer fires on cursor
+      // drift alone — it now only fires for a real cancel/capture-loss, so
+      // this stays as a safety net rather than the main cancel path.
+      tile.addEventListener('pointerleave', function(){ if(isHolding && !morphStarted && activePointerId==null) clearHold(); }, {passive:true});
     } else {
       // fallback
       tile.addEventListener('mousedown', onDown);
@@ -346,7 +405,7 @@
       tile.addEventListener('touchstart', onDown, {passive:true});
       tile.addEventListener('touchmove', onMove, {passive:true});
       tile.addEventListener('touchend', onUp, {passive:false});
-      tile.addEventListener('touchcancel', clearHold, {passive:true});
+      tile.addEventListener('touchcancel', onCancel, {passive:true});
     }
     tile.addEventListener('click', onClickCapture, true);
     tile.addEventListener('contextmenu', function(e){

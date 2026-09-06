@@ -1,4 +1,5 @@
-/* hold-morph.css v3 — fix white surround, snap, and beats */
+/* hold-morph.css v4 — fix white surround (overlay/clone timing race),
+   snap, and beats. draggable-vs-hold race is fixed in hold-morph.js. */
 .links-tile[data-morph="ready"] {
   cursor: pointer;
   touch-action: manipulation;
@@ -38,7 +39,14 @@
 .links-tile.is-holding .morph-hint { opacity: 1; }
 @media (max-width: 480px){ .morph-hint{ display:none; } }
 
-/* overlay — dark so no white surround; covers everything behind clone */
+/* overlay — dark so no white surround; covers everything behind clone.
+   FIX: this used to fade in over .24s while the clone's 760ms scale-up
+   animation starts at essentially the same moment. For the first ~200ms
+   the overlay wasn't fully opaque yet while the clone was already visibly
+   growing past its original footprint, so the real (light) page peeked
+   through around the clone's edges during that window — the "white
+   surround". Cutting the fade to well under the clone's growth time means
+   the backdrop is effectively opaque before the growth becomes noticeable. */
 .morph-overlay {
   position: fixed;
   inset: 0;
@@ -46,7 +54,7 @@
   pointer-events: none;
   opacity: 0;
   background: #0b1e24; /* matches hero dark, not var(--surface) */
-  transition: opacity .24s ease;
+  transition: opacity .1s ease;
 }
 .morph-overlay.is-active { opacity: 1; }
 .morph-overlay.is-hero-tint {
@@ -86,11 +94,16 @@ body.morph-lock { overflow: hidden !important; overscroll-behavior: none; }
 }
 .morph-clone.is-covering .morph-clone__title { opacity: 1; transform: translateY(0); }
 
-/* destination curtain — injected on arrival to mask snap */
+/* destination curtain — injected on arrival to mask snap.
+   z-index above the admin toolbar (9999) so logged-in editors don't get a
+   flash of the toolbar/real page while the curtain is meant to be covering
+   everything. Actual paint-timing snap fix lives in the head-inline script
+   (nothing in CSS can prevent a browser painting before hold-morph.js, which
+   is loaded with `defer`, ever runs). */
 .morph-curtain {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 2147483647;
   background: #0b1e24;
   display: grid;
   place-items: stretch;
@@ -113,4 +126,5 @@ body.morph-lock { overflow: hidden !important; overscroll-behavior: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .morph-ring__fg, .morph-clone { transition: none !important; }
+  .morph-overlay { transition: opacity .06s linear; }
 }
