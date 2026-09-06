@@ -148,24 +148,54 @@ $applianceNameForSEO = $applianceName ?? '';
         // small query per tile (link widgets are a handful of items, not a
         // big list, so this stays cheap).
         $linkCovers = [];
+        $linkHires = [];
         foreach ($pageLinks as $link) {
             $targetId = $link['link_to_page_id'] ?? null;
             $cover = null;
+            $hires = null;
             if ($targetId) {
                 $coverMedia = $pageMediaModel->getPageMedia($targetId, 'hero');
                 if (empty($coverMedia)) {
                     $coverMedia = $pageMediaModel->getPageMedia($targetId, 'banner');
                 }
                 if (!empty($coverMedia[0]['filename'])) {
-                    $cover = absoluteUrl('/uploads/' . $coverMedia[0]['filename'], $baseUrl);
+                    $fname = $coverMedia[0]['filename'];
+                    $cover = absoluteUrl('/uploads/' . $fname, $baseUrl);
+                    // hi-res variant for morph clone upgrade — same pipeline as hero srcset.
+                    // Picks the largest derived variant (1366 > 1024 > 768 > 640) so the
+                    // clone can swap mid-flight to a sharper source. Falls back to
+                    // original if no derived exists; JS will then keep the thumbnail
+                    // (soft at hero scale — honest pixel-data ceiling).
+                    $sources = buildResponsiveImageSources($fname, getResponsiveImageWidths());
+                    if ($sources && (!empty($sources['fallback']) || !empty($sources['webp']))) {
+                        $srcset = $sources['fallback'] ?? $sources['webp'];
+                        // also check webp for potentially larger variant
+                        if (!empty($sources['webp'])) $srcset = $sources['webp'];
+                        $parts = explode(',', $srcset);
+                        $last = trim(end($parts));
+                        $url = trim(explode(' ', $last)[0]);
+                        if ($url !== '') $hires = absoluteUrl($url, $baseUrl);
+                    }
+                    if (empty($hires)) {
+                        $name = pathinfo($fname, PATHINFO_FILENAME);
+                        $ext = strtolower(pathinfo($fname, PATHINFO_EXTENSION));
+                        foreach ([1366, 1024, 768, 640] as $w) {
+                            $candJpg = BASE_PATH . '/public/uploads/derived/' . $name . '_w' . $w . '.jpg';
+                            $candWebp = BASE_PATH . '/public/uploads/derived/' . $name . '_w' . $w . '.webp';
+                            if (file_exists($candJpg)) { $hires = absoluteUrl('/uploads/derived/' . $name . '_w' . $w . '.jpg', $baseUrl); break; }
+                            if (file_exists($candWebp)) { $hires = absoluteUrl('/uploads/derived/' . $name . '_w' . $w . '.webp', $baseUrl); break; }
+                        }
+                    }
+                    // ensure hires is distinct from cover so JS swap actually triggers
+                    if ($hires === $cover) $hires = null;
                 }
             }
             $linkCovers[$targetId] = $cover;
+            $linkHires[$targetId] = $hires;
         }
     ?>
     <section class="links-section" data-animate="stagger">
-        <link rel="preload" href="<?= BASE_URL ?>/css/hold-morph.css?v=<?= @filemtime(BASE_PATH . '/public/css/hold-morph.css') ?: time() ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
-        <noscript><link rel="stylesheet" href="<?= BASE_URL ?>/css/hold-morph.css?v=<?= @filemtime(BASE_PATH . '/public/css/hold-morph.css') ?: time() ?>"></noscript>
+        <link rel="stylesheet" href="<?= BASE_URL ?>/css/hold-morph.css?v=<?= @filemtime(BASE_PATH . '/public/css/hold-morph.css') ?: time() ?>">
         <div class="links-section__head">
             <div class="section-label"><?= $lang === 'ru' ? 'Разделы' : 'Bo\'limlar' ?></div>
             <h2 class="links-section__title">
@@ -191,13 +221,15 @@ $applianceNameForSEO = $applianceName ?? '';
                     $tileClass = 'links-tile' . ($cover ? '' : ' links-tile--no-image');
                     $titleText = $link["title_$lang"] ?? '';
                     $initial = $titleText !== '' ? mb_strtoupper(mb_substr($titleText, 0, 1)) : '';
+                    $hiresForTile = $linkHires[$targetId] ?? null;
                 ?>
                 <a href="<?= BASE_URL ?>/<?= e($link['slug']) ?><?= $lang !== DEFAULT_LANGUAGE ? '/' . $lang : '' ?>"
                    class="<?= $tileClass ?>"
                    data-from="<?= e($page['slug']) ?>"
                    data-to="<?= e($link['slug']) ?>"
                    data-stagger="<?= $i ?>"
-                   <?= $cover ? 'data-cover="' . e($cover) . '"' : '' ?>>
+                   <?= $cover ? 'data-cover="' . e($cover) . '"' : '' ?>
+                   <?= $hiresForTile ? 'data-cover-hires="' . e($hiresForTile) . '"' : '' ?>>
                     <?php if ($cover): ?>
                     <img class="links-tile__img" src="<?= e($cover) ?>" alt="" loading="lazy" decoding="async">
                     <?php else: ?>
@@ -384,46 +416,17 @@ document.addEventListener('click', function(e) {
     document.querySelectorAll('.links-tile').forEach(t => fadeObs.observe(t));
 })();
 
-/* ── FAQ accordion: smooth max-height toggle, multiple items can be open ── */
+/* ── FAQ accordion: composited grid-rows (no max-height jank) ── */
 (function() {
     const items = document.querySelectorAll('.faq-acc-item');
     if (!items.length) return;
-
     items.forEach(item => {
         const btn = item.querySelector('.faq-acc-item__q');
-        const panel = item.querySelector('.faq-acc-item__a');
-        if (!btn || !panel) return;
-
-        if (item.classList.contains('is-open')) {
-            panel.style.maxHeight = panel.scrollHeight + 'px';
-        }
-
+        if (!btn) return;
         btn.addEventListener('click', () => {
             const isOpen = item.classList.contains('is-open');
-            if (isOpen) {
-                panel.style.maxHeight = panel.scrollHeight + 'px';
-                requestAnimationFrame(() => { panel.style.maxHeight = '0px'; });
-                item.classList.remove('is-open');
-                btn.setAttribute('aria-expanded', 'false');
-            } else {
-                item.classList.add('is-open');
-                btn.setAttribute('aria-expanded', 'true');
-                panel.style.maxHeight = panel.scrollHeight + 'px';
-            }
-        });
-
-        panel.addEventListener('transitionend', () => {
-            if (item.classList.contains('is-open')) {
-                panel.style.maxHeight = 'none';
-            }
-        });
-    });
-
-    window.addEventListener('resize', () => {
-        items.forEach(item => {
-            if (!item.classList.contains('is-open')) return;
-            const panel = item.querySelector('.faq-acc-item__a');
-            if (panel) panel.style.maxHeight = panel.scrollHeight + 'px';
+            item.classList.toggle('is-open', !isOpen);
+            btn.setAttribute('aria-expanded', String(!isOpen));
         });
     });
 })();

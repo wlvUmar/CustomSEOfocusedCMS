@@ -136,7 +136,18 @@ if ($isAdminRequest) {
     ]);
 }
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+// FIX bfcache: PHP default cache_limiter='nocache' sends Cache-Control: no-store → blocks bfcache (Lighthouse 3 failures)
+// We need private, max-age=0 so back/forward cache can restore. GTM tracking still works (fetch keepalive).
+// Do not use no-store on HTML; API routes can send their own no-store if needed.
+if (session_status() === PHP_SESSION_NONE) {
+    session_cache_limiter(''); // disable PHP auto no-store headers
+    session_cache_expire(0);
+    session_start();
+    // Explicit bfcache-friendly header for HTML (private, not no-store)
+    if (!headers_sent() && php_sapi_name() !== 'cli' && empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+        header('Cache-Control: private, max-age=0, must-revalidate');
+    }
+}
 
 // Track origin: whether this session was created as admin (for timeout correctness) (project-02#10)
 if (!isset($_SESSION['is_admin_session']) && $isAdminRequest && !empty($_SESSION['user_id'])) {

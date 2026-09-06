@@ -555,6 +555,8 @@ class PageController extends Controller {
     }
 
     public function trackClick() {
+        // FIX bfcache: tracking XHR must not poison main document cache. Send no-store only here.
+        if (!headers_sent()) header('Cache-Control: no-store, no-cache, must-revalidate');
         $slug = trim((string)($_POST['slug'] ?? ''));
         $lang = normalizeTrackingLanguage($_POST['lang'] ?? getCurrentLanguage());
         $utmSource = trim((string)($_POST['utm_source'] ?? ''));
@@ -572,6 +574,7 @@ class PageController extends Controller {
     }
 
     public function trackInternalLink() {
+        if (!headers_sent()) header('Cache-Control: no-store, no-cache, must-revalidate');
         $fromSlug = trim((string)($_POST['from'] ?? ''));
         $toSlug = trim((string)($_POST['to'] ?? ''));
         $lang = normalizeTrackingLanguage($_POST['lang'] ?? getCurrentLanguage());
@@ -592,6 +595,7 @@ class PageController extends Controller {
     }
 
     public function trackPhoneCall() {
+        if (!headers_sent()) header('Cache-Control: no-store, no-cache, must-revalidate');
         $slug = trim((string)($_POST['slug'] ?? ''));
         $lang = normalizeTrackingLanguage($_POST['lang'] ?? getCurrentLanguage());
         $utmSource = trim((string)($_POST['utm_source'] ?? ''));

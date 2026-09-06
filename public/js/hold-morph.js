@@ -1,4 +1,4 @@
-// path: ./public/js/hold-morph.js  v5 — image-only, header stays, no flash/curtain
+// path: ./public/js/hold-morph.js  v6 — image-only, header stays, curtain + hi-res swap
 (function () {
   'use strict';
 
@@ -7,9 +7,85 @@
   var NAV_AT = 0.88;
   var MOVE_TOL = 14;
   var CIRC = 100.53096;
+  var STORAGE_KEY = 'morph-pending';
+  var HIRES_ATTR = 'data-cover-hires'; // add this to tile markup pointing at
+                                        // a >=1200px version of the same
+                                        // image (same pipeline as the hero
+                                        // srcset) — without it the clone and
+                                        // curtain fall back to the thumbnail
+                                        // and will stay visibly soft at
+                                        // hero scale. That softness is a
+                                        // pixel-data limit, not fixable in
+                                        // JS/CSS.
 
   var isReduced = false;
   try { isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+
+  // --- destination curtain: masks the real hero loading in on arrival ---
+  // Companion to the tiny synchronous script that must sit in <head>, before
+  // the CSS <link> tags (see header.php patch). That script sets
+  // html.morph-incoming + body{visibility:hidden} BEFORE first paint so
+  // there's no gap for the browser to show anything before this curtain is
+  // actually in place. This function's job is to build the curtain, then
+  // hand control back by removing that guard once the curtain is covering.
+  function showCurtainIfPending(){
+    var revealBody = function(){
+      try {
+        document.documentElement.classList.remove('morph-incoming');
+        if (window.__morphCurtainStyle) { window.__morphCurtainStyle.remove(); window.__morphCurtainStyle = null; }
+      } catch(e){}
+    };
+    try {
+      var raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) { revealBody(); return; }
+      var data = JSON.parse(raw);
+      if (!data || !data.src) { sessionStorage.removeItem(STORAGE_KEY); revealBody(); return; }
+      if (Date.now() - (data.ts||0) > 2400) { sessionStorage.removeItem(STORAGE_KEY); revealBody(); return; }
+      sessionStorage.removeItem(STORAGE_KEY);
+      if (!document.querySelector('.hero, #hero, #hero-bg, .hero__bg')) { revealBody(); return; }
+
+      var r = heroRect();
+      var curtain = document.createElement('div');
+      curtain.className = 'morph-curtain';
+      curtain.setAttribute('aria-hidden','true');
+      curtain.style.top = r.top + 'px';
+      curtain.style.width = r.width + 'px';
+      curtain.style.height = r.height + 'px';
+      var img = document.createElement('img');
+      img.className = 'morph-curtain__img';
+      img.alt = '';
+      img.decoding = 'async';
+      img.src = data.src; // this is whichever source (hires if available) fed the clone
+      var scrim = document.createElement('div');
+      scrim.className = 'morph-curtain__scrim';
+      curtain.appendChild(img);
+      curtain.appendChild(scrim);
+      document.body.appendChild(curtain);
+
+      revealBody(); // curtain is up and opaque — safe to reveal body now
+
+      var doFade = function(){
+        curtain.classList.add('is-fading');
+        setTimeout(function(){ try{ curtain.remove(); }catch(e){} }, 420);
+      };
+      var heroImg = document.querySelector('.hero__bg img, .hero-image, .hero-media img');
+      if (heroImg && heroImg.decode) {
+        var t = setTimeout(doFade, 520);
+        heroImg.decode().then(function(){ clearTimeout(t); requestAnimationFrame(function(){ setTimeout(doFade, 100); }); }).catch(function(){ clearTimeout(t); doFade(); });
+      } else {
+        requestAnimationFrame(function(){ setTimeout(doFade, 320); });
+      }
+    } catch(e){
+      revealBody();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', showCurtainIfPending);
+  } else {
+    showCurtainIfPending();
+  }
+  window.addEventListener('pageshow', showCurtainIfPending);
 
   function headerH(){
     var h = document.querySelector('header');
@@ -70,6 +146,7 @@
   function makeClone(tile){
     var tileImg = tile.querySelector('.links-tile__img');
     var src = tile.getAttribute('data-cover') || (tileImg ? (tileImg.currentSrc || tileImg.src) : '');
+    var hiresSrc = tile.getAttribute(HIRES_ATTR) || '';
     // subtle overlay below header only — header stays visible (z 200 > 150)
     var overlay = document.createElement('div');
     overlay.className = 'morph-overlay is-hero-tint';
@@ -97,7 +174,26 @@
     clone.appendChild(cImg);
     document.body.appendChild(clone);
     clone.getBoundingClientRect();
-    return { overlay: overlay, clone: clone, cImg: cImg, startRect: rect };
+
+    // Swap in the hi-res source as soon as it's decoded. This is the actual
+    // fix for the "clear low-res load" you're seeing — the clone starts
+    // from the same thumbnail already on screen (so there's no pop at the
+    // very start), then upgrades mid-flight once the bigger file is ready.
+    // Without HIRES_ATTR being set on the tile markup, this is a no-op and
+    // you'll keep seeing the thumbnail stretched to hero size — that part
+    // can't be fixed without a larger source image to draw from.
+    var bestSrc = src || (tileImg ? tileImg.src : '');
+    if (hiresSrc && hiresSrc !== src) {
+      var hi = new Image();
+      hi.decoding = 'async';
+      hi.src = hiresSrc;
+      var swap = function(){ try { cImg.src = hiresSrc; } catch(e){} };
+      if (hi.decode) hi.decode().then(swap).catch(swap);
+      else hi.onload = swap;
+      bestSrc = hiresSrc; // this is what the curtain will use on arrival
+    }
+
+    return { overlay: overlay, clone: clone, cImg: cImg, startRect: rect, bestSrc: bestSrc };
   }
 
   function doMorph(tile, ctx){
@@ -110,6 +206,10 @@
     var sy = end.height / Math.max(1, start.height);
 
     document.body.classList.add('morph-lock');
+    // hand the best available source (hi-res if we got it) to the curtain
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ src: ctx.bestSrc, ts: Date.now() }));
+    } catch(e){}
 
     var dur = isReduced ? 260 : MORPH_MS;
     var easing = isReduced ? 'ease-out' : 'cubic-bezier(0.22, 1, 0.36, 1)';
@@ -154,6 +254,7 @@
         if(anim) try{anim.cancel();}catch(e){}
         cleanup();
         tile.classList.remove('is-holding');
+        try{ sessionStorage.removeItem(STORAGE_KEY); }catch(e){}
         document.removeEventListener('keydown', onEsc);
       }
     }
@@ -296,7 +397,7 @@
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
   else init();
   window.addEventListener('pageshow', function(){
-    document.querySelectorAll('.morph-overlay,.morph-clone').forEach(function(el){ el.remove(); });
+    document.querySelectorAll('.morph-overlay,.morph-clone,.morph-curtain').forEach(function(el){ el.remove(); });
     document.body.classList.remove('morph-lock');
     document.querySelectorAll('.links-tile[data-morph="ready"]').forEach(function(t){ t.classList.remove('is-holding'); });
   });

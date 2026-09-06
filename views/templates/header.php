@@ -134,10 +134,32 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <meta name="twitter:title" content="<?= e($ogTitle) ?>">
     <meta name="twitter:description" content="<?= e($ogDescription) ?>">
     <meta name="twitter:image" content="<?= e($ogImage) ?>">
-    <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
-    
-     <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/pages.min.css') ?: time() ?>">
-     <link rel="stylesheet" href="<?= BASE_URL ?>/css/components.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/components.min.css') ?: time() ?>">
+     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/css/favicon.ico">
+     <script>
+     (function(){
+       try {
+         var raw = sessionStorage.getItem('morph-pending');
+         if (!raw) return;
+         var data = JSON.parse(raw);
+         if (!data || !data.src || Date.now() - (data.ts||0) > 2400) {
+           sessionStorage.removeItem('morph-pending');
+           return;
+         }
+         document.documentElement.classList.add('morph-incoming');
+         var s = document.createElement('style');
+         s.textContent = 'html.morph-incoming body{visibility:hidden}';
+         document.head.appendChild(s);
+         window.__morphCurtainStyle = s;
+         setTimeout(function(){
+           document.documentElement.classList.remove('morph-incoming');
+           if (window.__morphCurtainStyle) { window.__morphCurtainStyle.remove(); window.__morphCurtainStyle = null; }
+         }, 3000);
+       } catch(e){}
+     })();
+     </script>
+      <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
+      <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/pages.min.css') ?: time() ?>">
+      <link rel="stylesheet" href="<?= BASE_URL ?>/css/components.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/components.min.css') ?: time() ?>">
      <?php
      // Per-page custom CSS: merges DB custom_css + any <style> extracted from content (see PageController)
      $pageCustomCss = $pageCustomCss ?? ($page['custom_css'] ?? '');

@@ -1810,7 +1810,9 @@ function renderHeroSection($mediaItems, $lang) {
     if ($imageSources) {
         $html .= '<picture>';
         if (!empty($imageSources['webp'])) {
-            $html .= '<source type="image/webp" srcset="' . htmlspecialchars($imageSources['webp']) . '" sizes="(max-width: 900px) 100vw, 1100px">';
+            // FIX: hero is full-bleed 100vw (public/css/pages.css:318 min-height clamp), not 1100px max-w
+            // previous "1100px" forced desktop to fetch too-small, mobile to fetch 768w for 513px display (18.4 KiB waste)
+            $html .= '<source type="image/webp" srcset="' . htmlspecialchars($imageSources['webp']) . '" sizes="100vw">';
         }
     }
     $html .= '<img src="' . $imagePath . '" ';
@@ -1820,7 +1822,7 @@ function renderHeroSection($mediaItems, $lang) {
     }
     $html .= 'class="hero-image" loading="eager" decoding="async" fetchpriority="high"';
     if ($imageSources) {
-        $html .= ' srcset="' . htmlspecialchars($imageSources['fallback']) . '" sizes="(max-width: 900px) 100vw, 1100px"';
+        $html .= ' srcset="' . htmlspecialchars($imageSources['fallback']) . '" sizes="100vw"';
     }
     $html .= '>';
     if ($imageSources) {
@@ -1843,7 +1845,9 @@ function renderHeroSection($mediaItems, $lang) {
 }
 
 function getResponsiveImageWidths() {
-    return [480, 768, 1024, 1366];
+    // 640 added to match 513px displayed LCP (was 768 → oversized by ~50% = 18.4 KiB waste)
+    // 480 for small, 640 for mobile LCP, 768 still useful for tablet, 1024/1366 for desktop
+    return [480, 640, 768, 1024, 1366];
 }
 
 function getUploadsDir() {
@@ -2003,9 +2007,11 @@ function ensureDerivedImage($filename, $targetWidth, $format) {
 
     $saved = false;
     if ($format === 'webp') {
-        $saved = imagewebp($targetImage, $targetPath, 80);
+        // 80 → 72 saves ~15% (~8 KiB) per hero LCP per Lighthouse; visual diff negligible on photos
+        $saved = imagewebp($targetImage, $targetPath, 72);
     } else {
-        $saved = imagejpeg($targetImage, $targetPath, 82);
+        // 82 → 75 for JPEG fallback
+        $saved = imagejpeg($targetImage, $targetPath, 75);
     }
 
     imagedestroy($sourceImage);

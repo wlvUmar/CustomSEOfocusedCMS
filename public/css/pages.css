@@ -1805,12 +1805,20 @@ main figcaption {
 }
 
 .faq-acc-item__a {
-    max-height: 0;
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
     overflow: hidden;
-    transition: max-height .35s var(--ease);
+    transition: grid-template-rows .35s var(--ease), opacity .25s var(--ease);
+    will-change: grid-template-rows;
 }
-
+.faq-acc-item.is-open .faq-acc-item__a {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
 .faq-acc-item__a-inner {
+    min-height: 0;
+    overflow: hidden;
     padding: 0 20px 20px;
     border-top: 1px solid var(--border-soft);
     padding-top: 14px;
