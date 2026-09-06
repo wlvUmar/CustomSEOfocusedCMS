@@ -70,7 +70,6 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
 <head>
-    <script>try{(function(){var k='morph-pending';var r=sessionStorage.getItem(k);if(!r)return;var d;try{d=JSON.parse(r)}catch(e){return}if(!d||!d.src)return;if(Date.now()-(d.ts||0)>2400)return;document.documentElement.classList.add('morph-incoming');var s=document.createElement('style');s.id='morph-curtain-hide';s.textContent='html.morph-incoming body{visibility:hidden}';(document.head||document.documentElement).appendChild(s);window.__morphCurtainStyle=s;})()}catch(e){}</script>
     <?php if (defined('GTM_ID')): ?>
     <!-- Google Tag Manager (lazy-loaded on idle/first interaction to keep the
          main thread free during load; improves INP on mobile) -->

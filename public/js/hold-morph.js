@@ -1,86 +1,15 @@
-// path: ./public/js/hold-morph.js  v4 — pointer capture (desktop fix),
-// clone fill fixed via hold-morph.css, curtain handoff with head-script
+// path: ./public/js/hold-morph.js  v5 — image-only, header stays, no flash/curtain
 (function () {
   'use strict';
 
   var HOLD_MS = 300;
-  var MORPH_MS = 760;         // slightly longer for smoother beats
-  var NAV_AT = 0.82;          // navigate near end so morph completes before unload
+  var MORPH_MS = 640;
+  var NAV_AT = 0.88;
   var MOVE_TOL = 14;
   var CIRC = 100.53096;
-  var STORAGE_KEY = 'morph-pending';
 
   var isReduced = false;
   try { isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
-
-  // --- destination curtain: masks snap on arrival ---
-  // NOTE: a tiny synchronous script in <head> (see header.php patch) already
-  // set html.morph-incoming + body{visibility:hidden} BEFORE first paint, so
-  // there is no flash of the real page before this runs. This function's job
-  // is just to build the curtain and then hand control back (reveal body).
-  function showCurtainIfPending(){
-    var revealBody = function(){
-      try {
-        document.documentElement.classList.remove('morph-incoming');
-        if (window.__morphCurtainStyle) { window.__morphCurtainStyle.remove(); window.__morphCurtainStyle = null; }
-      } catch(e){}
-    };
-    try {
-      var raw = sessionStorage.getItem(STORAGE_KEY);
-      if (!raw) { revealBody(); return; }
-      var data = JSON.parse(raw);
-      if (!data || !data.src) { sessionStorage.removeItem(STORAGE_KEY); revealBody(); return; }
-      if (Date.now() - (data.ts||0) > 2400) { sessionStorage.removeItem(STORAGE_KEY); revealBody(); return; }
-      sessionStorage.removeItem(STORAGE_KEY);
-      // don't show if no hero on this page (e.g. 404)
-      if (!document.querySelector('.hero, #hero, #hero-bg, .hero__bg')) { revealBody(); return; }
-
-      var curtain = document.createElement('div');
-      curtain.className = 'morph-curtain';
-      curtain.setAttribute('aria-hidden','true');
-      var img = document.createElement('img');
-      img.className = 'morph-curtain__img';
-      img.alt = '';
-      img.decoding = 'async';
-      img.src = data.src;
-      var scrim = document.createElement('div');
-      scrim.className = 'morph-curtain__scrim';
-      curtain.appendChild(img);
-      curtain.appendChild(scrim);
-      document.body.appendChild(curtain);
-
-      // curtain is up and opaque — safe to reveal body now, no visible change
-      revealBody();
-      document.body.style.overflow = 'hidden';
-
-      var doFade = function(){
-        curtain.classList.add('is-fading');
-        setTimeout(function(){
-          try{ curtain.remove(); }catch(e){}
-          document.body.style.overflow = '';
-        }, 460);
-      };
-      // wait for hero image or at least next frame, then fade
-      var heroImg = document.querySelector('.hero__bg img, .hero-image, .hero-media img');
-      if (heroImg && heroImg.decode) {
-        var t = setTimeout(doFade, 520);
-        heroImg.decode().then(function(){ clearTimeout(t); requestAnimationFrame(function(){ setTimeout(doFade, 120); }); }).catch(function(){ clearTimeout(t); doFade(); });
-      } else {
-        // fallback: short delay so curtain covers initial paint snap
-        requestAnimationFrame(function(){ setTimeout(doFade, 360); });
-      }
-    } catch(e){
-      revealBody();
-    }
-  }
-
-  // run curtain ASAP (before DOMContentLoaded if possible)
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', showCurtainIfPending);
-  } else {
-    showCurtainIfPending();
-  }
-  window.addEventListener('pageshow', showCurtainIfPending);
 
   function headerH(){
     var h = document.querySelector('header');
@@ -131,7 +60,6 @@
       img.decoding = 'async';
       img.src = src;
       if (img.decode) img.decode().catch(function(){});
-      // also preload as image so destination hits cache
       var l = document.createElement('link');
       l.rel = 'preload'; l.as = 'image'; l.href = src;
       document.head.appendChild(l);
@@ -142,15 +70,12 @@
   function makeClone(tile){
     var tileImg = tile.querySelector('.links-tile__img');
     var src = tile.getAttribute('data-cover') || (tileImg ? (tileImg.currentSrc || tileImg.src) : '');
-    var title = (tile.querySelector('.links-tile__text') || {}).textContent || '';
+    // subtle overlay below header only — header stays visible (z 200 > 150)
     var overlay = document.createElement('div');
     overlay.className = 'morph-overlay is-hero-tint';
     document.body.appendChild(overlay);
     requestAnimationFrame(function(){ overlay.classList.add('is-active'); });
 
-    // tile.is-holding already forces transform:none (see hold-morph.css), so
-    // this rect is stable and matches what the user actually saw — no jump
-    // caused by the hover float still being mid-transition.
     var rect = tile.getBoundingClientRect();
     if (tileImg) {
       var ir = tileImg.getBoundingClientRect();
@@ -170,19 +95,9 @@
     cImg.fetchPriority = 'high';
     cImg.src = src || (tileImg ? tileImg.src : '');
     clone.appendChild(cImg);
-    var scrim = document.createElement('span');
-    scrim.className = 'morph-clone__scrim';
-    scrim.setAttribute('aria-hidden','true');
-    clone.appendChild(scrim);
-    if (title) {
-      var t = document.createElement('span');
-      t.className = 'morph-clone__title';
-      t.textContent = title.trim();
-      clone.appendChild(t);
-    }
     document.body.appendChild(clone);
     clone.getBoundingClientRect();
-    return { overlay: overlay, clone: clone, cImg: cImg, startRect: rect, src: src, title: title };
+    return { overlay: overlay, clone: clone, cImg: cImg, startRect: rect };
   }
 
   function doMorph(tile, ctx){
@@ -195,10 +110,6 @@
     var sy = end.height / Math.max(1, start.height);
 
     document.body.classList.add('morph-lock');
-    // store for destination curtain
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ src: ctx.src, title: ctx.title, ts: Date.now() }));
-    } catch(e){}
 
     var dur = isReduced ? 260 : MORPH_MS;
     var easing = isReduced ? 'ease-out' : 'cubic-bezier(0.22, 1, 0.36, 1)';
@@ -211,7 +122,6 @@
       document.body.classList.remove('morph-lock');
     };
     try {
-      // two-keyframe FLIP: border-radius anim needs separate handling in some browsers
       anim = clone.animate([
         { transform:'translate(0,0) scale(1,1)', borderRadius:'16px', offset:0 },
         { transform:'translate('+dx+'px,'+dy+'px) scale('+sx+','+sy+')', borderRadius:'0px', offset:1 }
@@ -223,8 +133,6 @@
         clone.style.borderRadius='0px';
       });
     }
-    // beats: scrim/title stagger inside clone
-    requestAnimationFrame(function(){ requestAnimationFrame(function(){ clone.classList.add('is-covering'); }); });
     try{ if(navigator.vibrate) navigator.vibrate(18); }catch(e){}
 
     var href = tile.href;
@@ -232,7 +140,6 @@
     function nav(){
       if(fired) return; fired=true;
       try{ location.href = href; }catch(e){ location = href; }
-      // fallback cleanup if nav blocked
       setTimeout(cleanup, 2000);
     }
     var t = setTimeout(nav, Math.round(dur * NAV_AT));
@@ -247,7 +154,6 @@
         if(anim) try{anim.cancel();}catch(e){}
         cleanup();
         tile.classList.remove('is-holding');
-        try{ sessionStorage.removeItem(STORAGE_KEY); }catch(e){}
         document.removeEventListener('keydown', onEsc);
       }
     }
@@ -259,14 +165,6 @@
     var hasImg = !!tile.querySelector('.links-tile__img') || !!tile.getAttribute('data-cover');
     if (!hasImg) { tile.dataset.morph='no-image'; return; }
     tile.dataset.morph='ready';
-    // The real fix for the desktop "pointer race": <a>/<img> are draggable
-    // by default, and Chromium/WebKit arm an internal drag-recognizer on
-    // pointerdown + the first hint of movement — which can eat or delay the
-    // pointermove/timing signals our hold-timer relies on, before our own
-    // 'dragstart' handler ever runs. CSS -webkit-user-drag:none doesn't
-    // reliably suppress this on every engine; the HTML draggable property
-    // does, because it turns off native drag-gesture recognition at the
-    // source instead of reacting to it after it's already begun.
     tile.draggable = false;
     var tileImgEl = tile.querySelector('.links-tile__img');
     if (tileImgEl) tileImgEl.draggable = false;
@@ -299,32 +197,21 @@
       tile.classList.remove('is-holding');
       setProgress(0);
     }
-
     function getPoint(e){
       if (e.touches && e.touches[0]) return { x:e.touches[0].clientX, y:e.touches[0].clientY };
       if (e.changedTouches && e.changedTouches[0]) return { x:e.changedTouches[0].clientX, y:e.changedTouches[0].clientY };
       return { x: e.clientX, y: e.clientY };
     }
-
     function onDown(e){
       if(morphStarted) return;
-      if(isHolding) return; // ignore a second pointer starting mid-gesture
+      if(isHolding) return;
       if(e.button!=null && e.button!==0) return;
       if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey) return;
-      // ignore secondary touch (more than one finger = scroll)
       if(e.touches && e.touches.length>1) return;
-
-      // Pointer capture pins ALL subsequent pointer events (move/up/cancel) to
-      // this tile for this pointerId, regardless of what's visually under the
-      // cursor. This is the desktop fix: without it, the tile's own :hover
-      // lift (translateY/scale, frozen below via .is-holding CSS) plus normal
-      // mouse jitter could shift hit-testing enough to misfire pointerleave
-      // and cancel the hold before 300ms elapses.
       if (e.pointerId != null) {
         activePointerId = e.pointerId;
         try { tile.setPointerCapture(e.pointerId); } catch(err){}
       }
-
       var p = getPoint(e);
       startX=p.x; startY=p.y; startT=performance.now(); isHolding=true;
       tile.classList.add('is-holding');
@@ -352,14 +239,12 @@
         } else { setTimeout(go, 24); }
       }, HOLD_MS);
     }
-
     function onMove(e){
       if(!isHolding || morphStarted) return;
       if(activePointerId != null && e.pointerId != null && e.pointerId !== activePointerId) return;
       var p = getPoint(e);
       if(Math.hypot(p.x-startX, p.y-startY) > MOVE_TOL) clearHold();
     }
-
     function onUp(e){
       var wasMorph = morphStarted;
       var wasHolding = isHolding;
@@ -373,12 +258,7 @@
         setTimeout(function(){ morphStarted=false; }, 60);
       }
     }
-
-    function onCancel(){
-      clearHold();
-      releaseCapture();
-    }
-
+    function onCancel(){ clearHold(); releaseCapture(); }
     function onClickCapture(e){
       if(Date.now() < suppressUntil){
         e.preventDefault(); e.stopPropagation();
@@ -386,19 +266,13 @@
         return false;
       }
     }
-
-    // Use pointer events where available — single path, fixes desktop not triggering
     if (window.PointerEvent) {
       tile.addEventListener('pointerdown', onDown, {passive:true});
       tile.addEventListener('pointermove', onMove, {passive:true});
       tile.addEventListener('pointerup', onUp, {passive:false});
       tile.addEventListener('pointercancel', onCancel, {passive:true});
-      // With pointer capture held, pointerleave no longer fires on cursor
-      // drift alone — it now only fires for a real cancel/capture-loss, so
-      // this stays as a safety net rather than the main cancel path.
       tile.addEventListener('pointerleave', function(){ if(isHolding && !morphStarted && activePointerId==null) clearHold(); }, {passive:true});
     } else {
-      // fallback
       tile.addEventListener('mousedown', onDown);
       tile.addEventListener('mousemove', onMove);
       tile.addEventListener('mouseup', onUp);
@@ -419,7 +293,6 @@
     if(!tiles.length) return;
     tiles.forEach(setup);
   }
-
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
   else init();
   window.addEventListener('pageshow', function(){
