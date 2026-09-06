@@ -1,25 +1,18 @@
-/* hold-morph.css — press-and-hold shared-element tile → hero transition
-   Only for .links-tile with image. Compositor-only (transform/opacity).
-   No layout-threatening properties. Respects prefers-reduced-motion. */
-
-/* tile hint — pressable affordance */
+/* hold-morph.css v3 — fix white surround, snap, and beats */
 .links-tile[data-morph="ready"] {
   cursor: pointer;
   touch-action: manipulation;
   -webkit-touch-callout: none;
   user-select: none;
-}
-.links-tile[data-morph="ready"]:active {
-  /* subtle feedback while holding — overriden by .is-holding */
-  transform: scale(0.98);
+  -webkit-user-drag: none;
 }
 .links-tile.is-holding {
-  /* keep visible, slight press, no hover lift */
-  transform: scale(0.985) !important;
-  box-shadow: 0 8px 24px rgba(15,95,111,.18) !important;
+  transform: scale(0.98) !important;
+  box-shadow: 0 10px 28px rgba(15,95,111,.22) !important;
 }
+.links-tile.is-holding .links-tile__img { transform: scale(1.03); }
 
-/* progress ring container — sits centered over tile */
+/* ring — high contrast */
 .morph-ring {
   position: absolute;
   inset: 0;
@@ -28,142 +21,96 @@
   pointer-events: none;
   z-index: 4;
   opacity: 0;
-  transition: opacity .18s ease;
+  transition: opacity .14s ease;
 }
-.links-tile.is-holding .morph-ring {
-  opacity: 1;
-}
-.morph-ring__svg {
-  width: 54px;
-  height: 54px;
-  transform: rotate(-90deg);
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,.35));
-}
-.morph-ring__bg {
-  fill: none;
-  stroke: rgba(255,255,255,.22);
-  stroke-width: 3;
-}
-.morph-ring__fg {
-  fill: none;
-  stroke: #fff;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-dasharray: 100.53; /* 2*PI*16 */
-  stroke-dashoffset: 100.53;
-  transition: stroke-dashoffset .12s linear;
-}
-.morph-ring__label {
-  position: absolute;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: #fff;
-  text-shadow: 0 1px 6px rgba(0,0,0,.45);
-  margin-top: 1px;
-}
-
-/* hold hint text below ring on desktop */
+.links-tile.is-holding .morph-ring { opacity: 1; }
+.morph-ring__svg { width: 60px; height: 60px; transform: rotate(-90deg); filter: drop-shadow(0 3px 10px rgba(0,0,0,.40)); }
+.morph-ring__bg { fill: none; stroke: rgba(255,255,255,.28); stroke-width: 3.2; }
+.morph-ring__fg { fill: none; stroke: var(--orange,#f97316); stroke-width: 3.4; stroke-linecap: round; stroke-dasharray: 100.53; stroke-dashoffset: 100.53; }
+.morph-ring__label { position: absolute; font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,.55); }
 .morph-hint {
-  position: absolute;
-  left: 50%;
-  bottom: 54px;
-  transform: translateX(-50%);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .04em;
-  color: rgba(255,255,255,.95);
-  background: rgba(9,28,35,.55);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,.18);
-  padding: 4px 8px;
-  border-radius: 999px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity .18s ease;
+  position: absolute; left: 50%; bottom: 50px; transform: translateX(-50%);
+  font-size: 11px; font-weight: 700; color: #fff;
+  background: rgba(9,28,35,.62); border: 1px solid rgba(255,255,255,.18);
+  padding: 4px 10px; border-radius: 999px; white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity .14s ease;
 }
 .links-tile.is-holding .morph-hint { opacity: 1; }
-@media (max-width: 480px) {
-  .morph-hint { display: none; }
-}
+@media (max-width: 480px){ .morph-hint{ display:none; } }
 
-/* fullscreen overlay that hosts the morph clone */
+/* overlay — dark so no white surround; covers everything behind clone */
 .morph-overlay {
   position: fixed;
   inset: 0;
   z-index: 9998;
   pointer-events: none;
   opacity: 0;
-  background: var(--surface, #f8f9fa);
-  transition: opacity .28s ease;
-  contain: layout paint;
+  background: #0b1e24; /* matches hero dark, not var(--surface) */
+  transition: opacity .24s ease;
 }
-.morph-overlay.is-active {
-  opacity: 1;
-  pointer-events: auto;
+.morph-overlay.is-active { opacity: 1; }
+.morph-overlay.is-hero-tint {
+  /* subtle hero-like vignette so white page never flashes */
+  background:
+    linear-gradient(to top, rgba(9,28,35,.88) 0%, rgba(9,28,35,.45) 38%, rgba(9,28,35,.12) 72%, rgba(11,30,36,.02) 100%),
+    #0b1e24;
 }
-/* while morphing, lock body scroll without layout shift */
-body.morph-lock {
-  overflow: hidden !important;
-  overscroll-behavior: none;
-}
-body.morph-lock .links-track {
-  pointer-events: none;
-}
+body.morph-lock { overflow: hidden !important; overscroll-behavior: none; }
 
-/* the cloned image card */
+/* clone — the shared element */
 .morph-clone {
   position: fixed;
   z-index: 9999;
   overflow: hidden;
   border-radius: 16px;
   background: #0c2b33;
-  box-shadow: 0 12px 36px rgba(0,0,0,.22);
-  will-change: transform, border-radius;
-  contain: layout paint;
-  pointer-events: none;
-  /* transform origin top-left for FLIP math */
-  transform-origin: top left;
-}
-.morph-clone__img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  /* keep image crisp during scale */
+  box-shadow: 0 16px 44px rgba(0,0,0,.32);
   will-change: transform;
+  transform-origin: top left;
+  pointer-events: none;
 }
+.morph-clone__img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .morph-clone__scrim {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(9,28,35,.55) 0%, rgba(9,28,35,.15) 55%, transparent 100%);
-  opacity: 0;
-  transition: opacity .35s ease;
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(9,28,35,.70) 0%, rgba(9,28,35,.22) 56%, transparent 100%);
+  opacity: 0; transition: opacity .30s ease;
 }
 .morph-clone.is-covering .morph-clone__scrim { opacity: 1; }
 .morph-clone__title {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
+  position: absolute; left: 0; right: 0; bottom: 0;
   padding: 18px 20px;
-  color: #fff;
-  font-size: clamp(18px, 3.5vw, 28px);
-  font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -.015em;
-  text-shadow: 0 2px 14px rgba(0,0,0,.35);
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity .35s ease .15s, transform .35s ease .15s;
+  color: #fff; font-size: clamp(18px,3.4vw,26px); font-weight: 800; line-height: 1.15;
+  text-shadow: 0 2px 12px rgba(0,0,0,.38);
+  opacity: 0; transform: translateY(10px);
+  transition: opacity .32s ease .16s, transform .32s ease .16s;
 }
-.morph-clone.is-covering .morph-clone__title {
+.morph-clone.is-covering .morph-clone__title { opacity: 1; transform: translateY(0); }
+
+/* destination curtain — injected on arrival to mask snap */
+.morph-curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #0b1e24;
+  display: grid;
+  place-items: stretch;
   opacity: 1;
-  transform: translateY(0);
+  transition: opacity .42s ease;
+  pointer-events: none;
+}
+.morph-curtain.is-fading { opacity: 0; }
+.morph-curtain__img {
+  width: 100%;
+  height: clamp(360px,54vw,520px);
+  object-fit: cover;
+  display: block;
+}
+.morph-curtain__scrim {
+  position: absolute; inset: 0;
+  height: clamp(360px,54vw,520px);
+  background: linear-gradient(to top, rgba(9,28,35,.70) 0%, transparent 100%);
 }
 
-/* prefers-reduced-motion — disable morph entirely, keep instant navigation */
 @media (prefers-reduced-motion: reduce) {
-  .morph-ring, .morph-hint, .morph-overlay, .morph-clone { display: none !important; }
-  .links-tile.is-holding { transform: none !important; }
+  .morph-ring__fg, .morph-clone { transition: none !important; }
 }

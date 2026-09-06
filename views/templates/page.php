@@ -164,6 +164,8 @@ $applianceNameForSEO = $applianceName ?? '';
         }
     ?>
     <section class="links-section" data-animate="stagger">
+        <link rel="preload" href="<?= BASE_URL ?>/css/hold-morph.css?v=<?= @filemtime(BASE_PATH . '/public/css/hold-morph.css') ?: time() ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
+        <noscript><link rel="stylesheet" href="<?= BASE_URL ?>/css/hold-morph.css?v=<?= @filemtime(BASE_PATH . '/public/css/hold-morph.css') ?: time() ?>"></noscript>
         <div class="links-section__head">
             <div class="section-label"><?= $lang === 'ru' ? 'Разделы' : 'Bo\'limlar' ?></div>
             <h2 class="links-section__title">
