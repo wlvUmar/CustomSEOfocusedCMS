@@ -44,6 +44,7 @@ function saveOrder() {
     
     fetch(reorderUrl, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
             'Accept': 'application/json',
             'X-CSRF-Token': csrf
