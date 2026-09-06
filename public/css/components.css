@@ -212,8 +212,67 @@
 /* === C-CTA-SPLIT === */
 .c-cta-split{display:grid;gap:16px;align-items:center;background:var(--teal-light);border:1px solid #cfe8ec;border-radius:16px;padding:18px}
 @media(min-width:800px){.c-cta-split{grid-template-columns:1fr auto}}
-/* === C-CTA-GRADIENT === */
-.c-cta-gradient{background:linear-gradient(135deg,var(--teal) 0%,var(--orange) 100%);color:#fff;border-radius:16px;padding:24px}
+/* === C-CTA-GRADIENT — revised for visual bridge & a11y (teal→orange was isolated) === */
+.c-cta-gradient{
+  background:linear-gradient(135deg,var(--teal) 0%,#0c2b33 100%);
+  color:#fff;
+  border-radius:16px;
+  padding:clamp(20px,4vw,28px);
+  display:grid;
+  gap:14px;
+  border:1px solid rgba(255,255,255,.08);
+  position:relative;
+  overflow:hidden;
+}
+/* 3px warm accent bridges header teal → brand-chip orange, keeps orange as accent not field */
+.c-cta-gradient::before{
+  content:"";
+  position:absolute;
+  inset:0 0 auto 0;
+  height:3px;
+  background:linear-gradient(90deg,var(--teal),var(--orange));
+  opacity:.95;
+}
+/* sentence-case, ink-matched weight — removes ALL-CAPS scan cost (was c-kicker) */
+.c-cta-gradient h2,
+.c-cta-gradient h3{
+  color:#fff;
+  font-size:clamp(20px,2.8vw,26px);
+  font-weight:800;
+  line-height:1.22;
+  letter-spacing:-.02em;
+  text-transform:none;
+  margin:0;
+  max-width:22ch;
+  text-wrap:balance;
+}
+.c-cta-gradient p{
+  color:rgba(255,255,255,.86);
+  line-height:1.6;
+  margin:0;
+  max-width:62ch;
+  font-size:clamp(14px,1.6vw,15.5px);
+}
+.c-cta-gradient__actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:2px}
+/* equal-tier buttons, equal shape, both WCAG-AA on dark teal (fixes teal-on-orange) */
+.c-cta-gradient .c-btn{flex:1 1 160px;justify-content:center;min-height:44px;border-radius:10px;font-size:.95rem}
+.c-cta-gradient .c-btn--white{background:#fff;color:var(--teal);border:1px solid #fff}
+.c-cta-gradient .c-btn--white:hover{background:#f8fafc;transform:translateY(-1px)}
+.c-cta-gradient .c-btn--ghost{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.28)}
+.c-cta-gradient .c-btn--ghost:hover{background:rgba(255,255,255,.18);transform:translateY(-1px)}
+/* deprecated teal-on-orange combo now remapped to ghost for contrast */
+.c-cta-gradient .c-btn--teal{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.28)}
+/* paired-photo variant — connects heading as caption to image */
+.c-cta-gradient.has-media{display:grid;gap:18px}
+@media(min-width:860px){.c-cta-gradient.has-media{grid-template-columns:1.15fr .85fr;align-items:center}}
+.c-cta-gradient__media{border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.10)}
+.c-cta-gradient__media img{width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:4/3}
+/* ── vertical rhythm fix: replaces big empty gap → tight card → guided eye ── */
+.c-cta-gradient{margin-block:20px}
+.content-section + .c-cta-gradient,
+.c-section + .c-cta-gradient{margin-top:12px}
+.c-cta-gradient + .content-section{margin-top:var(--section-gap)}
+@media(max-width:700px){.c-cta-gradient{padding:18px;gap:12px}}
 /* === C-CTA-GHOST === */
 .c-cta-ghost{background:#fff;border:2px dashed var(--border);border-radius:16px;padding:20px}
 /* === C-CALLOUT === */
