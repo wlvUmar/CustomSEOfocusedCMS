@@ -3,17 +3,20 @@
     let currentInsertUrl = '';
     let currentInsertName = '';
 
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken || '';
+    }
     function uploadFile() {
         const input = document.getElementById('file-input');
         const file = input.files[0];
         if (!file) return;
-        
         const formData = new FormData();
         formData.append('file', file);
-        
+        formData.append('csrf_token', getCsrfToken());
         fetch((window.baseUrl || '') + '/admin/media/upload', {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: { 'X-CSRF-Token': getCsrfToken(), 'Accept': 'application/json' }
         })
         .then(r => r.json())
         .then(data => {
@@ -47,12 +50,13 @@
         }
         
         const formData = new FormData();
+        formData.append('csrf_token', getCsrfToken());
         formData.append('id', id);
         if (usageCount > 0) formData.append('force', '1');
-        
         fetch((window.baseUrl || '') + '/admin/media/delete', {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: { 'X-CSRF-Token': getCsrfToken(), 'Accept': 'application/json' }
         })
         .then(r => r.json())
         .then(data => {
@@ -146,13 +150,14 @@
 
     function deleteSelected() {
         if (!confirm(`Delete ${selectedItems.size} selected images?`)) return;
-        
         const promises = Array.from(selectedItems).map(id => {
             const formData = new FormData();
+            formData.append('csrf_token', getCsrfToken());
             formData.append('id', id);
             return fetch((window.baseUrl || '') + '/admin/media/delete', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                headers: { 'X-CSRF-Token': getCsrfToken(), 'Accept': 'application/json' }
             });
         });
         

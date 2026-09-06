@@ -118,6 +118,7 @@ $router->group('/admin/link-widget', function($router) {
 // Admin Media Management
 $router->group('/admin/media', function($router) {
     $router->get('/', function() { requireMediaAdmin('index'); });
+    $router->get('/list', function() { requireMediaAdmin('listJson'); });
     $router->post('/upload', function() { requireMediaAdmin('upload'); });
     $router->post('/delete', function() { requireMediaAdmin('delete'); });
     $router->post('/bulk-upload', function() { requireMediaAdmin('bulkUpload'); });

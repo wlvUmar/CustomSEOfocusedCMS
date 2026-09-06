@@ -265,13 +265,44 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <div id="media-slots-list" style="display:grid;gap:10px;margin-top:8px"></div>
             <small class="help-subtext">Detected from <code>{{media.*}}</code> in RU/UZ content. Save the page first, then attach images. Empty slots stay invisible on the site.</small>
         </div>
+        <!-- Inline media picker modal (no navigation away) -->
+        <div id="media-picker-modal" class="modal" style="display:none">
+            <div class="modal-content" style="max-width:900px;width:92vw;max-height:86vh;display:flex;flex-direction:column">
+                <div class="modal-header">
+                    <h3 id="media-picker-title">Choose image</h3>
+                    <button type="button" onclick="closeMediaPicker()" class="btn-close">&times;</button>
+                </div>
+                <div style="padding:10px 14px;border-bottom:1px solid #e5e7eb;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                    <div style="display:flex;gap:6px">
+                        <button type="button" class="btn btn-sm media-picker-filter active" data-filter="all" onclick="pickerSetFilter('all')">All</button>
+                        <button type="button" class="btn btn-sm media-picker-filter" data-filter="unused" onclick="pickerSetFilter('unused')">Unused</button>
+                        <button type="button" class="btn btn-sm media-picker-filter" data-filter="used" onclick="pickerSetFilter('used')">Used</button>
+                        <button type="button" class="btn btn-sm media-picker-filter" data-filter="attached" onclick="pickerSetFilter('attached')">Attached to this page</button>
+                    </div>
+                    <input type="text" id="media-picker-search" placeholder="Search filename..." oninput="pickerSearch()" style="flex:1;min-width:160px;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px">
+                    <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">Upload & attach<input type="file" id="media-picker-upload" accept="image/*" multiple style="display:none" onchange="pickerUpload(this)"></label>
+                </div>
+                <div id="media-picker-grid" style="overflow:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;flex:1;background:#f9fafb"></div>
+                <div id="media-picker-status" style="padding:8px 14px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280"></div>
+                <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
+                    <a id="media-picker-open-library" href="#" target="_blank" class="btn btn-sm">Open full library →</a>
+                    <button type="button" onclick="closeMediaPicker()" class="btn">Close</button>
+                </div>
+            </div>
+        </div>
         <script>
         (function(){
             const pageId = <?= (int)$page['id'] ?>;
-            const csrf = '<?= $_SESSION['csrf_token'] ?? '' ?>';
+            const csrf = '<?= htmlspecialchars(generateCSRFToken(), ENT_QUOTES) ?>';
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]')?.content || csrf;
+            const getCsrf = ()=> document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken || csrfMeta || csrf;
             const baseUrl = '<?= BASE_URL ?>';
-            const slotsData = <?= json_encode($slotsData, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) ?>;
+            const thumbBase = baseUrl + '/uploads/';
+            let slotsData = <?= json_encode($slotsData, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) ?>;
             const RESERVED = new Set(['hero','banner']);
+            let pickerSlot = null;
+            let pickerFilter = 'all';
+            let pickerQuery = '';
             function getEditorContent(id){
                 try{ const ed = tinymce.get(id); if(ed) return ed.getContent(); }catch(e){}
                 const el=document.getElementById(id); return el?el.value:'';
@@ -296,7 +327,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     const row=document.createElement('div');
                     row.style.cssText='display:flex;align-items:center;gap:12px;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb';
                     const thumbs = items.length
-                        ? items.map(it=>`<img src="${baseUrl}/uploads/${it.filename}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb">`).join('')
+                        ? items.map(it=>`<img src="${baseUrl}/uploads/${it.filename}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb" loading="lazy" decoding="async">`).join('')
                         : '<span style="width:56px;height:56px;display:grid;place-items:center;border:1px dashed #d1d5db;border-radius:6px;color:#9ca3af;font-size:11px;text-align:center">⚠<br>empty</span>';
                     const meta = items.length ? `${items.length} image${items.length>1?'s':''} — ${items.length===1?'single':'gallery'}` : 'invisible on site until attached';
                     row.innerHTML=`
@@ -306,7 +337,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
                             <div style="font-size:12px;color:#6b7280">${meta}</div>
                         </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <a href="${baseUrl}/admin/media?attach_slot=${encodeURIComponent(slot)}&page_id=${pageId}" class="btn btn-secondary btn-sm" target="_blank">Choose image</a>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="openMediaPicker('${slot}')">Choose image</button>
+                            <a href="${baseUrl}/admin/media?attach_slot=${encodeURIComponent(slot)}&page_id=${pageId}" class="btn btn-secondary btn-sm" title="Open full library in new tab" target="_blank">Library ↗</a>
                             ${items.length ? `<button type="button" class="btn btn-sm" style="background:#fef2f2;color:#991b1b;border:1px solid #fecaca" data-slot="${slot}" onclick="detachSlot('${slot}')">Detach all</button>` : ''}
                         </div>`;
                     list.appendChild(row);
@@ -316,18 +348,148 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 if(!confirm(`Detach all images from {{media.${slot}}}?`)) return;
                 const items = slotsData[slot]||[];
                 for(const it of items){
-                    const fd=new FormData(); fd.append('csrf_token', csrf); fd.append('page_id', pageId); fd.append('media_id', it.media_id); fd.append('section', slot);
-                    await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json'}});
+                    const fd=new FormData(); fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('media_id', it.media_id); fd.append('section', slot);
+                    await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
                 }
-                location.reload();
+                // refresh local state without full reload
+                try {
+                    const r = await fetch(baseUrl + '/admin/media/list?filter=attached&page_id='+pageId, {headers:{'Accept':'application/json'}});
+                    const j = await r.json();
+                    // rebuild slotsData from attached list not needed - just reload for correctness
+                    location.reload();
+                } catch(e){ location.reload(); }
             };
+            // Picker functions
+            window.openMediaPicker = async function(slot){
+                pickerSlot = slot;
+                document.getElementById('media-picker-title').textContent = 'Choose image for {{media.'+slot+'}}';
+                document.getElementById('media-picker-open-library').href = baseUrl + '/admin/media?attach_slot='+encodeURIComponent(slot)+'&page_id='+pageId;
+                document.getElementById('media-picker-modal').style.display='flex';
+                document.getElementById('media-picker-modal').classList.add('active');
+                pickerFilter = 'all';
+                document.querySelectorAll('.media-picker-filter').forEach(b=>b.classList.toggle('active', b.dataset.filter===pickerFilter));
+                document.getElementById('media-picker-search').value='';
+                pickerQuery='';
+                await pickerLoad();
+            };
+            window.closeMediaPicker = function(){
+                document.getElementById('media-picker-modal').style.display='none';
+                document.getElementById('media-picker-modal').classList.remove('active');
+                pickerSlot=null;
+            };
+            window.pickerSetFilter = function(f){
+                pickerFilter=f;
+                document.querySelectorAll('.media-picker-filter').forEach(b=>b.classList.toggle('active', b.dataset.filter===f));
+                pickerLoad();
+            };
+            window.pickerSearch = function(){
+                pickerQuery = document.getElementById('media-picker-search').value.trim().toLowerCase();
+                pickerLoad();
+            };
+            async function pickerLoad(){
+                const grid=document.getElementById('media-picker-grid');
+                const status=document.getElementById('media-picker-status');
+                grid.innerHTML='<div style="grid-column:1/-1;padding:20px;text-align:center;color:#6b7280">Loading…</div>';
+                status.textContent='';
+                try {
+                    const url = baseUrl + '/admin/media/list?filter='+encodeURIComponent(pickerFilter)+'&page_id='+pageId+'&q='+encodeURIComponent(pickerQuery)+'&limit=100';
+                    const r = await fetch(url, {headers:{'Accept':'application/json'}});
+                    const j = await r.json();
+                    if (!j.success) throw new Error(j.message||'load failed');
+                    let items = j.media || [];
+                    // client-side search fallback (filename/original_name) if server didn't filter
+                    if (pickerQuery) {
+                        const q = pickerQuery;
+                        items = items.filter(it => (it.original_name||'').toLowerCase().includes(q) || (it.filename||'').toLowerCase().includes(q));
+                    }
+                    status.textContent = items.length + ' image(s) — filter: '+pickerFilter+' (including unused & used)';
+                    if (!items.length) { grid.innerHTML='<div style="grid-column:1/-1;padding:20px;text-align:center;color:#9ca3af">No images match filter/search. Try “All” or upload.</div>'; return; }
+                    grid.innerHTML='';
+                    items.forEach(it=>{
+                        const attached = it.is_attached_to_page;
+                        const card=document.createElement('div');
+                        card.style.cssText='border:1px solid '+(attached?'#22c55e':'#e5e7eb')+';border-radius:8px;overflow:hidden;background:#fff;display:flex;flex-direction:column;cursor:pointer;'+(attached?'outline:2px solid #22c55e;outline-offset:-2px':'');
+                        const imgUrl = it.thumb_url || (thumbBase + it.filename);
+                        const dims = it.width && it.height ? ` width="${it.width}" height="${it.height}"` : '';
+                        card.innerHTML=`
+                            <div style="position:relative;height:110px;background:#f3f4f6;overflow:hidden">
+                                <img src="${imgUrl}" alt="${(it.original_name||'').replace(/"/g,'&quot;')}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" decoding="async"${dims}>
+                                ${attached ? `<span style="position:absolute;top:6px;right:6px;background:#22c55e;color:#fff;font-size:11px;padding:2px 6px;border-radius:999px">✓ attached${it.attached_section ? ' ('+it.attached_section+')':''}</span>` : ''}
+                                <span style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px">${it.usage_count} page(s)</span>
+                            </div>
+                            <div style="padding:6px 8px;flex:1">
+                                <div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(it.original_name||'').replace(/"/g,'&quot;')}">${(it.original_name||it.filename).replace(/</g,'&lt;')}</div>
+                                <div style="font-size:10px;color:#6b7280">${Math.round((it.file_size||0)/1024)} KB • ID ${it.id}</div>
+                            </div>
+                            <div style="padding:6px 8px;border-top:1px solid #f3f4f6">
+                                <button type="button" class="btn btn-primary btn-sm" style="width:100%">${attached ? 'Attach again / move' : 'Attach to {{media.'+pickerSlot+'}}'}</button>
+                            </div>`;
+                        card.querySelector('button').addEventListener('click', (e)=>{ e.stopPropagation(); pickerAttach(it.id); });
+                        card.addEventListener('click', ()=> pickerAttach(it.id));
+                        grid.appendChild(card);
+                    });
+                } catch(e){
+                    grid.innerHTML='<div style="grid-column:1/-1;padding:12px;color:#b91c1c">Load failed: '+(e.message||e)+'</div>';
+                }
+            }
+            window.pickerAttach = async function(mediaId){
+                if (!pickerSlot) return;
+                const fd=new FormData();
+                fd.append('csrf_token', getCsrf());
+                fd.append('page_id', pageId);
+                fd.append('media_id', mediaId);
+                fd.append('section', pickerSlot);
+                try{
+                    const r=await fetch(baseUrl+'/admin/media/attach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
+                    const j=await r.json();
+                    if(!j.success) throw new Error(j.message||'attach failed');
+                    // update local slotsData optimistically then reload
+                    const thumb = await fetch(baseUrl+'/admin/media/attachment?media_id='+mediaId+'&page_id='+pageId, {headers:{'Accept':'application/json'}}).then(x=>x.json()).catch(()=>null);
+                    alert('✅ Attached to {{media.'+pickerSlot+'}}');
+                    closeMediaPicker();
+                    location.reload();
+                }catch(e){ alert('Attach failed: '+(e.message||e)); }
+            };
+            window.pickerUpload = async function(input){
+                const files=input.files;
+                if(!files||!files.length) return;
+                if(!pickerSlot){ alert('Pick a slot first'); return; }
+                const fd=new FormData();
+                Array.from(files).forEach(f=>fd.append('files[]', f));
+                fd.append('csrf_token', getCsrf());
+                fd.append('page_id', pageId);
+                fd.append('section', pickerSlot);
+                const status=document.getElementById('media-picker-status');
+                status.textContent='Uploading '+files.length+' file(s)…';
+                try{
+                    const r=await fetch(baseUrl+'/admin/media/bulk-upload', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
+                    const ct=r.headers.get('content-type')||'';
+                    const txt=await r.text();
+                    if(!r.ok) throw new Error('HTTP '+r.status+': '+txt.slice(0,200));
+                    if(!ct.includes('application/json')) throw new Error('Expected JSON got '+ct);
+                    const j=JSON.parse(txt);
+                    if(!j.success && !j.uploaded) throw new Error(j.message||'upload failed');
+                    status.textContent='Uploaded '+j.uploaded+' file(s) and attached to {{media.'+pickerSlot+'}}';
+                    input.value='';
+                    await pickerLoad();
+                    // reload page slots panel after short delay to show new thumbs
+                    setTimeout(()=>location.reload(), 900);
+                }catch(e){
+                    status.textContent='Upload failed: '+e.message;
+                    alert('Upload failed: '+e.message);
+                    input.value='';
+                }
+            };
+            // close on overlay click / ESC
+            document.getElementById('media-picker-modal').addEventListener('click', (e)=>{ if(e.target.id==='media-picker-modal') closeMediaPicker(); });
+            document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeMediaPicker(); });
             let t=null;
             function schedule(){ clearTimeout(t); t=setTimeout(render, 600); }
             document.addEventListener('DOMContentLoaded', render);
-            // Poll for tinymce changes
             setInterval(()=>{ const cur=scanSlots().join(','); if(window._lastSlots!==cur){window._lastSlots=cur; render();}}, 1500);
-            // Also re-render when tinymce fires change
             setTimeout(()=>{ try{ tinymce.on('AddEditor', e=>{ e.editor.on('change keyup', schedule); }); ['content_ru','content_uz'].forEach(id=>{ const ed=tinymce.get(id); if(ed) ed.on('change keyup', schedule); }); }catch(e){}}, 1200);
+            // listen for cross-tab attach from library (if user used Library ↗)
+            window.addEventListener('message', (e)=>{ if(e.data && e.data.type==='media-attached' && String(e.data.pageId)===String(pageId)){ setTimeout(()=>location.reload(), 300); }});
         })();
         </script>
         <?php endif; ?>

@@ -12,18 +12,47 @@
     </div>
 </div>
 
+<?php
+$filter = $filter ?? 'all';
+$currentPage = $currentPage ?? null;
+$attachSlot = $attachSlot ?? ($_GET['attach_slot'] ?? null);
+$attachPageId = $attachPageId ?? ($_GET['page_id'] ?? null);
+$allPages = $allPages ?? [];
+if (!function_exists('mediaFilterUrl')) { function mediaFilterUrl($newFilter, $currentFilter, $attachPageId, $attachSlot) {
+    $q = [];
+    if ($newFilter !== 'all') $q['filter'] = $newFilter;
+    if ($attachPageId) $q['page_id'] = $attachPageId;
+    if ($attachSlot) $q['attach_slot'] = $attachSlot;
+    return '?' . http_build_query($q);
+} }
+$csrfForJs = htmlspecialchars(generateCSRFToken(), ENT_QUOTES);
+?>
+<!-- Attach context banner (when opened from page editor) -->
+<?php if ($attachPageId): ?>
+<div style="margin:12px 0;padding:12px 14px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span>Attaching to slot <code>{{media.<?= e($attachSlot ?: 'content') ?>}}</code> for page #<?= (int)$attachPageId ?><?= $currentPage ? ' — '.e($currentPage['slug'] ?? $currentPage['title_ru'] ?? '') : '' ?></span>
+    <span style="color:#64748b">— choose any image below (all library visible, including unused). Click “Quick attach” to attach in one click.</span>
+    <a href="<?= BASE_URL ?>/admin/pages/edit/<?= (int)$attachPageId ?>" class="btn btn-sm" style="margin-left:auto">← Back to editor</a>
+</div>
+<?php endif; ?>
+
 <!-- Filters -->
 <div class="media-toolbar">
     <div class="filter-tabs">
-        <a href="?filter=all" class="filter-tab <?= $filter === 'all' ? 'active' : '' ?>">
+        <a href="<?= mediaFilterUrl('all', $filter, $attachPageId, $attachSlot) ?>" class="filter-tab <?= $filter === 'all' ? 'active' : '' ?>">
             All Media
         </a>
-        <a href="?filter=used" class="filter-tab <?= $filter === 'used' ? 'active' : '' ?>">
+        <a href="<?= mediaFilterUrl('used', $filter, $attachPageId, $attachSlot) ?>" class="filter-tab <?= $filter === 'used' ? 'active' : '' ?>">
             Used
         </a>
-        <a href="?filter=unused" class="filter-tab <?= $filter === 'unused' ? 'active' : '' ?>">
+        <a href="<?= mediaFilterUrl('unused', $filter, $attachPageId, $attachSlot) ?>" class="filter-tab <?= $filter === 'unused' ? 'active' : '' ?>">
             Unused
         </a>
+        <?php if ($attachPageId): ?>
+        <a href="<?= mediaFilterUrl('attached', $filter, $attachPageId, $attachSlot) ?>" class="filter-tab <?= $filter === 'attached' ? 'active' : '' ?>">
+            Attached to this page
+        </a>
+        <?php endif; ?>
     </div>
 
     <div class="search-box">
@@ -33,6 +62,7 @@
 
 <!-- Upload Form (Hidden) -->
 <form id="upload-form" style="display:none;">
+    <input type="hidden" id="csrf-token" value="<?= $csrfForJs ?>">
     <input type="file" id="upload-input" accept="image/*" multiple onchange="uploadFiles()">
 </form>
 
@@ -68,9 +98,18 @@
                 $mediaId = (int)$item['id'];
             }
             ?>
-            <div class="media-card" data-id="<?= $mediaId ?>" data-name="<?= e($item['original_name']) ?>">
-                <div class="media-thumbnail">
-                    <img src="<?= UPLOAD_URL . e($item['filename']) ?>" alt="<?= e($item['original_name']) ?>" loading="lazy">
+            <?php
+                $thumbUrl = $item['thumb_url'] ?? (UPLOAD_URL . ($item['filename'] ?? ''));
+                $thumbW = $item['thumb_width'] ?? null;
+                $thumbH = $item['thumb_height'] ?? null;
+                $isAttached = !empty($item['is_attached_to_page']);
+                ?>
+            <div class="media-card" data-id="<?= $mediaId ?>" data-name="<?= e($item['original_name']) ?>" style="<?= $isAttached ? 'outline:2px solid #22c55e;outline-offset:-2px' : '' ?>">
+                <div class="media-thumbnail" style="position:relative">
+                    <img src="<?= e($thumbUrl) ?>" alt="<?= e($item['original_name']) ?>" loading="lazy" decoding="async" <?= $thumbW ? 'width="'.(int)$thumbW.'"' : '' ?> <?= $thumbH ? 'height="'.(int)$thumbH.'"' : '' ?> style="width:100%;height:140px;object-fit:cover;display:block;background:#f3f4f6">
+                    <?php if ($isAttached): ?>
+                    <span style="position:absolute;top:6px;right:6px;background:#22c55e;color:#fff;font-size:11px;padding:2px 6px;border-radius:999px">✓ attached<?= $item['attached_section'] ? ' ('.e($item['attached_section']).')' : '' ?></span>
+                    <?php endif; ?>
                 </div>
 
                 <div class="media-details">
@@ -117,7 +156,12 @@
                 </div>
 
                 <div class="media-actions">
-                    <button class="btn btn-sm btn-primary" onclick="showAttachModal(<?= $mediaId ?>)" title="Attach to Page">
+                    <?php if (!empty($attachPageId)): ?>
+                    <button class="btn btn-sm btn-primary" onclick="quickAttach(<?= $mediaId ?>)" title="Attach to {{media.<?= e($attachSlot ?: 'content') ?>}} for page #<?= (int)$attachPageId ?>">
+                        <i data-feather="zap"></i> Quick attach
+                    </button>
+                    <?php endif; ?>
+                    <button class="btn btn-sm btn-secondary" onclick="showAttachModal(<?= $mediaId ?>)" title="Attach to Page">
                         <i data-feather="link"></i> Attach
                     </button>
                     <button class="btn btn-sm btn-secondary" data-link="<?= UPLOAD_URL . e($item['filename']) ?>" onclick="copyMediaLink(this)" title="Copy media link">
@@ -330,6 +374,13 @@ function filterMedia() {
     });
 }
 
+function getCsrf() {
+  return document.getElementById('csrf-token')?.value || document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken || '<?= $csrfForJs ?>';
+}
+function getAttachContext() {
+  const p = new URLSearchParams(location.search);
+  return { pageId: p.get('page_id'), slot: p.get('attach_slot') };
+}
 function uploadFiles() {
   const input = document.getElementById('upload-input');
   const files = input?.files;
@@ -337,71 +388,68 @@ function uploadFiles() {
 
   const formData = new FormData();
   Array.from(files).forEach(file => formData.append('files[]', file));
+  formData.append('csrf_token', getCsrf());
+  const ctx = getAttachContext();
+  if (ctx.pageId) formData.append('page_id', ctx.pageId);
+  if (ctx.slot) formData.append('section', ctx.slot);
 
-  fetch('/admin/media/bulk-upload', {
+  fetch((window.baseUrl || '') + '/admin/media/bulk-upload', {
     method: 'POST',
     body: formData,
     credentials: 'same-origin',
     headers: {
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      'X-CSRF-Token': getCsrf()
     }
   })
   .then(async (r) => {
     const ct = r.headers.get('content-type') || '';
     const text = await r.text(); // read once
-
-    // Non-2xx => show body snippet for debugging
     if (!r.ok) {
       console.error('Upload failed HTTP', r.status, r.statusText, 'CT:', ct, 'Body:', text);
       throw new Error(`HTTP ${r.status}. Response: ${text.slice(0, 300)}`);
     }
-
-    // If server didn't return JSON, show what it returned
     if (!ct.includes('application/json')) {
       console.error('Expected JSON, got:', ct, text);
       throw new Error(`Expected JSON but got ${ct}. Body: ${text.slice(0, 300)}`);
     }
-
     let data;
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      console.error('Invalid JSON:', text);
-      throw new Error(`Invalid JSON. Body: ${text.slice(0, 300)}`);
-    }
-
+    try { data = JSON.parse(text); } catch (e) { console.error('Invalid JSON:', text); throw new Error(`Invalid JSON. Body: ${text.slice(0, 300)}`); }
     return data;
   })
   .then((data) => {
-    location.reload();
+    input.value = '';
+    if (data.success || data.uploaded) {
+      location.reload();
+    } else {
+      alert('Upload: ' + (data.message || 'no files uploaded'));
+      input.value = '';
+    }
   })
   .catch((err) => {
     console.log(err);
     alert('Upload failed: ' + err.message);
+    if (input) input.value = '';
   });
 }
 
 function regenerateVariants() {
     const btn = document.getElementById('regen-variants-btn');
     if (!btn) return;
-
-    if (!confirm('Regenerate responsive image variants for all uploads? This can take a few minutes.')) {
-        return;
-    }
-
+    if (!confirm('Regenerate responsive image variants for all uploads? This can take a few minutes.')) return;
     const originalHtml = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = 'Generating...';
-
     const formData = new FormData();
-    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?>');
+    formData.append('csrf_token', getCsrf());
 
-    fetch('/admin/media/regenerate-variants', {
+    fetch((window.baseUrl || '') + '/admin/media/regenerate-variants', {
         method: 'POST',
         body: formData,
         credentials: 'same-origin',
         headers: {
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-CSRF-Token': getCsrf()
         }
     })
     .then(async (r) => {
@@ -500,14 +548,9 @@ function attachMedia() {
     const altUz = document.getElementById('attach-alt-uz').value;
     const alignment = document.getElementById('attach-alignment').value;
     const width = document.getElementById('attach-width').value;
-    
-    if (!pageId) {
-        alert('Please select a page');
-        return;
-    }
-    
+    if (!pageId) { alert('Please select a page'); return; }
     const formData = new FormData();
-    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?>');
+    formData.append('csrf_token', getCsrf());
     formData.append('media_id', mediaId);
     formData.append('page_id', pageId);
     formData.append('section', section);
@@ -515,13 +558,13 @@ function attachMedia() {
     formData.append('alt_text_uz', altUz);
     formData.append('alignment', alignment);
     if (width) formData.append('width', width);
-    
-    fetch('/admin/media/attach', {
+    fetch((window.baseUrl || '') + '/admin/media/attach', {
         method: 'POST',
         body: formData,
         credentials: 'same-origin',
         headers: {
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-CSRF-Token': getCsrf()
         }
     })
     .then(r => r.json())
@@ -589,16 +632,16 @@ function deleteMedia(id, usageCount) {
     }
     
     const formData = new FormData();
-    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?>');
+    formData.append('csrf_token', getCsrf());
     formData.append('id', mediaId);
     if (usage > 0) formData.append('force', '1');
-    
-    fetch('/admin/media/delete', {
+    fetch((window.baseUrl || '') + '/admin/media/delete', {
         method: 'POST',
         body: formData,
         credentials: 'same-origin',
         headers: {
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-CSRF-Token': getCsrf()
         }
     })
     .then(r => r.json())
@@ -647,17 +690,17 @@ document.addEventListener('click', (event) => {
     if (!confirm('Detach this media from the page?')) return;
     
     const formData = new FormData();
-    formData.append('csrf_token', '<?= $_SESSION['csrf_token'] ?>');
+    formData.append('csrf_token', getCsrf());
     formData.append('media_id', mediaId);
     formData.append('page_id', pageId);
     if (section) formData.append('section', section);
-    
-    fetch('/admin/media/detach', {
+    fetch((window.baseUrl || '') + '/admin/media/detach', {
         method: 'POST',
         body: formData,
         credentials: 'same-origin',
         headers: {
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-CSRF-Token': getCsrf()
         }
     })
     .then(async (r) => {
@@ -683,19 +726,32 @@ document.addEventListener('click', (event) => {
     });
 });
 
-// Prefill from page editor: ?page_id=123&attach_slot=card_fridges
+function quickAttach(mediaId) {
+    const ctx = getAttachContext();
+    const pageId = ctx.pageId;
+    const slot = ctx.slot || 'content';
+    if (!pageId) { showAttachModal(mediaId); return; }
+    if (!confirm(`Attach image #${mediaId} to page #${pageId} slot {{media.${slot}}}?`)) return;
+    const fd = new FormData();
+    fd.append('csrf_token', getCsrf());
+    fd.append('media_id', mediaId);
+    fd.append('page_id', pageId);
+    fd.append('section', slot);
+    fetch((window.baseUrl || '') + '/admin/media/attach', { method:'POST', body:fd, credentials:'same-origin', headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()} })
+    .then(r=>r.json()).then(d=>{
+        if (d.success) {
+            alert('✅ Attached to {{media.'+slot+'}}');
+            if (window.opener) { try{ window.opener.postMessage({type:'media-attached', mediaId, pageId, slot}, '*'); }catch(e){} }
+            location.reload();
+        } else alert('Attach failed: '+(d.message||'unknown'));
+    }).catch(e=>alert('Attach failed: '+e.message));
+}
+// Prefill from page editor: ?page_id=123&attach_slot=card_fridges (banner already server-rendered)
 (function(){
     const params = new URLSearchParams(location.search);
     const slot = params.get('attach_slot');
     const pageId = params.get('page_id');
     if(!slot && !pageId) return;
-    // show hint banner
-    const banner = document.createElement('div');
-    banner.style.cssText='margin:12px 0;padding:10px 14px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:8px;font-size:13px';
-    banner.innerHTML = `Attaching to slot <code>{{media.${slot||'content'}}}</code> for page #${pageId||''} — pick an image and it will auto-fill below. <a href="/admin/pages/edit/${pageId||''}" style="margin-left:8px">← back to editor</a>`;
-    const grid=document.getElementById('media-grid');
-    if(grid) grid.parentNode.insertBefore(banner, grid);
-    // When user opens attach modal, prefill values
     const origShow = window.showAttachModal;
     window.showAttachModal = function(mediaId){
         origShow(mediaId);
@@ -703,8 +759,7 @@ document.addEventListener('click', (event) => {
             if(slot) document.getElementById('attach-section').value = slot;
             if(pageId){
                 document.getElementById('attach-page-id').value = pageId;
-                // try to fetch page name for display
-                fetch('/admin/media/attachment?media_id='+encodeURIComponent(mediaId)+'&page_id='+encodeURIComponent(pageId), {headers:{'Accept':'application/json'}})
+                fetch((window.baseUrl || '') + '/admin/media/attachment?media_id='+encodeURIComponent(mediaId)+'&page_id='+encodeURIComponent(pageId), {headers:{'Accept':'application/json'}})
                     .then(r=>r.json()).then(d=>{
                         if(d && d.attachment && d.attachment.page_slug){
                             document.getElementById('attach-page-selected').textContent = d.attachment.page_slug + ' (#'+pageId+')';
@@ -717,6 +772,8 @@ document.addEventListener('click', (event) => {
             }
         }catch(e){}
     };
+    // Ensure feather icons in new quick-attach buttons render
+    if (window.feather) try{ feather.replace(); }catch(e){}
 })();
 </script>
 
