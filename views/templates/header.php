@@ -138,6 +138,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     
      <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/pages.min.css') ?: time() ?>">
      <link rel="stylesheet" href="<?= BASE_URL ?>/css/components.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/components.min.css') ?: time() ?>">
+     <link rel="stylesheet" href="<?= BASE_URL ?>/css/hold-morph.css?v=<?= @filemtime(BASE_PATH . '/public/css/hold-morph.css') ?: time() ?>">
      <?php
      // Per-page custom CSS: merges DB custom_css + any <style> extracted from content (see PageController)
      $pageCustomCss = $pageCustomCss ?? ($page['custom_css'] ?? '');

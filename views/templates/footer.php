@@ -131,6 +131,7 @@
     <?php endif; ?>
     <script src="<?= BASE_URL ?>/js/param-persistence.js" defer></script>
     <script src="<?= BASE_URL ?>/js/link-tracking.js" defer></script>
+    <script src="<?= BASE_URL ?>/js/hold-morph.js" defer></script>
     <style>
     .review-modal[hidden] { display: none !important; }
     .review-modal {

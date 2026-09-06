@@ -194,7 +194,8 @@ $applianceNameForSEO = $applianceName ?? '';
                    class="<?= $tileClass ?>"
                    data-from="<?= e($page['slug']) ?>"
                    data-to="<?= e($link['slug']) ?>"
-                   data-stagger="<?= $i ?>">
+                   data-stagger="<?= $i ?>"
+                   <?= $cover ? 'data-cover="' . e($cover) . '"' : '' ?>>
                     <?php if ($cover): ?>
                     <img class="links-tile__img" src="<?= e($cover) ?>" alt="" loading="lazy" decoding="async">
                     <?php else: ?>
