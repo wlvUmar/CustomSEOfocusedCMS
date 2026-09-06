@@ -13,6 +13,45 @@
   var isReduced = false;
   try { isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
 
+  // --- helpers: scrollbar-stable lock (prevents 15px shift when we hide scrollbar) ---
+  function getScrollbarWidth(){
+    try { return Math.max(0, window.innerWidth - document.documentElement.clientWidth); } catch(e){ return 0; }
+  }
+  var _supportsGutter = false;
+  try { _supportsGutter = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('scrollbar-gutter','stable'); } catch(e){}
+  function lockScroll(){
+    try {
+      // Global CSS already has `html{scrollbar-gutter:stable}` — this keeps the gutter reserved.
+      // Inline style is redundant but ensures it even if pages.css is cached old.
+      document.documentElement.style.scrollbarGutter = 'stable';
+      if (!_supportsGutter) {
+        var sb = getScrollbarWidth();
+        if (sb > 0) {
+          document.body.style.paddingRight = sb + 'px';
+          var hdr = document.querySelector('header');
+          if (hdr) hdr.style.paddingRight = sb + 'px';
+        }
+      }
+      document.body.classList.add('morph-lock');
+    } catch(e){
+      try { document.body.classList.add('morph-lock'); } catch(err){}
+    }
+  }
+  function unlockScroll(){
+    try {
+      // Don't clear to '' when global CSS wants stable — just remove inline override
+      document.documentElement.style.scrollbarGutter = '';
+      if (!_supportsGutter) {
+        document.body.style.paddingRight = '';
+        var hdr = document.querySelector('header');
+        if (hdr) hdr.style.paddingRight = '';
+      }
+      document.body.classList.remove('morph-lock');
+    } catch(e){
+      try { document.body.classList.remove('morph-lock'); } catch(err){}
+    }
+  }
+
   // --- helpers: accurate hero rect (measured, not estimated) ---
   function headerH(){
     var h = document.querySelector('header');
@@ -263,11 +302,13 @@
   }
 
   function doMorph(tile, ctx){
+    // Measure target before locking so scrollbar compensation doesn't bias the rect;
+    // with `scrollbar-gutter:stable` the two are identical, but measuring first is safest.
     var end = heroRect();
     var start = ctx.startRect;
     var clone = ctx.clone;
 
-    document.body.classList.add('morph-lock');
+    lockScroll();
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ src: ctx.bestSrc, ts: Date.now() }));
     } catch(e){}
@@ -280,7 +321,7 @@
       try{ clearTimeout(t); }catch(e){}
       try{ if(document.body.contains(clone)) clone.remove(); }catch(e){}
       try{ if(document.body.contains(ctx.overlay)) ctx.overlay.remove(); }catch(e){}
-      document.body.classList.remove('morph-lock');
+      unlockScroll();
     };
     // Ratio-correct FLIP: animate geometry (left/top/width/height) instead of scale(sx,sy).
     // This lets the inner <img object-fit:cover> recompute its crop each frame,
@@ -466,7 +507,7 @@
   else init();
   window.addEventListener('pageshow', function(){
     document.querySelectorAll('.morph-overlay,.morph-clone,.morph-curtain').forEach(function(el){ el.remove(); });
-    document.body.classList.remove('morph-lock');
+    unlockScroll();
     document.querySelectorAll('.links-tile[data-morph="ready"]').forEach(function(t){ t.classList.remove('is-holding'); });
   });
   document.addEventListener('visibilitychange', function(){

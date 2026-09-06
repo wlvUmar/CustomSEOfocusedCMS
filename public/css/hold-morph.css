@@ -68,7 +68,11 @@
 }
 .morph-clone__img { width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; }
 
-body.morph-lock { overflow: hidden !important; overscroll-behavior: none; }
+/* Reserve scrollbar gutter globally so hiding the scrollbar during morph doesn't
+   shift layout (the ~15px jump you reported on desktop). Supported in all
+   modern Chromium/Firefox; JS fallback below compensates older browsers. */
+html { scrollbar-gutter: stable; }
+body.morph-lock { overflow: hidden !important; overscroll-behavior: none; scrollbar-gutter: stable; }
 
 /* Destination curtain — measured from real .hero, not estimate; bg matches hero gradient
    so before the image paints you see teal rather than black. */
