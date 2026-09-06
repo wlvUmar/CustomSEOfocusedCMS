@@ -282,7 +282,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <input type="text" id="media-picker-search" placeholder="Search filename..." oninput="pickerSearch()" style="flex:1;min-width:160px;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px">
                     <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">Upload & attach<input type="file" id="media-picker-upload" accept="image/*" multiple style="display:none" onchange="pickerUpload(this)"></label>
                 </div>
-                <div id="media-picker-grid" style="overflow:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;flex:1;background:#f9fafb"></div>
+                <div id="media-picker-grid" style="overflow:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;flex:1;background:#f9fafb"></div>
                 <div id="media-picker-status" style="padding:8px 14px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280"></div>
                 <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
                     <a id="media-picker-open-library" href="#" target="_blank" class="btn btn-sm">Open full library →</a>
@@ -314,6 +314,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 while((m=re.exec(raw))){ const k=m[1]; if(!RESERVED.has(k)) found.add(k); }
                 return Array.from(found).sort();
             }
+            function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
             function render(){
                 const slots = scanSlots();
                 const list=document.getElementById('media-slots-list');
@@ -326,12 +327,23 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     const items = slotsData[slot]||[];
                     const row=document.createElement('div');
                     row.style.cssText='display:flex;align-items:center;gap:12px;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb';
-                    const thumbs = items.length
-                        ? items.map(it=>`<img src="${baseUrl}/uploads/${it.filename}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb" loading="lazy" decoding="async">`).join('')
-                        : '<span style="width:56px;height:56px;display:grid;place-items:center;border:1px dashed #d1d5db;border-radius:6px;color:#9ca3af;font-size:11px;text-align:center">⚠<br>empty</span>';
+                    let thumbsHtml='';
+                    if(!items.length){
+                        thumbsHtml = '<span style="width:56px;height:56px;display:grid;place-items:center;border:1px dashed #d1d5db;border-radius:6px;color:#9ca3af;font-size:11px;text-align:center">⚠<br>empty</span>';
+                    } else {
+                        thumbsHtml = items.map(it=>{
+                            const mid = it.media_id || it.id;
+                            const fname = escHtml(it.filename||'');
+                            const oname = escHtml(it.original_name||it.filename||'');
+                            return `<div class="slot-thumb" data-media-id="${mid}" title="${oname} — ID ${mid}" style="position:relative;width:56px;height:56px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;flex-shrink:0;background:#fff">
+                                <img src="${baseUrl}/uploads/${fname}" alt="${oname}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" decoding="async">
+                                <button type="button" onclick="detachSingle('${slot}', ${mid}, this)" title="Detach this image" class="slot-thumb-x" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:999px;background:#ef4444;color:#fff;border:1.5px solid #fff;display:grid;place-items:center;font-size:13px;line-height:1;cursor:pointer;opacity:0;transition:opacity .14s, transform .14s;box-shadow:0 2px 8px rgba(0,0,0,.28);transform:scale(.92)">×</button>
+                            </div>`;
+                        }).join('');
+                    }
                     const meta = items.length ? `${items.length} image${items.length>1?'s':''} — ${items.length===1?'single':'gallery'}` : 'invisible on site until attached';
                     row.innerHTML=`
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;min-width:64px">${thumbs}</div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;min-width:64px;align-items:center">${thumbsHtml}</div>
                         <div style="flex:1;min-width:0">
                             <div style="font-family:monospace;font-size:13px;font-weight:600">{{media.${slot}}}</div>
                             <div style="font-size:12px;color:#6b7280">${meta}</div>
@@ -343,21 +355,55 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         </div>`;
                     list.appendChild(row);
                 });
+                // hover red X
+                list.querySelectorAll('.slot-thumb').forEach(el=>{
+                    el.addEventListener('mouseenter', ()=>{ const b=el.querySelector('.slot-thumb-x'); if(b){b.style.opacity='1'; b.style.transform='scale(1)';}});
+                    el.addEventListener('mouseleave', ()=>{ const b=el.querySelector('.slot-thumb-x'); if(b){b.style.opacity='0'; b.style.transform='scale(.92)';}});
+                    // always show X on touch devices after tap
+                    el.addEventListener('click', (e)=>{ if(e.target.closest('.slot-thumb-x')) return; const b=el.querySelector('.slot-thumb-x'); if(b && getComputedStyle(b).opacity==='0'){ b.style.opacity='1'; b.style.transform='scale(1)'; setTimeout(()=>{b.style.opacity='0'; b.style.transform='scale(.92)';}, 2200);}});
+                });
             }
+            window.detachSingle = async function(slot, mediaId, btnEl){
+                if(!mediaId) return;
+                // find filename for confirm
+                const item = (slotsData[slot]||[]).find(x=> String(x.media_id||x.id)===String(mediaId));
+                const name = item ? (item.original_name||item.filename||mediaId) : mediaId;
+                if(!confirm(`Detach "${name}" from {{media.${slot}}}?`)) return;
+                if(btnEl) { btnEl.disabled=true; btnEl.textContent='…'; }
+                try{
+                    const fd=new FormData(); fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('media_id', mediaId); fd.append('section', slot);
+                    const r=await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
+                    const j=await r.json().catch(()=>({}));
+                    if(!r.ok || j.success===false) throw new Error(j.message||('HTTP '+r.status));
+                    // update local state without reload
+                    if(slotsData[slot]) slotsData[slot] = slotsData[slot].filter(x=> String(x.media_id||x.id)!==String(mediaId));
+                    render();
+                    if(pickerSlot && document.getElementById('media-picker-modal')?.style.display!=='none') pickerLoad();
+                    // tiny toast
+                    const list=document.getElementById('media-slots-list');
+                    if(list){
+                        const t=document.createElement('div');
+                        t.textContent='Detached ✓';
+                        t.style.cssText='position:fixed;bottom:18px;right:18px;background:#111827;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;opacity:0;transition:opacity .2s';
+                        document.body.appendChild(t); requestAnimationFrame(()=>t.style.opacity='1'); setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),250);}, 1600);
+                    }
+                } catch(e){
+                    alert('Detach failed: '+(e.message||e));
+                    if(btnEl){ btnEl.disabled=false; btnEl.textContent='×'; }
+                }
+            };
             window.detachSlot = async function(slot){
-                if(!confirm(`Detach all images from {{media.${slot}}}?`)) return;
-                const items = slotsData[slot]||[];
+                if(!confirm(`Detach all ${((slotsData[slot]||[]).length)} image(s) from {{media.${slot}}}?`)) return;
+                const items = [...(slotsData[slot]||[])];
                 for(const it of items){
                     const fd=new FormData(); fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('media_id', it.media_id); fd.append('section', slot);
-                    await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
+                    const r=await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
+                    const j=await r.json().catch(()=>({}));
+                    if(!r.ok || j.success===false){ alert('Detach failed for '+it.filename+': '+(j.message||r.status)); return; }
                 }
-                // refresh local state without full reload
-                try {
-                    const r = await fetch(baseUrl + '/admin/media/list?filter=attached&page_id='+pageId, {headers:{'Accept':'application/json'}});
-                    const j = await r.json();
-                    // rebuild slotsData from attached list not needed - just reload for correctness
-                    location.reload();
-                } catch(e){ location.reload(); }
+                slotsData[slot]=[];
+                render();
+                if(pickerSlot && document.getElementById('media-picker-modal')?.style.display!=='none') pickerLoad();
             };
             // Picker functions
             window.openMediaPicker = async function(slot){
@@ -412,7 +458,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         const imgUrl = it.thumb_url || (thumbBase + it.filename);
                         const dims = it.width && it.height ? ` width="${it.width}" height="${it.height}"` : '';
                         card.innerHTML=`
-                            <div style="position:relative;height:110px;background:#f3f4f6;overflow:hidden">
+                            <div style="position:relative;height:140px;background:#f3f4f6;overflow:hidden">
                                 <img src="${imgUrl}" alt="${(it.original_name||'').replace(/"/g,'&quot;')}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" decoding="async"${dims}>
                                 ${attached ? `<span style="position:absolute;top:6px;right:6px;background:#22c55e;color:#fff;font-size:11px;padding:2px 6px;border-radius:999px">✓ attached${it.attached_section ? ' ('+it.attached_section+')':''}</span>` : ''}
                                 <span style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px">${it.usage_count} page(s)</span>
@@ -424,16 +470,18 @@ require BASE_PATH . '/views/admin/layout/header.php';
                             <div style="padding:6px 8px;border-top:1px solid #f3f4f6">
                                 <button type="button" class="btn btn-primary btn-sm" style="width:100%">${attached ? 'Attach again / move' : 'Attach to {{media.'+pickerSlot+'}}'}</button>
                             </div>`;
-                        card.querySelector('button').addEventListener('click', (e)=>{ e.stopPropagation(); pickerAttach(it.id); });
-                        card.addEventListener('click', ()=> pickerAttach(it.id));
+                        const _btn = card.querySelector('button');
+                        _btn.addEventListener('click', (e)=>{ e.stopPropagation(); pickerAttach(it.id, _btn); });
+                        card.addEventListener('click', ()=> pickerAttach(it.id, _btn));
                         grid.appendChild(card);
                     });
                 } catch(e){
                     grid.innerHTML='<div style="grid-column:1/-1;padding:12px;color:#b91c1c">Load failed: '+(e.message||e)+'</div>';
                 }
             }
-            window.pickerAttach = async function(mediaId){
+            window.pickerAttach = async function(mediaId, btn){
                 if (!pickerSlot) return;
+                if(btn){ btn.disabled=true; const old=btn.textContent; btn.textContent='…'; btn._old=old; }
                 const fd=new FormData();
                 fd.append('csrf_token', getCsrf());
                 fd.append('page_id', pageId);
@@ -441,14 +489,46 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 fd.append('section', pickerSlot);
                 try{
                     const r=await fetch(baseUrl+'/admin/media/attach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
-                    const j=await r.json();
-                    if(!j.success) throw new Error(j.message||'attach failed');
-                    // update local slotsData optimistically then reload
-                    const thumb = await fetch(baseUrl+'/admin/media/attachment?media_id='+mediaId+'&page_id='+pageId, {headers:{'Accept':'application/json'}}).then(x=>x.json()).catch(()=>null);
-                    alert('✅ Attached to {{media.'+pickerSlot+'}}');
+                    const j=await r.json().catch(()=>({}));
+                    if(!r.ok || j.success===false) throw new Error(j.message||('HTTP '+r.status));
+                    // update local slotsData without reload — fetch attached row for thumb
+                    try{
+                        const infoR = await fetch(baseUrl+'/admin/media/info?id='+encodeURIComponent(mediaId), {headers:{'Accept':'application/json'}});
+                        const infoJ = await infoR.json().catch(()=>null);
+                        const mediaRow = infoJ && infoJ.media ? infoJ.media : {id:mediaId, filename:''};
+                        // try to get filename from picker grid data if info missing
+                        if(!mediaRow.filename){
+                            const url = baseUrl + '/admin/media/list?filter=all&page_id='+pageId+'&limit=200';
+                            // fallback: find in current grid
+                        }
+                        // push to slotsData
+                        if(!slotsData[pickerSlot]) slotsData[pickerSlot]=[];
+                        const exists = slotsData[pickerSlot].some(x=> String(x.media_id||x.id)===String(mediaId));
+                        if(!exists){
+                            // construct minimal row matching getPageMedia shape
+                            slotsData[pickerSlot].push({media_id: mediaId, id: mediaId, filename: mediaRow.filename || '', original_name: mediaRow.original_name || mediaRow.filename || ('#'+mediaId), section: pickerSlot});
+                            // if filename empty, fetch again via list
+                            if(!mediaRow.filename){
+                                const lr = await fetch(baseUrl+'/admin/media/list?filter=all&page_id='+pageId+'&limit=200', {headers:{'Accept':'application/json'}});
+                                const lj = await lr.json().catch(()=>({}));
+                                const found = (lj.media||[]).find(x=> String(x.id)===String(mediaId));
+                                if(found){ const last = slotsData[pickerSlot][slotsData[pickerSlot].length-1]; last.filename = found.filename; last.original_name = found.original_name; }
+                            }
+                        }
+                    }catch(_){ /* ignore, still render with id only */ }
+                    render();
+                    pickerLoad(); // refresh picker attached badges
                     closeMediaPicker();
-                    location.reload();
-                }catch(e){ alert('Attach failed: '+(e.message||e)); }
+                    const t=document.createElement('div');
+                    t.textContent='✅ Attached to {{media.'+pickerSlot+'}}';
+                    t.style.cssText='position:fixed;bottom:18px;right:18px;background:#065f46;color:#fff;padding:9px 13px;border-radius:9px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;opacity:0;transition:opacity .18s';
+                    document.body.appendChild(t); requestAnimationFrame(()=>t.style.opacity='1'); setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),240);}, 1700);
+                }catch(e){
+                    alert('Attach failed: '+(e.message||e));
+                    if(btn){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
+                } finally {
+                    if(btn && btn.disabled && btn.textContent==='…'){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
+                }
             };
             window.pickerUpload = async function(input){
                 const files=input.files;
@@ -471,9 +551,18 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     if(!j.success && !j.uploaded) throw new Error(j.message||'upload failed');
                     status.textContent='Uploaded '+j.uploaded+' file(s) and attached to {{media.'+pickerSlot+'}}';
                     input.value='';
+                    // update slots panel without reload: refetch attached for this slot
+                    try{
+                        const ar = await fetch(baseUrl+'/admin/media/list?filter=attached&page_id='+pageId, {headers:{'Accept':'application/json'}});
+                        const aj = await ar.json().catch(()=>({}));
+                        if(aj.success && Array.isArray(aj.media)){
+                            const forSlot = aj.media.filter(x=> String(x.section||'')===String(pickerSlot));
+                            // map to slotsData shape expected by render()
+                            slotsData[pickerSlot] = forSlot.map(x=>({media_id: x.media_id||x.id, id: x.media_id||x.id, filename: x.filename, original_name: x.original_name, section: x.section}));
+                            render();
+                        }
+                    }catch(_){}
                     await pickerLoad();
-                    // reload page slots panel after short delay to show new thumbs
-                    setTimeout(()=>location.reload(), 900);
                 }catch(e){
                     status.textContent='Upload failed: '+e.message;
                     alert('Upload failed: '+e.message);
