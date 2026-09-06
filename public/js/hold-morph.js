@@ -1,33 +1,52 @@
-// path: ./public/js/hold-morph.js  v6 — image-only, header stays, curtain + hi-res swap
+// path: ./public/js/hold-morph.js  v7 — image-only, header stays, curtain + hi-res + ratio-correct FLIP
 (function () {
   'use strict';
 
-  var HOLD_MS = 300;
-  var MORPH_MS = 640;
-  var NAV_AT = 0.88;
+  var HOLD_MS = 320;
+  var MORPH_MS = 920;
+  var NAV_AT = 0.96;
   var MOVE_TOL = 14;
   var CIRC = 100.53096;
   var STORAGE_KEY = 'morph-pending';
-  var HIRES_ATTR = 'data-cover-hires'; // add this to tile markup pointing at
-                                        // a >=1200px version of the same
-                                        // image (same pipeline as the hero
-                                        // srcset) — without it the clone and
-                                        // curtain fall back to the thumbnail
-                                        // and will stay visibly soft at
-                                        // hero scale. That softness is a
-                                        // pixel-data limit, not fixable in
-                                        // JS/CSS.
+  var HIRES_ATTR = 'data-cover-hires';
 
   var isReduced = false;
   try { isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
 
-  // --- destination curtain: masks the real hero loading in on arrival ---
-  // Companion to the tiny synchronous script that must sit in <head>, before
-  // the CSS <link> tags (see header.php patch). That script sets
-  // html.morph-incoming + body{visibility:hidden} BEFORE first paint so
-  // there's no gap for the browser to show anything before this curtain is
-  // actually in place. This function's job is to build the curtain, then
-  // hand control back by removing that guard once the curtain is covering.
+  // --- helpers: accurate hero rect (measured, not estimated) ---
+  function headerH(){
+    var h = document.querySelector('header');
+    return h ? h.getBoundingClientRect().height : 0;
+  }
+  function heroRectFallback(){
+    var hh = headerH();
+    var vw = window.innerWidth;
+    var h = Math.max(360, Math.min(520, vw * 0.54));
+    return { top: hh, left: 0, width: vw, height: h };
+  }
+  function heroRect(){
+    try {
+      var hero = document.querySelector('.hero');
+      if (hero) {
+        var r = hero.getBoundingClientRect();
+        // hero is under sticky header; r.top already accounts for scroll/header.
+        // For curtain/morph target we need viewport-space rect of hero as fixed.
+        // If hero is scrolled out of view (r.top < headerH - 2), fall back to header-anchored estimate
+        // so morph doesn't fly off-screen.
+        var hh = headerH();
+        if (r.width > 40 && r.height > 80 && r.top >= hh - 24 && r.top < hh + 8) {
+          return { top: r.top, left: r.left, width: r.width, height: r.height };
+        }
+        // hero exists but scrolled: use hero's actual rendered height but anchored at header
+        if (r.width > 40 && r.height > 80) {
+          return { top: hh, left: r.left, width: r.width, height: r.height };
+        }
+      }
+    } catch(e){}
+    return heroRectFallback();
+  }
+
+  // --- destination curtain: masks hero loading, decode-aware reveal ---
   function showCurtainIfPending(){
     var revealBody = function(){
       try {
@@ -42,38 +61,97 @@
       if (!data || !data.src) { sessionStorage.removeItem(STORAGE_KEY); revealBody(); return; }
       if (Date.now() - (data.ts||0) > 2400) { sessionStorage.removeItem(STORAGE_KEY); revealBody(); return; }
       sessionStorage.removeItem(STORAGE_KEY);
-      if (!document.querySelector('.hero, #hero, #hero-bg, .hero__bg')) { revealBody(); return; }
+      var hero = document.querySelector('.hero, #hero, #hero-bg, .hero__bg');
+      if (!hero) { revealBody(); return; }
 
-      var r = heroRect();
+      // Use real hero geom for curtain — not the estimate — so edges line up exactly and snap is avoided.
+      var r;
+      try {
+        var hr = hero.closest ? hero.closest('.hero') : null;
+        var el = hr || document.querySelector('.hero') || hero;
+        var br = el.getBoundingClientRect();
+        if (br.width > 40 && br.height > 80) {
+          r = { top: br.top, left: br.left, width: br.width, height: br.height };
+        } else {
+          r = heroRect();
+        }
+      } catch(e){ r = heroRect(); }
+
       var curtain = document.createElement('div');
       curtain.className = 'morph-curtain';
       curtain.setAttribute('aria-hidden','true');
       curtain.style.top = r.top + 'px';
+      curtain.style.left = r.left + 'px';
       curtain.style.width = r.width + 'px';
       curtain.style.height = r.height + 'px';
       var img = document.createElement('img');
       img.className = 'morph-curtain__img';
       img.alt = '';
       img.decoding = 'async';
-      img.src = data.src; // this is whichever source (hires if available) fed the clone
+      img.src = data.src;
+      // match hero's object-fit/position so ratio mismatch is invisible
+      img.style.objectPosition = 'center center';
       var scrim = document.createElement('div');
       scrim.className = 'morph-curtain__scrim';
       curtain.appendChild(img);
       curtain.appendChild(scrim);
       document.body.appendChild(curtain);
 
-      revealBody(); // curtain is up and opaque — safe to reveal body now
-
+      // Decode-aware reveal: don't unhide body until curtain image is at least decoded,
+      // otherwise the dark bg shows for a frame (the "black snap" you felt).
+      var revealed = false;
+      var doReveal = function(){
+        if (revealed) return; revealed = true;
+        revealBody();
+      };
       var doFade = function(){
         curtain.classList.add('is-fading');
-        setTimeout(function(){ try{ curtain.remove(); }catch(e){} }, 420);
+        setTimeout(function(){ try{ curtain.remove(); }catch(e){} }, 620);
       };
-      var heroImg = document.querySelector('.hero__bg img, .hero-image, .hero-media img');
-      if (heroImg && heroImg.decode) {
-        var t = setTimeout(doFade, 520);
-        heroImg.decode().then(function(){ clearTimeout(t); requestAnimationFrame(function(){ setTimeout(doFade, 100); }); }).catch(function(){ clearTimeout(t); doFade(); });
+      var heroImg = document.querySelector('.hero__bg img, .hero-image, .hero-media img, .hero img');
+      var curtainReady = false;
+      var heroReady = false;
+      var maybeFade = function(){
+        if (curtainReady && heroReady) {
+          requestAnimationFrame(function(){ setTimeout(doFade, 80); });
+        } else if (curtainReady) {
+          // hero not yet decoded but curtain is — fade on timeout so we don't hang
+          setTimeout(doFade, 420);
+        }
+      };
+      // curtain image gate
+      if (img.decode) {
+        img.decode().then(function(){
+          curtainReady = true;
+          doReveal();
+          maybeFade();
+        }).catch(function(){
+          curtainReady = true;
+          doReveal();
+          maybeFade();
+        });
+        // safety: don't keep body hidden longer than 400ms
+        setTimeout(function(){
+          if (!revealed) doReveal();
+          if (!curtainReady) { curtainReady = true; maybeFade(); }
+        }, 400);
       } else {
-        requestAnimationFrame(function(){ setTimeout(doFade, 320); });
+        // no decode API — reveal on next frame, fade slightly later
+        requestAnimationFrame(function(){
+          curtainReady = true;
+          doReveal();
+          setTimeout(maybeFade, 80);
+        });
+      }
+      // hero image gate
+      if (heroImg && heroImg.decode) {
+        var t = setTimeout(function(){ heroReady = true; maybeFade(); }, 900);
+        heroImg.decode().then(function(){ clearTimeout(t); heroReady = true; maybeFade(); }).catch(function(){ clearTimeout(t); heroReady = true; maybeFade(); });
+      } else if (heroImg && heroImg.complete) {
+        heroReady = true;
+      } else {
+        // no hero img or already complete
+        setTimeout(function(){ heroReady = true; maybeFade(); }, 320);
       }
     } catch(e){
       revealBody();
@@ -86,17 +164,6 @@
     showCurtainIfPending();
   }
   window.addEventListener('pageshow', showCurtainIfPending);
-
-  function headerH(){
-    var h = document.querySelector('header');
-    return h ? h.getBoundingClientRect().height : 0;
-  }
-  function heroRect(){
-    var hh = headerH();
-    var vw = window.innerWidth;
-    var h = Math.max(360, Math.min(520, vw * 0.54));
-    return { top: hh, left: 0, width: vw, height: h };
-  }
 
   function injectRing(tile){
     if (tile.querySelector('.morph-ring')) return;
@@ -136,6 +203,11 @@
       img.decoding = 'async';
       img.src = src;
       if (img.decode) img.decode().catch(function(){});
+      var hires = tile.getAttribute(HIRES_ATTR) || '';
+      if (hires && hires !== src) {
+        var hi = new Image(); hi.decoding = 'async'; hi.src = hires;
+        if (hi.decode) hi.decode().catch(function(){});
+      }
       var l = document.createElement('link');
       l.rel = 'preload'; l.as = 'image'; l.href = src;
       document.head.appendChild(l);
@@ -147,7 +219,7 @@
     var tileImg = tile.querySelector('.links-tile__img');
     var src = tile.getAttribute('data-cover') || (tileImg ? (tileImg.currentSrc || tileImg.src) : '');
     var hiresSrc = tile.getAttribute(HIRES_ATTR) || '';
-    // subtle overlay below header only — header stays visible (z 200 > 150)
+    // subtle overlay — not full black; avoids the "black flash" on snap
     var overlay = document.createElement('div');
     overlay.className = 'morph-overlay is-hero-tint';
     document.body.appendChild(overlay);
@@ -171,17 +243,11 @@
     cImg.decoding = 'async';
     cImg.fetchPriority = 'high';
     cImg.src = src || (tileImg ? tileImg.src : '');
+    cImg.style.objectPosition = 'center center';
     clone.appendChild(cImg);
     document.body.appendChild(clone);
     clone.getBoundingClientRect();
 
-    // Swap in the hi-res source as soon as it's decoded. This is the actual
-    // fix for the "clear low-res load" you're seeing — the clone starts
-    // from the same thumbnail already on screen (so there's no pop at the
-    // very start), then upgrades mid-flight once the bigger file is ready.
-    // Without HIRES_ATTR being set on the tile markup, this is a no-op and
-    // you'll keep seeing the thumbnail stretched to hero size — that part
-    // can't be fixed without a larger source image to draw from.
     var bestSrc = src || (tileImg ? tileImg.src : '');
     if (hiresSrc && hiresSrc !== src) {
       var hi = new Image();
@@ -190,7 +256,7 @@
       var swap = function(){ try { cImg.src = hiresSrc; } catch(e){} };
       if (hi.decode) hi.decode().then(swap).catch(swap);
       else hi.onload = swap;
-      bestSrc = hiresSrc; // this is what the curtain will use on arrival
+      bestSrc = hiresSrc;
     }
 
     return { overlay: overlay, clone: clone, cImg: cImg, startRect: rect, bestSrc: bestSrc };
@@ -200,18 +266,13 @@
     var end = heroRect();
     var start = ctx.startRect;
     var clone = ctx.clone;
-    var dx = end.left - start.left;
-    var dy = end.top - start.top;
-    var sx = end.width / Math.max(1, start.width);
-    var sy = end.height / Math.max(1, start.height);
 
     document.body.classList.add('morph-lock');
-    // hand the best available source (hi-res if we got it) to the curtain
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ src: ctx.bestSrc, ts: Date.now() }));
     } catch(e){}
 
-    var dur = isReduced ? 260 : MORPH_MS;
+    var dur = isReduced ? 320 : MORPH_MS;
     var easing = isReduced ? 'ease-out' : 'cubic-bezier(0.22, 1, 0.36, 1)';
 
     var anim = null;
@@ -221,15 +282,22 @@
       try{ if(document.body.contains(ctx.overlay)) ctx.overlay.remove(); }catch(e){}
       document.body.classList.remove('morph-lock');
     };
+    // Ratio-correct FLIP: animate geometry (left/top/width/height) instead of scale(sx,sy).
+    // This lets the inner <img object-fit:cover> recompute its crop each frame,
+    // so the hero's 3.7:1 crop and the tile's 1.37:1 crop blend naturally
+    // instead of stretching the image (the "cut vs full image" distortion).
     try {
       anim = clone.animate([
-        { transform:'translate(0,0) scale(1,1)', borderRadius:'16px', offset:0 },
-        { transform:'translate('+dx+'px,'+dy+'px) scale('+sx+','+sy+')', borderRadius:'0px', offset:1 }
+        { left: start.left + 'px', top: start.top + 'px', width: start.width + 'px', height: start.height + 'px', borderRadius:'16px', offset:0 },
+        { left: end.left + 'px', top: end.top + 'px', width: end.width + 'px', height: end.height + 'px', borderRadius:'0px', offset:1 }
       ], { duration: dur, easing: easing, fill:'forwards' });
     } catch(e) {
-      clone.style.transition = 'transform '+dur+'ms '+easing+', border-radius '+dur+'ms ease';
+      clone.style.transition = 'left '+dur+'ms '+easing+', top '+dur+'ms '+easing+', width '+dur+'ms '+easing+', height '+dur+'ms '+easing+', border-radius '+dur+'ms ease';
       requestAnimationFrame(function(){
-        clone.style.transform='translate('+dx+'px,'+dy+'px) scale('+sx+','+sy+')';
+        clone.style.left = end.left + 'px';
+        clone.style.top = end.top + 'px';
+        clone.style.width = end.width + 'px';
+        clone.style.height = end.height + 'px';
         clone.style.borderRadius='0px';
       });
     }
@@ -240,7 +308,7 @@
     function nav(){
       if(fired) return; fired=true;
       try{ location.href = href; }catch(e){ location = href; }
-      setTimeout(cleanup, 2000);
+      setTimeout(cleanup, 2400);
     }
     var t = setTimeout(nav, Math.round(dur * NAV_AT));
     if (anim) {
@@ -328,7 +396,7 @@
         morphStarted=true;
         clearHold();
         releaseCapture();
-        suppressUntil = Date.now()+2200;
+        suppressUntil = Date.now()+2600;
         tile.classList.remove('is-holding');
         var ctx = makeClone(tile);
         var img = ctx.cImg;
@@ -352,9 +420,9 @@
       clearHold();
       releaseCapture();
       if(wasMorph){
-        suppressUntil = Date.now()+2200;
+        suppressUntil = Date.now()+2600;
         if(e.cancelable) try{ e.preventDefault(); }catch(err){}
-        setTimeout(function(){ morphStarted=false; }, 2400);
+        setTimeout(function(){ morphStarted=false; }, 2600);
       } else if(wasHolding){
         setTimeout(function(){ morphStarted=false; }, 60);
       }

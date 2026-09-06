@@ -1,4 +1,4 @@
-/* hold-morph.css v6 — image-only, header stays, curtain */
+/* hold-morph.css v7 — image-only, header stays, curtain (ratio-correct, no black flash) */
 .links-tile[data-morph="ready"] {
   cursor: pointer;
   touch-action: manipulation;
@@ -44,15 +44,16 @@
   z-index: 150;
   pointer-events: none;
   opacity: 0;
-  background: #0b1e24;
-  transition: opacity .1s ease;
+  /* Not solid #0b1e24 — that was the "black snap" you felt. Keep it light, hero-matched. */
+  background: rgba(9,28,35,0.16);
+  transition: opacity .32s ease;
 }
 .morph-overlay.is-active { opacity: 1; }
 .morph-overlay.is-hero-tint {
   background:
-    linear-gradient(to top, rgba(9,28,35,.42) 0%, rgba(9,28,35,.10) 55%, transparent 100%),
-    #0b1e24;
-  opacity: 0.92;
+    linear-gradient(to top, rgba(9,28,35,.28) 0%, rgba(9,28,35,.08) 55%, transparent 100%),
+    rgba(9,28,35,0.10);
+  opacity: 1;
 }
 
 .morph-clone {
@@ -62,34 +63,28 @@
   border-radius: 16px;
   background: #0c2b33;
   box-shadow: 0 16px 44px rgba(0,0,0,.32);
-  will-change: transform;
-  transform-origin: top left;
+  will-change: left, top, width, height;
   pointer-events: none;
 }
-.morph-clone__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.morph-clone__img { width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; }
 
 body.morph-lock { overflow: hidden !important; overscroll-behavior: none; }
 
-/* Destination curtain — masks the real hero loading in on arrival. This
-   was missing entirely in v5, which is the main reason the flash/blink is
-   still visible: nothing on the destination page hides the gap between
-   first paint and the real hero being ready. Sits BELOW the header
-   (header is z:200, this is z:190) to match the "header stays" design —
-   it only needs to cover the hero region, not the whole viewport. */
+/* Destination curtain — measured from real .hero, not estimate; bg matches hero gradient
+   so before the image paints you see teal rather than black. */
 .morph-curtain {
   position: fixed;
-  left: 0;
   z-index: 190;
   overflow: hidden;
-  background: #0b1e24;
+  background: linear-gradient(135deg, #094956 0%, #0f5f6f 45%, #0e7490 100%);
   pointer-events: none;
 }
-.morph-curtain__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.morph-curtain__img { width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; }
 .morph-curtain__scrim {
   position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(9,28,35,.7) 0%, transparent 100%);
+  background: linear-gradient(to top, rgba(9,28,35,.62) 0%, rgba(9,28,35,.18) 55%, transparent 100%);
 }
-.morph-curtain.is-fading { opacity: 0; transition: opacity .4s ease; }
+.morph-curtain.is-fading { opacity: 0; transition: opacity .58s ease; }
 
 @media (prefers-reduced-motion: reduce) {
   .morph-ring__fg, .morph-clone { transition: none !important; }
