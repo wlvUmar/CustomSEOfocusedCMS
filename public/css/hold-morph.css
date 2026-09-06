@@ -68,10 +68,13 @@
   pointer-events: none;
 }
 .morph-clone__img { width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; }
-/* Exact copy of .hero__overlay — so clone/curtain tint = hero tint (the tint you saw missing) */
+/* Exact copy of .hero__overlay — tint is ON the image itself, not behind it.
+   Starts at tile's lighter scrim and fades to hero's stronger overlay as it scales,
+   so you literally see the tint strengthen during the morph. */
 .morph-clone__scrim {
   position: absolute;
   inset: 0;
+  z-index: 1;
   background: linear-gradient(
     to top,
     rgba(9,28,35,.88) 0%,
@@ -80,6 +83,8 @@
     rgba(9,28,35,.05) 100%
   );
   pointer-events: none;
+  opacity: 0.72;
+  will-change: opacity;
 }
 
 /* Reserve scrollbar gutter globally so hiding the scrollbar during morph doesn't

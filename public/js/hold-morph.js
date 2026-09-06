@@ -287,6 +287,8 @@
     var scrim = document.createElement('div');
     scrim.className = 'morph-clone__scrim';
     scrim.setAttribute('aria-hidden','true');
+    // Start lighter (tile-like .55 scrim) then tween to hero .88 as it scales — visible tint transition
+    scrim.style.opacity = '0.62';
     clone.appendChild(scrim);
     document.body.appendChild(clone);
     clone.getBoundingClientRect();
@@ -302,7 +304,7 @@
       bestSrc = hiresSrc;
     }
 
-    return { overlay: overlay, clone: clone, cImg: cImg, startRect: rect, bestSrc: bestSrc };
+    return { overlay: overlay, clone: clone, cImg: cImg, scrim: scrim, startRect: rect, bestSrc: bestSrc };
   }
 
   function doMorph(tile, ctx){
@@ -331,19 +333,29 @@
     // This lets the inner <img object-fit:cover> recompute its crop each frame,
     // so the hero's 3.7:1 crop and the tile's 1.37:1 crop blend naturally
     // instead of stretching the image (the "cut vs full image" distortion).
+    // Tint is on the image itself (.morph-clone__scrim) and fades 0.62→1 as it scales.
+    var scrim = ctx.scrim;
     try {
       anim = clone.animate([
         { left: start.left + 'px', top: start.top + 'px', width: start.width + 'px', height: start.height + 'px', borderRadius:'16px', offset:0 },
         { left: end.left + 'px', top: end.top + 'px', width: end.width + 'px', height: end.height + 'px', borderRadius:'0px', offset:1 }
       ], { duration: dur, easing: easing, fill:'forwards' });
+      if (scrim) {
+        try { scrim.animate([{ opacity: '0.62' }, { opacity: '1' }], { duration: dur, easing: easing, fill:'forwards' }); } catch(e2){}
+        // Fallback for browsers without WAAPI on scrim
+        scrim.style.transition = 'opacity '+dur+'ms '+easing;
+        requestAnimationFrame(function(){ scrim.style.opacity = '1'; });
+      }
     } catch(e) {
       clone.style.transition = 'left '+dur+'ms '+easing+', top '+dur+'ms '+easing+', width '+dur+'ms '+easing+', height '+dur+'ms '+easing+', border-radius '+dur+'ms ease';
+      if (scrim) scrim.style.transition = 'opacity '+dur+'ms '+easing;
       requestAnimationFrame(function(){
         clone.style.left = end.left + 'px';
         clone.style.top = end.top + 'px';
         clone.style.width = end.width + 'px';
         clone.style.height = end.height + 'px';
         clone.style.borderRadius='0px';
+        if (scrim) scrim.style.opacity = '1';
       });
     }
     try{ if(navigator.vibrate) navigator.vibrate(18); }catch(e){}
