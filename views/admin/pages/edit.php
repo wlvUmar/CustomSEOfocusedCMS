@@ -282,7 +282,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <input type="text" id="media-picker-search" placeholder="Search filename..." oninput="pickerSearch()" style="flex:1;min-width:160px;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px">
                     <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">Upload & attach<input type="file" id="media-picker-upload" accept="image/*" multiple style="display:none" onchange="pickerUpload(this)"></label>
                 </div>
-                <div id="media-picker-grid" style="overflow:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;flex:1;background:#f9fafb"></div>
+                <div id="media-picker-grid" style="overflow:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));grid-auto-rows:160px;gap:12px;align-content:start;flex:1;background:#f9fafb;isolation:isolate"></div>
                 <div id="media-picker-status" style="padding:8px 14px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280"></div>
                 <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
                     <a id="media-picker-open-library" href="#" target="_blank" class="btn btn-sm">Open full library →</a>
@@ -454,7 +454,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     items.forEach(it=>{
                         const attached = it.is_attached_to_page;
                         const card=document.createElement('div');
-                        card.style.cssText='border:1px solid '+(attached?'#22c55e':'#e5e7eb')+';border-radius:10px;overflow:hidden;background:#fff;position:relative;aspect-ratio:1;cursor:pointer;'+(attached?'outline:2px solid #22c55e;outline-offset:-2px':'');
+                        card.style.cssText='border:1px solid '+(attached?'#22c55e':'#e5e7eb')+';border-radius:10px;overflow:hidden;background:#fff;position:relative;height:160px;cursor:pointer;isolation:isolate;'+(attached?'outline:2px solid #22c55e;outline-offset:-2px':'');
                         let imgUrl = it.thumb_url || (thumbBase + it.filename);
                         // thumb_url from server may be absolute (BASE_URL + /uploads/...) or root /uploads/... — ensure it resolves
                         if(imgUrl && imgUrl.startsWith('/uploads/') && baseUrl) imgUrl = baseUrl + imgUrl;
