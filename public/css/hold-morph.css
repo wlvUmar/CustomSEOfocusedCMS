@@ -66,6 +66,8 @@
   box-shadow: 0 16px 44px rgba(0,0,0,.32);
   will-change: left, top, width, height;
   pointer-events: none;
+  max-width: 100vw;
+  max-height: 100vh;
 }
 .morph-clone__img { width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; }
 /* Exact copy of .hero__overlay — tint is ON the image itself, not behind it.
@@ -101,6 +103,7 @@ body.morph-lock { overflow: hidden !important; overscroll-behavior: none; scroll
   overflow: hidden;
   background: linear-gradient(135deg, #094956 0%, #0f5f6f 45%, #0e7490 100%);
   pointer-events: none;
+  max-width: 100vw;
 }
 .morph-curtain__img { width: 100%; height: 100%; object-fit: cover; object-position: center center; display: block; }
 .morph-curtain__scrim {

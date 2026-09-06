@@ -269,6 +269,17 @@
       var ir = tileImg.getBoundingClientRect();
       if (ir.width > 4 && ir.height > 4) rect = ir;
     }
+    // Clamp to viewport on mobile — tiles in a horizontal scroll can be half off-screen
+    // (e.g. second tile at left 260 + 230px = 490 > 375vw). Starting clone there makes it
+    // overflow the viewport for the whole morph. Constrain to visible bounds.
+    try {
+      var vw = window.innerWidth;
+      if (rect.width < vw && (rect.left < 0 || rect.left + rect.width > vw)) {
+        var clampedLeft = Math.max(0, Math.min(rect.left, vw - rect.width - 8));
+        // Keep the image's visible crop — shift rect, don't resize, so object-fit stays correct
+        rect = { left: clampedLeft, top: rect.top, width: rect.width, height: rect.height, right: clampedLeft + rect.width, bottom: rect.top + rect.height };
+      }
+    } catch(e){}
     var clone = document.createElement('div');
     clone.className = 'morph-clone';
     clone.style.left = rect.left + 'px';
