@@ -114,4 +114,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="<?= BASE_URL ?>/js/admin/internal-links-manage.js"></script>
+
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

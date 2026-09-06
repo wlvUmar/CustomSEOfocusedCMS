@@ -52,9 +52,9 @@
             <small>Add links from the "Available Pages" section</small>
         </div>
         <?php else: ?>
-        <div class="links-list sortable" id="sortable-links">
+        <div class="links-list sortable" id="sortable-links" data-page-id="<?= (int)$page['id'] ?>">
             <?php foreach ($currentLinks as $link): ?>
-            <div class="link-item" data-id="<?= $link['id'] ?>">
+            <div class="link-item" data-id="<?= (int)$link['id'] ?>">
                 <div class="drag-handle">
                     <i data-feather="menu"></i>
                 </div>

@@ -5,9 +5,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const sortableList = document.getElementById('sortable-links');
     
     if (sortableList && typeof Sortable !== 'undefined') {
+        // support both templates: .drag-handle (internal_links) and .link-drag-handle (link_widget)
+        const handleEl = sortableList.querySelector('.drag-handle, .link-drag-handle');
         new Sortable(sortableList, {
             animation: 150,
-            handle: '.drag-handle',
+            handle: handleEl ? '.drag-handle, .link-drag-handle' : undefined,
             ghostClass: 'sortable-ghost',
             onEnd: function(evt) {
                 saveOrder();
@@ -16,32 +18,56 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Save new order via AJAX
+// Save new order via AJAX — instant save on drag end
 function saveOrder() {
     const items = document.querySelectorAll('#sortable-links .link-item');
     const linkIds = Array.from(items).map(item => item.getAttribute('data-id'));
-    const pageId = document.querySelector('input[name="page_id"]').value;
+    // page_id from data attribute / URL is most reliable, fallback to hidden input
+    let pageId = document.getElementById('sortable-links')?.getAttribute('data-page-id') || null;
+    if (!pageId) {
+        const m = window.location.pathname.match(/\/manage\/(\d+)/);
+        if (m) pageId = m[1];
+    }
+    if (!pageId) {
+        const el = document.querySelector('input[name="page_id"]');
+        if (el) pageId = el.value;
+    }
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken || document.querySelector('input[name="csrf_token"]')?.value || '';
+    // optimistic UI: add saving state
+    const list = document.getElementById('sortable-links');
+    if (list) list.style.opacity = '0.6';
+    const fd = new FormData();
+    fd.append('csrf_token', csrf);
+    fd.append('page_id', pageId || '');
+    linkIds.forEach(id => fd.append('link_ids[]', id));
+    const reorderUrl = list?.getAttribute('data-reorder-url') || ((window.baseUrl || window.location.origin) + '/admin/link-widget/reorder');
     
-    fetch(window.location.origin + '/admin/link-widget/reorder', {
+    fetch(reorderUrl, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-Token': csrf
         },
-        body: JSON.stringify({
-            page_id: pageId,
-            link_ids: linkIds
-        })
+        body: fd
     })
-    .then(response => response.json())
+    .then(async response => {
+        const ct = response.headers.get('content-type') || '';
+        const text = await response.text();
+        let data = {};
+        try { data = ct.includes('application/json') ? JSON.parse(text) : {success: response.ok}; } catch(e){ data = {success:false, message: text.slice(0,200)}; }
+        if (!response.ok || data.success === false) throw new Error(data.message || 'HTTP '+response.status);
+        return data;
+    })
     .then(data => {
-        if (data.success) {
-            // Show brief success indicator
-            showToast('Order saved');
-        }
+        const list2 = document.getElementById('sortable-links');
+        if (list2) list2.style.opacity = '1';
+        showToast('Order saved ✓');
     })
     .catch(error => {
         console.error('Error saving order:', error);
-        showToast('Error saving order', 'error');
+        const list2 = document.getElementById('sortable-links');
+        if (list2) list2.style.opacity = '1';
+        showToast('Error saving order: ' + (error.message||error), 'error');
     });
 }
 

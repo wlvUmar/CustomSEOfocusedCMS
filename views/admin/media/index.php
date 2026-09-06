@@ -68,16 +68,6 @@ $csrfForJs = htmlspecialchars(generateCSRFToken(), ENT_QUOTES);
 
 <!-- Media Grid -->
 <div class="media-grid" id="media-grid">
-    <?php 
-    // Debug: show first item structure
-    if (!empty($media)) {
-        $firstMedia = reset($media);
-        if (is_array($firstMedia)) {
-            echo "<!-- DEBUG: First media item structure: " . json_encode($firstMedia) . " -->";
-            echo "<!-- DEBUG: Array keys: " . implode(", ", array_keys($firstMedia)) . " -->";
-        }
-    }
-    ?>
     <?php if (empty($media)): ?>
         <div class="empty-state">
             <i data-feather="image" style="width:64px;height:64px;opacity:0.3;"></i>
