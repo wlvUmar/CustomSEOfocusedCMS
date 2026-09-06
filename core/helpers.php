@@ -1717,7 +1717,7 @@ function processMediaPlaceholders($content, $pageId) {
                     ORDER BY pm.position ASC, pm.id ASC";
             $items = $db->fetchAll($sql, [$pageId, $slot]);
             if (empty($items)) return '';
-            return renderMediaSlot($items, $lang);
+            return renderMediaSlot($items, $lang, $slot);
         },
         $content
     );
@@ -1728,9 +1728,12 @@ function processMediaPlaceholders($content, $pageId) {
 /**
  * Render slot-based media: {{media.slot_key}}
  * Invisible when empty (caller returns ''), single -> <img>, multiple -> c-gallery-grid
+ * Side-scroll: use slot suffix _{scroll,carousel,slider,hscroll} e.g. {{media.photos_scroll}}
+ *             1 placeholder = attach N images → renders as horizontal snap carousel
  */
-function renderMediaSlot($mediaItems, $lang) {
+function renderMediaSlot($mediaItems, $lang, $slot = '') {
     if (empty($mediaItems)) return '';
+    $isScroll = (bool)preg_match('/_(scroll|carousel|slider|hscroll)$/i', (string)$slot);
     if (count($mediaItems) === 1) {
         $m = $mediaItems[0];
         $alt = $m["alt_text_$lang"] ?? $m['original_name'] ?? '';
@@ -1743,17 +1746,40 @@ function renderMediaSlot($mediaItems, $lang) {
         $sources = $filename ? buildResponsiveImageSources($filename, getResponsiveImageWidths()) : null;
         $classes = ['page-media', 'align-' . $alignment, 'slot-media'];
         if ($cssClass) $classes[] = $cssClass;
+        if ($isScroll) $classes[] = 'slot-media--scroll';
         $classAttr = implode(' ', $classes);
         $img = '<img src="/uploads/' . htmlspecialchars($filename) . '" alt="' . htmlspecialchars($alt) . '" class="' . htmlspecialchars($classAttr) . '"';
         if ($dims) $img .= ' width="' . (int)$dims['width'] . '" height="' . (int)$dims['height'] . '"';
         if ($sources && !empty($sources['fallback'])) $img .= ' srcset="' . htmlspecialchars($sources['fallback']) . '" sizes="(max-width: 768px) 100vw, 720px"';
         $img .= ($lazy ? ' loading="lazy"' : ' loading="eager"') . ' decoding="async">';
+        if ($isScroll) {
+            // Single item but scroll-intent: wrap in scroll track so adding 2nd image doesn't shift layout
+            $imgWrapped = $img;
+            if ($caption) $imgWrapped = '<figure class="media-figure slot-figure" style="flex:0 0 auto;min-width:min(320px,85vw);margin:0">' . $img . '<figcaption>' . htmlspecialchars($caption) . '</figcaption></figure>';
+            return '<div class="slot-gallery slot-gallery--scroll" data-slot="' . htmlspecialchars($slot) . '">' . $imgWrapped . '</div>';
+        }
         if ($caption) {
             return '<figure class="media-figure align-' . htmlspecialchars($alignment) . ' slot-figure">' . $img . '<figcaption>' . htmlspecialchars($caption) . '</figcaption></figure>';
         }
         return $img;
     }
-    // Gallery: auto-wrap — each thumb gets dims + lazy, grid styling is palette-aligned (components.css:240)
+    // Gallery: 2+ images
+    if ($isScroll) {
+        // Side-scrollable carousel: horizontal snap, not grid
+        $html = '<div class="slot-gallery slot-gallery--scroll" data-slot="' . htmlspecialchars($slot) . '">';
+        foreach ($mediaItems as $m) {
+            $alt = $m["alt_text_$lang"] ?? $m['original_name'] ?? '';
+            $caption = $m["caption_$lang"] ?? '';
+            $filename = $m['filename'] ?? '';
+            $dims = $filename ? getImageDimensions($filename) : null;
+            $dimAttr = $dims ? ' width="' . (int)$dims['width'] . '" height="' . (int)$dims['height'] . '"' : '';
+            $img = '<img src="/uploads/' . htmlspecialchars($filename) . '" alt="' . htmlspecialchars($alt) . '"' . $dimAttr . ' loading="lazy" decoding="async">';
+            if ($caption) $img = '<figure style="flex:0 0 auto;min-width:min(320px,85vw);margin:0;display:grid;gap:6px">' . $img . '<figcaption style="font-size:.85em;color:var(--muted);text-align:center">' . htmlspecialchars($caption) . '</figcaption></figure>';
+            $html .= $img;
+        }
+        return $html . '</div>';
+    }
+    // Default grid
     $html = '<div class="c-gallery-grid slot-gallery">';
     foreach ($mediaItems as $m) {
         $alt = $m["alt_text_$lang"] ?? $m['original_name'] ?? '';
