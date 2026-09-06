@@ -25,7 +25,12 @@ class MediaController extends Controller {
             if (!empty($srcs['fallback'])) {
                 // srcs fallback is like "/uploads/derived/name_w480.jpg 480w" — take first URL
                 if (preg_match('/^(\S+)/', $srcs['fallback'], $m)) {
-                    return $m[1];
+                    $derived = $m[1]; // e.g. /uploads/derived/xxx_w480.jpg
+                    // findExistingDerivedSources returns path relative to site root; prefix with BASE_URL if needed
+                    if (defined('BASE_URL') && BASE_URL !== '' && strpos($derived, '://') === false && $derived[0] === '/') {
+                        return rtrim(BASE_URL, '/') . $derived;
+                    }
+                    return $derived;
                 }
             }
         }

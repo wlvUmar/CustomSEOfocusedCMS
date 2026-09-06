@@ -454,25 +454,31 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     items.forEach(it=>{
                         const attached = it.is_attached_to_page;
                         const card=document.createElement('div');
-                        card.style.cssText='border:1px solid '+(attached?'#22c55e':'#e5e7eb')+';border-radius:8px;overflow:hidden;background:#fff;display:flex;flex-direction:column;cursor:pointer;'+(attached?'outline:2px solid #22c55e;outline-offset:-2px':'');
-                        const imgUrl = it.thumb_url || (thumbBase + it.filename);
-                        const dims = it.width && it.height ? ` width="${it.width}" height="${it.height}"` : '';
+                        card.style.cssText='border:1px solid '+(attached?'#22c55e':'#e5e7eb')+';border-radius:10px;overflow:hidden;background:#fff;position:relative;aspect-ratio:1;cursor:pointer;'+(attached?'outline:2px solid #22c55e;outline-offset:-2px':'');
+                        let imgUrl = it.thumb_url || (thumbBase + it.filename);
+                        // thumb_url from server may be absolute (BASE_URL + /uploads/...) or root /uploads/... — ensure it resolves
+                        if(imgUrl && imgUrl.startsWith('/uploads/') && baseUrl) imgUrl = baseUrl + imgUrl;
+                        const safeName = escHtml(it.original_name||it.filename||'');
+                        const kb = Math.round((it.file_size||0)/1024);
                         card.innerHTML=`
-                            <div style="position:relative;height:140px;background:#f3f4f6;overflow:hidden">
-                                <img src="${imgUrl}" alt="${(it.original_name||'').replace(/"/g,'&quot;')}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" decoding="async"${dims}>
-                                ${attached ? `<span style="position:absolute;top:6px;right:6px;background:#22c55e;color:#fff;font-size:11px;padding:2px 6px;border-radius:999px">✓ attached${it.attached_section ? ' ('+it.attached_section+')':''}</span>` : ''}
-                                <span style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px">${it.usage_count} page(s)</span>
+                            <img src="${imgUrl}" alt="${safeName.replace(/"/g,'&quot;')}" style="width:100%;height:100%;object-fit:cover;display:block;background:#f3f4f6" loading="lazy" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid'">
+                            <div style="display:none;position:absolute;inset:0;place-items:center;background:#f3f4f6;color:#9ca3af;font-size:11px;padding:8px;text-align:center">${safeName}</div>
+                            ${attached ? `<span style="position:absolute;top:7px;right:7px;background:#22c55e;color:#fff;font-size:11px;font-weight:700;padding:3px 7px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:1">✓</span>` : ''}
+                            <span style="position:absolute;top:7px;left:7px;background:rgba(0,0,0,.58);color:#fff;font-size:10px;padding:2px 6px;border-radius:999px;backdrop-filter:blur(4px)">#${it.id} · ${kb}KB</span>
+                            <div style="position:absolute;inset:auto 0 0 0;background:linear-gradient(transparent, rgba(0,0,0,.72));padding:28px 8px 8px;color:#fff;z-index:1">
+                                <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${safeName}">${safeName}</div>
+                                <div style="font-size:10px;opacity:.88">${it.usage_count||0} page(s)${it.attached_section ? ' · '+escHtml(it.attached_section) : ''}</div>
                             </div>
-                            <div style="padding:6px 8px;flex:1">
-                                <div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(it.original_name||'').replace(/"/g,'&quot;')}">${(it.original_name||it.filename).replace(/</g,'&lt;')}</div>
-                                <div style="font-size:10px;color:#6b7280">${Math.round((it.file_size||0)/1024)} KB • ID ${it.id}</div>
-                            </div>
-                            <div style="padding:6px 8px;border-top:1px solid #f3f4f6">
-                                <button type="button" class="btn btn-primary btn-sm" style="width:100%">${attached ? 'Attach again / move' : 'Attach to {{media.'+pickerSlot+'}}'}</button>
+                            <div class="picker-hover" style="position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.34);opacity:0;transition:opacity .16s;z-index:2">
+                                <span style="background:#fff;color:#111827;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.22);transform:translateY(2px);transition:transform .16s">${attached ? 'Re-attach' : 'Attach to '+escHtml(pickerSlot)}</span>
                             </div>`;
-                        const _btn = card.querySelector('button');
-                        _btn.addEventListener('click', (e)=>{ e.stopPropagation(); pickerAttach(it.id, _btn); });
-                        card.addEventListener('click', ()=> pickerAttach(it.id, _btn));
+                        card.addEventListener('mouseenter', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='1'; h.firstElementChild.style.transform='translateY(0)'; }});
+                        card.addEventListener('mouseleave', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='0'; h.firstElementChild.style.transform='translateY(2px)'; }});
+                        card.addEventListener('click', ()=> pickerAttach(it.id, card));
+                        // also handle touch: first tap shows hover, second attaches? For now single tap attaches directly (as before)
+                        const _btn = card; // for pickerAttach btn param compatibility
+                        // store for fallback
+                        card._pickerId = it.id;
                         grid.appendChild(card);
                     });
                 } catch(e){
@@ -481,7 +487,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
             }
             window.pickerAttach = async function(mediaId, btn){
                 if (!pickerSlot) return;
-                if(btn){ btn.disabled=true; const old=btn.textContent; btn.textContent='…'; btn._old=old; }
+                const isBtn = btn && btn.tagName === 'BUTTON';
+                if(isBtn){ btn.disabled=true; const old=btn.textContent; btn.textContent='…'; btn._old=old; }
+                else if(btn && btn.classList && btn.classList.contains('picker-hover')){ /* card overlay, ignore */ }
                 const fd=new FormData();
                 fd.append('csrf_token', getCsrf());
                 fd.append('page_id', pageId);
@@ -525,9 +533,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     document.body.appendChild(t); requestAnimationFrame(()=>t.style.opacity='1'); setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),240);}, 1700);
                 }catch(e){
                     alert('Attach failed: '+(e.message||e));
-                    if(btn){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
+                    if(isBtn && btn){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
                 } finally {
-                    if(btn && btn.disabled && btn.textContent==='…'){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
+                    if(isBtn && btn && btn.disabled && btn.textContent==='…'){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
                 }
             };
             window.pickerUpload = async function(input){
