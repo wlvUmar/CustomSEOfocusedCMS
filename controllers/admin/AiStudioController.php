@@ -10,8 +10,6 @@ require_once BASE_PATH . '/models/ai/AiToolRegistry.php';
 class AiStudioController extends Controller {
 
     private const MAX_TOOL_TURNS = 25;
-    private const MAX_TOTAL_TOKENS = 120000;
-    private const MAX_TOTAL_COST = 0.50;
     /** History depth kept for context (client sends the transcript each turn). */
     private const MAX_HISTORY_TURNS = 12;
     /** JSON-lines operational log for this feature (separate from php_errors.log). */
@@ -378,14 +376,7 @@ class AiStudioController extends Controller {
                         'total' => $usageTotal['total'],
                         'cost' => $usageTotal['cost'],
                     ]);
-                    if ($usageTotal['total'] > self::MAX_TOTAL_TOKENS || $usageTotal['cost'] > self::MAX_TOTAL_COST) {
-                        $this->logAi('cost_cap', ['turn'=>$turn,'total_tokens'=>$usageTotal['total'],'cost'=>$usageTotal['cost']]);
-                        $this->sse('error', ['message' => 'Cost/token cap reached (' . $usageTotal['total'] . ' tokens / $' . number_format($usageTotal['cost'],4) . '). Run stopped to prevent overage. Say "continue" to resume or simplify the request.']);
-                        $this->sse('done', ['status' => 'cost_cap', 'text' => $finalText]);
-                        $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
-                        $shutdownDone = true;
-                        return;
-                    }
+
                 }
 
                 $this->logAi('model_turn', [
