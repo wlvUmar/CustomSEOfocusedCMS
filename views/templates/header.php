@@ -158,8 +158,8 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
      })();
      </script>
       <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
-      <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/pages.min.css') ?: time() ?>">
-      <link rel="stylesheet" href="<?= BASE_URL ?>/css/components.min.css?v=<?= @filemtime(BASE_PATH . '/public/css/components.min.css') ?: time() ?>">
+       <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css?v=<?= (is_file(PUBLIC_PATH . '/css/pages.min.css') ? filemtime(PUBLIC_PATH . '/css/pages.min.css') : (is_file(BASE_PATH . '/public/css/pages.min.css') ? filemtime(BASE_PATH . '/public/css/pages.min.css') : time())) ?>">
+       <link rel="stylesheet" href="<?= BASE_URL ?>/css/components.min.css?v=<?= (is_file(PUBLIC_PATH . '/css/components.min.css') ? filemtime(PUBLIC_PATH . '/css/components.min.css') : (is_file(BASE_PATH . '/public/css/components.min.css') ? filemtime(BASE_PATH . '/public/css/components.min.css') : time())) ?>">
      <?php
      // Per-page custom CSS: merges DB custom_css + any <style> extracted from content (see PageController)
      $pageCustomCss = $pageCustomCss ?? ($page['custom_css'] ?? '');

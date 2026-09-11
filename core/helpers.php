@@ -509,10 +509,12 @@ function sanitizeFrontendHtml(string $html): string {
     $doc->loadHTML('<?xml encoding="UTF-8"><div>' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
     libxml_clear_errors();
     $xpath = new DOMXPath($doc);
-    foreach ($xpath->query('//@*[starts-with(name(),"on")]') as $attr) {
+    $onAttrs = $xpath->query('//@*[starts-with(name(),"on")]');
+    if ($onAttrs !== false) foreach ($onAttrs as $attr) {
         if ($attr instanceof DOMAttr && $attr->ownerElement) $attr->ownerElement->removeAttribute($attr->nodeName);
     }
-    foreach ($xpath->query('//*[@href or @src or @action or @xlink:href]') as $el) {
+    $hrefNodes = $xpath->query('//*[@href or @src or @action or @xlink:href]');
+    if ($hrefNodes !== false) foreach ($hrefNodes as $el) {
         if (!($el instanceof DOMElement)) continue;
         foreach (['href','src','action','xlink:href'] as $a) {
             if (!$el->hasAttribute($a)) continue;

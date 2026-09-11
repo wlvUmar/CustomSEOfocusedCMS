@@ -195,7 +195,7 @@ $applianceNameForSEO = $applianceName ?? '';
         }
     ?>
     <section class="links-section" data-animate="stagger">
-        <link rel="stylesheet" href="<?= BASE_URL ?>/css/hold-morph.css?v=<?= @filemtime(BASE_PATH . '/public/css/hold-morph.css') ?: time() ?>">
+        <link rel="stylesheet" href="<?= BASE_URL ?>/css/hold-morph.css?v=<?= (is_file(PUBLIC_PATH . '/css/hold-morph.css') ? filemtime(PUBLIC_PATH . '/css/hold-morph.css') : (is_file(BASE_PATH . '/public/css/hold-morph.css') ? filemtime(BASE_PATH . '/public/css/hold-morph.css') : time())) ?>">
         <div class="links-section__head">
             <div class="section-label"><?= $lang === 'ru' ? 'Разделы' : 'Bo\'limlar' ?></div>
             <h2 class="links-section__title">
