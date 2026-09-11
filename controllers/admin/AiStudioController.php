@@ -9,8 +9,9 @@ require_once BASE_PATH . '/models/ai/AiToolRegistry.php';
 
 class AiStudioController extends Controller {
 
-    /** Hard cap removed per user request — set to 100 as safety net (was 50). Effectively unlimited for normal tasks. */
-    private const MAX_TOOL_TURNS = 100;
+    private const MAX_TOOL_TURNS = 25;
+    private const MAX_TOTAL_TOKENS = 120000;
+    private const MAX_TOTAL_COST = 0.50;
     /** History depth kept for context (client sends the transcript each turn). */
     private const MAX_HISTORY_TURNS = 12;
     /** JSON-lines operational log for this feature (separate from php_errors.log). */
@@ -116,12 +117,14 @@ class AiStudioController extends Controller {
         if (mb_strlen($message) > 8000) {
             $message = mb_substr($message, 0, 8000) . "\n…[truncated to 8000 chars]";
         }
+        $sessionId = trim((string)($_POST['session_id'] ?? ''));
         $history = $this->sanitizeHistory($_POST['history'] ?? '[]');
-        $approved = $this->sanitizeApproved($_POST['approved'] ?? '[]');
-        $pending = $this->sanitizePending($_POST['pending'] ?? '[]');
+        $rawApproved = $this->sanitizeApproved($_POST['approved'] ?? '[]');
+        $pendingRaw = $this->sanitizePending($_POST['pending'] ?? '[]');
         $mode = strtolower(trim((string)($_POST['mode'] ?? 'plan')));
         if (!in_array($mode, ['plan', 'build'], true)) $mode = 'plan';
-        $sessionId = trim((string)($_POST['session_id'] ?? ''));
+        $approved = $this->filterApprovedByServerPending($rawApproved, $sessionId, $uid);
+        $pending = $this->validatePendingAgainstServer($pendingRaw, $sessionId, $uid);
         // Tightened: require ≥22 chars (brute-force 8-char no longer accepted), UUID v4 36-char preferred.
         // Accepts UUID 36 or legacy 22-char hex; rejects 8-char guessable IDs (06-01).
         if ($sessionId !== '' && !preg_match('/^[a-z0-9\-]{22,64}$/i', $sessionId)) $sessionId = '';
@@ -129,12 +132,16 @@ class AiStudioController extends Controller {
         if ($sessionId !== '') {
             $dbHistory = $this->loadSessionHistory($sessionId);
             if (!empty($dbHistory)) {
-                // Merge with dedup and ordering guarantee: DB history is canonical, client history appended only if not duplicate
                 $merged = $dbHistory;
                 $existingHashes = [];
-                foreach ($merged as $m) $existingHashes[($m['role'] ?? '') . ':' . sha1((string)($m['content'] ?? ''))] = true;
+                foreach ($merged as $m) {
+                    $k = ($m['role'] ?? '') . ':' . ($m['tool_call_id'] ?? '') . ':' . sha1((string)($m['content'] ?? ''));
+                    if (isset($m['tool_calls'])) $k .= ':' . sha1(json_encode($m['tool_calls']));
+                    $existingHashes[$k] = true;
+                }
                 foreach ($history as $m) {
-                    $h = ($m['role'] ?? '') . ':' . sha1((string)($m['content'] ?? ''));
+                    $h = ($m['role'] ?? '') . ':' . ($m['tool_call_id'] ?? '') . ':' . sha1((string)($m['content'] ?? ''));
+                    if (isset($m['tool_calls'])) $h .= ':' . sha1(json_encode($m['tool_calls']));
                     if (!isset($existingHashes[$h])) {
                         $merged[] = $m;
                         $existingHashes[$h] = true;
@@ -187,21 +194,19 @@ class AiStudioController extends Controller {
         $didPreview = false;
         $messages = []; // will be filled below, captured by reference for shutdown
         $shutdownDone = false;
-        $shutdownState = ['messages' => &$messages, 'finalText' => &$finalText, 'sessionId' => $sessionId, 'model' => $model, 'mode' => $mode, 'ctxSnapshot' => $ctxSnapshot, 'startedAt' => $startedAt, 'done' => &$shutdownDone];
+        $shutdownUserId = $uid;
+        $shutdownState = ['messages' => &$messages, 'finalText' => &$finalText, 'sessionId' => $sessionId, 'model' => $model, 'mode' => $mode, 'ctxSnapshot' => $ctxSnapshot, 'startedAt' => $startedAt, 'done' => &$shutdownDone, 'userId' => $shutdownUserId];
         register_shutdown_function(function() use (&$shutdownState) {
             $e = error_get_last();
             $isFatal = $e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true);
             if (!$shutdownState['done']) {
                 $msg = $isFatal ? 'fatal: ' . $e['message'] . ' at ' . $e['file'] . ':' . $e['line'] : 'killed: PHP worker terminated (timeout/host buffer) without done';
                 @error_log(json_encode(['ts'=>date('Y-m-d H:i:s'), 'event'=>'run_killed_shutdown', 'session_id'=>substr($shutdownState['sessionId'],0,12), 'message'=>$msg, 'messages_count'=>count($shutdownState['messages'] ?? [])], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) . "\n", 3, BASE_PATH . '/logs/ai-studio.log');
-                @error_log(json_encode(['ts'=>date('Y-m-d H:i:s'), 'event'=>'run_killed_shutdown', 'session_id'=>substr($shutdownState['sessionId'],0,16), 'message'=>$msg, 'messages'=>array_slice($shutdownState['messages'] ?? [], -4)], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE) . "\n", 3, BASE_PATH . '/logs/ai-studio-debug.log');
-                // Best-effort persist (DB) even though headers already sent
+                if ((getenv('AI_STUDIO_DEBUG') === '1') || (defined('AI_STUDIO_DEBUG') && AI_STUDIO_DEBUG)) {
+                    @error_log(json_encode(['ts'=>date('Y-m-d H:i:s'), 'event'=>'run_killed_shutdown', 'session_id'=>substr($shutdownState['sessionId'],0,16), 'message'=>$msg, 'messages'=>array_slice($shutdownState['messages'] ?? [], -4)], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE) . "\n", 3, BASE_PATH . '/logs/ai-studio-debug.log');
+                }
                 try {
-                    $c = new AiStudioController();
-                    // Use reflection to call private persistAfterRun without session
-                    $ref = new ReflectionMethod($c, 'persistAfterRun');
-                    $ref->setAccessible(true);
-                    $ref->invoke($c, $shutdownState['sessionId'], $shutdownState['messages'] ?? [], $shutdownState['model'], $shutdownState['mode'], $shutdownState['ctxSnapshot'] ?? []);
+                    AiStudioController::staticPersistAfterRun($shutdownState['sessionId'], $shutdownState['messages'] ?? [], $shutdownState['model'], $shutdownState['mode'], $shutdownState['ctxSnapshot'] ?? [], (int)($shutdownState['userId'] ?? 0));
                 } catch (Throwable $ignored) {}
             }
         });
@@ -373,6 +378,14 @@ class AiStudioController extends Controller {
                         'total' => $usageTotal['total'],
                         'cost' => $usageTotal['cost'],
                     ]);
+                    if ($usageTotal['total'] > self::MAX_TOTAL_TOKENS || $usageTotal['cost'] > self::MAX_TOTAL_COST) {
+                        $this->logAi('cost_cap', ['turn'=>$turn,'total_tokens'=>$usageTotal['total'],'cost'=>$usageTotal['cost']]);
+                        $this->sse('error', ['message' => 'Cost/token cap reached (' . $usageTotal['total'] . ' tokens / $' . number_format($usageTotal['cost'],4) . '). Run stopped to prevent overage. Say "continue" to resume or simplify the request.']);
+                        $this->sse('done', ['status' => 'cost_cap', 'text' => $finalText]);
+                        $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
+                        $shutdownDone = true;
+                        return;
+                    }
                 }
 
                 $this->logAi('model_turn', [
@@ -518,6 +531,7 @@ class AiStudioController extends Controller {
                             'tool' => $name,
                             'plan' => mb_substr((string)($out['plan'] ?? ''), 0, 300),
                         ]);
+                        $this->savePendingApprovals($sessionId, $uid, $name, $approvalCallIds, $pendingPair, $out['plan'] ?? '', $out['reason'] ?? '');
                         $messages[] = [
                             'role' => 'tool',
                             'tool_call_id' => $toolMsgId,
@@ -553,7 +567,7 @@ class AiStudioController extends Controller {
 
                     // Track visual writes for soft preview reminder (04-05)
                     $visualWrites = ['update_section','patch_section','insert_section','wrap_section','add_section_marker','auto_sectionize','set_section_style','batch_update','str_replace_field','set_field'];
-                    if (in_array($name, $visualWrites, true) && ($out['result']['ok'] ?? $out['type'] === 'result')) {
+                    if (in_array($name, $visualWrites, true) && ($out['result']['ok'] ?? ($out['type'] === 'result'))) {
                         // str_replace/set on content_ru/uz counts as visual; meta titles not, but we treat all as potential visual to avoid false negatives
                         $didWriteHtml = true;
                     }
@@ -619,6 +633,12 @@ class AiStudioController extends Controller {
                     $shutdownDone = true;
                     $this->sse('done', ['status' => 'awaiting_approval', 'text' => $finalText]);
                     return;
+                }
+                // For non-approval runs, clean up any stale pending store if user sent approvals (approved list non-empty)
+                if (!empty($approved)) {
+                    $this->clearPendingApprovals($sessionId, $uid, $approved);
+                } elseif (!empty($pending) && $this->isDeniedMessage($message)) {
+                    $this->clearPendingApprovals($sessionId, $uid, null);
                 }
             }
 
@@ -696,17 +716,14 @@ class AiStudioController extends Controller {
     private function startStream() {
         header('Content-Type: text/event-stream; charset=utf-8');
         header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
         header('X-Accel-Buffering: no');
+        header('Content-Encoding: none');
         if (ini_get('zlib.output_compression')) {
             @ini_set('zlib.output_compression', '0');
         }
-        // Discard any prior buffered HTML (front controller ob_start + header views) instead of flushing it into the SSE stream (C2).
         while (ob_get_level() > 0) {
             ob_end_clean();
-        }
-        // Prevent PHP session lock already released above; ensure no further buffering.
-        if (function_exists('fastcgi_finish_request')) {
-            // not calling, just ensuring headers sent
         }
         echo "retry: 2000\n\n";
         $this->flushAll();
@@ -779,9 +796,21 @@ class AiStudioController extends Controller {
             'session_id' => $sid ? substr((string)$sid, 0, 16) : null,
         ] + $payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
         if ($line === false) $line = json_encode(['ts'=>date('Y-m-d H:i:s'), 'event'=>$event, 'error'=>'json_encode failed']);
-        // Rotate debug log at 20MB
         if (is_file(self::DEBUG_LOG_FILE) && @filesize(self::DEBUG_LOG_FILE) > 20 * 1024 * 1024) {
-            @rename(self::DEBUG_LOG_FILE, self::DEBUG_LOG_FILE . '.' . date('Y-m-d_His'));
+            $lock = @fopen(self::DEBUG_LOG_FILE, 'a');
+            if ($lock && @flock($lock, LOCK_EX | LOCK_NB)) {
+                clearstatcache(true, self::DEBUG_LOG_FILE);
+                if (@filesize(self::DEBUG_LOG_FILE) > 20 * 1024 * 1024) {
+                    @flock($lock, LOCK_UN);
+                    @fclose($lock);
+                    @rename(self::DEBUG_LOG_FILE, self::DEBUG_LOG_FILE . '.' . date('Y-m-d_His'));
+                } else {
+                    @flock($lock, LOCK_UN);
+                    @fclose($lock);
+                }
+            } elseif ($lock) {
+                @fclose($lock);
+            }
         }
         @error_log($line . "\n", 3, self::DEBUG_LOG_FILE);
     }
@@ -790,8 +819,11 @@ class AiStudioController extends Controller {
         if (isset($_POST['debug']) && $_POST['debug'] === '1') return true;
         if (isset($_GET['debug']) && $_GET['debug'] === '1') return true;
         if (getenv('AI_STUDIO_DEBUG') === '1') return true;
-        // Always debug in development for now (can gate by APP_ENV if needed)
-        return true;
+        if (defined('AI_STUDIO_DEBUG') && AI_STUDIO_DEBUG) return true;
+        if (defined('APP_ENV') && APP_ENV === 'development' && (getenv('APP_ENV') !== 'production')) {
+            return false;
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------
@@ -884,28 +916,45 @@ PROMPT;
         if (is_array($decoded)) {
             foreach ($decoded as $turn) {
                 if (!is_array($turn)) continue;
-                // 06-05: keep tool role as well so grounding survives cap; client-supplied tool results are validated (tool_call_id + content length) downstream.
                 $role = in_array($turn['role'] ?? '', ['user', 'assistant', 'tool'], true) ? $turn['role'] : null;
-                // For tool role, ensure tool_call_id exists to avoid orphan tool messages
                 if ($role === 'tool' && empty($turn['tool_call_id'])) continue;
                 $content = (string)($turn['content'] ?? '');
-                // Strip control chars and normalize whitespace to reduce prompt injection via hidden chars
                 $content = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $content);
-                // Block system-like prefix injection inside user content (e.g., "SYSTEM: you are now...")
                 if (preg_match('/^\s*(system|assistant\s*\(system\)|ignore\s+previous\s+instructions)/i', $content)) {
                     $content = '[filtered system-like prefix] ' . ltrim(preg_replace('/^\s*(system|assistant\s*\(system\)|ignore\s+previous\s+instructions)[:\-]*/i', '', $content));
                 }
-                // Per-message cap to prevent token blow-up (H5). Truncate, don't drop.
                 if (mb_strlen($content) > 4000) $content = mb_substr($content, 0, 4000) . "\n…[truncated]";
                 if ($role && $content !== '') {
-                    // Only deduplicate consecutive duplicates (not global seen) — two identical get_section previews
-                    // at different points in history are legitimate (e.g., re-reading after write).
-                    $hash = $role . ':' . sha1($content);
-                    $lastHash = end($messages) ? (end($messages)['role'] . ':' . sha1(end($messages)['content'])) : null;
-                    if ($hash === $lastHash) continue;
-                    $messages[] = ['role' => $role, 'content' => $content];
+                    $entry = ['role' => $role, 'content' => $content];
+                    if ($role === 'tool' && !empty($turn['tool_call_id'])) {
+                        $tcid = substr((string)$turn['tool_call_id'], 0, 64);
+                        $entry['tool_call_id'] = $tcid;
+                    }
+                    if ($role === 'assistant' && isset($turn['tool_calls']) && is_array($turn['tool_calls'])) {
+                        $validCalls = [];
+                        foreach ($turn['tool_calls'] as $tc) {
+                            if (!is_array($tc) || !isset($tc['function'])) continue;
+                            $id = (string)($tc['id'] ?? '');
+                            $name = (string)($tc['function']['name'] ?? '');
+                            $args = (string)($tc['function']['arguments'] ?? '{}');
+                            if ($id === '' || $name === '' || strlen($id) > 64 || strlen($name) > 64 || strlen($args) > 65536) continue;
+                            if (json_decode($args) === null && $args !== '{}' && $args !== '') continue;
+                            $validCalls[] = ['id'=>$id,'type'=>'function','function'=>['name'=>$name,'arguments'=>$args]];
+                        }
+                        if (!empty($validCalls)) $entry['tool_calls'] = $validCalls;
+                    }
+                    $hashParts = $role . ':' . ($entry['tool_call_id'] ?? '') . ':' . sha1($content);
+                    if (isset($entry['tool_calls'])) $hashParts .= ':' . sha1(json_encode($entry['tool_calls']));
+                    $lastHash = null;
+                    if (!empty($messages)) {
+                        $last = end($messages);
+                        $lastHash = ($last['role'] ?? '') . ':' . ($last['tool_call_id'] ?? '') . ':' . sha1($last['content'] ?? '');
+                        if (isset($last['tool_calls'])) $lastHash .= ':' . sha1(json_encode($last['tool_calls']));
+                    }
+                    if ($hashParts === $lastHash) continue;
+                    $messages[] = $entry;
                 }
-                if (count($messages) >= 48) break; // hard cap before slice
+                if (count($messages) >= 48) break;
             }
             if (count($messages) > self::MAX_HISTORY_TURNS * 2) {
                 $messages = array_slice($messages, -self::MAX_HISTORY_TURNS * 2);
@@ -1017,9 +1066,12 @@ PROMPT;
         $this->requireAuth();
         $uid = (int)($_SESSION['user_id'] ?? 0);
         Database::getInstance()->query("DELETE FROM ai_sessions WHERE id = ? AND user_id = ?", [$id,$uid]);
+        try { $this->ensureAiPendingTable(); Database::getInstance()->query("DELETE FROM ai_pending_approvals WHERE session_id=? AND user_id=?", [$id,$uid]); } catch (Throwable $e) {}
         $this->json(['success'=>true]);
     }
+    private static bool $aiSessionsTableEnsured = false;
     private function ensureAiSessionsTable(): void {
+        if (self::$aiSessionsTableEnsured) return;
         try {
             Database::getInstance()->query("CREATE TABLE IF NOT EXISTS ai_sessions (
                 id CHAR(36) PRIMARY KEY,
@@ -1033,10 +1085,99 @@ PROMPT;
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_user_updated (user_id, updated_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            self::$aiSessionsTableEnsured = true;
         } catch (Throwable $e) {
-            // 06-10: don't swallow — log so DB permission errors are visible (persistSession would otherwise silently fail)
             error_log('ensureAiSessionsTable failed: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
         }
+    }
+
+    private static bool $aiPendingTableEnsured = false;
+    private function ensureAiPendingTable(): void {
+        if (self::$aiPendingTableEnsured) return;
+        try {
+            Database::getInstance()->query("CREATE TABLE IF NOT EXISTS ai_pending_approvals (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                session_id CHAR(36) NOT NULL,
+                user_id INT NOT NULL,
+                call_id VARCHAR(64) NOT NULL,
+                tool VARCHAR(64) NOT NULL,
+                plan TEXT,
+                reason TEXT,
+                pending_json JSON NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_session_call (session_id, user_id, call_id),
+                INDEX idx_session_user (session_id, user_id),
+                INDEX idx_created (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            self::$aiPendingTableEnsured = true;
+        } catch (Throwable $e) {
+            error_log('ensureAiPendingTable failed: ' . $e->getMessage());
+        }
+    }
+
+    private function savePendingApprovals(string $sessionId, int $uid, string $tool, array $callIds, array $pendingPair, string $plan, string $reason): void {
+        if ($sessionId === '' || $uid <= 0 || empty($callIds)) return;
+        try {
+            $this->ensureAiPendingTable();
+            $pendingJson = json_encode($pendingPair, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            foreach ($callIds as $cid) {
+                if (!preg_match('/^[a-f0-9]{40}$/', $cid)) continue;
+                Database::getInstance()->query(
+                    "INSERT INTO ai_pending_approvals (session_id, user_id, call_id, tool, plan, reason, pending_json) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE tool=VALUES(tool), plan=VALUES(plan), reason=VALUES(reason), pending_json=VALUES(pending_json), created_at=NOW()",
+                    [$sessionId, $uid, $cid, $tool, mb_substr($plan,0,2000), mb_substr($reason,0,500), $pendingJson]
+                );
+            }
+        } catch (Throwable $e) {
+            error_log('savePendingApprovals failed: ' . $e->getMessage());
+        }
+    }
+
+    private function filterApprovedByServerPending(array $approved, string $sessionId, int $uid): array {
+        if (empty($approved) || $sessionId === '' || $uid <= 0) return [];
+        try {
+            $this->ensureAiPendingTable();
+            $placeholders = implode(',', array_fill(0, count($approved), '?'));
+            $params = array_merge([$sessionId, $uid], $approved);
+            $rows = Database::getInstance()->fetchAll("SELECT call_id FROM ai_pending_approvals WHERE session_id=? AND user_id=? AND call_id IN ($placeholders)", $params);
+            $valid = array_column($rows, 'call_id');
+            return array_values(array_intersect($approved, $valid));
+        } catch (Throwable $e) { return []; }
+    }
+
+    private function validatePendingAgainstServer(array $pending, string $sessionId, int $uid): array {
+        if (empty($pending) || $sessionId === '' || $uid <= 0) return [];
+        try {
+            $this->ensureAiPendingTable();
+            $row = Database::getInstance()->fetchOne("SELECT call_id FROM ai_pending_approvals WHERE session_id=? AND user_id=? LIMIT 1", [$sessionId,$uid]);
+            if (!$row) return [];
+            $cid = (string)($pending[0]['tool_calls'][0]['id'] ?? '');
+            if ($cid !== '') {
+                $exists = Database::getInstance()->fetchOne("SELECT call_id FROM ai_pending_approvals WHERE session_id=? AND user_id=? AND call_id=?", [$sessionId,$uid,$cid]);
+                if (!$exists) {
+                    $any = Database::getInstance()->fetchOne("SELECT call_id FROM ai_pending_approvals WHERE session_id=? AND user_id=? LIMIT 1", [$sessionId,$uid]);
+                    if (!$any) return [];
+                }
+            }
+            return $pending;
+        } catch (Throwable $e) { return []; }
+    }
+
+    private function clearPendingApprovals(string $sessionId, int $uid, ?array $callIds = null): void {
+        if ($sessionId === '' || $uid <= 0) return;
+        try {
+            $this->ensureAiPendingTable();
+            if ($callIds === null) {
+                Database::getInstance()->query("DELETE FROM ai_pending_approvals WHERE session_id=? AND user_id=?", [$sessionId,$uid]);
+            } elseif (!empty($callIds)) {
+                $ph = implode(',', array_fill(0, count($callIds), '?'));
+                $params = array_merge([$sessionId,$uid], $callIds);
+                Database::getInstance()->query("DELETE FROM ai_pending_approvals WHERE session_id=? AND user_id=? AND call_id IN ($ph)", $params);
+            }
+        } catch (Throwable $e) {}
+    }
+
+    private function isDeniedMessage(string $msg): bool {
+        return str_contains($msg, '[Denied]') || stripos($msg, 'denied') !== false;
     }
     private function loadSessionHistory(string $sessionId): array {
         try {
@@ -1062,10 +1203,9 @@ PROMPT;
         try {
             $this->ensureAiSessionsTable();
             $uid = (int)($_SESSION['user_id'] ?? 0);
-            // Trim history to last 12 turns *2 =24 msgs, sanitize
             if (count($history) > 24) $history = array_slice($history, -24);
             $title = '';
-            foreach ($history as $m) { if (($m['role']??'')==='user' && !empty($m['content'])) { $title = mb_substr(trim($m['content']),0,120); break; } }
+            foreach ($history as $m) { if (($m['role']??'')==='user' && !empty($m['content'])) { $raw = trim((string)$m['content']); $raw = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $raw); $raw = strip_tags($raw); $raw = preg_replace('/\s+/u', ' ', $raw); $title = mb_substr($raw,0,120); break; } }
             $histJson = json_encode($history, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
             $ctxJson = json_encode($context, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
             $exists = Database::getInstance()->fetchOne("SELECT id FROM ai_sessions WHERE id = ? AND user_id = ?", [$sessionId, $uid]);
@@ -1118,8 +1258,6 @@ PROMPT;
                 if (is_array($ctx)) $_SESSION['ai_context']=$ctx;
                 session_write_close();
             }
-        } else {
-            error_log('persistAfterRun: headers already sent, DB persisted but session superglobal not restored for ' . $sessionId);
         }
     }
 
@@ -1133,22 +1271,30 @@ PROMPT;
                 if (is_array($decoded)) {
                     // Already a write-result with verified hash/preview — compress to 400 chars summary
                     if (isset($decoded['ok']) || isset($decoded['html']) || isset($decoded['chunk']) || isset($decoded['preview_json'])) {
+                        $preserve = [];
+                        foreach (['hash','fresh_hash','ok','after_preview','before_chars','after_chars','page_id','lang','section','index'] as $k) {
+                            if (isset($decoded[$k])) $preserve[$k] = $decoded[$k];
+                        }
+                        $summary = [];
+                        $i = 0;
+                        foreach ($decoded as $k => $v) {
+                            if (isset($preserve[$k])) continue;
+                            if ($i >= 6) break;
+                            $summary[$k] = $v;
+                            $i++;
+                        }
                         $compact = [
                             '_compacted' => true,
                             'original_chars' => mb_strlen($m['content']),
-                            'summary' => array_slice($decoded, 0, 6),
-                        ];
-                        // Keep hash/preview if present for continuity
-                        if (isset($decoded['hash'])) $compact['hash'] = $decoded['hash'];
-                        if (isset($decoded['fresh_hash'])) $compact['fresh_hash'] = $decoded['fresh_hash'];
-                        if (isset($decoded['after_preview'])) $compact['after_preview'] = mb_substr((string)$decoded['after_preview'], 0, 200);
-                        // If get_section html is large, keep only preview + hash, drop html
+                            'summary' => $summary,
+                        ] + $preserve;
                         if (isset($compact['summary']['html']) && mb_strlen((string)$compact['summary']['html']) > 500) {
                             $compact['summary']['html'] = mb_substr((string)$compact['summary']['html'], 0, 200) . '…[compacted]';
                         }
                         if (isset($compact['summary']['chunk']) && mb_strlen((string)$compact['summary']['chunk']) > 500) {
                             $compact['summary']['chunk'] = mb_substr((string)$compact['summary']['chunk'], 0, 200) . '…[compacted]';
                         }
+                        if (isset($compact['after_preview'])) $compact['after_preview'] = mb_substr((string)$compact['after_preview'], 0, 200);
                         $m['content'] = json_encode($compact, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                     } elseif (mb_strlen($m['content']) > 2000) {
                         // Generic large tool result — keep first 800 chars + marker
@@ -1164,18 +1310,19 @@ PROMPT;
     }
 
     private function mergeTokensIntoContext(array $ctx, array $messages): array {
-        // Extract design tokens / global settings from tool results in this run and cache in context
-        // so next continue turn can see them without re-calling get_design_tokens.
         foreach ($messages as $m) {
             if (($m['role'] ?? '') !== 'tool' || empty($m['content'])) continue;
             $decoded = json_decode($m['content'], true);
             if (!is_array($decoded)) continue;
-            // PageTools::getDesignTokens returns tokens array, SiteTools global settings
-            if (isset($decoded['tokens']) || isset($decoded['design_tokens']) || (isset($decoded['ok']) && isset($decoded['tokens']))) {
+            $hasTokens = isset($decoded['tokens']) && is_array($decoded['tokens']);
+            $hasDesignTokens = isset($decoded['design_tokens']) && is_array($decoded['design_tokens']);
+            $hasAllTokensCount = isset($decoded['all_tokens_count']);
+            if ($hasTokens || $hasDesignTokens || $hasAllTokensCount) {
                 $ctx['_cached_tokens'] = $decoded;
                 $ctx['_cached_tokens_at'] = time();
             }
-            if (isset($decoded['global_settings']) || isset($decoded['phone']) || (isset($decoded['ok']) && isset($decoded['site_name']))) {
+            $isGlobalSettings = isset($decoded['site_name_ru']) || isset($decoded['phone']) && isset($decoded['email']) || isset($decoded['global_settings']);
+            if ($isGlobalSettings) {
                 $ctx['_cached_global_settings'] = $decoded;
                 $ctx['_cached_global_settings_at'] = time();
             }
@@ -1191,6 +1338,34 @@ PROMPT;
             $ctx = array_merge($newCtx, $others);
         }
         return $ctx;
+    }
+
+    public static function staticPersistAfterRun(string $sessionId, array $messages, string $model, string $mode, ?array $ctxSnapshot, int $uid): void {
+        if ($sessionId === '' || $uid <= 0) return;
+        try {
+            $history = [];
+            foreach ($messages as $m) {
+                if (($m['role']??'')==='system') continue;
+                if (in_array($m['role']??'', ['user','assistant','tool'], true)) $history[] = $m;
+            }
+            $tmp = new self();
+            $history = $tmp->compactHistoryForPersist($history);
+            foreach ($history as &$h) { if (isset($h['content']) && mb_strlen($h['content'])>4000) $h['content']=mb_substr($h['content'],0,4000)."\n…[truncated]"; }
+            if (count($history) > 24) $history = array_slice($history,-24);
+            $ctx = is_array($ctxSnapshot) ? $ctxSnapshot : [];
+            $ctx = $tmp->mergeTokensIntoContext($ctx, $messages);
+            $histJson = json_encode($history, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+            $ctxJson = json_encode($ctx, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+            $tmp->ensureAiSessionsTable();
+            $exists = Database::getInstance()->fetchOne("SELECT id FROM ai_sessions WHERE id = ? AND user_id = ?", [$sessionId, $uid]);
+            if ($exists) {
+                Database::getInstance()->query("UPDATE ai_sessions SET history=?, context=?, model=?, mode=?, updated_at=NOW() WHERE id=? AND user_id=?", [$histJson,$ctxJson,$model,$mode,$sessionId,$uid]);
+            } else {
+                $title = '';
+                foreach ($history as $m) { if (($m['role']??'')==='user' && !empty($m['content'])) { $raw = trim((string)$m['content']); $raw = strip_tags($raw); $title = mb_substr(preg_replace('/\s+/u',' ',$raw),0,120); break; } }
+                Database::getInstance()->query("INSERT INTO ai_sessions (id,user_id,title,model,mode,history,context) VALUES (?,?,?,?,?,?,?)", [$sessionId,$uid,$title,$model,$mode,$histJson,$ctxJson]);
+            }
+        } catch (Throwable $e) { error_log('staticPersistAfterRun failed: '.$e->getMessage()); }
     }
 
     /** Human-readable one-liner for the transcript; keeps the feed tidy. */

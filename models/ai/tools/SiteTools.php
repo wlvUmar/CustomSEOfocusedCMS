@@ -179,7 +179,8 @@ class SiteTools {
         $css = '';
         foreach (array_filter($candidates) as $path) {
             if (is_file($path)) {
-                $css = (string)file_get_contents($path);
+                if (@filesize($path) > 500 * 1024) continue;
+                $css = (string)@file_get_contents($path, false, null, 0, 200 * 1024);
                 break;
             }
         }
@@ -220,7 +221,7 @@ class SiteTools {
             BASE_PATH . '/public/css/components.css',
         ];
         foreach (array_filter($compCandidates) as $p) {
-            if (is_file($p)) { $componentsCss = (string)file_get_contents($p); break; }
+            if (is_file($p)) { if (@filesize($p) > 500*1024) continue; $componentsCss = (string)@file_get_contents($p, false, null, 0, 200*1024); break; }
         }
         $componentClasses = [];
         if ($componentsCss !== '' && preg_match_all('/\.(c-[a-z0-9_-]+)/', $componentsCss, $cm)) {

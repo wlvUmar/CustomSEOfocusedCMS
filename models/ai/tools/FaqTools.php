@@ -115,10 +115,14 @@ class FaqTools {
     private static function listFaqs(array $args): array {
         $limit = isset($args['limit']) ? max(1, min(500, (int)$args['limit'])) : 100;
         $pageSlug = trim((string)($args['page_slug'] ?? ''));
-        $model = new FAQ();
-        $rows = $pageSlug !== '' ? array_values(array_filter($model->getAll(), fn($f) => ($f['page_slug'] ?? '') === $pageSlug)) : $model->getAll();
+        $db = Database::getInstance();
+        if ($pageSlug !== '') {
+            $rows = $db->fetchAll("SELECT * FROM faqs WHERE page_slug = ? ORDER BY sort_order ASC, id ASC LIMIT " . (int)$limit, [$pageSlug]);
+        } else {
+            $rows = $db->fetchAll("SELECT * FROM faqs ORDER BY page_slug ASC, sort_order ASC, id ASC LIMIT " . (int)$limit);
+        }
         $out = [];
-        foreach (array_slice($rows, 0, $limit) as $f) {
+        foreach ($rows as $f) {
             $out[] = [
                 'id' => (int)$f['id'],
                 'page_slug' => $f['page_slug'],
@@ -134,14 +138,16 @@ class FaqTools {
     private static function getFaq(array $args): array {
         $slug = trim((string)($args['page_slug'] ?? ''));
         if ($slug !== '') {
-            $rows = array_values(array_filter((new FAQ())->getAll(), fn($f) => ($f['page_slug'] ?? '') === $slug));
+            $rows = Database::getInstance()->fetchAll("SELECT * FROM faqs WHERE page_slug = ? ORDER BY sort_order ASC", [$slug]);
             $out = [];
             foreach ($rows as $f) {
                 $out[] = [
                     'id' => (int)$f['id'],
                     'page_slug' => $f['page_slug'],
-                    'question_ru' => mb_substr((string)($f['question_ru'] ?? ''), 0, 200),
-                    'question_uz' => mb_substr((string)($f['question_uz'] ?? ''), 0, 200),
+                    'question_ru' => (string)($f['question_ru'] ?? ''),
+                    'question_uz' => (string)($f['question_uz'] ?? ''),
+                    'answer_ru' => mb_substr((string)($f['answer_ru'] ?? ''), 0, 2000),
+                    'answer_uz' => mb_substr((string)($f['answer_uz'] ?? ''), 0, 2000),
                     'sort_order' => (int)($f['sort_order'] ?? 0),
                     'is_active' => (int)($f['is_active'] ?? 1),
                 ];
@@ -167,15 +173,25 @@ class FaqTools {
                 throw new InvalidArgumentException("Missing required field: {$k} — all of page_slug, question_ru, question_uz, answer_ru, answer_uz are required.");
             }
         }
+        $slug = (string)$args['page_slug'];
+        $exists = Database::getInstance()->fetchOne("SELECT id FROM pages WHERE slug = ?", [$slug]);
+        if (!$exists) throw new InvalidArgumentException("Page not found: {$slug} — call list_pages to discover valid slugs.");
+        $isActive = 1;
+        if (isset($args['is_active'])) {
+            $v = $args['is_active'];
+            if (is_bool($v)) $isActive = $v ? 1 : 0;
+            elseif (is_string($v)) $isActive = in_array(strtolower($v), ['1','true','yes'], true) ? 1 : 0;
+            else $isActive = ((int)$v === 1 ? 1 : 0);
+        }
         $model = new FAQ();
         $id = $model->create([
-            'page_slug' => (string)$args['page_slug'],
+            'page_slug' => $slug,
             'question_ru' => (string)$args['question_ru'],
             'question_uz' => (string)$args['question_uz'],
             'answer_ru' => (string)$args['answer_ru'],
             'answer_uz' => (string)$args['answer_uz'],
             'sort_order' => (int)($args['sort_order'] ?? 0),
-            'is_active' => isset($args['is_active']) ? ((int)$args['is_active'] === 1 ? 1 : 0) : 1,
+            'is_active' => $isActive,
         ]);
         return ['ok' => true, 'faq_id' => (int)$id, 'note' => 'FAQ created. It renders on the page via the {{faqs}} loop.'];
     }
@@ -190,10 +206,20 @@ class FaqTools {
         $data = [];
         foreach (['page_slug', 'question_ru', 'question_uz', 'answer_ru', 'answer_uz', 'sort_order', 'is_active'] as $k) {
             if (array_key_exists($k, $args)) {
-                $data[$k] = $k === 'sort_order' ? (int)$args[$k] : ($k === 'is_active' ? ((int)$args[$k] === 1 ? 1 : 0) : (string)$args[$k]);
+                if ($k === 'sort_order') $data[$k] = (int)$args[$k];
+                elseif ($k === 'is_active') {
+                    $v = $args[$k];
+                    if (is_bool($v)) $data[$k] = $v ? 1 : 0;
+                    elseif (is_string($v)) $data[$k] = in_array(strtolower($v), ['1','true','yes'], true) ? 1 : 0;
+                    else $data[$k] = ((int)$v === 1 ? 1 : 0);
+                } else $data[$k] = (string)$args[$k];
             } else {
                 $data[$k] = $existing[$k] ?? ($k === 'sort_order' ? 0 : ($k === 'is_active' ? 1 : ''));
             }
+        }
+        if (isset($data['page_slug']) && $data['page_slug'] !== ($existing['page_slug'] ?? '')) {
+            $exists = Database::getInstance()->fetchOne("SELECT id FROM pages WHERE slug = ?", [$data['page_slug']]);
+            if (!$exists) throw new InvalidArgumentException("Page not found: {$data['page_slug']} — call list_pages to discover valid slugs.");
         }
         $model->update($id, $data);
         return ['ok' => true, 'faq_id' => $id, 'note' => 'FAQ updated.'];

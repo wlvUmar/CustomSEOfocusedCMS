@@ -117,7 +117,7 @@
         currentMode = mode === 'build' ? 'build' : 'plan';
         if (els.modeToggle) els.modeToggle.setAttribute('aria-pressed', currentMode === 'build');
         if (els.modeLabel) els.modeLabel.textContent = currentMode.charAt(0).toUpperCase() + currentMode.slice(1);
-        localStorage.setItem('ai-studio-mode', currentMode);
+        try { localStorage.setItem('ai-studio-mode', currentMode); } catch(e) {}
     }
     if (els.modeToggle) {
         els.modeToggle.addEventListener('click', () => {
@@ -125,7 +125,8 @@
         });
     }
     // Restore saved mode
-    const savedMode = localStorage.getItem('ai-studio-mode');
+    let savedMode = null;
+    try { savedMode = localStorage.getItem('ai-studio-mode'); } catch(e) {}
     if (savedMode) setMode(savedMode);
     // Realtime model list from Opencode (Zen+Go) — provider-aware
     function isGoId(id){ return String(id).startsWith('opencode-go/'); }
@@ -435,7 +436,9 @@
         function setGscStatus(text, kind) {
             if (!els.gscStatus) return;
             els.gscStatus.textContent = text;
-            els.gscStatus.className = 'ai-gsc-bar__hint' + (kind ? ' ai-gsc-bar__hint--' + kind : '');
+            // Preserve base class from markup (ai-gsc-inline__status or ai-gsc-bar__hint)
+            const base = els.gscStatus.className.split(' ')[0] || 'ai-gsc-inline__status';
+            els.gscStatus.className = base + (kind ? ' ' + base + '--' + kind : '');
         }
         els.gscDisconnect.addEventListener('click', async () => {
             if (!confirm('Disconnect Search Console? Live GSC tools will require reconnection.')) return;
@@ -449,7 +452,8 @@
                 if (!resp.ok || !data.success) throw new Error((data && data.message) || ('Failed (' + resp.status + ')'));
                 setGscStatus('Disconnected — reconnect to restore live GSC', 'warn');
                 addAgentBubble('🔌 GSC disconnected. Tools will return empty until you reconnect Search Console.');
-                setTimeout(() => location.reload(), 800);
+                els.gscDisconnect.disabled = false;
+                // No reload — preserve in-flight turn and transcript; status updated via SSE on next run
             } catch (err) {
                 setGscStatus('Disconnect failed: ' + err.message, 'error');
                 els.gscDisconnect.disabled = false;
@@ -473,6 +477,9 @@
         els.input.disabled = value;
         els.model.disabled = value;
         els.newSession.disabled = value;
+        if (els.provider) els.provider.disabled = value;
+        if (els.modeToggle) els.modeToggle.disabled = value;
+        if (els.historyToggle) els.historyToggle.disabled = value;
         els.stop.hidden = !value;
         if (els.suggestions) {
             els.suggestions.classList.toggle('ai-suggestions--disabled', value);
@@ -535,7 +542,7 @@
 
     function isNearBottom() {
         const el = els.transcript;
-        return (el.scrollHeight - el.scrollTop - el.clientHeight) < 120;
+        return (el.scrollHeight - el.scrollTop - el.clientHeight) < 100;
     }
     function scrollTranscript(force) {
         if (!force && !isNearBottom()) {
@@ -654,49 +661,50 @@
         return '';
     }
     function buildCombinedPreview(sections, sampleHtml) {
-        let cssHref = '';
+        let cssHrefs = [];
         let langAttr = 'ru';
         try {
             const doc = new DOMParser().parseFromString(sampleHtml, 'text/html');
-            const link = doc.querySelector('link[rel="stylesheet"]');
-            if (link && link.getAttribute('href')) cssHref = link.getAttribute('href');
+            const links = doc.querySelectorAll('link[rel="stylesheet"]');
+            links.forEach(l => { const h = l.getAttribute('href'); if (h) cssHrefs.push(h); });
             const htmlEl = doc.querySelector('html');
             if (htmlEl && htmlEl.getAttribute('lang')) langAttr = htmlEl.getAttribute('lang');
         } catch (e) {}
-        if (!cssHref) cssHref = (cfg.baseUrl || '') + '/css/pages.css';
+        if (!cssHrefs.length) cssHrefs = [(cfg.baseUrl || '') + '/css/pages.css'];
         const parts = sections.map((frag, i) => {
             const label = extractSectionLabel(frag);
             const title = label ? label + ' (section ' + (i + 1) + ')' : 'Section ' + (i + 1);
             return '<section class="ai-preview-stack__section"><div class="ai-preview-stack__label">' + title.replace(/</g, '&lt;') + '</div>' + frag + '</section>';
         }).join('<hr class="ai-preview-stack__sep">');
+        const linksHtml = cssHrefs.map(h => '<link rel="stylesheet" href="' + h + '">').join('\n');
         return '<!DOCTYPE html>\n'
             + '<html lang="' + langAttr + '">\n'
             + '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-            + '<link rel="stylesheet" href="' + cssHref + '">'
+            + linksHtml
             + '<style>.ai-preview-stack__label{font:11px/1.4 system-ui, -apple-system, Segoe UI;color:#6a7282;background:#f3f4f6;border:1px solid #e5e7eb;padding:3px 8px;border-radius:999px;display:inline-block;margin:14px 0 10px} .ai-preview-stack__section:first-child .ai-preview-stack__label{margin-top:0} .ai-preview-stack__sep{border:none;border-top:1px dashed #d1d5db;margin:18px 0}</style>'
             + '</head>\n'
             + '<body><div class="content-body">' + parts + '</div></body>\n'
             + '</html>';
     }
     function updatePreview(html, kind) {
-        const isFull = (kind === 'render_full_page') || (typeof html === 'string' && html.indexOf('<header>') !== -1 && html.indexOf('<footer>') !== -1) || (typeof html === 'string' && html.indexOf('preview-banner') !== -1);
+        const isFull = (kind === 'render_full_page') || (typeof html === 'string' && html.indexOf('render_full_page') !== -1) || (typeof html === 'string' && html.indexOf('<header>') !== -1 && html.indexOf('<footer>') !== -1) || (typeof html === 'string' && html.indexOf('preview-banner') !== -1);
         if (isFull) {
-            // Full page replaces any stacked sections — it's the ground truth.
             previewSections = [];
             lastPreviewHtml = html;
             els.previewHint.textContent = 'Full page · ' + new Date().toLocaleTimeString();
             els.previewHint.title = 'render_full_page — header+content+footer';
             els.previewFrame.style.opacity = '0';
             els.previewFrame.setAttribute('srcdoc', html);
+            // Fallback: if load never fires (e.g. malformed html), restore opacity after timeout
+            setTimeout(() => { if (els.previewFrame.style.opacity === '0') els.previewFrame.style.opacity = '1'; }, 2000);
             return;
         }
-        // Section preview — accumulate within this turn.
         const frag = extractPreviewFragment(html);
         previewSections.push(frag);
         let combined;
         let hint;
         if (previewSections.length === 1) {
-            combined = html; // first section can use original doc as-is (identical to combined)
+            combined = html;
             hint = 'Section 1/1 · ' + new Date().toLocaleTimeString();
         } else {
             combined = buildCombinedPreview(previewSections, html);
@@ -707,6 +715,7 @@
         els.previewHint.title = previewSections.length + ' render_preview(s) combined in this turn — click Open for full view. A final render_full_page will replace this with the real page.';
         els.previewFrame.style.opacity = '0';
         els.previewFrame.setAttribute('srcdoc', combined);
+        setTimeout(() => { if (els.previewFrame.style.opacity === '0') els.previewFrame.style.opacity = '1'; }, 2000);
     }
     function resetPreviewAccumulation() {
         previewSections = [];
@@ -752,6 +761,8 @@
     // Keyboard shortcuts for approval (Enter=Approve, Escape=Deny) when visible
     document.addEventListener('keydown', (e) => {
         if (!pendingApproval || els.approval.hidden) return;
+        // Don't steal Enter when user is typing in input (submit handler already handles it)
+        if (e.target === els.input) return;
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (els.approve && !els.approve.disabled) els.approve.click(); }
         if (e.key === 'Escape') { e.preventDefault(); if (els.deny && !els.deny.disabled) els.deny.click(); }
     });
@@ -1007,8 +1018,8 @@
         if (!data.trim()) return;
         let parsed;
         try { parsed = JSON.parse(data); } catch (e) {
-            // Surface malformed SSE instead of silently dropping (e.g., failed json_encode on PHP side).
             console.warn('AI Studio: dropped malformed SSE frame', frame.slice(0, 300), e);
+            onEvent('error', { message: 'Malformed server response (JSON parse failed). Frame: ' + frame.slice(0, 200) });
             return;
         }
         onEvent(event, parsed);
@@ -1415,7 +1426,7 @@
 
         if (scrollFab) {
             function nearBottom() {
-                return transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 80;
+                return transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 100;
             }
             function updateFab() {
                 scrollFab.hidden = nearBottom();

@@ -464,12 +464,13 @@ class GscTools {
 
         self::ensureTable();
         $db = Database::getInstance();
-        $like = '%' . $term . '%';
+        $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $term);
+        $like = '%' . $escaped . '%';
         $rows = $db->fetchAll(
             "SELECT query, page_slug, SUM(impressions) AS impressions, SUM(clicks) AS clicks,
                     ROUND(CASE WHEN SUM(impressions)=0 THEN 0 ELSE 100.0*SUM(clicks)/SUM(impressions) END,2) AS ctr,
                     ROUND(SUM(position*impressions)/NULLIF(SUM(impressions),0),2) AS position
-             FROM gsc_data WHERE query LIKE ? AND (date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY) OR date IS NULL)
+             FROM gsc_data WHERE query LIKE ? ESCAPE '!' AND (date >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY) OR date IS NULL)
              GROUP BY query, page_slug ORDER BY impressions DESC LIMIT {$limit}",
             [$like]
         );
@@ -480,7 +481,7 @@ class GscTools {
 
     private static function queryGsc(array $args): array {
         if (!self::shouldUseApi()) {
-            return ['error' => 'GSC not connected', 'note' => 'Connect Search Console in AI Studio to use query_gsc. Sugar tools fall back to cached gsc_data, but query_gsc is live-API only.'];
+            throw new InvalidArgumentException('GSC not connected — connect Search Console in AI Studio to use query_gsc. Sugar tools fall back to cached gsc_data, but query_gsc is live-API only.');
         }
         $days = isset($args['days']) ? max(1, min(90, (int)$args['days'])) : 28;
         $startDate = isset($args['startDate']) ? trim((string)$args['startDate']) : '';
@@ -524,7 +525,7 @@ class GscTools {
 
         $rows = GscClient::searchAnalytics($start, $end, $dims, $filterGroups, $limit * 2);
         if ($rows === null) {
-            return ['error' => 'GSC API auth failed or site unverified', 'note' => 'Check GSC connection and site_url (sc-domain:... vs https://...). Try get_gsc_overview first.', 'start_date' => $start, 'end_date' => $end];
+            throw new InvalidArgumentException('GSC API auth failed or site unverified — check GSC connection and site_url (sc-domain:... vs https://...). Try get_gsc_overview first.');
         }
         $out = [];
         foreach ($rows as $r) {

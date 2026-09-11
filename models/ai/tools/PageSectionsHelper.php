@@ -6,22 +6,27 @@
 class PageSectionsHelper {
 
     public static function splitIntoSections(string $html): array {
-        // Mirrors PageTools::splitIntoSections original to keep behavior identical
-        $parts = preg_split('/(<!--.*?-->)/s', $html, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+        $parts = preg_split('/(<!--\s*[a-zA-Z0-9_\- \p{L}]{1,80}\s*-->)/u', $html, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
         if ($parts === false) return [['name' => 'Section', 'text' => $html]];
         $sections = [];
         $currentName = 'Top of document';
         $buffer = '';
         foreach ($parts as $part) {
             if (preg_match('/^<!--\s*(.*?)\s*-->$/s', $part, $m)) {
+                $inner = trim($m[1]);
+                if ($inner === '' || str_contains($inner, '--') || str_contains($inner, '<') || str_contains($inner, '>') || mb_strlen($inner) > 80) {
+                    $buffer .= $part;
+                    continue;
+                }
                 if (trim($buffer) !== '') $sections[] = ['name' => $currentName, 'text' => $buffer];
-                $currentName = trim($m[1]) !== '' ? trim($m[1]) : $currentName;
+                $currentName = $inner !== '' ? $inner : $currentName;
                 $buffer = $part . "\n";
             } else {
                 $buffer .= $part;
             }
         }
         if (trim($buffer) !== '') $sections[] = ['name' => $currentName, 'text' => $buffer];
+        if (empty($sections)) return [['name' => 'Section', 'text' => $html]];
         return $sections;
     }
 
@@ -40,10 +45,10 @@ class PageSectionsHelper {
             return isset($sections[$i]) ? $i : null;
         }
         foreach ($sections as $i => $s) {
-            if (mb_strtolower($s['name']) === mb_strtolower($ref)) return $i;
+            if (mb_strtolower($s['name'], 'UTF-8') === mb_strtolower($ref, 'UTF-8')) return $i;
         }
         foreach ($sections as $i => $s) {
-            $genId = $i . ':' . preg_replace('/[^a-z0-9]+/i', '-', strtolower($s['name']));
+            $genId = $i . ':' . preg_replace('/[^a-z0-9]+/i', '-', mb_strtolower($s['name'], 'UTF-8'));
             if ($genId === $ref) return $i;
         }
         return null;

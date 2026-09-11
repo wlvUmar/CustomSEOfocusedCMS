@@ -88,11 +88,12 @@ class PageTools {
                         'type' => 'object',
                         'properties' => [
                             'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
                             'field' => ['type' => 'string', 'enum' => self::FIELDS, 'description' => 'Target field. Valid: ' . implode(', ', self::FIELDS) . '. For meta fields use get_page to fetch exact current value.'],
                             'find' => ['type' => 'string', 'description' => 'Exact existing text to locate (must occur exactly once). Copy verbatim from get_page (meta/title) or get_section (content) — including dashes, spaces, punctuation.'],
                             'replace' => ['type' => 'string', 'description' => 'New text. Use "" to delete the found text.'],
                         ],
-                        'required' => ['page_id', 'field', 'find'],
+                        'oneOf' => [['required' => ['page_id', 'field', 'find']], ['required' => ['slug', 'field', 'find']]],
                     ],
                 ],
             ],
@@ -105,10 +106,11 @@ class PageTools {
                         'type' => 'object',
                         'properties' => [
                             'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
                             'field' => ['type' => 'string', 'enum' => self::FIELDS, 'description' => 'Target field.'],
                             'value' => ['type' => 'string', 'description' => 'The complete new value of the field.'],
                         ],
-                        'required' => ['page_id', 'field', 'value'],
+                        'oneOf' => [['required' => ['page_id', 'field', 'value']], ['required' => ['slug', 'field', 'value']]],
                     ],
                 ],
             ],
@@ -121,12 +123,13 @@ class PageTools {
                         'type' => 'object',
                         'properties' => [
                             'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
                             'lang' => ['type' => 'string', 'enum' => ['ru', 'uz'], 'description' => 'Which content field (default ru).'],
                             'html' => ['type' => 'string', 'description' => 'The full HTML of the new section.'],
                             'name' => ['type' => 'string', 'description' => 'Section name for the HTML comment marker (default "Section").'],
                             'position' => ['type' => 'string', 'enum' => ['top', 'end'], 'description' => 'Where to insert (default end).'],
                         ],
-                        'required' => ['page_id', 'html'],
+                        'oneOf' => [['required' => ['page_id', 'html']], ['required' => ['slug', 'html']]],
                     ],
                 ],
             ],
@@ -658,11 +661,10 @@ class PageTools {
     }
 
     private static function strReplaceField(array $args): array {
-        $pageId = (int)($args['page_id'] ?? 0);
+        $pageId = self::resolveGeneralPageId($args);
         $field = (string)($args['field'] ?? '');
         $find = (string)($args['find'] ?? '');
         $replace = (string)($args['replace'] ?? '');
-        if ($pageId <= 0) throw new InvalidArgumentException('page_id is required');
         if (!in_array($field, self::FIELDS, true)) throw new InvalidArgumentException("Field not writable: {$field}");
         if ($find === '') throw new InvalidArgumentException('find is required');
 
@@ -703,10 +705,9 @@ class PageTools {
     }
 
     private static function setField(array $args): array {
-        $pageId = (int)($args['page_id'] ?? 0);
+        $pageId = self::resolveGeneralPageId($args);
         $field = (string)($args['field'] ?? '');
         $value = (string)($args['value'] ?? '');
-        if ($pageId <= 0) throw new InvalidArgumentException('page_id is required');
         if (!in_array($field, self::FIELDS, true)) throw new InvalidArgumentException("Field not writable: {$field}");
 
         $model = new Page();
@@ -733,13 +734,14 @@ class PageTools {
     }
 
     private static function insertSection(array $args): array {
-        $pageId = (int)($args['page_id'] ?? 0);
+        $pageId = self::resolveGeneralPageId($args);
         $lang = ($args['lang'] ?? 'ru') === 'uz' ? 'uz' : 'ru';
         $html = (string)($args['html'] ?? '');
         $name = trim((string)($args['name'] ?? ''));
         $position = ($args['position'] ?? 'end') === 'top' ? 'top' : 'end';
-        if ($pageId <= 0) throw new InvalidArgumentException('page_id is required');
         if (trim($html) === '') throw new InvalidArgumentException('html is required');
+        $html = self::sanitizeSectionHtml($html);
+        if (mb_strlen($html) > 50000) throw new InvalidArgumentException('html too large (max 50000 chars) — split into smaller sections.');
 
         if ($name === '') $name = 'Section';
         $block = "<!-- {$name} -->\n" . $html;
@@ -998,6 +1000,10 @@ class PageTools {
         if ($sectionRef === '') throw new InvalidArgumentException('section is required');
         if (trim($open) === '') throw new InvalidArgumentException('wrapper_open is required, e.g. "<div style=\"background:var(--surface); padding:24px\">"');
         if (trim($close) === '') $close = '</div>';
+        foreach ([$open, $close] as $frag) {
+            if (preg_match('/\bon\w+\s*=/i', $frag)) throw new InvalidArgumentException('wrapper must not contain event handlers (on*)');
+            if (stripos($frag, '<script') !== false || stripos($frag, 'javascript:') !== false) throw new InvalidArgumentException('wrapper contains blocked content');
+        }
         $model = new Page();
         $page = $model->getById($pageId);
         if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
@@ -1046,7 +1052,7 @@ class PageTools {
         $updated = null;
         $insertedAt = null;
         if ($find !== '') {
-            $cnt = substr_count($current, $find);
+            $cnt = mb_substr_count($current, $find, 'UTF-8');
             if ($cnt === 0) throw new InvalidArgumentException('The "find" text was not found — fetch exact HTML via get_content_chunk (offset/limit) or get_section and copy character-for-character, including HTML tags.');
             if ($cnt > 1) throw new InvalidArgumentException('The "find" text occurs ' . $cnt . ' times — include more surrounding context to make it unique or use offset.');
             $pos = mb_strpos($current, $find);
@@ -1209,7 +1215,7 @@ class PageTools {
         $updated = $html;
         $applied = [];
         foreach ($proposals as $p) {
-            $cnt = substr_count($updated, $p['find']);
+            $cnt = mb_substr_count($updated, $p['find'], 'UTF-8');
             if ($cnt !== 1) continue; // skip ambiguous
             $pos = mb_strpos($updated, $p['find']);
             $marker = "<!-- {$p['name']} -->\n";
@@ -1282,7 +1288,7 @@ class PageTools {
                             if ($find === '') throw new InvalidArgumentException("Operation #$idx: find is required for str_replace_field — empty strings are invalid. You sent " . mb_substr(json_encode($op, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),0,400) . " — copy find exactly from get_page (for meta_title/meta_description) or get_section/get_content_chunk (for content) including HTML tags. If field is empty, use set_field instead.");
                             $current = $buffers[$fld] ?? '';
                             if ($current === '' && $find !== '') throw new InvalidArgumentException("Operation #$idx: field {$fld} is currently empty — str_replace_field requires non-empty find. Use set_field (or batch op set_field) to initialize it.");
-                            $cnt = substr_count($current, $find);
+                            $cnt = mb_substr_count($current, $find, 'UTF-8');
                             if ($cnt === 0) {
                                 $curPreview = mb_substr($current, 0, 180);
                                 $findPreview = mb_substr($find, 0, 120);
@@ -1318,7 +1324,7 @@ class PageTools {
                             $sIdx = self::findSectionIndex($sectionCache[$lang], $secRef);
                             if ($sIdx === null) throw new InvalidArgumentException("Operation #$idx: section not found: {$secRef}");
                             $secText = $sectionCache[$lang][$sIdx]['text'];
-                            $cnt = substr_count($secText, $find);
+                            $cnt = mb_substr_count($secText, $find, 'UTF-8');
                             if ($cnt === 0) throw new InvalidArgumentException("Operation #$idx: find not found inside section \"" . $sectionCache[$lang][$sIdx]['name'] . "\" — fetch via get_section.");
                             if ($cnt > 1) throw new InvalidArgumentException("Operation #$idx: find occurs {$cnt} times inside section — include more context or use update_section.");
                             $before = mb_strlen($secText);
@@ -1426,7 +1432,7 @@ class PageTools {
                             }
                             $marker = "<!-- {$name} -->";
                             if ($find !== '') {
-                                $cnt = substr_count($current, $find);
+                                $cnt = mb_substr_count($current, $find, 'UTF-8');
                                 if ($cnt === 0) throw new InvalidArgumentException("Operation #$idx: find text not found in field {$field} — fetch exact HTML via get_content_chunk/get_section.");
                                 if ($cnt > 1) throw new InvalidArgumentException("Operation #$idx: find occurs {$cnt} times — include more context or use offset.");
                                 $pos = mb_strpos($current, $find);

@@ -46,35 +46,7 @@ class Opencode {
         'opencode-go/hy3'                      => 'Go · Hy3',
     ];
 
-    public const MODELS = [
-        'opencode/muse-spark-1.2'              => 'Zen · Muse Spark 1.2 (default)',
-        'opencode/muse-spark-1.3'              => 'Zen · Muse Spark 1.3',
-        'opencode/gpt-5.6-luna'                => 'Zen · GPT-5.6 Luna (cheap)',
-        'opencode/claude-haiku-4-5'            => 'Zen · Claude Haiku 4.5',
-        'opencode/claude-sonnet-4-5'           => 'Zen · Claude Sonnet 4.5',
-        'opencode/gemini-3-flash'              => 'Zen · Gemini 3 Flash',
-        'opencode/deepseek-v4-flash'           => 'Zen · DeepSeek V4 Flash',
-        'opencode/kimi-k2.6'                   => 'Zen · Kimi K2.6',
-        'opencode/qwen3.6-plus'                => 'Zen · Qwen 3.6 Plus',
-        'opencode/glm-5.3-flash'               => 'Zen · GLM 5.3 Flash',
-        'opencode/big-pickle'                  => 'Zen · Big Pickle (free)',
-        'opencode/muse-spark-1.3-contributor-free' => 'Zen · Muse Spark 1.3 Free',
-        // Go curated appended
-        'opencode-go/grok-4.6'                 => 'Go · Grok 4.6',
-        'opencode-go/gpt-5.6-luna'             => 'Go · GPT-5.6 Luna',
-        'opencode-go/glm-5.3-flash'            => 'Go · GLM-5.3 Flash',
-        'opencode-go/kimi-k2.6'                => 'Go · Kimi K2.6',
-        'opencode-go/kimi-k3'                  => 'Go · Kimi K3',
-        'opencode-go/kimi-k2.7-code'           => 'Go · Kimi K2.7 Code',
-        'opencode-go/deepseek-v4-flash'        => 'Go · DeepSeek V4 Flash',
-        'opencode-go/deepseek-v4-pro'          => 'Go · DeepSeek V4 Pro',
-        'opencode-go/qwen3.6-plus'             => 'Go · Qwen 3.6 Plus',
-        'opencode-go/qwen3.8-flash'            => 'Go · Qwen 3.8 Flash',
-        'opencode-go/minimax-m2.7'             => 'Go · MiniMax M2.7',
-        'opencode-go/muse-spark-1.2-contributor' => 'Go · Muse Spark 1.2',
-        'opencode-go/longcat-2.0'              => 'Go · LongCat-2.0',
-        'opencode-go/hy3'                      => 'Go · Hy3',
-    ];
+    public const MODELS = self::MODELS_ZEN + self::MODELS_GO;
 
     private const MODEL_PRICING = [
         // Zen pricing per-token (×1e6 = per 1M) — https://opencode.ai/docs/zen#pricing
@@ -150,9 +122,6 @@ class Opencode {
         if (defined('OPENCODE_API_KEY') && OPENCODE_API_KEY !== '') return (string)OPENCODE_API_KEY;
         $k = getenv('OPENCODE_API_KEY') ?: getenv('OPENCODE_ZEN_API_KEY') ?: '';
         if ($k !== '') return $k;
-        if (defined('OPENROUTER_API_KEY') && OPENROUTER_API_KEY !== '') return (string)OPENROUTER_API_KEY;
-        $k2 = getenv('OPENROUTER_API_KEY') ?: '';
-        if ($k2 !== '') return $k2;
         // fallback: read auth.json (local dev)
         $candidates = [
             (getenv('HOME') ?: ($_SERVER['HOME'] ?? '')) . '/.local/share/opencode/auth.json',
@@ -333,8 +302,8 @@ class Opencode {
                 ],
                 CURLOPT_TIMEOUT        => 180,
                 CURLOPT_CONNECTTIMEOUT => 15,
-                CURLOPT_LOW_SPEED_LIMIT => 40,
-                CURLOPT_LOW_SPEED_TIME  => 25,
+                CURLOPT_LOW_SPEED_LIMIT => 10,
+                CURLOPT_LOW_SPEED_TIME  => 60,
                 CURLOPT_TCP_KEEPALIVE   => 1,
             ]);
             $response = curl_exec($ch);
@@ -420,7 +389,8 @@ class Opencode {
                         $data = self::doRequest($fallbackPayload, 0, 'CMS AI Studio', $apiKey, $model);
                     } catch (Exception $e2) { throw $e; }
                 } else {
-                    $isTransient = str_contains($msg, 'rate limit') || str_contains($msg, 'network error') || str_contains($msg, 'HTTP 5');
+                    $lower = strtolower($msg);
+                    $isTransient = str_contains($lower, 'rate limit') || str_contains($lower, '429') || str_contains($lower, 'network error') || str_contains($lower, 'timed out') || str_contains($lower, 'timeout') || str_contains($msg, 'HTTP 5');
                     if ($isTransient && $attempt <= $retries) { $lastError = $e; usleep(500000 + random_int(0, 500000)); continue; }
                     throw $e;
                 }
@@ -447,6 +417,9 @@ class Opencode {
                 $lastError = new Exception('OpenCode returned no content: ' . (is_string($detail) ? $detail : json_encode($detail)));
                 if ($attempt <= $retries) { usleep(500000 + random_int(0, 500000)); continue; }
                 throw $lastError;
+            }
+            if ($finishReason === 'length' && $content !== '') {
+                $content = trim($content) . "\n\n[Response truncated: hit {$maxTokens}-token output limit.]";
             }
             return ['content' => $content, 'tool_calls' => $toolCalls, 'finish_reason' => $finishReason, 'usage' => $data['usage'] ?? null];
         }

@@ -100,9 +100,8 @@ class MemoryTools {
         return [];
     }
 
-    private static function dbContextPersist(array $context): void {
-        if (!isset($_SESSION['user_id'])) return;
-        // Update latest session or session_id if available
+    private static function dbContextPersist(array $context): bool {
+        if (!isset($_SESSION['user_id'])) return false;
         try {
             $db = Database::getInstance();
             $sessionId = $_SESSION['ai_session_id'] ?? null;
@@ -110,17 +109,19 @@ class MemoryTools {
                 $exists = $db->fetchOne("SELECT id FROM ai_sessions WHERE id = ? AND user_id = ?", [$sessionId, (int)$_SESSION['user_id']]);
                 if ($exists) {
                     $db->query("UPDATE ai_sessions SET context = ?, updated_at = NOW() WHERE id = ?", [json_encode($context, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), $sessionId]);
-                    return;
+                    return true;
                 }
             }
-            // Fallback: update latest row for user_id
             $row = $db->fetchOne("SELECT id FROM ai_sessions WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1", [(int)$_SESSION['user_id']]);
             if ($row) {
                 $db->query("UPDATE ai_sessions SET context = ? WHERE id = ?", [json_encode($context, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), $row['id']]);
+                return true;
             }
         } catch (Throwable $e) {
-            // ignore
+            error_log('dbContextPersist failed: '.$e->getMessage());
+            return false;
         }
+        return false;
     }
 
     private static function storeContext(array $args): array {
@@ -128,8 +129,8 @@ class MemoryTools {
         $key = trim((string)($args['key'] ?? ''));
         $value = (string)($args['value'] ?? '');
         if ($key === '' || $value === '') throw new InvalidArgumentException('key and value are required');
-        if (!preg_match('/^[a-z_][a-z0-9_]{1,40}$/', $key)) {
-            throw new InvalidArgumentException('Invalid key "' . $key . '" — must match ^[a-z_][a-z0-9_]{1,40}$, e.g. "target_page"');
+        if (!preg_match('/^[a-z_][a-z0-9_]{0,39}$/', $key)) {
+            throw new InvalidArgumentException('Invalid key "' . $key . '" — must match ^[a-z_][a-z0-9_]{0,39}$ (1-40 chars), e.g. "target_page"');
         }
         if (mb_strlen($value) > self::MAX_VALUE_CHARS) {
             throw new InvalidArgumentException('Value too long (' . mb_strlen($value) . ' chars, max ' . self::MAX_VALUE_CHARS . ') — trim it.');
@@ -143,8 +144,8 @@ class MemoryTools {
             throw new InvalidArgumentException('Context limit reached (' . self::MAX_KEYS . ' keys) — delete or overwrite an existing key. Call list_context to see keys.');
         }
         $_SESSION['ai_context'][$key] = $value;
-        self::dbContextPersist($_SESSION['ai_context']);
-        return ['ok'=>true,'key'=>$key,'chars'=>mb_strlen($value),'total_keys'=>count($_SESSION['ai_context']),'note'=>'Stored. It persists across reloads via DB.'];
+        $persisted = self::dbContextPersist($_SESSION['ai_context']);
+        return ['ok'=>true,'key'=>$key,'chars'=>mb_strlen($value),'total_keys'=>count($_SESSION['ai_context']),'note'=>$persisted ? 'Stored. It persists across reloads via DB.' : 'Stored in session (DB persist failed — will not survive reload). Check logs.'];
     }
 
     private static function getContext(array $args): array {
@@ -190,21 +191,22 @@ class MemoryTools {
         $lines = [];
         foreach ($files as $path) {
             if (!is_file($path)) continue;
-            // Efficient tail: read last 32KB instead of full 10MB file to avoid memory blow-up
-            $content = self::tailFile($path, 32 * 1024);
+            $tailSize = $filter !== '' ? 128 * 1024 : 32 * 1024;
+            $content = self::tailFile($path, $tailSize);
             if ($content === '' ) continue;
-            // Redact secrets: Authorization + api keys / secrets / tokens / passwords + GSC/Opencode keys
             $content = preg_replace('/Authorization:\s*[^\n]+/i', 'Authorization: [redacted]', $content);
             $content = preg_replace('/((?:api[_-]?key|secret|password|token|OPENCODE_API_KEY|OPENROUTER_API_KEY|GSC_CLIENT_SECRET|GSC_ENCRYPTION_KEY|BOT_API_SECRET)\s*[:=]\s*)([^\s\n"\'`,;]+)/i', '$1[redacted]', $content);
             $content = preg_replace('/(sk-[a-zA-Z0-9_\-]{10,})/', '[redacted-sk]', $content);
             $content = preg_replace('/(Bearer\s+[a-zA-Z0-9_\-\.]+)/i', 'Bearer [redacted]', $content);
             $all = explode("\n", $content);
             $all = array_filter($all, fn($l) => trim($l) !== '');
-            // Take last N
-            $slice = array_slice($all, -$limit);
-            foreach ($slice as $line) {
+            $matched = [];
+            foreach ($all as $line) {
                 if ($filter !== '' && stripos($line, $filter) === false) continue;
-                // Try parse JSON line from ai-studio.log
+                $matched[] = $line;
+            }
+            $slice = array_slice($matched, -$limit);
+            foreach ($slice as $line) {
                 $parsed = json_decode($line, true);
                 if (is_array($parsed)) {
                     $msg = $line;
