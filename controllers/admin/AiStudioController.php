@@ -270,18 +270,6 @@ class AiStudioController extends Controller {
         $writeTurns = 0;
         try {
             for ($turn = 1; $turn <= self::MAX_TOOL_TURNS; $turn++) {
-                if (connection_aborted()) {
-                    $this->logAi('run_end', [
-                        'status' => 'aborted',
-                        'turns' => $turnsUsed,
-                        'duration_ms' => $this->elapsedMs($startedAt),
-                    ]);
-                    try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot); $shutdownDone = true; } catch (Throwable $e) { error_log('persist on abort failed: ' . $e->getMessage()); }
-                    // Try to tell the client we stopped — if the TCP is already dead the bytes are just dropped.
-                    try { $this->sse('done', ['status' => 'aborted', 'text' => $finalText]); } catch (Throwable $e) {}
-                    return; // client pressed Stop — don't spend more tokens
-                }
-
                 $turnsUsed++;
                 $this->sse('turn', ['number' => $turn, 'max' => self::MAX_TOOL_TURNS]);
                 $this->sse('activity', ['text' => 'Thinking… turn ' . $turn . '/' . self::MAX_TOOL_TURNS]);
@@ -350,12 +338,6 @@ class AiStudioController extends Controller {
                         'finish_reason' => $response['finish_reason'] ?? null,
                         'usage' => $response['usage'] ?? null,
                     ]);
-                }
-                if (connection_aborted()) {
-                    $this->logAi('run_end', ['status'=>'aborted_after_model','turns'=>$turnsUsed,'duration_ms'=>$this->elapsedMs($startedAt)]);
-                    try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot); $shutdownDone = true; } catch (Throwable $e) { error_log('persist on abort_after_model failed: ' . $e->getMessage()); }
-                    try { $this->sse('done', ['status'=>'aborted','text'=>$finalText]); } catch (Throwable $e) {}
-                    return;
                 }
                 $modelMs = (int)round((microtime(true) - $modelStart) * 1000);
 
