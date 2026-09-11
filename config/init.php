@@ -144,7 +144,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_cache_expire(0);
     session_start();
     // Explicit bfcache-friendly header for HTML (private, not no-store)
-    if (!headers_sent() && php_sapi_name() !== 'cli' && empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+    // Skip for sitemap/xml/txt assets so they can send public Cache-Control
+    $reqUriForCache = $_SERVER['REQUEST_URI'] ?? '';
+    $isXmlAsset = (bool)preg_match('#/(sitemap.*\.xml|robots\.txt|ads\.txt)(\?|$)#', $reqUriForCache);
+    if (!$isXmlAsset && !headers_sent() && php_sapi_name() !== 'cli' && empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
         header('Cache-Control: private, max-age=0, must-revalidate');
     }
 }

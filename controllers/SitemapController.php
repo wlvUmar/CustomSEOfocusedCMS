@@ -18,13 +18,15 @@ class SitemapController extends Controller {
      * Generate sitemap index (links to pages and articles sitemaps)
      */
     public function generateSitemapIndex() {
-        if (ob_get_level()) {
+        while (ob_get_level()) {
             ob_end_clean();
         }
-        
-        header('Content-Type: application/xml; charset=utf-8');
-        header('Cache-Control: public, max-age=3600');
-        header('Pragma: public');
+        if (!headers_sent()) {
+            header_remove('Cache-Control');
+            header_remove('Pragma');
+            header('Content-Type: application/xml; charset=utf-8', true);
+            header('Cache-Control: public, max-age=3600', true);
+        }
         
         $baseUrl = $this->getAbsoluteBaseUrl();
         $pageTemplateTs = $this->getPageTemplateTimestamp();
@@ -58,13 +60,15 @@ class SitemapController extends Controller {
      * Generate pages sitemap (existing logic)
      */
     public function generatePagesSitemap() {
-        if (ob_get_level()) {
+        while (ob_get_level()) {
             ob_end_clean();
         }
-        
-        header('Content-Type: application/xml; charset=utf-8');
-        header('Cache-Control: public, max-age=3600');
-        header('Pragma: public');
+        if (!headers_sent()) {
+            header_remove('Cache-Control');
+            header_remove('Pragma');
+            header('Content-Type: application/xml; charset=utf-8', true);
+            header('Cache-Control: public, max-age=3600', true);
+        }
         
         $baseUrl = $this->getAbsoluteBaseUrl();
         $pages = $this->pageModel->getAll(false);
@@ -135,13 +139,15 @@ class SitemapController extends Controller {
      * Generate articles sitemap
      */
     public function generateArticlesSitemap() {
-        if (ob_get_level()) {
+        while (ob_get_level()) {
             ob_end_clean();
         }
-        
-        header('Content-Type: application/xml; charset=utf-8');
-        header('Cache-Control: public, max-age=3600');
-        header('Pragma: public');
+        if (!headers_sent()) {
+            header_remove('Cache-Control');
+            header_remove('Pragma');
+            header('Content-Type: application/xml; charset=utf-8', true);
+            header('Cache-Control: public, max-age=3600', true);
+        }
         
         $baseUrl = $this->getAbsoluteBaseUrl();
         $articles = $this->articleModel->getAll(true); // Published only
@@ -270,14 +276,15 @@ class SitemapController extends Controller {
 
 
     public function generateRobotsTxt() {
-        // Clear any output buffering to ensure headers can be sent
-        if (ob_get_level()) {
+        while (ob_get_level()) {
             ob_end_clean();
         }
-        
-        header('Content-Type: text/plain; charset=utf-8');
-        header('Cache-Control: public, max-age=3600');
-        header('Pragma: public');
+        if (!headers_sent()) {
+            header_remove('Cache-Control');
+            header_remove('Pragma');
+            header('Content-Type: text/plain; charset=utf-8', true);
+            header('Cache-Control: public, max-age=3600', true);
+        }
         
         $isProduction = IS_PRODUCTION;
         
@@ -302,12 +309,15 @@ class SitemapController extends Controller {
         exit;
     }
     public function generateAdsTxt() {
-        if (ob_get_level()) {
+        while (ob_get_level()) {
             ob_end_clean();
         }
-
-        header('Content-Type: text/plain; charset=utf-8');
-        header('Cache-Control: public, max-age=3600');
+        if (!headers_sent()) {
+            header_remove('Cache-Control');
+            header_remove('Pragma');
+            header('Content-Type: text/plain; charset=utf-8', true);
+            header('Cache-Control: public, max-age=3600', true);
+        }
 
         echo "google.com, pub-7628492698305234, DIRECT, f08c47fec0942fa0\n";
         exit;
