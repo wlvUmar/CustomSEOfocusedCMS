@@ -14,7 +14,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
             </svg>
             AI Assistant
         </span>
-        <span class="ai-panel__badge">OpenRouter</span>
+        <span class="ai-panel__badge">Opencode</span>
         <svg class="ai-panel__chevron" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
         </svg>
@@ -42,13 +42,27 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <option value="full">Replace entire field</option>
                 </select>
             </div>
+            <div class="ai-panel__group ai-panel__group--provider">
+                <label for="ai-provider">Provider</label>
+                <select id="ai-provider">
+                    <option value="zen" selected>Zen</option>
+                    <option value="go">Go</option>
+                    <option value="all">All</option>
+                </select>
+            </div>
             <div class="ai-panel__group ai-panel__group--model">
                 <label for="ai-model">Model</label>
                 <select id="ai-model">
-                    <option value="deepseek/deepseek-chat" selected>DeepSeek Chat (fast, cheap)</option>
-                    <option value="openai/gpt-4o-mini">GPT-4o Mini (balanced)</option>
-                    <option value="anthropic/claude-3.5-haiku">Claude Haiku (fast)</option>
-                    <option value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B (open)</option>
+                    <option value="opencode/muse-spark-1.2" selected>Muse Spark 1.2 (default, cheap)</option>
+                    <option value="opencode/gpt-5.6-luna">GPT-5.6 Luna (cheap)</option>
+                    <option value="opencode/claude-haiku-4-5">Claude Haiku 4.5 (fast)</option>
+                    <option value="opencode/gemini-3-flash">Gemini 3 Flash (cheap)</option>
+                    <optgroup label="Go">
+                        <option value="opencode-go/grok-4.6">Go · Grok 4.6</option>
+                        <option value="opencode-go/glm-5.3-flash">Go · GLM 5.3 Flash</option>
+                        <option value="opencode-go/kimi-k2.6">Go · Kimi K2.6</option>
+                        <option value="opencode-go/deepseek-v4-flash">Go · DeepSeek V4 Flash</option>
+                    </optgroup>
                 </select>
             </div>
         </div>

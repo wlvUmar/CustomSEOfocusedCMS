@@ -26,6 +26,7 @@
         approvalReason: document.getElementById('ai-approval-reason'),
         approve: document.getElementById('ai-approve'),
         deny: document.getElementById('ai-deny'),
+        provider: document.getElementById('ai-provider'),
         model: document.getElementById('ai-model'),
         newSession: document.getElementById('ai-new-session'),
         suggestions: document.getElementById('ai-suggestions'),
@@ -64,9 +65,22 @@
     const RE_FENCE = /^\s*```/;
     const INLINE_RE = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]*\]\([^)]+\))/g;
 
-    // ---- Model selector persistence --------------------------------------
-    let savedModel = null;
+    // ---- Provider + Model selector persistence ---------------------------
+    let savedModel = null, savedProvider = null;
     try { savedModel = localStorage.getItem('ai-studio-model'); } catch(e) {}
+    try { savedProvider = localStorage.getItem('ai-studio-provider'); } catch(e) {}
+    if (savedProvider && els.provider) els.provider.value = savedProvider;
+    else if (els.provider && savedModel) {
+        // infer provider from saved model prefix
+        els.provider.value = String(savedModel).startsWith('opencode-go/') ? 'go' : 'zen';
+    }
+    function getProvider() { return els.provider ? els.provider.value : 'zen'; }
+    function modelMatchesProvider(id) {
+        const p = getProvider();
+        if (p === 'all') return true;
+        if (p === 'go') return String(id).startsWith('opencode-go/');
+        return String(id).startsWith('opencode/') && !String(id).startsWith('opencode-go/');
+    }
     if (savedModel && els.model && Array.prototype.some.call(els.model.options, o => o.value === savedModel)) {
         els.model.value = savedModel;
     }
@@ -75,6 +89,28 @@
             try { localStorage.setItem('ai-studio-model', els.model.value); } catch(e) {}
         });
     }
+    if (els.provider) {
+        els.provider.addEventListener('change', () => {
+            try { localStorage.setItem('ai-studio-provider', els.provider.value); } catch(e) {}
+            if (window._aiStudioFullList) renderModelOptions(window._aiStudioFullList);
+            else filterStaticOptions();
+        });
+    }
+    function filterStaticOptions() {
+        if (!els.model || !els.provider) return;
+        const p = getProvider();
+        Array.prototype.forEach.call(els.model.options, o => {
+            if (!o.value) return;
+            const show = p === 'all' || modelMatchesProvider(o.value);
+            o.hidden = !show; o.disabled = !show;
+        });
+        const visible = Array.prototype.filter.call(els.model.options, o => !o.hidden);
+        if (visible.length && !Array.prototype.some.call(visible, o => o.selected)) {
+            visible[0].selected = true;
+            try { localStorage.setItem('ai-studio-model', els.model.value); } catch(e) {}
+        }
+    }
+    filterStaticOptions();
 
     // ---- Mode toggle (Plan/Build) -----------------------------------------
     function setMode(mode) {
@@ -91,67 +127,75 @@
     // Restore saved mode
     const savedMode = localStorage.getItem('ai-studio-mode');
     if (savedMode) setMode(savedMode);
-    // Realtime model list from OpenRouter (falls back to PHP const)
+    // Realtime model list from Opencode (Zen+Go) — provider-aware
+    function isGoId(id){ return String(id).startsWith('opencode-go/'); }
+    function zenCurated(){ return new Set(['opencode/muse-spark-1.2','opencode/muse-spark-1.3','opencode/gpt-5.6-luna','opencode/claude-haiku-4-5','opencode/claude-sonnet-4-5','opencode/gemini-3-flash','opencode/deepseek-v4-flash','opencode/kimi-k2.6','opencode/qwen3.6-plus','opencode/glm-5.3-flash','opencode/big-pickle','opencode/muse-spark-1.3-contributor-free']); }
+    function goCurated(){ return new Set(['opencode-go/grok-4.6','opencode-go/gpt-5.6-luna','opencode-go/glm-5.3-flash','opencode-go/kimi-k2.6','opencode-go/kimi-k3','opencode-go/deepseek-v4-flash','opencode-go/qwen3.6-plus','opencode-go/minimax-m2.7']); }
+    window._aiStudioFullList = null;
+    function renderModelOptions(fullList){
+        window._aiStudioFullList = fullList.slice();
+        if (!els.model) return;
+        const curatedZen = zenCurated(), curatedGo = goCurated(), curated = new Set([...curatedZen, ...curatedGo]);
+        const provider = getProvider();
+        let list = fullList.filter(m => {
+            if (provider === 'zen') return !isGoId(m.id);
+            if (provider === 'go') return isGoId(m.id);
+            return true;
+        });
+        // keep curated first even after filtering
+        const frag = document.createDocumentFragment();
+        const seen = new Set();
+        // sorting: curated first, then free, then name
+        list.sort((a,b) => {
+            const ca = curated.has(a.id), cb = curated.has(b.id);
+            if (ca && !cb) return -1; if (!ca && cb) return 1;
+            const pa = a.pricing ? (Number(a.pricing.prompt||0)+Number(a.pricing.completion||0)) : 1;
+            const pb = b.pricing ? (Number(b.pricing.prompt||0)+Number(b.pricing.completion||0)) : 1;
+            const fa = pa === 0, fb = pb === 0;
+            if (fa && !fb) return -1; if (!fa && fb) return 1;
+            return (a.name || a.id).localeCompare(b.name || b.id);
+        });
+        const cur = els.model ? els.model.value : '';
+        function fmtPrice(pricing) {
+            if (!pricing) return '';
+            const p = Number(pricing.prompt || 0), c = Number(pricing.completion || 0);
+            if (p === 0 && c === 0) return 'FREE';
+            return `$${(p * 1e6).toFixed(2)}/$${(c * 1e6).toFixed(2)} per 1M`;
+        }
+        const zenLabel = {'opencode/muse-spark-1.2':'Muse Spark 1.2 (default)','opencode/muse-spark-1.3':'Muse Spark 1.3','opencode/gpt-5.6-luna':'GPT-5.6 Luna','opencode/claude-haiku-4-5':'Claude Haiku 4.5','opencode/claude-sonnet-4-5':'Claude Sonnet 4.5','opencode/gemini-3-flash':'Gemini 3 Flash','opencode/deepseek-v4-flash':'DeepSeek V4 Flash','opencode/kimi-k2.6':'Kimi K2.6','opencode/qwen3.6-plus':'Qwen 3.6 Plus','opencode/glm-5.3-flash':'GLM 5.3 Flash','opencode/big-pickle':'Big Pickle (free)','opencode/muse-spark-1.3-contributor-free':'Muse Spark 1.3 Free'};
+        const goLabel = {'opencode-go/grok-4.6':'Grok 4.6','opencode-go/gpt-5.6-luna':'GPT-5.6 Luna','opencode-go/glm-5.3-flash':'GLM 5.3 Flash','opencode-go/kimi-k2.6':'Kimi K2.6','opencode-go/kimi-k3':'Kimi K3','opencode-go/deepseek-v4-flash':'DeepSeek V4 Flash','opencode-go/qwen3.6-plus':'Qwen 3.6 Plus','opencode-go/minimax-m2.7':'MiniMax M2.7'};
+        list.forEach(m => {
+            if (!m.id || seen.has(m.id)) return; seen.add(m.id);
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            const priceLabel = fmtPrice(m.pricing);
+            const ctx = m.context_length ? `${Math.round(m.context_length/1000)}k` : '';
+            const details = [priceLabel, ctx ? ctx + ' ctx' : ''].filter(Boolean).join(' · ');
+            const baseLabel = curated.has(m.id) ? ((zenLabel[m.id] || goLabel[m.id] || m.name || m.id)) : (m.name || m.id);
+            opt.textContent = baseLabel + (details ? ' — ' + details : '');
+            opt.title = m.id + (details ? ' · ' + details : '');
+            frag.appendChild(opt);
+        });
+        let freshSaved=null; try { freshSaved = localStorage.getItem('ai-studio-model'); } catch(e) {}
+        const toSelect = (freshSaved && seen.has(freshSaved) && modelMatchesProvider(freshSaved) ? freshSaved : (cur && seen.has(cur) && modelMatchesProvider(cur) ? cur : null));
+        els.model.innerHTML=''; els.model.appendChild(frag);
+        if (toSelect) { els.model.value=toSelect; try{localStorage.setItem('ai-studio-model',toSelect);}catch(e){} }
+        else if (seen.size){
+            const fallback = provider==='go' ? 'opencode-go/grok-4.6' : 'opencode/muse-spark-1.2';
+            if (seen.has(fallback)) els.model.value=fallback; else els.model.selectedIndex=0;
+            try{localStorage.setItem('ai-studio-model',els.model.value);}catch(e){}
+        }
+    }
     (async () => {
         try {
             const r = await fetch(cfg.baseUrl + '/admin/ai-studio/models', { headers: { 'Accept': 'application/json' } });
             const j = await r.json();
             const list = Array.isArray(j.models) ? j.models : [];
             if (!list.length) return;
-            const cur = els.model ? els.model.value : '';
-            // Keep curated fallback order? Replace with live list sorted by name, curated first.
-            const curated = new Set(['deepseek/deepseek-chat','openrouter/free','openai/gpt-oss-120b:free','openai/gpt-oss-20b:free','openai/gpt-4o-mini','anthropic/claude-3.5-haiku','google/gemini-2.5-flash','deepseek/deepseek-r1','meta-llama/llama-3.3-70b-instruct']);
-            const frag = document.createDocumentFragment();
-            const seen = new Set();
-            function fmtPrice(pricing) {
-                if (!pricing) return '';
-                const p = Number(pricing.prompt || 0), c = Number(pricing.completion || 0);
-                if (p === 0 && c === 0) return 'FREE';
-                // OpenRouter pricing is per-token; display per 1M for readability
-                return `$${(p * 1e6).toFixed(2)}/$${(c * 1e6).toFixed(2)} per 1M`;
-            }
-            // Prefer FREE models right after curated, then by name — pricing comes from OpenRouter API
-            list.sort((a,b) => {
-                const ca = curated.has(a.id), cb = curated.has(b.id);
-                if (ca && !cb) return -1; if (!ca && cb) return 1;
-                const pa = a.pricing ? (Number(a.pricing.prompt||0)+Number(a.pricing.completion||0)) : 1;
-                const pb = b.pricing ? (Number(b.pricing.prompt||0)+Number(b.pricing.completion||0)) : 1;
-                const fa = pa === 0, fb = pb === 0;
-                if (fa && !fb) return -1; if (!fa && fb) return 1;
-                return (a.name || a.id).localeCompare(b.name || b.id);
-            });
-            list.forEach(m => {
-                if (!m.id || seen.has(m.id)) return; seen.add(m.id);
-                const opt = document.createElement('option');
-                opt.value = m.id;
-                const priceLabel = fmtPrice(m.pricing);
-                const ctx = m.context_length ? `${Math.round(m.context_length/1000)}k` : '';
-                const details = [priceLabel, ctx ? ctx + ' ctx' : ''].filter(Boolean).join(' · ');
-                const baseLabel = curated.has(m.id)
-                    ? ({ 'deepseek/deepseek-chat':'DeepSeek Chat (default, cheap)','openrouter/free':'Auto: best free model','openai/gpt-oss-120b:free':'GPT-OSS 120B (free)','openai/gpt-oss-20b:free':'GPT-OSS 20B (free, fast)','openai/gpt-4o-mini':'GPT-4o Mini','anthropic/claude-3.5-haiku':'Claude Haiku','google/gemini-2.5-flash':'Gemini 2.5 Flash','deepseek/deepseek-r1':'DeepSeek R1','meta-llama/llama-3.3-70b-instruct':'Llama 3.3 70B'}[m.id] || (m.name || m.id))
-                    : (m.name || m.id);
-                // Show pricing inline (user requested) plus ctx; keeps FREE obvious, not just tooltip
-                opt.textContent = baseLabel + (details ? ' — ' + details : '');
-                if (details) opt.title = m.id + ' · ' + details;
-                else opt.title = m.id;
-                frag.appendChild(opt);
-            });
-            // Preserve selection: prioritize fresh localStorage value (user's last choice) over current DOM value — fixes reload revert
-            let freshSaved = null;
-            try { freshSaved = localStorage.getItem('ai-studio-model'); } catch(e) {}
-            const toSelect = (freshSaved && seen.has(freshSaved) ? freshSaved : (savedModel && seen.has(savedModel) ? savedModel : (cur && seen.has(cur) ? cur : null)));
-            els.model.innerHTML = ''; els.model.appendChild(frag);
-            if (toSelect) {
-                els.model.value = toSelect;
-                // ensure persistence stays aligned
-                try { localStorage.setItem('ai-studio-model', toSelect); } catch(e) {}
-            } else {
-                // Default to deepseek instead of alphabetical first (which was openrouter/free — the buggy free model)
-                if (seen.has('deepseek/deepseek-chat')) els.model.value = 'deepseek/deepseek-chat';
-                else els.model.selectedIndex = 0;
-                try { localStorage.setItem('ai-studio-model', els.model.value); } catch(e) {}
-            }
-        } catch(e){ /* keep static list */ }
+            renderModelOptions(list);
+            return;
+        } catch(e){ /* keep static */ }
+        // fallback curated already filtered
     })();
 
     // ---- Session history (localStorage persistence) ---------------------------
@@ -1024,7 +1068,7 @@
         pendingContext = null;
 
         // Watchdog: if server stalls and sends no SSE for N seconds, abort.
-        // 180s accommodates 2×120s OpenRouter curls within one run (audit H6). Reset on any SSE keeps healthy long runs alive.
+        // 180s accommodates 2×120s Opencode curls within one run (audit H6). Reset on any SSE keeps healthy long runs alive.
         function resetWatchdog() {
             if (watchdogId) clearTimeout(watchdogId);
             watchdogId = setTimeout(() => {

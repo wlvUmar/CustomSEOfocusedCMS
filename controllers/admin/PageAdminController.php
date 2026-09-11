@@ -10,7 +10,7 @@ class PageAdminController extends Controller {
 
 
     /**
-     * Output token budget for an OpenRouter call, sized to the content involved.
+     * Output token budget for an Opencode call, sized to the content involved.
      * The previous flat 4096 cap was easy to exceed on a full-field rewrite of a
      * large HTML page, which truncates the response mid-JSON/mid-HTML — that
      * shows up downstream as "the model didn't return valid JSON" or an edit
@@ -99,9 +99,9 @@ class PageAdminController extends Controller {
     }
 
     /**
-     * AI-assisted page editing via OpenRouter (POST /admin/pages/ai-edit)
-     * Edits one whitelisted field with a user prompt, returns new content as JSON.
-     */
+      * AI-assisted page editing via Opencode (POST /admin/pages/ai-edit)
+      * Edits one whitelisted field with a user prompt, returns new content as JSON.
+      */
     public function aiEdit() {
         $this->requireAuth();
 
@@ -147,7 +147,7 @@ class PageAdminController extends Controller {
             return;
         }
 
-        require_once BASE_PATH . '/models/OpenRouter.php';
+        require_once BASE_PATH . '/models/Opencode.php';
 
         // Prefer whatever is currently in the browser's form/editor (unsaved edits included);
         // only fall back to the saved DB value when the client didn't send anything yet.
@@ -211,7 +211,7 @@ class PageAdminController extends Controller {
 
         try {
             $maxTokens = $this->estimateMaxTokens(strlen($currentValue) + strlen($prompt), $mode);
-            $result = OpenRouter::chat($messages, $model, 0.7, $maxTokens);
+            $result = Opencode::chat($messages, $model, 0.7, $maxTokens);
             $response = ['success' => true, 'result' => $result];
             if ($mode === 'edits') {
                 $parsed = $this->parseEditsResponse($result);
@@ -283,7 +283,7 @@ class PageAdminController extends Controller {
             $workingContent = (string)($page[$field] ?? '');
         }
 
-        require_once BASE_PATH . '/models/OpenRouter.php';
+        require_once BASE_PATH . '/models/Opencode.php';
 
         $isHtml = in_array($field, ['content_ru', 'content_uz'], true);
         $isRu = str_ends_with($field, '_ru') || $field === 'title_ru';
@@ -364,7 +364,7 @@ class PageAdminController extends Controller {
                 ? array_sum(array_map(fn($s) => strlen($s['text']), $scopedSections))
                 : strlen($workingContent);
             $maxTokens = $this->estimateMaxTokens($chatContentLen, 'edits');
-            $modelOutput = OpenRouter::chat($messages, $model, 0.7, $maxTokens);
+            $modelOutput = Opencode::chat($messages, $model, 0.7, $maxTokens);
             $parsed = $this->parseEditsResponse($modelOutput);
             $usedFullContext = ($scopedSections === null);
             $sectionsUsed = $scopedSections !== null ? array_column($scopedSections, 'name') : null;
@@ -379,7 +379,7 @@ class PageAdminController extends Controller {
                 ];
                 $messages = array_merge([$system], $historyMessages, [$fullUser]);
                 $maxTokens = $this->estimateMaxTokens(strlen($workingContent), 'edits');
-                $modelOutput = OpenRouter::chat($messages, $model, 0.7, $maxTokens);
+                $modelOutput = Opencode::chat($messages, $model, 0.7, $maxTokens);
                 $parsed = $this->parseEditsResponse($modelOutput);
                 $usedFullContext = true;
                 $sectionsUsed = null;
@@ -406,7 +406,7 @@ class PageAdminController extends Controller {
                         ['role' => 'user', 'content' => $correction],
                     ]);
                     $retryMaxTokens = $this->estimateMaxTokens(strlen($text) + strlen($correction), 'edits');
-                    $retryOutput = OpenRouter::chat($retryMessages, $model, 0.7, $retryMaxTokens);
+                    $retryOutput = Opencode::chat($retryMessages, $model, 0.7, $retryMaxTokens);
                     $retryParsed = $this->parseEditsResponse($retryOutput);
                     $retryRound = $this->applyEditsPartial($text, $retryParsed['edits']);
                     $text = $retryRound['text'];
@@ -447,7 +447,7 @@ class PageAdminController extends Controller {
 
     /**
      * Parse and trim a JSON-encoded chat history array from the client into
-     * the {role, content} shape OpenRouter expects.
+     * the {role, content} shape Opencode expects.
      */
     private function buildHistoryMessages($history) {
         $decoded = json_decode((string)$history, true);

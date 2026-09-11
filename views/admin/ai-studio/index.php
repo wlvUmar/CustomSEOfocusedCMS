@@ -31,10 +31,16 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <?php endif; ?>
             </div>
             <div class="ai-studio__controls">
+                <label class="ai-studio__model-label" for="ai-provider">Provider</label>
+                <select id="ai-provider" title="Zen = pay-as-you-go curated; Go = $10/mo open models">
+                    <option value="all">All</option>
+                    <option value="zen" selected>Zen</option>
+                    <option value="go">Go</option>
+                </select>
                 <label class="ai-studio__model-label" for="ai-model">Model</label>
                 <select id="ai-model">
                     <?php
-                    // Prefer live list with pricing from OpenRouter API (see OpenRouter::fetchModels); fallback to curated MODELS.
+                    // Prefer live list with pricing from OpenCode Zen API (see Opencode::fetchModels); fallback to curated MODELS.
                     $models = $models ?? [];
                     $modelsLive = $modelsLive ?? null;
                     $renderList = null;
@@ -57,12 +63,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
                             $ctxLabel = !empty($m['context_length']) ? (round($m['context_length']/1000) . 'k') : '';
                             $suffix = trim(implode(' · ', array_filter([$priceLabel, $ctxLabel])));
                             $display = e($name) . ($suffix !== '' ? ' — ' . e($suffix) : '');
-                            $sel = $id === 'deepseek/deepseek-chat' ? ' selected' : '';
+                            $sel = $id === 'opencode/muse-spark-1.2' ? ' selected' : '';
                             echo '<option value="' . e($id) . '"' . $sel . ' title="' . e($id . ($suffix ? ' · ' . $suffix : '')) . '">' . $display . '</option>';
                         }
                     } else {
                         foreach ($models as $key => $label) {
-                            echo '<option value="' . e($key) . '"' . ($key === 'deepseek/deepseek-chat' ? ' selected' : '') . '>' . e($label) . '</option>';
+                            echo '<option value="' . e($key) . '"' . ($key === 'opencode/muse-spark-1.2' ? ' selected' : '') . '>' . e($label) . '</option>';
                         }
                     }
                     ?>

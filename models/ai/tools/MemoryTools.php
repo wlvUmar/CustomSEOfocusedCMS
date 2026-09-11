@@ -193,9 +193,9 @@ class MemoryTools {
             // Efficient tail: read last 32KB instead of full 10MB file to avoid memory blow-up
             $content = self::tailFile($path, 32 * 1024);
             if ($content === '' ) continue;
-            // Redact secrets: Authorization + api keys / secrets / tokens / passwords + GSC/OpenRouter keys
+            // Redact secrets: Authorization + api keys / secrets / tokens / passwords + GSC/Opencode keys
             $content = preg_replace('/Authorization:\s*[^\n]+/i', 'Authorization: [redacted]', $content);
-            $content = preg_replace('/((?:api[_-]?key|secret|password|token|OPENROUTER_API_KEY|GSC_CLIENT_SECRET|GSC_ENCRYPTION_KEY|BOT_API_SECRET)\s*[:=]\s*)([^\s\n"\'`,;]+)/i', '$1[redacted]', $content);
+            $content = preg_replace('/((?:api[_-]?key|secret|password|token|OPENCODE_API_KEY|OPENROUTER_API_KEY|GSC_CLIENT_SECRET|GSC_ENCRYPTION_KEY|BOT_API_SECRET)\s*[:=]\s*)([^\s\n"\'`,;]+)/i', '$1[redacted]', $content);
             $content = preg_replace('/(sk-[a-zA-Z0-9_\-]{10,})/', '[redacted-sk]', $content);
             $content = preg_replace('/(Bearer\s+[a-zA-Z0-9_\-\.]+)/i', 'Bearer [redacted]', $content);
             $all = explode("\n", $content);

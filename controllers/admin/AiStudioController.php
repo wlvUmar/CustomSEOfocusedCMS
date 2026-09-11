@@ -4,7 +4,7 @@
 //   GET  /admin/ai-studio      → index()  — the chat window
 //   POST /admin/ai-studio/run  → run()    — one agent turn (SSE stream)
 
-require_once BASE_PATH . '/models/OpenRouter.php';
+require_once BASE_PATH . '/models/Opencode.php';
 require_once BASE_PATH . '/models/ai/AiToolRegistry.php';
 
 class AiStudioController extends Controller {
@@ -23,14 +23,14 @@ class AiStudioController extends Controller {
         require_once BASE_PATH . '/models/GscClient.php';
         $gsc = GscClient::getStatus();
         // Provide live models with pricing for initial render (fallback to MODELS if API unreachable);
-        // prices come from OpenRouter API (prompt/completion per token) — see OpenRouter::fetchModels().
-        $live = OpenRouter::fetchModels();
+        // prices come from OpenCode Zen API — see Opencode::fetchModels().
+        $live = Opencode::fetchModels();
         $hasPricing = false;
         foreach ($live as $m) { if (isset($m['pricing'])) { $hasPricing = true; break; } }
         // If live fetch failed and returned fallback without usable pricing, it still contains pricing now.
         $this->view('admin/ai-studio/index', [
             'pageName' => 'ai-studio',
-            'models' => OpenRouter::MODELS,
+            'models' => Opencode::MODELS,
             'modelsLive' => $live,
             'hasPricing' => $hasPricing,
             'maxTurns' => self::MAX_TOOL_TURNS,
@@ -40,7 +40,7 @@ class AiStudioController extends Controller {
 
     public function models() {
         $this->requireAuth();
-        $list = OpenRouter::fetchModels();
+        $list = Opencode::fetchModels();
         $this->json(['success' => true, 'models' => $list]);
     }
 
@@ -99,16 +99,16 @@ class AiStudioController extends Controller {
         $_SESSION["ratelimit_ai_studio_{$rlKey}"] = $rlData;
 
         $model = trim((string)($_POST['model'] ?? ''));
-        // Model allowlist: accept any :free, openrouter/free, or live catalogue match.
-        // Prices come from OpenRouter API — see OpenRouter::fetchModels() pricing.
+        // Model allowlist: opencode/* (+ opencode-go) or live catalogue match.
+        // Prices come from OpenCode Zen API — see Opencode::fetchModels() pricing.
         $originalModel = $model;
-        $model = OpenRouter::normalizeModel($model);
+        $model = Opencode::normalizeModel($model);
         if ($originalModel !== '' && $originalModel !== $model) {
             $sanitized = substr(preg_replace('/[^a-z0-9\/\-\.:_]/i', '', $originalModel), 0, 80);
-            $this->logAi('model_fallback', ['requested' => $sanitized !== '' ? $sanitized : '[empty]', 'fallback' => $model, 'allowed_via' => OpenRouter::isAllowedModel($originalModel) ? 'heuristic' : 'invalid']);
+            $this->logAi('model_fallback', ['requested' => $sanitized !== '' ? $sanitized : '[empty]', 'fallback' => $model, 'allowed_via' => Opencode::isAllowedModel($originalModel) ? 'heuristic' : 'invalid']);
         }
-        // If normalize fell back to default but original was free variant not in isAllowedModel edge, keep original if it ends with :free
-        if ($originalModel !== '' && $model === 'deepseek/deepseek-chat' && str_ends_with($originalModel, ':free') && OpenRouter::isAllowedModel($originalModel)) {
+        // Legacy :free suffix handling — keep original if normalized fell back but original was explicit free variant
+        if ($originalModel !== '' && $model === 'opencode/muse-spark-1.2' && str_ends_with($originalModel, ':free') && Opencode::isAllowedModel($originalModel)) {
             $model = $originalModel;
         }
         $message = trim((string)($_POST['message'] ?? ''));
@@ -336,7 +336,7 @@ class AiStudioController extends Controller {
                 // In BUILD, force tool use via tool_choice=required — technical enforcement, not just prompt (fixes "got it" loops)
                 $toolChoice = $mode === 'build' ? 'required' : 'auto';
                 // If previous turn in same run had no tool_calls in BUILD, keep required
-                $response = OpenRouter::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192, 2, $toolChoice);
+                $response = Opencode::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192, 2, $toolChoice);
                 if ($this->shouldDebug()) {
                     $this->logDebug('turn_response', [
                         'turn' => $turn,

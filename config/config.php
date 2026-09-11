@@ -53,7 +53,10 @@ define('DEFAULT_LANGUAGE', 'ru');
 define('GTM_ID', 'GTM-PRK222HD');
 define('TELEGRAM_BOT_URL', getenv('TELEGRAM_BOT_URL') ?: 'https://t.me/YOUR_BOT');
 
-// OpenRouter API key for the AI page-editing assistant (set OPENROUTER_API_KEY in .env)
+// OpenCode API keys — Zen (https://opencode.ai/auth) and Go (https://opencode.ai/zen/go)
+// OPENROUTER_API_KEY kept for backward compat / fallback during migration
+define('OPENCODE_API_KEY', getenv('OPENCODE_API_KEY') ?: (getenv('OPENCODE_ZEN_API_KEY') ?: ''));
+define('OPENCODE_GO_API_KEY', getenv('OPENCODE_GO_API_KEY') ?: '');
 define('OPENROUTER_API_KEY', getenv('OPENROUTER_API_KEY') ?: '');
 
 // Google Search Console API (MCP-like live GSC for AI Studio)
