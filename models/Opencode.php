@@ -4,6 +4,8 @@
 // Replaces OpenRouter for AI Studio + page ai-edit/ai-chat.
 // Supports model prefixes `opencode/` (Zen) and `opencode-go/` (Go).
 
+require_once BASE_PATH . '/models/OpenRouter.php';
+
 class Opencode {
     private const API_ENDPOINT_ZEN = 'https://opencode.ai/zen/v1/chat/completions';
     private const MODELS_ENDPOINT_ZEN = 'https://opencode.ai/zen/v1/models';
@@ -310,7 +312,18 @@ class Opencode {
         try {
             $data = self::doRequest($payload, $retries, 'CMS Page Editor', $apiKey, $model);
         } catch (Exception $e) {
-            if (str_contains($e->getMessage(), 'invalid or unauthorized')) {
+            $msg = $e->getMessage();
+            if (str_contains($msg, 'HTTP 500') || str_contains($msg, 'Internal server error')) {
+                if (OpenRouter::getApiKey() !== '') {
+                    try {
+                        return OpenRouter::chat($messages, 'deepseek/deepseek-chat', $temperature, $maxTokens, 1);
+                    } catch (Exception $e2) {
+                        throw new Exception($msg . ' (OpenRouter fallback also failed: ' . $e2->getMessage() . ')');
+                    }
+                }
+                throw new Exception($msg . ' — Opencode service down (500). Try again in 30s or switch model.');
+            }
+            if (str_contains($msg, 'invalid or unauthorized')) {
                 $fallback = self::getFallbackKey($model, $apiKey);
                 if ($fallback !== '') {
                     try {
@@ -387,13 +400,22 @@ class Opencode {
                 $lastError = new Exception('OpenCode rate limit exceeded. Please try again in a moment');
                 $transient = true;
             } elseif ($httpCode >= 500) {
-                $lastError = new Exception('OpenCode API error (HTTP ' . $httpCode . '): ' . mb_substr((string)$response, 0, 500));
+                $body = mb_substr((string)$response, 0, 500);
+                $msg500 = 'OpenCode API error (HTTP ' . $httpCode . '): ' . $body;
+                if (str_contains(strtolower($body), 'internal server error')) {
+                    $msg500 .= ' — Opencode service temporarily unavailable. Will retry with backoff; if persists, try again in 30s or switch model to opencode/muse-spark-1.2 (Zen) or deepseek/deepseek-chat (OpenRouter fallback).';
+                }
+                $lastError = new Exception($msg500);
                 $transient = true;
             } elseif ($httpCode < 200 || $httpCode >= 300) {
                 throw new Exception('OpenCode API error (HTTP ' . $httpCode . '): ' . mb_substr((string)$response, 0, 500));
             }
             if ($transient) {
-                if ($attempt <= $retries) { usleep(800000 + random_int(0, 700000)); continue; }
+                if ($attempt <= $retries) {
+                    $delay = $httpCode >= 500 ? (1000000 * $attempt + random_int(0, 500000)) : (800000 + random_int(0, 700000));
+                    usleep($delay);
+                    continue;
+                }
                 throw $lastError;
             }
             $data = json_decode($response, true);
@@ -441,7 +463,18 @@ class Opencode {
                 $data = self::doRequest($payload, 0, 'CMS AI Studio', $apiKey, $model);
             } catch (Exception $e) {
                 $msg = $e->getMessage();
-                if (!$triedFallback && str_contains($msg, 'invalid or unauthorized')) {
+                if (str_contains($msg, 'HTTP 500') || str_contains($msg, 'Internal server error')) {
+                    if (OpenRouter::getApiKey() !== '') {
+                        try {
+                            $fallbackModel = 'deepseek/deepseek-chat';
+                            error_log('Opencode 500 fallback to OpenRouter ' . $fallbackModel . ' for ' . $model);
+                            return OpenRouter::chatWithTools($messages, $fallbackModel, $tools, $temperature, $maxTokens, 1, $toolChoice);
+                        } catch (Exception $e2) {
+                            throw new Exception($msg . ' (OpenRouter fallback also failed: ' . $e2->getMessage() . '). Try again in 30s or switch model to opencode/muse-spark-1.2');
+                        }
+                    }
+                    throw new Exception($msg . ' — Opencode service down (500). Try again in 30s or switch model to opencode/muse-spark-1.2 (Zen) or deepseek/deepseek-chat (OpenRouter).');
+                } elseif (!$triedFallback && str_contains($msg, 'invalid or unauthorized')) {
                     $fallback = self::getFallbackKey($model, $apiKey);
                     if ($fallback !== '' && $fallback !== $apiKey) {
                         $triedFallback = true;

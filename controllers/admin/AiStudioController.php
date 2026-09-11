@@ -685,6 +685,7 @@ class AiStudioController extends Controller {
         } catch (Throwable $e) {
             $msg = $e->getMessage();
             $isAuth = str_contains($msg, 'invalid or unauthorized') || str_contains($msg, 'API key is not configured');
+            $is5xx = str_contains($msg, 'HTTP 500') || str_contains($msg, 'Internal server error');
             $logCtx = [
                 'message' => $msg,
                 'at' => $e->getFile() . ':' . $e->getLine(),
@@ -693,6 +694,9 @@ class AiStudioController extends Controller {
             if ($isAuth) {
                 $logCtx['hint'] = 'Check OPENCODE_API_KEY / OPENCODE_GO_API_KEY in .env; see https://opencode.ai/auth';
                 @unlink(BASE_PATH . '/storage/opencode_models.json');
+            }
+            if ($is5xx) {
+                $logCtx['hint'] = 'Opencode 500 — service temporarily down, OpenRouter fallback attempted';
             }
             $this->logAi('run_error', $logCtx);
             if ($this->shouldDebug()) {
@@ -707,6 +711,8 @@ class AiStudioController extends Controller {
             $userMsg = $msg;
             if ($isAuth) {
                 $userMsg .= "\n\nFix: open .env and set OPENCODE_API_KEY (or OPENCODE_GO_API_KEY for Go models) from https://opencode.ai/auth — no quotes, no trailing spaces. Then run: rm storage/opencode_models.json and retry. If you only have an OpenRouter key, set OPENCODE_API_KEY to the same value during migration.";
+            } elseif ($is5xx) {
+                $userMsg .= "\n\nOpencode is temporarily down (500). The system already tried OpenRouter fallback (deepseek/deepseek-chat). If you still see this, wait 30s and retry with model opencode/muse-spark-1.2 (Zen) or select deepseek/deepseek-chat directly. Check https://status.opencode.ai if available.";
             }
             try { $this->sse('error', ['message' => $userMsg]); } catch (Throwable $ignored) {}
             try { $this->sse('done', ['status' => 'error']); } catch (Throwable $ignored) {}
