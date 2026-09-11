@@ -114,14 +114,26 @@ class Opencode {
 
     public static function getApiKeyForModel(string $model): string {
         $isGo = self::isGoModel($model);
+        $trim = fn($v) => trim((string)$v, " \t\n\r\0\x0B\"'");
         if ($isGo) {
-            if (defined('OPENCODE_GO_API_KEY') && OPENCODE_GO_API_KEY !== '') return (string)OPENCODE_GO_API_KEY;
-            $k = getenv('OPENCODE_GO_API_KEY') ?: '';
+            if (defined('OPENCODE_GO_API_KEY') && OPENCODE_GO_API_KEY !== '') { $v = $trim(OPENCODE_GO_API_KEY); if ($v !== '') return $v; }
+            $k = $trim(getenv('OPENCODE_GO_API_KEY') ?: '');
             if ($k !== '') return $k;
         }
-        if (defined('OPENCODE_API_KEY') && OPENCODE_API_KEY !== '') return (string)OPENCODE_API_KEY;
-        $k = getenv('OPENCODE_API_KEY') ?: getenv('OPENCODE_ZEN_API_KEY') ?: '';
+        if (defined('OPENCODE_API_KEY') && OPENCODE_API_KEY !== '') { $v = $trim(OPENCODE_API_KEY); if ($v !== '') return $v; }
+        $k = $trim(getenv('OPENCODE_API_KEY') ?: getenv('OPENCODE_ZEN_API_KEY') ?: '');
         if ($k !== '') return $k;
+        // Cross-provider fallback: if Zen key missing but Go key exists (or vice versa), try the other
+        // This helps when only one key is configured but user picks a model from the other family.
+        if (!$isGo) {
+            if (defined('OPENCODE_GO_API_KEY') && OPENCODE_GO_API_KEY !== '') { $v = $trim(OPENCODE_GO_API_KEY); if ($v !== '') return $v; }
+            $k2 = $trim(getenv('OPENCODE_GO_API_KEY') ?: '');
+            if ($k2 !== '') return $k2;
+        } else {
+            if (defined('OPENCODE_API_KEY') && OPENCODE_API_KEY !== '') { $v = $trim(OPENCODE_API_KEY); if ($v !== '') return $v; }
+            $k2 = $trim(getenv('OPENCODE_API_KEY') ?: getenv('OPENCODE_ZEN_API_KEY') ?: '');
+            if ($k2 !== '') return $k2;
+        }
         // fallback: read auth.json (local dev)
         $candidates = [
             (getenv('HOME') ?: ($_SERVER['HOME'] ?? '')) . '/.local/share/opencode/auth.json',
@@ -243,6 +255,35 @@ class Opencode {
         return $fallback;
     }
 
+    private static function getFallbackKey(string $model, string $primaryKey): string {
+        $isGo = self::isGoModel($model);
+        $candidates = [];
+        $trim = fn($v) => trim((string)$v, " \t\n\r\0\x0B\"'");
+        // Collect all possible keys in priority order
+        $candidates[] = $trim(defined('OPENCODE_API_KEY') ? OPENCODE_API_KEY : '');
+        $candidates[] = $trim(getenv('OPENCODE_API_KEY') ?: '');
+        $candidates[] = $trim(getenv('OPENCODE_ZEN_API_KEY') ?: '');
+        $candidates[] = $trim(defined('OPENCODE_GO_API_KEY') ? OPENCODE_GO_API_KEY : '');
+        $candidates[] = $trim(getenv('OPENCODE_GO_API_KEY') ?: '');
+        $candidates[] = $trim(defined('OPENROUTER_API_KEY') ? OPENROUTER_API_KEY : '');
+        $candidates[] = $trim(getenv('OPENROUTER_API_KEY') ?: '');
+        // Try auth.json as last resort
+        foreach ([(getenv('HOME') ?: ($_SERVER['HOME'] ?? '')) . '/.local/share/opencode/auth.json', (getenv('USERPROFILE') ?: '') . '/.local/share/opencode/auth.json'] as $authFile) {
+            if ($authFile && is_file($authFile)) {
+                $raw = @file_get_contents($authFile);
+                $j = json_decode((string)$raw, true);
+                if (is_array($j)) {
+                    if (isset($j['opencode']['key'])) $candidates[] = $trim($j['opencode']['key']);
+                    if (isset($j['opencode-go']['key'])) $candidates[] = $trim($j['opencode-go']['key']);
+                }
+            }
+        }
+        foreach ($candidates as $k) {
+            if ($k !== '' && $k !== $primaryKey) return $k;
+        }
+        return '';
+    }
+
     public static function chat(
         array $messages,
         string $model,
@@ -266,7 +307,24 @@ class Opencode {
             'max_tokens'  => $maxTokens,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($payload === false) throw new Exception('Failed to encode request payload as JSON: ' . json_last_error_msg());
-        $data = self::doRequest($payload, $retries, 'CMS Page Editor', $apiKey, $model);
+        try {
+            $data = self::doRequest($payload, $retries, 'CMS Page Editor', $apiKey, $model);
+        } catch (Exception $e) {
+            if (str_contains($e->getMessage(), 'invalid or unauthorized')) {
+                $fallback = self::getFallbackKey($model, $apiKey);
+                if ($fallback !== '') {
+                    try {
+                        $data = self::doRequest($payload, 0, 'CMS Page Editor', $fallback, $model);
+                    } catch (Exception $e2) {
+                        throw $e;
+                    }
+                } else {
+                    throw $e;
+                }
+            } else {
+                throw $e;
+            }
+        }
         $choice = $data['choices'][0] ?? null;
         $msg = $choice['message'] ?? [];
         $content = $msg['content'] ?? null;
@@ -318,7 +376,13 @@ class Opencode {
                 $lastError = new Exception('OpenCode network error: ' . $error . $hint);
                 $transient = true;
             } elseif ($httpCode === 401) {
-                throw new Exception('OpenCode API key is invalid or unauthorized');
+                $body = mb_substr((string)$response, 0, 800);
+                $masked = $apiKey !== '' ? substr($apiKey, 0, 8) . '…' . substr($apiKey, -4) . ' (' . strlen($apiKey) . ' chars)' : 'empty';
+                $hint = '';
+                if (str_contains(strtolower($body), 'expired') || str_contains(strtolower($body), 'revoked')) $hint = ' — key appears expired/revoked';
+                elseif (str_contains(strtolower($body), 'invalid')) $hint = ' — key rejected as invalid';
+                $endpointHint = str_contains($endpoint, '/go/') ? 'Go' : 'Zen';
+                throw new Exception('OpenCode API key is invalid or unauthorized (endpoint: ' . $endpointHint . ', model: ' . ($model ?: 'n/a') . ', key: ' . $masked . ')' . $hint . '. Body: ' . $body . '. Fix: check OPENCODE_API_KEY / OPENCODE_GO_API_KEY in .env (https://opencode.ai/auth), ensure no quotes/spaces, then delete storage/opencode_models.json and retry.');
             } elseif ($httpCode === 429) {
                 $lastError = new Exception('OpenCode rate limit exceeded. Please try again in a moment');
                 $transient = true;
@@ -370,13 +434,27 @@ class Opencode {
         if ($payload === false) throw new Exception('Failed to encode request payload as JSON: ' . json_last_error_msg());
         $attempt = 0;
         $lastError = null;
+        $triedFallback = false;
         while ($attempt <= $retries) {
             $attempt++;
             try {
                 $data = self::doRequest($payload, 0, 'CMS AI Studio', $apiKey, $model);
             } catch (Exception $e) {
                 $msg = $e->getMessage();
-                if ($toolChoice === 'required' && (str_contains(strtolower($msg), 'tool_choice') || str_contains($msg, 'HTTP 400'))) {
+                if (!$triedFallback && str_contains($msg, 'invalid or unauthorized')) {
+                    $fallback = self::getFallbackKey($model, $apiKey);
+                    if ($fallback !== '' && $fallback !== $apiKey) {
+                        $triedFallback = true;
+                        try {
+                            $data = self::doRequest($payload, 0, 'CMS AI Studio', $fallback, $model);
+                            $apiKey = $fallback;
+                        } catch (Exception $e2) {
+                            throw $e;
+                        }
+                    } else {
+                        throw $e;
+                    }
+                } elseif ($toolChoice === 'required' && (str_contains(strtolower($msg), 'tool_choice') || str_contains($msg, 'HTTP 400'))) {
                     $fallbackPayload = json_encode([
                         'model'       => $apiModel,
                         'messages'    => $messages,

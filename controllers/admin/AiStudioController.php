@@ -683,21 +683,32 @@ class AiStudioController extends Controller {
                 $shutdownDone = true;
             }
         } catch (Throwable $e) {
-            $this->logAi('run_error', [
-                'message' => $e->getMessage(),
+            $msg = $e->getMessage();
+            $isAuth = str_contains($msg, 'invalid or unauthorized') || str_contains($msg, 'API key is not configured');
+            $logCtx = [
+                'message' => $msg,
                 'at' => $e->getFile() . ':' . $e->getLine(),
                 'duration_ms' => $this->elapsedMs($startedAt),
-            ]);
+            ];
+            if ($isAuth) {
+                $logCtx['hint'] = 'Check OPENCODE_API_KEY / OPENCODE_GO_API_KEY in .env; see https://opencode.ai/auth';
+                @unlink(BASE_PATH . '/storage/opencode_models.json');
+            }
+            $this->logAi('run_error', $logCtx);
             if ($this->shouldDebug()) {
                 $this->logDebug('run_error_raw', [
-                    'exception' => $e->getMessage(),
+                    'exception' => $msg,
                     'file' => $e->getFile() . ':' . $e->getLine(),
                     'trace' => mb_substr($e->getTraceAsString(), 0, 4000),
                     'messages_snapshot' => array_slice($messages ?? [], -6),
                 ]);
             }
             try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot ?? []); $shutdownDone = true; } catch (Throwable $ignored) { error_log('persist on error failed: ' . $ignored->getMessage()); }
-            try { $this->sse('error', ['message' => $e->getMessage()]); } catch (Throwable $ignored) {}
+            $userMsg = $msg;
+            if ($isAuth) {
+                $userMsg .= "\n\nFix: open .env and set OPENCODE_API_KEY (or OPENCODE_GO_API_KEY for Go models) from https://opencode.ai/auth — no quotes, no trailing spaces. Then run: rm storage/opencode_models.json and retry. If you only have an OpenRouter key, set OPENCODE_API_KEY to the same value during migration.";
+            }
+            try { $this->sse('error', ['message' => $userMsg]); } catch (Throwable $ignored) {}
             try { $this->sse('done', ['status' => 'error']); } catch (Throwable $ignored) {}
         }
     }
