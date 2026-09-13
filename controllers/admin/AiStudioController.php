@@ -253,6 +253,38 @@ class AiStudioController extends Controller {
                 }
             }
         }
+        // Dedupe pending against history: history already persisted the approval pair
+        // so merging both would produce Duplicate function_call_output for the same call_id.
+        if (!empty($pending) && count($pending) === 2 && !empty($history)) {
+            $pId = (string)($pending[0]['tool_calls'][0]['id'] ?? '');
+            $tId = (string)($pending[1]['tool_call_id'] ?? '');
+            if ($pId !== '' || $tId !== '') {
+                $tail = array_slice($history, -2);
+                if (json_encode($tail) === json_encode($pending)) {
+                    $history = array_slice($history, 0, -2);
+                } else {
+                    $hasDup = false;
+                    foreach ($tail as $h) {
+                        if ($pId !== '' && isset($h['tool_calls'][0]['id']) && (string)$h['tool_calls'][0]['id'] === $pId) $hasDup = true;
+                        if ($tId !== '' && (string)($h['tool_call_id'] ?? '') === $tId) $hasDup = true;
+                    }
+                    // Also scan last 6 for stray dup from client+DB merge
+                    if (!$hasDup && count($history) > 2) {
+                        foreach (array_slice($history, -6) as $h) {
+                            if ($pId !== '' && isset($h['tool_calls'][0]['id']) && (string)$h['tool_calls'][0]['id'] === $pId) $hasDup = true;
+                            if ($tId !== '' && (string)($h['tool_call_id'] ?? '') === $tId) $hasDup = true;
+                        }
+                    }
+                    if ($hasDup) {
+                        $history = array_values(array_filter($history, function($m) use ($pId, $tId) {
+                            if ($pId !== '' && isset($m['tool_calls'][0]['id']) && (string)$m['tool_calls'][0]['id'] === $pId) return false;
+                            if ($tId !== '' && (string)($m['tool_call_id'] ?? '') === $tId) return false;
+                            return true;
+                        }));
+                    }
+                }
+            }
+        }
         $messages = array_merge(
             [['role' => 'system', 'content' => $promptForLog]],
             $history,
@@ -323,8 +355,26 @@ class AiStudioController extends Controller {
                 // In BUILD, force tool use via tool_choice=required — technical enforcement, not just prompt (fixes "got it" loops)
                 $toolChoice = $mode === 'build' ? 'required' : 'auto';
                 // Repair any orphaned tool sequences before sending (prevents 500 from invalid OpenAI/Anthropic sequences)
-                $messages = $this->repairMessageSequence($messages);
-                $response = Opencode::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192, 2, $toolChoice, $sessionId);
+                // Retry once on Duplicate function_call_output — feed back as repair instead of breaking loop.
+                $response = null;
+                $chatAttempts = 0;
+                while (true) {
+                    try {
+                        $messages = $this->repairMessageSequence($messages);
+                        $response = Opencode::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192, 2, $toolChoice, $sessionId);
+                        break;
+                    } catch (Throwable $e) {
+                        $emsg = $e->getMessage();
+                        $isDup = str_contains($emsg, 'Duplicate function_call_output') || str_contains($emsg, 'Each function_call must have exactly one');
+                        if ($isDup && $chatAttempts === 0) {
+                            $chatAttempts++;
+                            $this->logAi('retry_dup_fix', ['turn'=>$turn,'msg'=>mb_substr($emsg,0,400)]);
+                            $this->sse('activity', ['text' => 'Fixing duplicate tool sequence… retrying']);
+                            continue;
+                        }
+                        throw $e;
+                    }
+                }
                 if ($this->shouldDebug()) {
                     $this->logDebug('turn_response', [
                         'turn' => $turn,
@@ -1370,6 +1420,7 @@ PROMPT;
         if (empty($messages)) return $messages;
         $out = [];
         $pending = [];
+        $seenCallIds = [];
         foreach ($messages as $m) {
             $role = $m['role'] ?? '';
             if ($role === 'system') {
@@ -1385,6 +1436,16 @@ PROMPT;
                     foreach (array_keys($pending) as $pid) $out[] = ['role' => 'tool', 'tool_call_id' => $pid, 'content' => json_encode(['skipped'=>true,'reason'=>'orphan repair: next assistant before tool results'])];
                     $pending = [];
                 }
+                // Dedupe duplicate function_call ids — prevents HTTP 400 Duplicate function_call_output
+                $filteredCalls = [];
+                foreach ($m['tool_calls'] as $tc) {
+                    $id = (string)($tc['id'] ?? '');
+                    if ($id !== '' && isset($seenCallIds[$id])) continue;
+                    if ($id !== '') $seenCallIds[$id] = true;
+                    $filteredCalls[] = $tc;
+                }
+                if (empty($filteredCalls)) continue;
+                $m['tool_calls'] = $filteredCalls;
                 $out[] = $m;
                 foreach ($m['tool_calls'] as $tc) {
                     $id = $tc['id'] ?? '';
@@ -1393,7 +1454,11 @@ PROMPT;
                 continue;
             }
             if ($role === 'tool') {
-                $id = $m['tool_call_id'] ?? '';
+                $id = (string)($m['tool_call_id'] ?? '');
+                if ($id !== '' && isset($seenCallIds[$id]) && !isset($pending[$id])) {
+                    // Duplicate tool output for same call_id already emitted — drop.
+                    continue;
+                }
                 if ($id !== '' && isset($pending[$id])) {
                     $out[] = $m;
                     unset($pending[$id]);
