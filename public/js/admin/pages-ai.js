@@ -115,52 +115,8 @@
 
     function getModel() {
         const sel = document.getElementById('ai-model');
-        return sel ? sel.value : 'opencode/muse-spark-1.2';
+        return sel ? sel.value : 'opencode-go/muse-spark-1.2-contributor';
     }
-    function getProvider() {
-        const sel = document.getElementById('ai-provider');
-        return sel ? sel.value : 'zen';
-    }
-    // provider-aware model filtering
-    (function initProviderFilter(){
-        const prov = document.getElementById('ai-provider');
-        const modelSel = document.getElementById('ai-model');
-        if (!prov || !modelSel) return;
-        let savedProv = null;
-        try { savedProv = localStorage.getItem('ai-pages-provider'); } catch(e) {}
-        if (savedProv) prov.value = savedProv;
-        function filter(){
-            const p = prov.value;
-            Array.prototype.forEach.call(modelSel.options, o => {
-                if (!o.value) return;
-                // handle optgroup children already — options inside optgroup are still modelSel.options
-                const isGo = String(o.value).startsWith('opencode-go/');
-                const show = p === 'all' ? true : (p === 'go' ? isGo : !isGo);
-                // For optgroup label "Go", hide group if needed — individual options suffice
-                o.hidden = !show; o.disabled = !show;
-            });
-            // ensure visible selection
-            const visible = Array.prototype.filter.call(modelSel.options, o => !o.hidden);
-            if (visible.length && !visible.some(o => o.selected)) {
-                visible[0].selected = true;
-            }
-        }
-        prov.addEventListener('change', () => {
-            try { localStorage.setItem('ai-pages-provider', prov.value); } catch(e) {}
-            filter();
-        });
-        filter();
-        // also re-filter on model change to keep provider in sync with model prefix
-        modelSel.addEventListener('change', () => {
-            const isGo = String(modelSel.value).startsWith('opencode-go/');
-            const inferred = isGo ? 'go' : 'zen';
-            if (prov.value === 'all') return;
-            if (prov.value !== inferred) {
-                prov.value = inferred;
-                try { localStorage.setItem('ai-pages-provider', prov.value); } catch(e) {}
-            }
-        });
-    })();
 
     function isAutoApply() {
         const cb = document.getElementById('ai-autoapply');

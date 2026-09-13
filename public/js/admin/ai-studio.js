@@ -26,7 +26,6 @@
         approvalReason: document.getElementById('ai-approval-reason'),
         approve: document.getElementById('ai-approve'),
         deny: document.getElementById('ai-deny'),
-        provider: document.getElementById('ai-provider'),
         model: document.getElementById('ai-model'),
         newSession: document.getElementById('ai-new-session'),
         suggestions: document.getElementById('ai-suggestions'),
@@ -65,52 +64,25 @@
     const RE_FENCE = /^\s*```/;
     const INLINE_RE = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]*\]\([^)]+\))/g;
 
-    // ---- Provider + Model selector persistence ---------------------------
-    let savedModel = null, savedProvider = null;
+    // ---- Model selector persistence (Go-only) ---------------------------
+    let savedModel = null;
     try { savedModel = localStorage.getItem('ai-studio-model'); } catch(e) {}
-    try { savedProvider = localStorage.getItem('ai-studio-provider'); } catch(e) {}
-    if (savedProvider && els.provider) els.provider.value = savedProvider;
-    else if (els.provider && savedModel) {
-        // infer provider from saved model prefix
-        els.provider.value = String(savedModel).startsWith('opencode-go/') ? 'go' : 'zen';
-    }
-    function getProvider() { return els.provider ? els.provider.value : 'zen'; }
-    function modelMatchesProvider(id) {
-        const p = getProvider();
-        if (p === 'all') return true;
-        if (p === 'go') return String(id).startsWith('opencode-go/');
-        return String(id).startsWith('opencode/') && !String(id).startsWith('opencode-go/');
-    }
     if (savedModel && els.model && Array.prototype.some.call(els.model.options, o => o.value === savedModel)) {
         els.model.value = savedModel;
+    }
+    // Migrate legacy model id stored in localStorage to Go counterpart
+    if (els.model && String(els.model.value).startsWith('opencode/') && !String(els.model.value).startsWith('opencode-go/')) {
+        const mapped = 'opencode-go/' + String(els.model.value).slice('opencode/'.length);
+        if (Array.prototype.some.call(els.model.options, o => o.value === mapped)) {
+            els.model.value = mapped;
+            try { localStorage.setItem('ai-studio-model', mapped); } catch(e) {}
+        }
     }
     if (els.model) {
         els.model.addEventListener('change', () => {
             try { localStorage.setItem('ai-studio-model', els.model.value); } catch(e) {}
         });
     }
-    if (els.provider) {
-        els.provider.addEventListener('change', () => {
-            try { localStorage.setItem('ai-studio-provider', els.provider.value); } catch(e) {}
-            if (window._aiStudioFullList) renderModelOptions(window._aiStudioFullList);
-            else filterStaticOptions();
-        });
-    }
-    function filterStaticOptions() {
-        if (!els.model || !els.provider) return;
-        const p = getProvider();
-        Array.prototype.forEach.call(els.model.options, o => {
-            if (!o.value) return;
-            const show = p === 'all' || modelMatchesProvider(o.value);
-            o.hidden = !show; o.disabled = !show;
-        });
-        const visible = Array.prototype.filter.call(els.model.options, o => !o.hidden);
-        if (visible.length && !Array.prototype.some.call(visible, o => o.selected)) {
-            visible[0].selected = true;
-            try { localStorage.setItem('ai-studio-model', els.model.value); } catch(e) {}
-        }
-    }
-    filterStaticOptions();
 
     // ---- Mode toggle (Plan/Build) -----------------------------------------
     function setMode(mode) {
@@ -128,25 +100,16 @@
     let savedMode = null;
     try { savedMode = localStorage.getItem('ai-studio-mode'); } catch(e) {}
     if (savedMode) setMode(savedMode);
-    // Realtime model list from Opencode (Zen+Go) — provider-aware
-    function isGoId(id){ return String(id).startsWith('opencode-go/'); }
-    function zenCurated(){ return new Set(['opencode/muse-spark-1.2','opencode/muse-spark-1.3','opencode/gpt-5.6-luna','opencode/claude-haiku-4-5','opencode/claude-sonnet-4-5','opencode/gemini-3-flash','opencode/deepseek-v4-flash','opencode/kimi-k2.6','opencode/qwen3.6-plus','opencode/glm-5.3-flash','opencode/big-pickle','opencode/muse-spark-1.3-contributor-free']); }
-    function goCurated(){ return new Set(['opencode-go/grok-4.6','opencode-go/gpt-5.6-luna','opencode-go/glm-5.3-flash','opencode-go/kimi-k2.6','opencode-go/kimi-k3','opencode-go/deepseek-v4-flash','opencode-go/qwen3.6-plus','opencode-go/minimax-m2.7']); }
+    // Realtime model list from OpenCode Go
+    function goCurated(){ return new Set(['opencode-go/muse-spark-1.2-contributor','opencode-go/muse-spark-1.3-contributor','opencode-go/grok-4.6','opencode-go/gpt-5.6-luna','opencode-go/glm-5.3-flash','opencode-go/glm-5.3','opencode-go/glm-5.2','opencode-go/glm-5.1','opencode-go/kimi-k2.6','opencode-go/kimi-k3','opencode-go/kimi-k2.7-code','opencode-go/deepseek-v4-flash','opencode-go/deepseek-v4.1-flash','opencode-go/deepseek-v4-pro','opencode-go/deepseek-v4-flash-vision-exp','opencode-go/qwen3.6-plus','opencode-go/qwen3.7-plus','opencode-go/qwen3.7-max','opencode-go/qwen3.8-flash','opencode-go/qwen3.8-max','opencode-go/minimax-m2.7','opencode-go/minimax-m3','opencode-go/mimo-v2.5','opencode-go/mimo-v2.5-pro','opencode-go/longcat-2.0','opencode-go/hy3','opencode-go/hy4-preview']); }
     window._aiStudioFullList = null;
     function renderModelOptions(fullList){
         window._aiStudioFullList = fullList.slice();
         if (!els.model) return;
-        const curatedZen = zenCurated(), curatedGo = goCurated(), curated = new Set([...curatedZen, ...curatedGo]);
-        const provider = getProvider();
-        let list = fullList.filter(m => {
-            if (provider === 'zen') return !isGoId(m.id);
-            if (provider === 'go') return isGoId(m.id);
-            return true;
-        });
-        // keep curated first even after filtering
+        const curated = goCurated();
+        let list = fullList.slice();
         const frag = document.createDocumentFragment();
         const seen = new Set();
-        // sorting: curated first, then free, then name
         list.sort((a,b) => {
             const ca = curated.has(a.id), cb = curated.has(b.id);
             if (ca && !cb) return -1; if (!ca && cb) return 1;
@@ -163,8 +126,7 @@
             if (p === 0 && c === 0) return 'FREE';
             return `$${(p * 1e6).toFixed(2)}/$${(c * 1e6).toFixed(2)} per 1M`;
         }
-        const zenLabel = {'opencode/muse-spark-1.2':'Muse Spark 1.2 (default)','opencode/muse-spark-1.3':'Muse Spark 1.3','opencode/gpt-5.6-luna':'GPT-5.6 Luna','opencode/claude-haiku-4-5':'Claude Haiku 4.5','opencode/claude-sonnet-4-5':'Claude Sonnet 4.5','opencode/gemini-3-flash':'Gemini 3 Flash','opencode/deepseek-v4-flash':'DeepSeek V4 Flash','opencode/kimi-k2.6':'Kimi K2.6','opencode/qwen3.6-plus':'Qwen 3.6 Plus','opencode/glm-5.3-flash':'GLM 5.3 Flash','opencode/big-pickle':'Big Pickle (free)','opencode/muse-spark-1.3-contributor-free':'Muse Spark 1.3 Free'};
-        const goLabel = {'opencode-go/grok-4.6':'Grok 4.6','opencode-go/gpt-5.6-luna':'GPT-5.6 Luna','opencode-go/glm-5.3-flash':'GLM 5.3 Flash','opencode-go/kimi-k2.6':'Kimi K2.6','opencode-go/kimi-k3':'Kimi K3','opencode-go/deepseek-v4-flash':'DeepSeek V4 Flash','opencode-go/qwen3.6-plus':'Qwen 3.6 Plus','opencode-go/minimax-m2.7':'MiniMax M2.7'};
+        const goLabel = {'opencode-go/muse-spark-1.2-contributor':'Muse Spark 1.2 (default)','opencode-go/muse-spark-1.3-contributor':'Muse Spark 1.3','opencode-go/grok-4.6':'Grok 4.6','opencode-go/gpt-5.6-luna':'GPT-5.6 Luna','opencode-go/glm-5.3-flash':'GLM 5.3 Flash','opencode-go/glm-5.3':'GLM 5.3','opencode-go/glm-5.2':'GLM 5.2','opencode-go/glm-5.1':'GLM 5.1','opencode-go/kimi-k2.6':'Kimi K2.6','opencode-go/kimi-k3':'Kimi K3','opencode-go/kimi-k2.7-code':'Kimi K2.7 Code','opencode-go/deepseek-v4-flash':'DeepSeek V4 Flash','opencode-go/deepseek-v4.1-flash':'DeepSeek V4.1 Flash','opencode-go/deepseek-v4-pro':'DeepSeek V4 Pro','opencode-go/deepseek-v4-flash-vision-exp':'DeepSeek Vision','opencode-go/qwen3.6-plus':'Qwen 3.6 Plus','opencode-go/qwen3.7-plus':'Qwen 3.7 Plus','opencode-go/qwen3.7-max':'Qwen 3.7 Max','opencode-go/qwen3.8-flash':'Qwen 3.8 Flash','opencode-go/qwen3.8-max':'Qwen 3.8 Max','opencode-go/minimax-m2.7':'MiniMax M2.7','opencode-go/minimax-m3':'MiniMax M3','opencode-go/mimo-v2.5':'MiMo V2.5','opencode-go/mimo-v2.5-pro':'MiMo V2.5 Pro','opencode-go/longcat-2.0':'LongCat-2.0','opencode-go/hy3':'Hy3','opencode-go/hy4-preview':'Hy4 Preview'};
         list.forEach(m => {
             if (!m.id || seen.has(m.id)) return; seen.add(m.id);
             const opt = document.createElement('option');
@@ -172,17 +134,17 @@
             const priceLabel = fmtPrice(m.pricing);
             const ctx = m.context_length ? `${Math.round(m.context_length/1000)}k` : '';
             const details = [priceLabel, ctx ? ctx + ' ctx' : ''].filter(Boolean).join(' · ');
-            const baseLabel = curated.has(m.id) ? ((zenLabel[m.id] || goLabel[m.id] || m.name || m.id)) : (m.name || m.id);
+            const baseLabel = curated.has(m.id) ? (goLabel[m.id] || m.name || m.id) : (m.name || m.id);
             opt.textContent = baseLabel + (details ? ' — ' + details : '');
             opt.title = m.id + (details ? ' · ' + details : '');
             frag.appendChild(opt);
         });
         let freshSaved=null; try { freshSaved = localStorage.getItem('ai-studio-model'); } catch(e) {}
-        const toSelect = (freshSaved && seen.has(freshSaved) && modelMatchesProvider(freshSaved) ? freshSaved : (cur && seen.has(cur) && modelMatchesProvider(cur) ? cur : null));
+        const toSelect = (freshSaved && seen.has(freshSaved) ? freshSaved : (cur && seen.has(cur) ? cur : null));
         els.model.innerHTML=''; els.model.appendChild(frag);
         if (toSelect) { els.model.value=toSelect; try{localStorage.setItem('ai-studio-model',toSelect);}catch(e){} }
         else if (seen.size){
-            const fallback = provider==='go' ? 'opencode-go/grok-4.6' : 'opencode/muse-spark-1.2';
+            const fallback = 'opencode-go/muse-spark-1.2-contributor';
             if (seen.has(fallback)) els.model.value=fallback; else els.model.selectedIndex=0;
             try{localStorage.setItem('ai-studio-model',els.model.value);}catch(e){}
         }
@@ -477,7 +439,6 @@
         els.input.disabled = value;
         els.model.disabled = value;
         els.newSession.disabled = value;
-        if (els.provider) els.provider.disabled = value;
         if (els.modeToggle) els.modeToggle.disabled = value;
         if (els.historyToggle) els.historyToggle.disabled = value;
         els.stop.hidden = !value;

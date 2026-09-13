@@ -22,7 +22,7 @@ class AiStudioController extends Controller {
         require_once BASE_PATH . '/models/GscClient.php';
         $gsc = GscClient::getStatus();
         // Provide live models with pricing for initial render (fallback to MODELS if API unreachable);
-        // prices come from OpenCode Zen API — see Opencode::fetchModels().
+        // prices come from OpenCode Go API — see Opencode::fetchModels().
         $live = Opencode::fetchModels();
         $hasPricing = false;
         foreach ($live as $m) { if (isset($m['pricing'])) { $hasPricing = true; break; } }
@@ -98,17 +98,13 @@ class AiStudioController extends Controller {
         $_SESSION["ratelimit_ai_studio_{$rlKey}"] = $rlData;
 
         $model = trim((string)($_POST['model'] ?? ''));
-        // Model allowlist: opencode/* (+ opencode-go) or live catalogue match.
-        // Prices come from OpenCode Zen API — see Opencode::fetchModels() pricing.
+        // Model allowlist: opencode-go/* or live catalogue match.
+        // Prices come from OpenCode Go API — see Opencode::fetchModels() pricing.
         $originalModel = $model;
         $model = Opencode::normalizeModel($model);
         if ($originalModel !== '' && $originalModel !== $model) {
             $sanitized = substr(preg_replace('/[^a-z0-9\/\-\.:_]/i', '', $originalModel), 0, 80);
             $this->logAi('model_fallback', ['requested' => $sanitized !== '' ? $sanitized : '[empty]', 'fallback' => $model, 'allowed_via' => Opencode::isAllowedModel($originalModel) ? 'heuristic' : 'invalid']);
-        }
-        // Legacy :free suffix handling — keep original if normalized fell back but original was explicit free variant
-        if ($originalModel !== '' && $model === 'opencode/muse-spark-1.2' && str_ends_with($originalModel, ':free') && Opencode::isAllowedModel($originalModel)) {
-            $model = $originalModel;
         }
         $message = trim((string)($_POST['message'] ?? ''));
         // Hard cap single message to avoid token blow-up (C1/H5).
@@ -287,7 +283,7 @@ class AiStudioController extends Controller {
 
                 $modelStart = microtime(true);
                 // Budget guard: estimate chars → tokens (~4 chars/token), drop oldest history if over 60k tokens
-                // Reliable: never evict pending pair or first user intent — keep them pinned even when trimming.
+                // Keep tool pairs atomic — never slice between assistant(tool_calls) and its tool results.
                 $estChars = array_sum(array_map(fn($m) => mb_strlen(json_encode($m, JSON_UNESCAPED_UNICODE) ?: ''), $messages));
                 if ($estChars > 200000) {
                     $keep = count($messages) - (int)(($estChars - 180000)/4000);
@@ -295,16 +291,14 @@ class AiStudioController extends Controller {
                     if ($keep < $minKeep) $keep = $minKeep;
                     $system = $messages[0];
                     $rest = array_slice($messages, 1);
-                    // Pin first user intent if trimming would drop it
                     $firstUser = null;
-                    foreach ($rest as $idx => $m) { if (($m['role']??'')==='user') { $firstUser = $m; break; } }
+                    foreach ($rest as $m) { if (($m['role']??'')==='user') { $firstUser = $m; break; } }
                     $rest = array_slice($rest, -$keep);
                     if ($firstUser !== null) {
                         $hasFirst = false;
                         foreach ($rest as $m) { if (($m['role']??'')==='user' && ($m['content']??'')===($firstUser['content']??'')) { $hasFirst=true; break; } }
                         if (!$hasFirst) { array_unshift($rest, $firstUser); }
                     }
-                    // Ensure pending pair (2 msgs) stays if it was trimmed
                     if (!empty($pending) && count($pending)===2) {
                         foreach ($pending as $p) {
                             $found=false;
@@ -312,7 +306,9 @@ class AiStudioController extends Controller {
                             if (!$found) $rest[] = $p;
                         }
                     }
-                    $messages = array_merge([$system], $rest);
+                    $candidate = array_merge([$system], $rest);
+                    $candidate = $this->repairMessageSequence($candidate, true);
+                    $messages = $candidate;
                     $this->sse('activity', ['text' => 'Context trimmed to fit token budget']);
                 }
                 if ($this->shouldDebug()) {
@@ -326,8 +322,9 @@ class AiStudioController extends Controller {
                 }
                 // In BUILD, force tool use via tool_choice=required — technical enforcement, not just prompt (fixes "got it" loops)
                 $toolChoice = $mode === 'build' ? 'required' : 'auto';
-                // If previous turn in same run had no tool_calls in BUILD, keep required
-                $response = Opencode::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192, 2, $toolChoice);
+                // Repair any orphaned tool sequences before sending (prevents 500 from invalid OpenAI/Anthropic sequences)
+                $messages = $this->repairMessageSequence($messages);
+                $response = Opencode::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192, 2, $toolChoice, $sessionId);
                 if ($this->shouldDebug()) {
                     $this->logDebug('turn_response', [
                         'turn' => $turn,
@@ -411,7 +408,7 @@ class AiStudioController extends Controller {
 
                 $haltForApproval = false;
 
-                foreach ($toolCalls as $tc) {
+                foreach ($toolCalls as $idx => $tc) {
                     $name = $tc['function']['name'] ?? '';
                     $rawArgs = $tc['function']['arguments'] ?? '{}';
                     $args = json_decode((string)$rawArgs, true);
@@ -514,6 +511,13 @@ class AiStudioController extends Controller {
                                 'plan' => $out['plan'],
                             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                         ];
+                        // Prevent orphan: remaining tool_calls in this batch need synthetic results
+                        for ($ri = $idx + 1; $ri < count($toolCalls); $ri++) {
+                            $rem = $toolCalls[$ri];
+                            $remId = $rem['id'] ?? ('skipped_' . $ri . '_' . substr($toolMsgId, 0, 8));
+                            $remName = $rem['function']['name'] ?? 'unknown';
+                            $messages[] = ['role' => 'tool', 'tool_call_id' => $remId, 'content' => json_encode(['skipped' => true, 'reason' => 'halted for approval of ' . $name, 'tool' => $remName], JSON_UNESCAPED_UNICODE)];
+                        }
                         break; // stop the batch here — nothing runs after a guard
                     }
 
@@ -590,9 +594,7 @@ class AiStudioController extends Controller {
                     if ($callCounts[$key] === 3 && AiToolRegistry::isPlanAllowed($nm)) {
                         $this->logAi('repeat_guard', ['turn'=>$turn,'tool'=>$nm,'args'=>mb_substr($ag,0,200),'count'=>3]);
                         $this->sse('activity', ['text' => 'Redirect: repeated ' . $nm . ' ×3 — using cached result.']);
-                        // Inject redirect hint: reuse cached data, pivot to next write
-                        $messages[] = ['role' => 'assistant', 'content' => $response['content'] ?? '', 'tool_calls' => $toolCalls];
-                        $messages[] = ['role' => 'tool', 'tool_call_id' => $tcCheck['id'] ?? ('repeat_'.$turn), 'content' => json_encode(['redirect'=>'Repeated '.$nm.' with identical args 3× — you already have this data. Redirect: use it to craft ONE useful write (e.g. batch_update to polish next section / add links for выкуп техники и мебели) instead of re-fetching.'], JSON_UNESCAPED_UNICODE)];
+                        $messages[] = ['role' => 'user', 'content' => 'SYSTEM REDIRECT: Repeated ' . $nm . ' with identical args 3× — you already have this data. Use it to craft ONE useful write (e.g. batch_update to polish next section / add links for выкуп техники и мебели) instead of re-fetching.'];
                     }
                 }
 
@@ -665,11 +667,14 @@ class AiStudioController extends Controller {
                 'duration_ms' => $this->elapsedMs($startedAt),
             ];
             if ($isAuth) {
-                $logCtx['hint'] = 'Check OPENCODE_API_KEY / OPENCODE_GO_API_KEY in .env; see https://opencode.ai/auth';
+                $logCtx['hint'] = 'Check OPENCODE_GO_API_KEY in .env; see https://opencode.ai/zen/go';
                 @unlink(BASE_PATH . '/storage/opencode_models.json');
             }
             if ($is5xx) {
-                $logCtx['hint'] = 'Opencode 500 — service temporarily down, OpenRouter fallback attempted';
+                $hasFallback = trim((string)(defined('OPENROUTER_API_KEY') ? OPENROUTER_API_KEY : (getenv('OPENROUTER_API_KEY') ?: ''))) !== '';
+                $logCtx['hint'] = $hasFallback ? 'Opencode 500 — service temporarily down, OpenRouter fallback attempted (see fallback error in message)' : 'Opencode 500 — service temporarily down, OpenRouter fallback not configured';
+                $logCtx['endpoint'] = Opencode::getEndpointForModel($model);
+                $logCtx['model_format'] = Opencode::getFormatForModel($model);
             }
             $this->logAi('run_error', $logCtx);
             if ($this->shouldDebug()) {
@@ -683,9 +688,12 @@ class AiStudioController extends Controller {
             try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot ?? []); $shutdownDone = true; } catch (Throwable $ignored) { error_log('persist on error failed: ' . $ignored->getMessage()); }
             $userMsg = $msg;
             if ($isAuth) {
-                $userMsg .= "\n\nFix: open .env and set OPENCODE_API_KEY (or OPENCODE_GO_API_KEY for Go models) from https://opencode.ai/auth — no quotes, no trailing spaces. Then run: rm storage/opencode_models.json and retry. If you only have an OpenRouter key, set OPENCODE_API_KEY to the same value during migration.";
+                $userMsg .= "\n\nFix: open .env and set OPENCODE_GO_API_KEY from https://opencode.ai/zen/go — no quotes, no trailing spaces. Then run: rm storage/opencode_models.json and retry. If you only have an OpenRouter key, set OPENCODE_GO_API_KEY to the same value during migration.";
             } elseif ($is5xx) {
-                $userMsg .= "\n\nOpencode is temporarily down (500). The system already tried OpenRouter fallback (deepseek/deepseek-chat). If you still see this, wait 30s and retry with model opencode/muse-spark-1.2 (Zen) or select deepseek/deepseek-chat directly. Check https://status.opencode.ai if available.";
+                $hasFallback = trim((string)(defined('OPENROUTER_API_KEY') ? OPENROUTER_API_KEY : (getenv('OPENROUTER_API_KEY') ?: ''))) !== '';
+                $fallbackNote = $hasFallback ? 'OpenRouter fallback was tried (deepseek/deepseek-chat).' : 'OpenRouter fallback not configured (set OPENROUTER_API_KEY to enable).';
+                $alreadyTried = str_contains($msg, 'OpenRouter fallback also failed') ? ' Fallback error included above.' : '';
+                $userMsg .= "\n\nOpencode 500 — model " . $model . " (" . Opencode::getFormatForModel($model) . " via " . Opencode::getEndpointForModel($model) . ") temporarily unavailable. " . $fallbackNote . $alreadyTried . " If this persists, wait 30s and retry with " . Opencode::DEFAULT_MODEL . " or try a cheaper chat model (deepseek-v4-flash). If message sequence was corrupted (orphan tool calls), start a new session. Docs: https://opencode.ai/docs/go";
             }
             try { $this->sse('error', ['message' => $userMsg]); } catch (Throwable $ignored) {}
             try { $this->sse('done', ['status' => 'error']); } catch (Throwable $ignored) {}
@@ -1356,6 +1364,64 @@ PROMPT;
                 Database::getInstance()->query("INSERT INTO ai_sessions (id,user_id,title,model,mode,history,context) VALUES (?,?,?,?,?,?,?)", [$sessionId,$uid,$title,$model,$mode,$histJson,$ctxJson]);
             }
         } catch (Throwable $e) { error_log('staticPersistAfterRun failed: '.$e->getMessage()); }
+    }
+
+    private function repairMessageSequence(array $messages, bool $trimMode = false): array {
+        if (empty($messages)) return $messages;
+        $out = [];
+        $pending = [];
+        foreach ($messages as $m) {
+            $role = $m['role'] ?? '';
+            if ($role === 'system') {
+                if (!empty($pending)) {
+                    foreach (array_keys($pending) as $pid) $out[] = ['role' => 'tool', 'tool_call_id' => $pid, 'content' => json_encode(['skipped'=>true,'reason'=>'orphan repair: system interrupt'])];
+                    $pending = [];
+                }
+                $out[] = $m;
+                continue;
+            }
+            if ($role === 'assistant' && isset($m['tool_calls']) && is_array($m['tool_calls']) && $m['tool_calls']) {
+                if (!empty($pending)) {
+                    foreach (array_keys($pending) as $pid) $out[] = ['role' => 'tool', 'tool_call_id' => $pid, 'content' => json_encode(['skipped'=>true,'reason'=>'orphan repair: next assistant before tool results'])];
+                    $pending = [];
+                }
+                $out[] = $m;
+                foreach ($m['tool_calls'] as $tc) {
+                    $id = $tc['id'] ?? '';
+                    if ($id !== '') $pending[$id] = true;
+                }
+                continue;
+            }
+            if ($role === 'tool') {
+                $id = $m['tool_call_id'] ?? '';
+                if ($id !== '' && isset($pending[$id])) {
+                    $out[] = $m;
+                    unset($pending[$id]);
+                }
+                continue;
+            }
+            if ($role === 'user' || $role === 'assistant') {
+                if (!empty($pending)) {
+                    foreach (array_keys($pending) as $pid) $out[] = ['role' => 'tool', 'tool_call_id' => $pid, 'content' => json_encode(['skipped'=>true,'reason'=>'orphan repair: interrupted by '.$role])];
+                    $pending = [];
+                }
+                $out[] = $m;
+                continue;
+            }
+            $out[] = $m;
+        }
+        if (!empty($pending)) {
+            foreach (array_keys($pending) as $pid) $out[] = ['role' => 'tool', 'tool_call_id' => $pid, 'content' => json_encode(['skipped'=>true,'reason'=>'orphan repair: tail'])];
+        }
+        if ($trimMode && !empty($out)) {
+            $first = $out[0];
+            if (($first['role'] ?? '') !== 'system') {
+                // ensure system stays first — if trimmed away, prepend empty system won't help; just return as is
+            }
+            // Drop leading orphan tool if any slipped through
+            while (!empty($out) && ($out[0]['role'] ?? '') === 'tool') array_shift($out);
+        }
+        return $out;
     }
 
     /** Human-readable one-liner for the transcript; keeps the feed tidy. */

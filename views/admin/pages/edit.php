@@ -42,27 +42,18 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <option value="full">Replace entire field</option>
                 </select>
             </div>
-            <div class="ai-panel__group ai-panel__group--provider">
-                <label for="ai-provider">Provider</label>
-                <select id="ai-provider">
-                    <option value="zen" selected>Zen</option>
-                    <option value="go">Go</option>
-                    <option value="all">All</option>
-                </select>
-            </div>
             <div class="ai-panel__group ai-panel__group--model">
                 <label for="ai-model">Model</label>
                 <select id="ai-model">
-                    <option value="opencode/muse-spark-1.2" selected>Muse Spark 1.2 (default, cheap)</option>
-                    <option value="opencode/gpt-5.6-luna">GPT-5.6 Luna (cheap)</option>
-                    <option value="opencode/claude-haiku-4-5">Claude Haiku 4.5 (fast)</option>
-                    <option value="opencode/gemini-3-flash">Gemini 3 Flash (cheap)</option>
-                    <optgroup label="Go">
-                        <option value="opencode-go/grok-4.6">Go · Grok 4.6</option>
-                        <option value="opencode-go/glm-5.3-flash">Go · GLM 5.3 Flash</option>
-                        <option value="opencode-go/kimi-k2.6">Go · Kimi K2.6</option>
-                        <option value="opencode-go/deepseek-v4-flash">Go · DeepSeek V4 Flash</option>
-                    </optgroup>
+                    <option value="opencode-go/muse-spark-1.2-contributor" selected>Muse Spark 1.2 (default)</option>
+                    <option value="opencode-go/grok-4.6">Grok 4.6</option>
+                    <option value="opencode-go/gpt-5.6-luna">GPT-5.6 Luna</option>
+                    <option value="opencode-go/glm-5.3-flash">GLM 5.3 Flash</option>
+                    <option value="opencode-go/kimi-k2.6">Kimi K2.6</option>
+                    <option value="opencode-go/kimi-k3">Kimi K3</option>
+                    <option value="opencode-go/deepseek-v4-flash">DeepSeek V4 Flash</option>
+                    <option value="opencode-go/deepseek-v4-pro">DeepSeek V4 Pro</option>
+                    <option value="opencode-go/qwen3.6-plus">Qwen 3.6 Plus</option>
                 </select>
             </div>
         </div>
