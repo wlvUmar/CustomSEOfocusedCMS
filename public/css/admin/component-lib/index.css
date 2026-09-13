@@ -1,0 +1,10 @@
+.component-filters{margin:12px 0 16px}
+.filters-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filter-input{flex:1;min-width:180px;max-width:320px;padding:8px 10px;border:1px solid var(--border);border-radius:8px}
+.filter-select{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff}
+.filter-stats{margin-top:8px;color:var(--muted);font-size:13px}
+.badge-category{background:#f0f4ff;color:#1e3a5f;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:600}
+.col-tokens{max-width:220px}
+.token-chip{display:inline-block;padding:2px 6px;margin:2px;border-radius:999px;background:#f5f3e5;color:#444;font-size:11px;font-family:monospace}
+.badge-warn{background:#fee2e2;color:#991b1b;padding:4px 8px;border-radius:999px;font-size:11px}
+.hidden{display:none!important}

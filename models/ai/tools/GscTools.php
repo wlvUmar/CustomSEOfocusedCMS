@@ -14,7 +14,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_gsc_overview',
-                    'description' => 'Site-wide GSC summary: total impressions, clicks, average CTR and position plus number of distinct queries/pages with data. Use to check if GSC data is present and how the site performs in Search. Live via Search Console API (requires GSC connection in AI Studio).',
+                    'description' => 'Site-wide GSC summary: total impressions, clicks, average CTR and position plus number of distinct queries/pages with data. Live via Search Console API (requires GSC connection). Cached 2-3 day lag, not live after edits — call once per request and reuse.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -27,7 +27,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_page_gsc',
-                    'description' => 'GSC data for one page: totals (impressions, clicks, CTR, avg position) plus top queries sorted by impressions or clicks. Call this before auditing a page — it tells you which keywords the page actually ranks for. Live API when connected.',
+                    'description' => 'GSC data for one page: totals (impressions, clicks, CTR, avg position) plus top queries sorted by impressions or clicks. Live API when connected. Cached 2-3 day lag, not live after edits — call once per request and reuse.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -44,7 +44,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_gsc_queries',
-                    'description' => 'Top search queries across the whole site. Find which keywords drive the most impressions/clicks, or which have high impressions but low CTR (opportunity).',
+                    'description' => 'Top search queries across the whole site. Find which keywords drive the most impressions/clicks, or which have high impressions but low CTR. Cached 2-3 day lag — call once per request and reuse.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -60,7 +60,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_gsc_pages',
-                    'description' => 'Pages ranked by GSC totals — which pages get the most impressions/clicks/CTR in Search. Use to find weakest pages by search visibility (complement to get_underperforming_pages which uses internal analytics).',
+                    'description' => 'Pages ranked by GSC totals — which pages get the most impressions/clicks/CTR in Search. Use to find weakest pages by search visibility. Cached 2-3 day lag — call once per request and reuse.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -75,7 +75,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'search_gsc_queries',
-                    'description' => 'Search GSC queries by keyword substring. Find all queries containing a term (e.g. "noutbuk", "tashkent") and see which pages they drive traffic to.',
+                    'description' => 'Search GSC queries by keyword substring. Find all queries containing a term (e.g. "noutbuk", "tashkent") and see which pages they drive traffic to. Cached 2-3 day lag — call once per request and reuse.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -91,7 +91,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'query_gsc',
-                    'description' => 'Flexible, MCP-like GSC Search Analytics query. Use when sugar tools are too limited. Build any combination of dimensions (query, page, country, device, searchAppearance, date), filters, and ordering. This is the freedom tool for custom breakdowns (e.g. device/country splits, searchAppearance, date trends, regex page filters, period comparison via explicit startDate/endDate). Returns raw API rows mapped to {keys, impressions, clicks, ctr_percent, position}.',
+                    'description' => 'Flexible GSC Search Analytics query. Build any combination of dimensions (query, page, country, device, searchAppearance, date), filters, and ordering. Cached 2-3 day lag, not live after edits — call once per request and reuse. Returns {keys, impressions, clicks, ctr_percent, position}.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [

@@ -187,6 +187,15 @@ $router->group('/admin/seo', function($router) {
 
 });
 
+// Admin Components (DB-canonical library, file-generated)
+$router->group('/admin/components', function($router) {
+    $router->get('/', function() { requireComponents('index'); });
+    $router->get('/edit/{slug}', function($slug) { requireComponents('edit', $slug); });
+    $router->post('/save', function() { requireComponents('save'); });
+    $router->post('/preview', function() { requireComponents('preview'); });
+    $router->post('/rebuild', function() { requireComponents('rebuild'); });
+});
+
 // Admin Schemas
 $router->group('/admin/schemas', function($router) {
     $router->get('/', function() { requireSchemaAdmin('index'); });
@@ -436,6 +445,12 @@ function requireAnalytics($method, $arg = null) {
 function requireSEO($method) {
     require_once BASE_PATH . '/controllers/admin/SEOController.php';
     (new SEOController())->$method();
+}
+
+function requireComponents($method, $arg = null) {
+    require_once BASE_PATH . '/controllers/admin/ComponentsController.php';
+    $c = new ComponentsController();
+    $arg !== null ? $c->$method($arg) : $c->$method();
 }
 
 

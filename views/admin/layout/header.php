@@ -154,6 +154,9 @@
                     <a href="<?= BASE_URL ?>/admin/seo/sitemap" class="<?= strpos($_SERVER['REQUEST_URI'], '/seo/sitemap') !== false ? 'active' : '' ?>">
                         <i data-feather="map"></i> Sitemap & Robots
                     </a>
+                    <a href="<?= BASE_URL ?>/admin/components" class="<?= strpos($_SERVER['REQUEST_URI'], '/components') !== false ? 'active' : '' ?>">
+                        <i data-feather="box"></i> Components
+                    </a>
                 </div>
                 
                 <div class="nav-section">

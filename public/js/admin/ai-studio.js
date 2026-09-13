@@ -87,8 +87,13 @@
     // ---- Mode toggle (Plan/Build) -----------------------------------------
     function setMode(mode) {
         currentMode = mode === 'build' ? 'build' : 'plan';
-        if (els.modeToggle) els.modeToggle.setAttribute('aria-pressed', currentMode === 'build');
-        if (els.modeLabel) els.modeLabel.textContent = currentMode.charAt(0).toUpperCase() + currentMode.slice(1);
+        if (els.modeToggle) {
+            els.modeToggle.setAttribute('aria-pressed', currentMode === 'build');
+            els.modeToggle.classList.toggle('ai-mode--build', currentMode === 'build');
+            els.modeToggle.classList.toggle('ai-mode--plan', currentMode !== 'build');
+            els.modeToggle.title = currentMode === 'build' ? 'BUILD — edits allowed (approval still required for >800 char)' : 'PLAN — read-only, no edits';
+        }
+        if (els.modeLabel) els.modeLabel.textContent = currentMode === 'build' ? 'BUILD' : 'PLAN';
         try { localStorage.setItem('ai-studio-mode', currentMode); } catch(e) {}
     }
     if (els.modeToggle) {
@@ -519,12 +524,20 @@
         if (fab) fab.hidden = true;
     }
 
-    function addUserBubble(text) {
+    function addUserBubble(text, mode) {
         const wrap = document.createElement('div');
         wrap.className = 'ai-msg ai-msg--user';
         const body = document.createElement('div');
         body.className = 'ai-msg__body';
         body.textContent = text;
+        if (mode) {
+            const tag = document.createElement('span');
+            tag.className = 'ai-msg__mode ai-msg__mode--' + mode;
+            tag.textContent = mode.toUpperCase();
+            tag.title = mode === 'build' ? 'BUILD — edits allowed' : 'PLAN — read-only';
+            body.appendChild(document.createElement('br'));
+            body.appendChild(tag);
+        }
         wrap.appendChild(body);
         els.transcript.appendChild(wrap);
         scrollTranscript();
@@ -1037,16 +1050,17 @@
         if (abortCtrl) abortCtrl.abort();
     });
 
-    async function runTurn(userText, approved, mode = 'plan') {
+    async function runTurn(userText, approved) {
+        const runMode = currentMode;
         setBusy(true);
         hideApproval();
         resetPreviewAccumulation();
-        addUserBubble(userText);
+        addUserBubble(userText, runMode);
         els.input.value = '';
         els.input.style.height = 'auto';
         history.push({ role: 'user', content: userText });
-        setStatus('Working…', 'busy');
-        setActivity('Starting…');
+        setStatus('Working… [' + runMode.toUpperCase() + ']', 'busy');
+        setActivity('Starting… [' + runMode.toUpperCase() + ']');
         showTyping();
 
         let assistantText = '';
@@ -1081,17 +1095,24 @@
                 history: JSON.stringify(history),
                 approved: JSON.stringify(approved),
                 pending: JSON.stringify(pending || []),
-                mode: currentMode,
+                mode: runMode,
                 session_id: currentSessionId || '',
             }, (event, data) => {
                 resetWatchdog();
+                if (data && data.mode && data.mode !== runMode) {
+                    hideTyping();
+                    hideActivity();
+                    addAgentBubble('⚠ Mode mismatch — server ran in ' + String(data.mode).toUpperCase() + ' but client sent ' + runMode.toUpperCase() + '. Check mode badge before retry.');
+                    setStatus('Mode mismatch', 'error');
+                    return;
+                }
                 switch (event) {
                     case 'activity':
                         setActivity(data.text);
                         break;
                     case 'turn':
-                        setStatus('Thinking… turn ' + data.number + '/' + data.max, 'busy');
-                        setActivity('Thinking… turn ' + data.number + '/' + data.max);
+                        setStatus('Thinking… turn ' + data.number + '/' + data.max + ' [' + runMode.toUpperCase() + ']', 'busy');
+                        setActivity('Thinking… turn ' + data.number + '/' + data.max + ' [' + runMode.toUpperCase() + ']');
                         showTyping();
                         break;
                     case 'usage':
@@ -1236,7 +1257,7 @@
         els.deny.disabled = true;
         const plan = pendingApproval.plan;
         const ids = Array.isArray(pendingApproval.call_ids) && pendingApproval.call_ids.length ? pendingApproval.call_ids : (pendingApproval.call_id ? [pendingApproval.call_id] : []);
-        await runTurn('[Approved] Proceed with the requested change: ' + plan, ids, currentMode);
+        await runTurn('[Approved] Proceed with the requested change: ' + plan, ids);
     });
 
     els.deny.addEventListener('click', async () => {
@@ -1244,7 +1265,7 @@
         els.approve.disabled = true;
         els.deny.disabled = true;
         const plan = pendingApproval.plan;
-        await runTurn('[Denied] Do not make this change: ' + plan + '. Propose an alternative if appropriate.', [], currentMode);
+        await runTurn('[Denied] Do not make this change: ' + plan + '. Propose an alternative if appropriate.', []);
     });
 
     // ---- Preview toggle: preview is optional, chat gets the full width when hidden ----

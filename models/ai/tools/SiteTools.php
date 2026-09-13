@@ -30,7 +30,7 @@ class SiteTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_design_tokens',
-                    'description' => 'Design tokens + lean component catalog (cheap). Parses pages.css :root (--teal,--orange,--ink, spacing) + components.css 178 .c-* classes. Returns tokens + categories always; full class list only if include_components=true (use sparingly — costs tokens). Also returns per-page theming note (pages.custom_css AFTER both sheets as <style id="page-custom-css"> scoped via body.page-{slug}; tools set_custom_css/set_page_theme). Prefer var(--teal).',
+                    'description' => 'Design tokens + lean component catalog (cheap). Parses pages.css :root (--teal,--orange,--ink, spacing) + 178 .c-* classes. Returns tokens always; full class list only if include_components=true. Call once per request and reuse — cached. Prefer var(--teal) and classes over inline style="".',
                     'parameters' => ['type' => 'object', 'properties' => [
                         'include_components' => ['type' => 'boolean', 'description' => 'If true, returns up to 80 .c-* class names (costs ~330 tokens). Default false = lean (~220 tokens). Only set true if you need exact class names.'],
                     ]],

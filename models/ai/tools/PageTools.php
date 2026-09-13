@@ -120,7 +120,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'insert_section',
-                    'description' => 'Insert a new HTML section (wrapped in a "<!-- Name -->" marker) into a page\'s content field, either at the top or the end. Use EITHER legacy classes (content-section, info-card, process-step, faq-item, links-tile, btn/btn-primary) OR plugin .c-* classes (178 in components.css — c-hero-split, c-stats/bar/dark, c-feature-grid/split, c-process/timeline, c-card/testimonial, c-cta/callout, c-gallery/carousel, c-pricing etc. — call get_design_tokens for live catalog). Preserve template variables. Senior HTML: semantic tags, landmarks, heading hierarchy, alt quality; prefer tokens — see get_design_tokens.',
+                    'description' => 'Insert a new HTML section (wrapped in a "<!-- Name -->" marker). Use EITHER legacy classes (content-section, info-card, process-step, faq-item, links-tile, btn) OR plugin .c-* (178 in components.css — c-hero-split, c-stats/bar/dark, c-feature-grid/split, c-process/timeline, c-card/testimonial, c-cta/callout, c-gallery/carousel, c-pricing — call get_design_tokens). Preserve template vars. Avoid inline style="" — prefer classes + var(--teal).',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -218,7 +218,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'update_section',
-                    'description' => 'Replace an ENTIRE section\'s HTML (<!-- Name --> marker preserved; others untouched). You may use any HTML/tags + inline style="" (prefer token vars var(--teal); ensure WCAG contrast). HTML >800 chars requires approval — keep edits small or use patch_section for targeted fixes. Always follow with render_preview; then render_full_page once.',
+                    'description' => 'Replace an ENTIRE section\'s HTML (marker preserved). Prefer classes + var(--teal) over inline style="" — avoid style="" unless explicitly asked. HTML >800 chars requires approval — keep small or use patch_section. Always follow with render_preview; then render_full_page once.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -237,7 +237,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'patch_section',
-                    'description' => 'Precise find-and-replace scoped to ONE section (avoids global str_replace ambiguity). Find must occur exactly once in that section; copy from get_section. Replacement >800 chars requires approval. Use for small line edits/style tweaks; use update_section for full rewrites.',
+                    'description' => 'Precise find-and-replace scoped to ONE section. Find must occur exactly once; copy from get_section. Replacement >800 chars requires approval. Prefer classes over inline style="". Use for small edits; update_section for full rewrites.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -257,7 +257,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'set_section_style',
-                    'description' => 'Override styles of a section via inline style="" on its top-level element (without touching pages.min.css). Merges the given CSS declarations into the section\'s first HTML tag\'s style attribute. Supports design-token shorthands: bg:teal → background:var(--teal), text:ink → color:var(--ink), border:teal, or full var(--teal). Allowed tokens (prefer these; custom hex only if user explicitly requested): --teal, --teal-dark, --orange, --green, --ink, --ink-soft, --muted, --surface, --surface-2, --border, --max-w, --section-gap, --ease, --dur. By default also syncs ru↔uz. Warn if contrast fails.',
+                    'description' => 'Override styles via inline style on section\'s top tag. Prefer patch_section/update_section with classes; use this only when classes can\'t achieve it. Supports token shorthands bg:teal→var(--teal), text:ink→var(--ink). Allowed: --teal, --teal-dark, --orange, --green, --ink, --ink-soft, --muted, --surface, --surface-2, --border, --max-w, --section-gap, --ease, --dur. Syncs ru↔uz by default.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -276,7 +276,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'wrap_section',
-                    'description' => 'Wrap a section\'s inner content with a new div/element (useful to add a styled container, background, or layout wrapper without rewriting the section). The wrapper may contain inline style="" and any classes.',
+                    'description' => 'Wrap a section\'s inner content with a new div/element. Prefer classes over inline style="". Use to add container/background without rewriting section.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [

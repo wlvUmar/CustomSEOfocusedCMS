@@ -16,7 +16,7 @@ class AnalyticsTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_top_pages',
-                    'description' => 'Top pages ordered by conversion rate (phone calls per visit), with visits, clicks, calls and CTR. The closest thing this CMS has to a ranking signal.',
+                    'description' => 'Top pages ordered by conversion rate (phone calls per visit), with visits, clicks, calls and CTR. Call once per request and reuse — do not re-query after edits.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -30,7 +30,7 @@ class AnalyticsTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_page_stats',
-                    'description' => 'Traffic stats for one page: visits, clicks, phone calls per language, plus totals.',
+                    'description' => 'Traffic stats for one page: visits, clicks, phone calls per language, plus totals. Call once per request and reuse — do not re-query after edits.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -45,7 +45,7 @@ class AnalyticsTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_underperforming_pages',
-                    'description' => 'Published pages with the fewest visits (and calls) in the lookback window — the pages that most likely need content/SEO work. Use this to decide what to fix.',
+                    'description' => 'Published pages with the fewest visits (and calls) in the lookback window — the pages that most likely need content/SEO work. Call once per request and reuse.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -59,7 +59,7 @@ class AnalyticsTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_crawl_frequency',
-                    'description' => 'How often search-engine bots crawl each page (days with visits, total visits, last crawl date). Zero-crawl pages may be orphaned or excluded.',
+                    'description' => 'How often search-engine bots crawl each page (days with visits, total visits, last crawl date). Call once per request and reuse.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -72,7 +72,7 @@ class AnalyticsTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_internal_links',
-                    'description' => 'Internal link performance: with a slug, returns inbound and outbound links with click counts; without one, returns the most effective page-to-page links by click-through rate.',
+                    'description' => 'Internal link performance: with a slug, returns inbound and outbound links with click counts; without one, returns the most effective links by CTR. Call once per request and reuse.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [

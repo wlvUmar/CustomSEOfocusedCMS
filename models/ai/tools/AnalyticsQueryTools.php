@@ -40,7 +40,7 @@ class AnalyticsQueryTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'run_analytics_query',
-                    'description' => 'Run a read-only SELECT over the analytics tables to answer questions the fixed analytics tools cannot. Single statement, no semicolons. A LIMIT is added automatically if missing. Allowed tables: '
+                    'description' => 'Run a read-only SELECT over the analytics tables — call once per request and reuse. Single statement, no semicolons. A LIMIT is added automatically if missing. Allowed tables: '
                         . implode(', ', self::ALLOWED_TABLES)
                         . ". Key columns — analytics_monthly: page_slug, language, year, month, total_visits, total_clicks, total_phone_calls, utm_source, avg_time_seconds, unique_days, unique_visitors. analytics_hourly: page_slug, language, date, hour (0-23), visits, clicks, phone_calls, utm_source. analytics: page_slug, language, date, visits, clicks, phone_calls, utm_source, unique_visitors, bounce_rate, avg_time_seconds. analytics_bot_visits: page_slug, bot_type, visit_date, visits. analytics_internal_links: from_slug, to_slug, language, clicks, date. analytics_internal_links_monthly: from_slug, to_slug, year, month, total_clicks, unique_days. analytics_link_clicks: from_slug, to_slug, link_text, clicks, language, date. analytics_rotations: page_slug, year, rotation_month, language, times_shown, unique_days. pages: id, slug, title_ru, title_uz, is_published (join pages.slug = analytics_*.page_slug).",
                     'parameters' => [
@@ -56,7 +56,7 @@ class AnalyticsQueryTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'query_builder',
-                    'description' => 'Sugar over analytics tables — build a grouped metric query without writing SQL. Maps to allowlisted SELECTs over analytics_monthly, analytics_hourly, analytics, gsc_data. Prefer this for simple aggregates; use run_analytics_query for custom joins.',
+                    'description' => 'Sugar over analytics tables — build a grouped metric query without writing SQL. Call once per request and reuse. Maps to allowlisted SELECTs over analytics_monthly, analytics_hourly, analytics, gsc_data.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [

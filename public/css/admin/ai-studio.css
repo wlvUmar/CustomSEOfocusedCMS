@@ -91,6 +91,13 @@
 .ai-btn--sm{ padding:5px 10px; font-size:.78rem; height:28px; }
 .ai-btn--xs{ padding:4px 8px; font-size:.74rem; height:24px; border-radius:999px; }
 .ai-btn .feather-icon{ width:14px; height:14px; }
+#ai-mode-toggle.ai-mode--plan{ background:#f0fdf4; border-color:#86efac; color:#065f46; }
+#ai-mode-toggle.ai-mode--plan #ai-mode-label{ color:#065f46; }
+#ai-mode-toggle.ai-mode--build{ background:#fffbeb; border-color:#fde68a; color:#92400e; }
+#ai-mode-toggle.ai-mode--build #ai-mode-label{ color:#92400e; }
+.ai-msg__mode{ display:inline-block; margin-top:6px; font-size:.62rem; font-weight:700; letter-spacing:.06em; padding:2px 6px; border-radius:999px; border:1px solid currentColor; opacity:.9; }
+.ai-msg__mode--plan{ background:#f0fdf4; color:#065f46; border-color:#86efac; }
+.ai-msg__mode--build{ background:#fffbeb; color:#92400e; border-color:#fde68a; }
 
 /* Layout */
 .ai-studio__layout{ display:grid; grid-template-columns:minmax(440px, 1.05fr) minmax(560px, 1.45fr); gap:14px; flex:1; min-height:0; width:100%; }
