@@ -136,10 +136,9 @@ class ComponentsController extends Controller {
         }
     }
 
-    /** JSON preview: POST { slug, css_body, html_demo } → { html, chars } */
+    /** JSON preview: POST { slug, css_body, html_demo } → { html, chars, auto } */
     public function preview() {
         $this->requireAuth();
-        // CSRF via header for fetch JSON
         $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '';
         if (!validateCSRFToken($token)) {
             $this->json(['success'=>false,'message'=>'CSRF failed'], 403);
@@ -149,26 +148,133 @@ class ComponentsController extends Controller {
         $data = json_decode($raw, true);
         if (!is_array($data)) $data = $_POST;
         $cssBody = Component::sanitizeCss((string)($data['css_body'] ?? ''));
-        $htmlDemo = (string)($data['html_demo'] ?? '');
+        $rawHtmlDemo = (string)($data['html_demo'] ?? '');
         $slug = Component::sanitizeSlug((string)($data['slug'] ?? ''));
         if (mb_strlen($cssBody) > 200 * 1024) {
             $this->json(['success'=>false,'message'=>'CSS too large (max 200KB)'], 400); return;
         }
-        if (mb_strlen($htmlDemo) > 200 * 1024) {
+        if (mb_strlen($rawHtmlDemo) > 200 * 1024) {
             $this->json(['success'=>false,'message'=>'html_demo too large (max 200KB)'], 400); return;
         }
-        // Sanitize html_demo like SiteTools::sanitizeForPreview (light)
-        $htmlDemo = $this->sanitizeHtmlFragment($htmlDemo);
+        $isAuto = false;
+        $check = trim($rawHtmlDemo);
+        if (preg_match('/^\s*<div class="c-section">\s*<\/div>\s*$/s', $check)) $check = '';
+        if ($check === '') {
+            $rowCat = 'utilities';
+            $genCss = $cssBody;
+            if ($slug !== '') {
+                try {
+                    $m = new Component();
+                    $row = $m->getBySlug($slug);
+                    if ($row) {
+                        $rowCat = $row['category'] ?? $rowCat;
+                        if (trim($genCss) === '') $genCss = (string)($row['css_body'] ?? '');
+                    }
+                } catch (Throwable $e) {}
+            }
+            $htmlDemo = $this->autoDemoHtml($slug ?: 'c-demo', $genCss, $rowCat);
+            $isAuto = true;
+        } else {
+            $htmlDemo = $this->sanitizeHtmlFragment($rawHtmlDemo);
+        }
         $baseUrl = defined('BASE_URL') ? BASE_URL : '';
-        // Build iframe doc: pages.css + components (live DB preview) + unsaved css_body override
         $liveCss = $cssBody !== '' ? '<style id="preview-override">' . $cssBody . '</style>' : '';
-        $demo = $htmlDemo !== '' ? $htmlDemo : '<div class="' . htmlspecialchars($slug) . '"><p style="color:var(--muted)">No demo HTML — add html_demo to preview.</p></div>';
+        $demo = $htmlDemo;
         $doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             . '<link rel="stylesheet" href="' . $baseUrl . '/css/pages.css">'
             . '<link rel="stylesheet" href="' . $baseUrl . '/css/components.min.css">'
             . '<style>html,body{background:var(--surface)}*{opacity:1!important;transform:none!important;transition:none!important;animation:none!important}</style>'
             . $liveCss . '</head><body><div class="content-body" style="padding:16px">' . $demo . '</div></body></html>';
-        $this->json(['success'=>true,'html'=>$doc,'chars'=>mb_strlen($doc),'slug'=>$slug]);
+        $this->json(['success'=>true,'html'=>$doc,'chars'=>mb_strlen($doc),'slug'=>$slug,'auto'=>$isAuto,'demo'=>$htmlDemo]);
+    }
+
+    private function autoDemoHtml(string $slug, string $cssBody, string $category): string {
+        $slug = Component::sanitizeSlug($slug) ?: 'c-demo';
+        if ($slug === 'c-shared') {
+            return '<div class="c-section"><p class="c-kicker">Preview — c-shared</p><h2 class="c-title">Shared helpers</h2><p class="c-lead" style="color:var(--muted)">Base section + kicker + title + lead. Uses tokens from pages.css. Edit HTML demo to customize.</p><p style="display:flex;gap:8px;flex-wrap:wrap"><a class="c-btn" href="#">Primary</a> <a class="c-btn c-btn--ghost" href="#">Ghost</a></p><hr class="c-divider" /><p class="c-muted" style="font-size:13px">Tokens: var(--teal), var(--orange), var(--ink), var(--muted), var(--surface), var(--border)</p></div>';
+        }
+        $parts = [];
+        if ($cssBody !== '' && $slug !== '') {
+            $q = preg_quote($slug, '/');
+            if (preg_match_all('/\.' . $q . '__([a-z0-9\-]+)/', $cssBody, $m)) {
+                foreach ($m[1] as $raw) {
+                    $base = strtolower(explode('--', $raw)[0]);
+                    $base = trim($base, '-');
+                    if ($base === '' || in_array($base, $parts, true)) continue;
+                    $parts[] = $base;
+                }
+            }
+        }
+        $mods = [];
+        if ($cssBody !== '' && preg_match_all('/\.' . preg_quote($slug, '/') . '--([a-z0-9\-]+)/', $cssBody, $mm)) {
+            $mods = array_values(array_unique(array_map('strtolower', $mm[1])));
+        }
+        $rootClass = $slug . ($mods ? ' ' . $slug . '--' . $mods[0] : '');
+        if ($parts) {
+            $inner = '';
+            foreach ($parts as $part) {
+                $inner .= $this->autoPartMarkup($slug, $part);
+            }
+            return '<div class="' . htmlspecialchars($rootClass) . '">' . $inner . '</div>';
+        }
+        return $this->autoCategoryFallback($slug, $category, $rootClass);
+    }
+
+    private function autoPartMarkup(string $slug, string $part): string {
+        $cls = htmlspecialchars($slug . '__' . $part);
+        $p = strtolower($part);
+        if (strpos($p, 'kicker') !== false || strpos($p, 'eyebrow') !== false || $p === 'label') {
+            return '<p class="' . $cls . '">Eyebrow — preview</p>';
+        }
+        if (strpos($p, 'title') !== false || strpos($p, 'heading') !== false || strpos($p, 'headline') !== false || $p === 'name') {
+            return '<h2 class="' . $cls . '">Sample ' . htmlspecialchars(str_replace('-', ' ', $part)) . '</h2>';
+        }
+        if (strpos($p, 'subtitle') !== false || $p === 'lead') {
+            return '<p class="' . $cls . '" style="color:var(--muted)">Lead text — lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>';
+        }
+        if (strpos($p, 'text') !== false || strpos($p, 'desc') !== false || strpos($p, 'copy') !== false || strpos($p, 'body') !== false || $p === 'content' || $p === 'excerpt') {
+            return '<p class="' . $cls . '">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero.</p>';
+        }
+        if (strpos($p, 'actions') !== false || strpos($p, 'cta') !== false || $p === 'btn' || $p === 'button' || $p === 'links' || $p === 'footer') {
+            return '<div class="' . $cls . '" style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><a class="c-btn" href="#">Primary action</a> <a class="c-btn c-btn--ghost" href="#">Secondary</a></div>';
+        }
+        if (strpos($p, 'media') !== false || strpos($p, 'image') !== false || strpos($p, 'thumb') !== false || strpos($p, 'figure') !== false || strpos($p, 'visual') !== false || $p === 'img' || $p === 'cover' || $p === 'avatar') {
+            return '<div class="' . $cls . '" style="background:#e5e7eb;border:1px dashed #cbd5e1;border-radius:12px;height:180px;display:grid;place-items:center;color:#94a3b8;font-size:13px">320 × 180 — .' . $cls . '</div>';
+        }
+        if (strpos($p, 'list') !== false || $p === 'grid' || $p === 'row' || $p === 'items' || $p === 'cards' || $p === 'cols') {
+            return '<div class="' . $cls . '" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px"><div class="c-card" style="padding:12px;border:1px solid var(--border);border-radius:10px">Card one — sample</div><div class="c-card" style="padding:12px;border:1px solid var(--border);border-radius:10px">Card two — sample</div><div class="c-card" style="padding:12px;border:1px solid var(--border);border-radius:10px">Card three — sample</div></div>';
+        }
+        if (strpos($p, 'price') !== false || $p === 'plan' || $p === 'tier' || $p === 'amount') {
+            return '<div class="' . $cls . '"><strong style="font-size:22px">$49</strong> <span style="color:var(--muted)">/mo</span></div>';
+        }
+        if (strpos($p, 'stat') !== false || strpos($p, 'metric') !== false || $p === 'number' || $p === 'value' || $p === 'kpi') {
+            return '<div class="' . $cls . '" style="display:flex;gap:12px"><div><b style="display:block;font-size:20px">1.2k+</b><span style="color:var(--muted);font-size:13px">Metric</span></div><div><b style="display:block;font-size:20px">98%</b><span style="color:var(--muted);font-size:13px">Rate</span></div></div>';
+        }
+        if (strpos($p, 'icon') !== false || $p === 'badge' || $p === 'pill') {
+            return '<span class="' . $cls . '" style="display:inline-grid;place-items:center;width:40px;height:40px;border-radius:999px;background:var(--teal);color:#fff">◆</span>';
+        }
+        if (strpos($p, 'quote') !== false || $p === 'blockquote') {
+            return '<blockquote class="' . $cls . '" style="border-left:3px solid var(--teal);padding-left:12px;color:var(--ink-soft)">“Sample quote — lorem ipsum dolor sit amet.”</blockquote>';
+        }
+        return '<div class="' . $cls . '" style="padding:10px;border:1px dashed #e5e7eb;border-radius:8px;color:var(--muted);font-size:13px">.' . $cls . ' — sample content</div>';
+    }
+
+    private function autoCategoryFallback(string $slug, string $category, string $rootClass): string {
+        $rc = htmlspecialchars($rootClass);
+        switch ($category) {
+            case 'heroes':
+                return '<div class="' . $rc . '"><p class="' . htmlspecialchars($slug) . '__kicker' . '" style="color:var(--teal);font-weight:700;letter-spacing:.08em;font-size:12px">HERO PREVIEW</p><h2 class="' . htmlspecialchars($slug) . '__title' . '" style="font-size:clamp(22px,3vw,32px);font-weight:800">Hero title — auto demo</h2><p class="' . htmlspecialchars($slug) . '__text' . '" style="color:var(--muted)">Auto-generated from CSS selectors. Add html_demo to customize. Lorem ipsum dolor sit amet.</p><div class="' . htmlspecialchars($slug) . '__actions' . '" style="display:flex;gap:8px;margin-top:10px"><a class="c-btn" href="#">Get started</a> <a class="c-btn c-btn--ghost" href="#">Learn more</a></div></div>';
+            case 'stats':
+                return '<div class="' . $rc . '" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px"><div style="text-align:center;padding:12px;border:1px solid var(--border);border-radius:10px"><b style="display:block;font-size:20px">1.2k+</b><span style="color:var(--muted);font-size:13px">Users</span></div><div style="text-align:center;padding:12px;border:1px solid var(--border);border-radius:10px"><b style="display:block;font-size:20px">98%</b><span style="color:var(--muted);font-size:13px">Uptime</span></div><div style="text-align:center;padding:12px;border:1px solid var(--border);border-radius:10px"><b style="display:block;font-size:20px">24/7</b><span style="color:var(--muted);font-size:13px">Support</span></div></div>';
+            case 'cta':
+                return '<div class="' . $rc . '" style="text-align:center;padding:20px;background:var(--surface-2);border:1px solid var(--border);border-radius:14px"><h3 style="font-weight:800">Call to action — auto demo</h3><p style="color:var(--muted)">Lorem ipsum dolor sit amet.</p><p><a class="c-btn" href="#">Take action</a></p></div>';
+            case 'pricing':
+                return '<div class="' . $rc . '" style="max-width:360px;margin:0 auto;padding:18px;border:1px solid var(--border);border-radius:14px"><h3 style="font-weight:800">Pro Plan</h3><p><strong style="font-size:24px">$49</strong> <span style="color:var(--muted)">/mo</span></p><ul style="color:var(--muted);font-size:14px"><li>Feature one</li><li>Feature two</li><li>Feature three</li></ul><p><a class="c-btn" href="#">Choose plan</a></p></div>';
+            case 'cards':
+                return '<div class="' . $rc . '" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px"><div style="padding:14px;border:1px solid var(--border);border-radius:12px"><strong>Card one</strong><p style="color:var(--muted);font-size:13px">Sample card body text.</p></div><div style="padding:14px;border:1px solid var(--border);border-radius:12px"><strong>Card two</strong><p style="color:var(--muted);font-size:13px">Sample card body text.</p></div></div>';
+            default:
+                return '<div class="' . $rc . '"><h3 style="font-weight:700">Auto demo — ' . htmlspecialchars($slug) . '</h3><p style="color:var(--muted)">No BEM children detected in CSS. Showing generic filler inside <code>.' . $rc . '</code>. Edit HTML demo to customize.</p><p><a class="c-btn" href="#">Action</a></p></div>';
+        }
     }
 
     public function rebuild() {
