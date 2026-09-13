@@ -15,20 +15,13 @@ deployment:
     - /bin/cp -R /home/kuplyuta/appliances/models/. $DEPLOYPATH/models >> /home/kuplyuta/deploy.log 2>&1 || true
     - /bin/cp -R /home/kuplyuta/appliances/views/. $DEPLOYPATH/views >> /home/kuplyuta/deploy.log 2>&1 || true
     - /bin/cp /home/kuplyuta/appliances/.htaccess $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1 || true
-    - if [ -d /home/kuplyuta/appliances/scripts ]; then /bin/cp -R /home/kuplyuta/appliances/scripts/. $DEPLOYPATH/scripts >> /home/kuplyuta/deploy.log 2>&1 || true; fi
-    # Preserve live components.css if DB library exists (admin edits are DB-canonical, file-generated)
-    - if [ -f $PUBLICPATH/css/components.css ]; then cp $PUBLICPATH/css/components.css /tmp/components.css.bak 2>/dev/null || true; cp $PUBLICPATH/css/components.min.css /tmp/components.min.css.bak 2>/dev/null || true; fi
     # Public folder
     - /bin/cp -R /home/kuplyuta/appliances/public/. $PUBLICPATH >> /home/kuplyuta/deploy.log 2>&1 || true
-    - if [ -f /tmp/components.css.bak ]; then cp /tmp/components.css.bak $PUBLICPATH/css/components.css 2>/dev/null || true; cp /tmp/components.min.css.bak $PUBLICPATH/css/components.min.css 2>/dev/null || true; rm -f /tmp/components.css.bak /tmp/components.min.css.bak; echo "components.css preserved (DB-canonical)" >> /home/kuplyuta/deploy.log 2>&1; fi
     # Restore preserved files
     - if [ -f /tmp/.env.bak ]; then cp /tmp/.env.bak $PUBLICPATH/../.env 2>/dev/null || true; rm -f /tmp/.env.bak; fi
     - if [ -d /tmp/storage.bak ]; then cp -Rn /tmp/storage.bak/. $PUBLICPATH/../storage/ 2>/dev/null || true; rm -rf /tmp/storage.bak; fi
     # Run migrations and cache bust
     - cd /home/kuplyuta/appliances && php migrate.php >> /home/kuplyuta/deploy.log 2>&1 || echo "migrate failed" >> /home/kuplyuta/deploy.log 2>&1
-    # One-time seed: if ai_components empty, populate from current components.css (runs only once)
-    - |
-      if php -r "require '/home/kuplyuta/config/config.php'; require '/home/kuplyuta/config/database.php'; require '/home/kuplyuta/core/Database.php'; try{\$r=Database::getInstance()->fetchOne('SELECT COUNT(*) c FROM ai_components'); exit((int)(\$r['c']??0)===0?0:1);}catch(Throwable \$e){exit(1);}" 2>/dev/null; then echo "ai_components empty — seeding from components.css" >> /home/kuplyuta/deploy.log 2>&1; php /home/kuplyuta/appliances/scripts/import-components.php >> /home/kuplyuta/deploy.log 2>&1 || echo "seed failed (non-fatal)" >> /home/kuplyuta/deploy.log 2>&1; /bin/cp /home/kuplyuta/appliances/public/css/components.css /home/kuplyuta/public/css/components.css 2>/dev/null || true; /bin/cp /home/kuplyuta/appliances/public/css/components.min.css /home/kuplyuta/public/css/components.min.css 2>/dev/null || true; /bin/cp /home/kuplyuta/appliances/public/css/components.css $PUBLICPATH/css/components.css 2>/dev/null || true; /bin/cp /home/kuplyuta/appliances/public/css/components.min.css $PUBLICPATH/css/components.min.css 2>/dev/null || true; echo "seeded components synced to public" >> /home/kuplyuta/deploy.log 2>&1; else echo "ai_components already seeded — skip import" >> /home/kuplyuta/deploy.log 2>&1; fi
     # Rotate deploy.log if >5MB
     - if [ $(stat -c%s /home/kuplyuta/deploy.log 2>/dev/null || echo 0) -gt 5242880 ]; then mv /home/kuplyuta/deploy.log /home/kuplyuta/deploy.log.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true; fi
     - echo "Deployment finished at $(date)" >> /home/kuplyuta/deploy.log
