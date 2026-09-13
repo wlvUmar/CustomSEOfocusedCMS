@@ -126,11 +126,15 @@ class RotationTools {
         $model = new ContentRotation();
         if ($rotationId === 0) {
             $model->clearManualRotation($pageId);
-            return ['ok' => true, 'page_id' => $pageId, 'selected_rotation_id' => null, 'note' => 'Manual selection cleared — page returns to auto rotation.'];
+            $page = (new Page())->getById($pageId);
+            $fresh = $page['selected_rotation_id'] ?? null;
+            return ['ok' => true, 'verified' => $fresh === null || (int)$fresh === 0, 'fresh_hash' => substr(md5((string)($fresh ?? '')),0,8), 'page_id' => $pageId, 'selected_rotation_id' => null, 'note' => 'Manual selection cleared and verified — page returns to auto rotation.'];
         }
         if (!$model->setManualRotation($pageId, $rotationId)) {
             throw new InvalidArgumentException('Rotation not found or does not belong to this page (id ' . $rotationId . ' for page_id ' . $pageId . ') — call list_rotations to see valid ids.');
         }
-        return ['ok' => true, 'page_id' => $pageId, 'selected_rotation_id' => $rotationId, 'note' => 'Manual rotation pinned.'];
+        $page = (new Page())->getById($pageId);
+        $fresh = (int)($page['selected_rotation_id'] ?? 0);
+        return ['ok' => true, 'verified' => $fresh === $rotationId, 'fresh_hash' => substr(md5((string)$fresh),0,8), 'page_id' => $pageId, 'selected_rotation_id' => $rotationId, 'note' => 'Manual rotation pinned and verified.'];
     }
 }

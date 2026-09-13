@@ -92,6 +92,7 @@ class PageTools {
                             'field' => ['type' => 'string', 'enum' => self::FIELDS, 'description' => 'Target field. Valid: ' . implode(', ', self::FIELDS) . '. For meta fields use get_page to fetch exact current value.'],
                             'find' => ['type' => 'string', 'description' => 'Exact existing text to locate (must occur exactly once). Copy verbatim from get_page (meta/title) or get_section (content) — including dashes, spaces, punctuation.'],
                             'replace' => ['type' => 'string', 'description' => 'New text. Use "" to delete the found text.'],
+                            'expected_hash' => ['type' => 'string', 'description' => 'Optional 8-char hash from get_section/get_page to detect stale state (TOCTOU). If provided and mismatches current, fails with STALE_STATE — re-read first.'],
                         ],
                         'oneOf' => [['required' => ['page_id', 'field', 'find']], ['required' => ['slug', 'field', 'find']]],
                     ],
@@ -109,6 +110,7 @@ class PageTools {
                             'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
                             'field' => ['type' => 'string', 'enum' => self::FIELDS, 'description' => 'Target field.'],
                             'value' => ['type' => 'string', 'description' => 'The complete new value of the field.'],
+                            'expected_hash' => ['type' => 'string', 'description' => 'Optional 8-char hash of current field (from get_page) to detect TOCTOU.'],
                         ],
                         'oneOf' => [['required' => ['page_id', 'field', 'value']], ['required' => ['slug', 'field', 'value']]],
                     ],
@@ -225,6 +227,7 @@ class PageTools {
                             'lang' => ['type' => 'string', 'enum' => ['ru', 'uz'], 'description' => 'Which content field (default ru).'],
                             'section' => ['type' => 'string', 'description' => 'Section name or index to replace.'],
                             'html' => ['type' => 'string', 'description' => 'Full new HTML for this section (should start with the section\'s inner HTML; the <!-- Name --> marker is kept automatically). May contain any tags/divs and inline style="" attributes.'],
+                            'expected_hash' => ['type' => 'string', 'description' => 'Optional 8-char hash from get_section to detect stale section (STALE_STATE).'],
                         ],
                         'required' => ['page_id', 'section', 'html'],
                     ],
@@ -244,6 +247,7 @@ class PageTools {
                             'section' => ['type' => 'string', 'description' => 'Section name or index to patch.'],
                             'find' => ['type' => 'string', 'description' => 'Exact text to find inside the section (must occur exactly once in that section).'],
                             'replace' => ['type' => 'string', 'description' => 'Replacement text. Use "" to delete. May include inline style="" attributes.'],
+                            'expected_hash' => ['type' => 'string', 'description' => 'Optional 8-char hash from get_section for TOCTOU check.'],
                         ],
                         'required' => ['page_id', 'section', 'find'],
                     ],
@@ -673,6 +677,11 @@ class PageTools {
         if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
 
         $current = (string)($page[$field] ?? '');
+        if (isset($args['expected_hash']) && trim((string)$args['expected_hash']) !== '') {
+            $exp = substr(trim((string)$args['expected_hash']), 0, 8);
+            $curHash = substr(md5($current), 0, 8);
+            if ($exp !== $curHash) throw new InvalidArgumentException('STALE_STATE: expected_hash ' . $exp . ' != current ' . $curHash . ' for field ' . $field . ' — re-read via get_page/get_section before retrying.');
+        }
         // 03-code-bugs #10: use mb_substr_count for Cyrillic/multibyte correctness
         $count = mb_substr_count($current, $find, 'UTF-8');
         if ($count === 0) {
@@ -715,6 +724,11 @@ class PageTools {
         if (!$page) throw new InvalidArgumentException('Page not found: ID ' . $pageId . ' not found. Call list_pages to discover slugs.');
 
         $oldVal = (string)($page[$field] ?? '');
+        if (isset($args['expected_hash']) && trim((string)$args['expected_hash']) !== '') {
+            $exp = substr(trim((string)$args['expected_hash']), 0, 8);
+            $curHash = substr(md5($oldVal), 0, 8);
+            if ($exp !== $curHash) throw new InvalidArgumentException('STALE_STATE: expected_hash ' . $exp . ' != current ' . $curHash . ' for field ' . $field . ' — re-read via get_page before retrying.');
+        }
         $warnings = in_array($field, ['content_ru','content_uz'], true) ? self::validateHtmlWarnings($oldVal, $value) : [];
         $model->update($pageId, [$field => $value]);
         $fresh = $model->getById($pageId);
@@ -757,14 +771,21 @@ class PageTools {
             $updated = rtrim($current) . "\n\n" . $block;
         }
         $model->update($pageId, ["content_{$lang}" => $updated]);
+        $fresh = $model->getById($pageId);
+        $freshVal = (string)($fresh["content_{$lang}"] ?? $updated);
         return [
             'ok' => true,
+            'verified' => $freshVal === $updated,
+            'fresh_hash' => substr(md5($freshVal), 0, 8),
+            'after_preview' => mb_substr(trim(strip_tags($freshVal)), 0, 300),
             'page_id' => $pageId,
             'lang' => $lang,
             'position' => $position,
             'name' => $name,
-            'content_chars' => mb_strlen($updated),
-            'note' => 'Section inserted. Call render_preview to judge it visually.',
+            'before_chars' => mb_strlen($current),
+            'after_chars' => mb_strlen($freshVal),
+            'content_chars' => mb_strlen($freshVal),
+            'note' => 'Section inserted and verified via read-after-write. Call render_preview to judge it visually.',
         ];
     }
 
@@ -794,6 +815,11 @@ class PageTools {
         $sections = self::splitIntoSections((string)($page[$field] ?? ''));
         $idx = self::findSectionIndex($sections, $sectionRef);
         if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef . ' — call list_sections for page_id ' . $pageId . ' to see available names.');
+        if (isset($args['expected_hash']) && trim((string)$args['expected_hash']) !== '') {
+            $exp = substr(trim((string)$args['expected_hash']), 0, 8);
+            $curHash = substr(md5($sections[$idx]['text']), 0, 8);
+            if ($exp !== $curHash) throw new InvalidArgumentException('STALE_STATE: expected_hash ' . $exp . ' != current ' . $curHash . ' for section ' . $sections[$idx]['name'] . ' — re-read via get_section before retrying.');
+        }
         $oldName = $sections[$idx]['name'];
         $oldSec = $sections[$idx]['text'];
         // 06-08: allow rename via supplied marker <!-- NewName -->
@@ -856,6 +882,11 @@ class PageTools {
         $idx = self::findSectionIndex($sections, $sectionRef);
         if ($idx === null) throw new InvalidArgumentException('Section not found: ' . $sectionRef . ' — call list_sections for page_id ' . $pageId . ' to see available names.');
         $secText = $sections[$idx]['text'];
+        if (isset($args['expected_hash']) && trim((string)$args['expected_hash']) !== '') {
+            $exp = substr(trim((string)$args['expected_hash']), 0, 8);
+            $curHash = substr(md5($secText), 0, 8);
+            if ($exp !== $curHash) throw new InvalidArgumentException('STALE_STATE: expected_hash ' . $exp . ' != current ' . $curHash . ' for section ' . $sections[$idx]['name'] . ' — re-read via get_section before retrying.');
+        }
         $count = mb_substr_count($secText, $find, 'UTF-8');
         if ($count === 0) throw new InvalidArgumentException('The "find" text was not found — fetch exact HTML via get_section and copy character-for-character, including HTML tags. Section "' . $sections[$idx]['name'] . '" has ' . mb_strlen($secText) . ' chars.');
         if ($count > 1) throw new InvalidArgumentException('The "find" text occurs ' . $count . ' times inside section "' . $sections[$idx]['name'] . '" — include more surrounding context to make it unique, or use update_section for a full rewrite.');
@@ -970,6 +1001,8 @@ class PageTools {
         $sections[$idx]['text'] = substr_replace($secText, $newTag, $pos, strlen($tag));
         $updated = self::rebuildContentFromSections($sections);
         $model->update($pageId, [$field => $updated]);
+        $fresh = $model->getById($pageId);
+        $freshVal = (string)($fresh[$field] ?? $updated);
         $synced = false;
         if ($sync) {
             $otherLang = $lang === 'ru' ? 'uz' : 'ru';
@@ -988,7 +1021,7 @@ class PageTools {
                 }
             }
         }
-        return ['ok'=>true,'page_id'=>$pageId,'lang'=>$lang,'section'=>$sections[$idx]['name'],'index'=>$idx,'style'=>$style,'synced_to_other_lang'=>$synced,'content_chars'=>mb_strlen($updated),'note'=>'Inline style merged into section\'s top tag' . ($synced ? ' and synced to ' . ($lang==='ru'?'uz':'ru') : '') . '.'];
+        return ['ok'=>true,'verified'=> $freshVal === $updated,'fresh_hash'=>substr(md5($freshVal),0,8),'after_preview'=>mb_substr(trim(strip_tags($freshVal)),0,300),'page_id'=>$pageId,'lang'=>$lang,'section'=>$sections[$idx]['name'],'index'=>$idx,'style'=>$style,'synced_to_other_lang'=>$synced,'content_chars'=>mb_strlen($freshVal),'before_chars'=>mb_strlen($secText),'after_chars'=>mb_strlen($sections[$idx]['text']),'note'=>'Inline style merged and verified' . ($synced ? ' and synced to ' . ($lang==='ru'?'uz':'ru') : '') . '. Call render_preview to verify visually.'];
     }
 
     private static function wrapSection(array $args): array {
@@ -1022,7 +1055,9 @@ class PageTools {
         }
         $updated = self::rebuildContentFromSections($sections);
         $model->update($pageId, [$field => $updated]);
-        return ['ok'=>true,'page_id'=>$pageId,'lang'=>$lang,'section'=>$sections[$idx]['name'],'index'=>$idx,'content_chars'=>mb_strlen($updated),'note'=>'Section wrapped.'];
+        $fresh = $model->getById($pageId);
+        $freshVal = (string)($fresh[$field] ?? $updated);
+        return ['ok'=>true,'verified'=> $freshVal === $updated,'fresh_hash'=>substr(md5($freshVal),0,8),'after_preview'=>mb_substr(trim(strip_tags($freshVal)),0,300),'page_id'=>$pageId,'lang'=>$lang,'section'=>$sections[$idx]['name'],'index'=>$idx,'content_chars'=>mb_strlen($freshVal),'note'=>'Section wrapped and verified.'];
     }
 
     private static function addSectionMarker(array $args): array {
@@ -1287,6 +1322,11 @@ class PageTools {
                             if (!in_array($fld, self::FIELDS, true)) throw new InvalidArgumentException("Operation #$idx: field not writable: {$fld} — got " . json_encode($op, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
                             if ($find === '') throw new InvalidArgumentException("Operation #$idx: find is required for str_replace_field — empty strings are invalid. You sent " . mb_substr(json_encode($op, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),0,400) . " — copy find exactly from get_page (for meta_title/meta_description) or get_section/get_content_chunk (for content) including HTML tags. If field is empty, use set_field instead.");
                             $current = $buffers[$fld] ?? '';
+                            if (isset($op['expected_hash']) && trim((string)$op['expected_hash']) !== '') {
+                                $exp = substr(trim((string)$op['expected_hash']), 0, 8);
+                                $curHash = substr(md5($current), 0, 8);
+                                if ($exp !== $curHash) throw new InvalidArgumentException("Operation #$idx: STALE_STATE expected_hash $exp != current $curHash for field $fld — re-read via get_page.");
+                            }
                             if ($current === '' && $find !== '') throw new InvalidArgumentException("Operation #$idx: field {$fld} is currently empty — str_replace_field requires non-empty find. Use set_field (or batch op set_field) to initialize it.");
                             $cnt = mb_substr_count($current, $find, 'UTF-8');
                             if ($cnt === 0) {
@@ -1307,6 +1347,11 @@ class PageTools {
                             if (!in_array($fld, self::FIELDS, true)) throw new InvalidArgumentException("Operation #$idx: field not writable: {$fld}");
                             // Empty value is allowed (clear field) but warn if really empty — keep intentional
                             $before = $buffers[$fld] ?? '';
+                            if (isset($op['expected_hash']) && trim((string)$op['expected_hash']) !== '') {
+                                $exp = substr(trim((string)$op['expected_hash']), 0, 8);
+                                $curHash = substr(md5($before), 0, 8);
+                                if ($exp !== $curHash) throw new InvalidArgumentException("Operation #$idx: STALE_STATE expected_hash $exp != current $curHash for field $fld — re-read via get_page.");
+                            }
                             $buffers[$fld] = $value;
                             $fieldDirty[$fld] = true;
                             $results[] = ['index'=>$idx,'op'=>$type,'ok'=>true,'field'=>$fld,'before_chars'=>mb_strlen($before),'after_chars'=>mb_strlen($value), 'note'=>'set_field in batch'];
@@ -1324,6 +1369,11 @@ class PageTools {
                             $sIdx = self::findSectionIndex($sectionCache[$lang], $secRef);
                             if ($sIdx === null) throw new InvalidArgumentException("Operation #$idx: section not found: {$secRef}");
                             $secText = $sectionCache[$lang][$sIdx]['text'];
+                            if (isset($op['expected_hash']) && trim((string)$op['expected_hash']) !== '') {
+                                $exp = substr(trim((string)$op['expected_hash']), 0, 8);
+                                $curHash = substr(md5($secText), 0, 8);
+                                if ($exp !== $curHash) throw new InvalidArgumentException("Operation #$idx: STALE_STATE expected_hash $exp != current $curHash for section " . $sectionCache[$lang][$sIdx]['name'] . " — re-read via get_section.");
+                            }
                             $cnt = mb_substr_count($secText, $find, 'UTF-8');
                             if ($cnt === 0) throw new InvalidArgumentException("Operation #$idx: find not found inside section \"" . $sectionCache[$lang][$sIdx]['name'] . "\" — fetch via get_section.");
                             if ($cnt > 1) throw new InvalidArgumentException("Operation #$idx: find occurs {$cnt} times inside section — include more context or use update_section.");
@@ -1344,6 +1394,11 @@ class PageTools {
                             $sIdx = self::findSectionIndex($sectionCache[$lang], $secRef);
                             if ($sIdx === null) throw new InvalidArgumentException("Operation #$idx: section not found: {$secRef}");
                             $oldName = $sectionCache[$lang][$sIdx]['name'];
+                            if (isset($op['expected_hash']) && trim((string)$op['expected_hash']) !== '') {
+                                $exp = substr(trim((string)$op['expected_hash']), 0, 8);
+                                $curHash = substr(md5($sectionCache[$lang][$sIdx]['text']), 0, 8);
+                                if ($exp !== $curHash) throw new InvalidArgumentException("Operation #$idx: STALE_STATE expected_hash $exp != current $curHash for section $oldName — re-read via get_section.");
+                            }
                             $marker = "<!-- {$oldName} -->\n";
                             if (preg_match('/^\s*<!--.*?-->/s', $html)) {
                                 $sectionCache[$lang][$sIdx]['text'] = $html;
@@ -1492,15 +1547,19 @@ class PageTools {
             $inTxn = false;
             $fresh = $model->getById($pageId);
             $freshRu = (string)($fresh['content_ru'] ?? '');
+            $verified = true;
+            foreach ($updateData as $fld => $expectedVal) {
+                if ((string)($fresh[$fld] ?? '') !== $expectedVal) { $verified = false; break; }
+            }
             return [
                 'ok'=>true,
-                'verified'=>true,
+                'verified'=>$verified,
                 'page_id'=>$pageId,
                 'results'=>$results,
                 'fresh_hash'=>substr(md5($freshRu),0,8),
                 'after_preview'=>mb_substr(trim(strip_tags($freshRu)),0,300),
                 'updated_fields'=>array_keys($updateData),
-                'note'=>'Batch applied atomically. ' . count($results) . ' operation(s) committed.',
+                'note'=>$verified ? 'Batch applied atomically and verified. ' . count($results) . ' operation(s) committed.' : 'Batch applied but verification failed — fresh read mismatch. Retry with fresh get_section/get_page.',
             ];
         } catch (Throwable $e) {
             if ($inTxn && $db->inTransaction()) {
@@ -1533,7 +1592,9 @@ class PageTools {
         }
         $model->update($pageId, ['custom_css' => $css]);
         $fresh = $model->getById($pageId);
-        return ['ok'=>true,'page_id'=>$pageId,'slug'=>$fresh['slug'],'custom_css'=> $fresh['custom_css'] ?? null,'mode'=>$mode,'chars'=> mb_strlen((string)($fresh['custom_css'] ?? ''))];
+        $freshVal = (string)($fresh['custom_css'] ?? '');
+        $expected = $css ?? '';
+        return ['ok'=>true,'verified'=> $freshVal === ($expected ?? ''),'fresh_hash'=>substr(md5($freshVal),0,8),'page_id'=>$pageId,'slug'=>$fresh['slug'],'custom_css'=> $fresh['custom_css'] ?? null,'mode'=>$mode,'chars'=> mb_strlen($freshVal)];
     }
 
     private static function setPageTheme(array $args): array {
@@ -1583,7 +1644,8 @@ class PageTools {
             $currentCss = sanitizeCssBlock($currentCss);
             $model->update($pageId, ['custom_css' => $currentCss !== '' ? $currentCss : null]);
             $fresh = $model->getById($pageId);
-            return ['ok'=>true,'page_id'=>$pageId,'slug'=>$slug,'cleared'=>true,'custom_css'=>$fresh['custom_css'] ?? null];
+            $freshVal = (string)($fresh['custom_css'] ?? '');
+            return ['ok'=>true,'verified'=> $freshVal === ($currentCss !== '' ? $currentCss : ''),'fresh_hash'=>substr(md5($freshVal),0,8),'page_id'=>$pageId,'slug'=>$slug,'cleared'=>true,'custom_css'=>$fresh['custom_css'] ?? null];
         }
         if (empty($chosen)) throw new InvalidArgumentException('No theme vars provided — pass preset or vars.');
         // Build theme block
@@ -1604,7 +1666,8 @@ class PageTools {
         $currentCss = sanitizeCssBlock($currentCss);
         $model->update($pageId, ['custom_css' => $currentCss]);
         $fresh = $model->getById($pageId);
-        return ['ok'=>true,'page_id'=>$pageId,'slug'=>$slug,'preset'=>$preset ?: 'custom','vars'=>$chosen,'custom_css'=>$fresh['custom_css'] ?? null];
+        $freshVal2 = (string)($fresh['custom_css'] ?? '');
+        return ['ok'=>true,'verified'=> $freshVal2 === $currentCss,'fresh_hash'=>substr(md5($freshVal2),0,8),'page_id'=>$pageId,'slug'=>$slug,'preset'=>$preset ?: 'custom','vars'=>$chosen,'custom_css'=>$fresh['custom_css'] ?? null];
     }
 
     private static function resolvePageIdForRevision(array $args): int {

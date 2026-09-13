@@ -943,8 +943,19 @@
             signal: signal,
         });
         if (!resp.ok) {
-            const text = await resp.text();
-            throw new Error('Request failed (' + resp.status + '): ' + text.slice(0, 500));
+            const bodyText = await resp.text().catch(()=> '');
+            if (resp.status === 409) {
+                try {
+                    const j = JSON.parse(bodyText);
+                    if (j && j.queued) {
+                        const err = new Error(j.message || 'Run queued');
+                        err.queued = true;
+                        err.queueInfo = j;
+                        throw err;
+                    }
+                } catch(e) { if (e.queued) throw e; }
+            }
+            throw new Error('Request failed (' + resp.status + '): ' + bodyText.slice(0, 500));
         }
         if (!resp.body || typeof resp.body.getReader !== 'function') {
             throw new Error('Streaming not supported by this browser (ReadableStream missing)');
@@ -1016,6 +1027,13 @@
     }
 
     els.stop.addEventListener('click', () => {
+        if (currentSessionId) {
+            try {
+                const fd = new FormData();
+                fd.append('csrf_token', cfg.csrf);
+                fetch(cfg.baseUrl + '/admin/ai-studio/cancel/' + encodeURIComponent(currentSessionId), { method: 'POST', body: fd });
+            } catch(e) {}
+        }
         if (abortCtrl) abortCtrl.abort();
     });
 
@@ -1131,6 +1149,10 @@
                             const lim = (cfg.maxTurns || 100);
                             addAgentBubble('⚠ Reached max tool turns (' + lim + ') — response truncated. Say "continue" to resume or use batch_update to combine edits.');
                             setStatus('Max turns (' + lim + ') — continue?', 'error');
+                        } else if (data.status === 'cancelled') {
+                            if (data.text) addAgentBubble(data.text);
+                            addAgentBubble('⏹ Run cancelled — partial history saved. Send a follow-up to continue.');
+                            setStatus('Cancelled', 'wait');
                         } else {
                             setStatus('Stopped', 'error');
                         }
@@ -1153,7 +1175,18 @@
             }
         } catch (err) {
             receivedDone = true; // prevent double message from the !receivedDone guard
-            if (err && err.name === 'AbortError') {
+            if (err && err.queued) {
+                hideTyping();
+                hideActivity();
+                const pos = err.queueInfo && err.queueInfo.position ? ' #' + err.queueInfo.position : '';
+                setStatus('Queued' + pos, 'wait');
+                addAgentBubble('⏳ ' + err.message + ' — your message is queued and will run after the active turn finishes. You can wait or send again after Done.');
+                // Keep history entry so queued message isn't lost — it will be re-sent automatically when current run ends via manual retry
+                try {
+                    const queuedMsg = history.pop();
+                    if (queuedMsg) history.push(queuedMsg);
+                } catch(e) {}
+            } else if (err && err.name === 'AbortError') {
                 hideTyping();
                 hideActivity();
                 // Only show Stopped if not already showing approval wait.

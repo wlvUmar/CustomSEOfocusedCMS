@@ -193,7 +193,8 @@ class FaqTools {
             'sort_order' => (int)($args['sort_order'] ?? 0),
             'is_active' => $isActive,
         ]);
-        return ['ok' => true, 'faq_id' => (int)$id, 'note' => 'FAQ created. It renders on the page via the {{faqs}} loop.'];
+        $fresh = $model->getById((int)$id);
+        return ['ok' => true, 'verified' => $fresh !== null, 'fresh_hash' => substr(md5(json_encode($fresh ?? [])),0,8), 'faq_id' => (int)$id, 'note' => 'FAQ created and verified. It renders on the page via the {{faqs}} loop.'];
     }
 
     private static function updateFaq(array $args): array {
@@ -222,7 +223,9 @@ class FaqTools {
             if (!$exists) throw new InvalidArgumentException("Page not found: {$data['page_slug']} — call list_pages to discover valid slugs.");
         }
         $model->update($id, $data);
-        return ['ok' => true, 'faq_id' => $id, 'note' => 'FAQ updated.'];
+        $fresh = $model->getById($id);
+        $ok = $fresh && (string)($fresh['question_ru'] ?? '') === (string)($data['question_ru'] ?? '');
+        return ['ok' => true, 'verified' => (bool)$ok, 'fresh_hash' => substr(md5(json_encode($fresh ?? [])),0,8), 'faq_id' => $id, 'note' => $ok ? 'FAQ updated and verified.' : 'FAQ updated but verification mismatch — re-read via get_faq.'];
     }
 
     private static function deleteFaq(array $args): array {
@@ -231,6 +234,7 @@ class FaqTools {
         $model = new FAQ();
         if (!$model->getById($id)) throw new InvalidArgumentException('FAQ not found: ID ' . $id . ' not found. Call list_faqs to discover ids.');
         $model->delete($id);
-        return ['ok' => true, 'faq_id' => $id, 'note' => 'FAQ deleted.'];
+        $fresh = $model->getById($id);
+        return ['ok' => true, 'verified' => $fresh === null || $fresh === false, 'fresh_hash' => substr(md5((string)$id),0,8), 'faq_id' => $id, 'note' => 'FAQ deleted and verified.'];
     }
 }

@@ -140,6 +140,8 @@ $router->post('/admin/requests/delete', function() { requireAdminController('Req
 // Admin AI Studio (agent loop over the admin via tools)
 $router->get('/admin/ai-studio', function() { requireAdminController('AiStudioController', 'index'); });
 $router->post('/admin/ai-studio/run', function() { requireAdminController('AiStudioController', 'run'); });
+$router->post('/admin/ai-studio/cancel/{id}', function($id) { requireAdminController('AiStudioController', 'cancel', $id); });
+$router->get('/admin/ai-studio/queue/{id}', function($id) { requireAdminController('AiStudioController', 'queueStatus', $id); });
 $router->get('/admin/ai-studio/models', function() { requireAdminController('AiStudioController', 'models'); });
 $router->get('/admin/ai-studio/sessions', function() { requireAdminController('AiStudioController', 'sessions'); });
 $router->get('/admin/ai-studio/session/{id}', function($id) { requireAdminController('AiStudioController', 'session', $id); });

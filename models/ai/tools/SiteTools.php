@@ -383,7 +383,8 @@ class SiteTools {
             . $footerHtml . "\n"
             . '</body>' . "\n"
             . '</html>';
-        if (mb_strlen($doc) > 200 * 1024) $doc = mb_substr($doc,0,200*1024);
-        return ['html'=>$doc,'chars'=>mb_strlen($doc),'lang'=>$lang,'hasRotation'=>$hasRotation,'page_id'=>$pageId,'slug'=>$pageSlug];
+        $truncated = false;
+        if (mb_strlen($doc) > 200 * 1024) { $doc = mb_substr($doc,0,200*1024); $truncated = true; }
+        return ['html'=>$doc,'chars'=>mb_strlen($doc),'lang'=>$lang,'hasRotation'=>$hasRotation,'page_id'=>$pageId,'slug'=>$pageSlug,'truncated'=>$truncated];
     }
 }

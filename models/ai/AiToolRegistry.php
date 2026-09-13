@@ -14,6 +14,7 @@ require_once BASE_PATH . '/models/ai/tools/SiteTools.php';
 require_once BASE_PATH . '/models/ai/tools/FaqTools.php';
 require_once BASE_PATH . '/models/ai/tools/GscTools.php';
 require_once BASE_PATH . '/models/ai/tools/MemoryTools.php';
+require_once BASE_PATH . '/models/ai/ToolEnvelope.php';
 
 class AiToolRegistry {
 
@@ -125,27 +126,24 @@ class AiToolRegistry {
     }
 
     /**
-     * Execute one tool call.
+     * Execute one tool call — strict envelope: every return includes status/code/retryable.
      *
      * @param string $name     Tool name
      * @param array  $args     Tool arguments
      * @param array  $approved List of approved call ids (from the client)
      * @return array One of:
-     *   ['type'=>'result',   'name'=>.., 'call_id'=>.., 'result'=>..]
-     *   ['type'=>'approval', 'name'=>.., 'call_id'=>.., 'plan'=>.., 'args'=>.., 'reason'=>..]
-     *   ['type'=>'error',    'name'=>.., 'call_id'=>.., 'message'=>..]
+     *   ['type'=>'result',   'name'=>.., 'call_id'=>.., 'result'=>.., 'status'=>.., 'code'=>.., 'retryable'=>..]
+     *   ['type'=>'approval', 'name'=>.., 'call_id'=>.., 'plan'=>.., 'args'=>.., 'reason'=>.., 'status'=>.., 'code'=>..]
+     *   ['type'=>'error',    'name'=>.., 'call_id'=>.., 'message'=>.., 'status'=>.., 'code'=>.., 'retryable'=>..]
      */
     public static function execute(string $name, array $args, array $approved = [], string $mode = 'build'): array {
         $callId = self::callId($name, $args);
         // PLAN mode enforcement: block any write tool server-side even if model hallucinates it.
         $mode = $mode === 'build' ? 'build' : 'plan';
         if ($mode === 'plan' && !self::isPlanAllowed($name)) {
-            return [
-                'type' => 'error',
-                'name' => $name,
-                'call_id' => $callId,
-                'message' => "Blocked in PLAN mode — switch to BUILD mode to run '{$name}'. PLAN mode is read-only (pages, FAQs, rotations, analytics, GSC, preview).",
-            ];
+            $msg = "Blocked in PLAN mode — switch to BUILD mode to run '{$name}'. PLAN mode is read-only (pages, FAQs, rotations, analytics, GSC, preview).";
+            $env = ToolEnvelope::normalizeError($name, $callId, $msg);
+            return ['type' => 'error', 'name' => $name, 'call_id' => $callId, 'message' => $msg, 'status' => $env['status'], 'code' => $env['error']['code'], 'retryable' => $env['error']['retryable']];
         }
 
         // Guarded tools require approval even in BUILD to prevent wholesale wipe (01-security #5). Owner-requested BUILD auto-execute retained for small edits.
@@ -190,15 +188,19 @@ class AiToolRegistry {
                 }
                 $plan = 'batch_update(' . count($args['operations']) . ' ops, ' . count($pendingOps) . ' need approval: ' . implode(', ', $planParts) . ')';
                 $reason = count($pendingOps) . ' large op(s) in batch require approval (>800 chars each). Approve all to execute atomically.';
+                $env = ToolEnvelope::normalizeApproval($name, $callId, $plan, $reason, ['call_ids'=>array_column($pendingOps,'call_id'),'pending_ops'=>$pendingOps]);
                 return [
                     'type' => 'approval',
                     'name' => $name,
-                    'call_id' => $callId, // top-level batch id (for dedup)
-                    'call_ids' => array_column($pendingOps, 'call_id'), // per-op ids for batch approval UX
+                    'call_id' => $callId,
+                    'call_ids' => array_column($pendingOps, 'call_id'),
                     'plan' => $plan,
                     'args' => $args,
                     'reason' => $reason,
                     'pending_ops' => $pendingOps,
+                    'status' => $env['status'],
+                    'code' => $env['code'],
+                    'retryable' => false,
                 ];
             }
             // All large ops approved (or no large ops) — fall through to dispatch
@@ -231,6 +233,7 @@ class AiToolRegistry {
                 array_keys($planArgs),
                 $planArgs
             )) . ')';
+            $env = ToolEnvelope::normalizeApproval($name, $callId, $plan, $guardReason);
             return [
                 'type' => 'approval',
                 'name' => $name,
@@ -238,6 +241,9 @@ class AiToolRegistry {
                 'plan' => $plan,
                 'args' => $args,
                 'reason' => $guardReason,
+                'status' => $env['status'],
+                'code' => $env['code'],
+                'retryable' => false,
             ];
         }
 
@@ -253,11 +259,15 @@ class AiToolRegistry {
                 }
             }
             if (!$dispatched) {
-                return ['type' => 'error', 'name' => $name, 'call_id' => $callId, 'message' => "Unknown tool: {$name}"];
+                $msg = "Unknown tool: {$name}";
+                $env = ToolEnvelope::normalizeError($name, $callId, $msg);
+                return ['type' => 'error', 'name' => $name, 'call_id' => $callId, 'message' => $msg, 'status' => $env['status'], 'code' => $env['error']['code'], 'retryable' => $env['error']['retryable']];
             }
-            return ['type' => 'result', 'name' => $name, 'call_id' => $callId, 'result' => $result];
+            $env = ToolEnvelope::normalizeResult($name, $callId, is_array($result) ? $result : ['result'=>$result]);
+            return ['type' => 'result', 'name' => $name, 'call_id' => $callId, 'result' => ToolEnvelope::toToolContent($env), 'status' => $env['status'], 'code' => $env['code'] ?? null, 'retryable' => $env['retryable']];
         } catch (\Throwable $e) {
-            return ['type' => 'error', 'name' => $name, 'call_id' => $callId, 'message' => $e->getMessage()];
+            $env = ToolEnvelope::normalizeError($name, $callId, $e->getMessage(), $e);
+            return ['type' => 'error', 'name' => $name, 'call_id' => $callId, 'message' => $env['error']['message'], 'status' => $env['status'], 'code' => $env['error']['code'], 'retryable' => $env['error']['retryable']];
         }
     }
 }
