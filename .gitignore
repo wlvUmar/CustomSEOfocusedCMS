@@ -33,6 +33,9 @@ desktop.ini
 *.bak
 *.cache
 *.env
+nul
+/public/css/components.css
+/public/css/components.min.css
 # Project folders to ignore
 /beta
 EXTERNAL_SETUP_GUIDE.md
