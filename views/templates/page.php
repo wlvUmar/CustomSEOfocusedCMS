@@ -11,7 +11,6 @@ $applianceNameForSEO = $applianceName ?? '';
     <?php
     // ─── HERO ────────────────────────────────────────────────────────────────
     $pageTitle = $page["title_$lang"] ?? $page['title_ru'] ?? $page['slug'] ?? '';
-    $GLOBALS['currentPageTitle'] = $pageTitle;
     require_once BASE_PATH . '/models/PageMedia.php';
     $pageMediaModel = new PageMedia();
     $heroMedia = $pageMediaModel->getPageMedia($page['id'], 'hero');

@@ -1801,8 +1801,6 @@ function renderHeroSection($mediaItems, $lang) {
     
     $media = $mediaItems[0]; // Only use first image
     $alt = $media["alt_text_$lang"] ?? $media['original_name'];
-    $caption = $media["caption_$lang"] ?? '';
-    $heroTitle = $GLOBALS['currentPageTitle'] ?? '';
     $filename = $media['filename'] ?? '';
     $imagePath = '/uploads/' . htmlspecialchars($filename);
     $imageSources = $filename ? buildResponsiveImageSources($filename, getResponsiveImageWidths()) : null;
@@ -1830,18 +1828,7 @@ function renderHeroSection($mediaItems, $lang) {
     if ($imageSources) {
         $html .= '</picture>';
     }
-    
-    if ($heroTitle || $caption) {
-        $html .= '<div class="hero-content">';
-        if ($heroTitle) {
-            $html .= '<h1 class="hero-title">' . htmlspecialchars($heroTitle) . '</h1>';
-        }
-        if ($caption) {
-            $html .= '<div class="hero-caption">' . htmlspecialchars($caption) . '</div>';
-        }
-        $html .= '</div>';
-    }
-    
+
     $html .= '</div>';
     return $html;
 }
