@@ -28,6 +28,7 @@
   var lastAutoDemo = '';
   var activeMods = {};
   var bg = 'light';
+  var debugLayout = false;
   var draftKey = 'cmp-draft-' + slug;
 
   function mkEditor(el, opts){
@@ -192,7 +193,7 @@
     fetch(window.baseUrl + '/admin/components/preview', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'X-CSRF-TOKEN': window.csrfToken || '' },
-      body: JSON.stringify({ slug: slug, css_body: css, html_demo: rawHtml.trim() === '' ? '' : wrapDemo(rawHtml), mods: mods, bg: bg })
+      body: JSON.stringify({ slug: slug, css_body: css, html_demo: rawHtml.trim() === '' ? '' : wrapDemo(rawHtml), mods: mods, bg: bg, debug: debugLayout })
     }).then(function(r){ return r.json(); }).then(function(j){
       if (!j.success) { if (statusEl) statusEl.textContent = j.message || 'error'; return; }
       lastDoc = j.html; lastDemo = j.demo || ''; lastAutoDemo = j.auto ? (j.demo || '') : lastAutoDemo;
@@ -252,6 +253,13 @@
     if (!lastDoc) { render(); return; }
     var blob = new Blob([lastDoc], { type:'text/html' });
     window.open(URL.createObjectURL(blob), '_blank');
+  });
+  var debugBtn = document.getElementById('preview-debug');
+  if (debugBtn) debugBtn.addEventListener('click', function(){
+    debugLayout = !debugLayout;
+    debugBtn.classList.toggle('is-active', debugLayout);
+    debugBtn.setAttribute('aria-pressed', debugLayout ? 'true' : 'false');
+    render();
   });
   var copyPrevBtn = document.getElementById('preview-copy');
   if (copyPrevBtn) copyPrevBtn.addEventListener('click', function(){

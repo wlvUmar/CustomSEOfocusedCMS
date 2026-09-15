@@ -165,7 +165,7 @@ class ComponentsController extends Controller {
         }
     }
 
-    /** JSON preview: POST { slug, css_body, html_demo, mods[], bg } → { html, chars, auto } */
+    /** JSON preview: POST { slug, css_body, html_demo, mods[], bg, debug } → { html, chars, auto } */
     public function preview() {
         $this->requireAuth();
         $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '';
@@ -194,6 +194,14 @@ class ComponentsController extends Controller {
             $mods = array_values(array_unique($mods));
         }
         $bg = (($data['bg'] ?? 'light') === 'dark') ? 'dark' : 'light';
+        $debug = !empty($data['debug']);
+        $debugHead = '';
+        if ($debug && $slug !== '' && $slug !== 'c-demo') {
+            $slugJson = json_encode($slug, JSON_HEX_TAG | JSON_HEX_AMP);
+            $debugHead = <<<HTML
+<script>window.__pgDebugSlug={$slugJson};(function(){function px(v){var n=parseFloat(v);return isNaN(n)?0:n}function draw(){var old=document.querySelector('.pg-dbg-overlay');if(old)old.remove();var slug=window.__pgDebugSlug;if(!slug)return;var roots=[];Array.prototype.forEach.call(document.querySelectorAll('body *'),function(el){if(el.classList&&el.classList.contains(slug)&&roots.indexOf(el)<0)roots.push(el)});if(!roots.length)return;var ov=document.createElement('div');ov.className='pg-dbg-overlay';ov.setAttribute('style','position:fixed;inset:0;z-index:99999;pointer-events:none;');roots.forEach(function(el){var r=el.getBoundingClientRect();var cs=window.getComputedStyle(el);var pt=px(cs.paddingTop),pr=px(cs.paddingRight),pb=px(cs.paddingBottom),pl=px(cs.paddingLeft);var bt=px(cs.borderTopWidth),br=px(cs.borderRightWidth),bb=px(cs.borderBottomWidth),bl=px(cs.borderLeftWidth);function box(x,y,w,h,st){if(w<=0||h<=0)return;var d=document.createElement('div');d.setAttribute('style','position:absolute;left:'+x+'px;top:'+y+'px;width:'+w+'px;height:'+h+'px;box-sizing:border-box;'+st);ov.appendChild(d)}box(r.left,r.top,r.width,r.height,'border:2px solid #0ea5e9;');var pad='background:rgba(249,115,22,.30);';box(r.left+bl,r.top+bt,r.width-bl-br,pt,pad);box(r.left+bl,r.top+r.height-bb-pb,r.width-bl-br,pb,pad);box(r.left+bl,r.top+bt+pt,pl,r.height-bt-bb-pt-pb,pad);box(r.left+r.width-br-pr,r.top+bt+pt,pr,r.height-bt-bb-pt-pb,pad);box(r.left+bl+pl,r.top+bt+pt,r.width-bl-br-pl-pr,r.height-bt-bb-pt-pb,'border:1px dashed #6366f1;');var label=document.createElement('div');label.setAttribute('style','position:absolute;left:'+Math.max(2,r.left)+'px;top:'+Math.max(2,r.top-26)+'px;background:#0f172a;color:#fff;font:11px/1.4 monospace;padding:2px 8px;border-radius:6px;white-space:nowrap;');label.textContent='.'+slug+'  '+Math.round(r.width)+'x'+Math.round(r.height)+'  pad '+pt+' '+pr+' '+pb+' '+pl;ov.appendChild(label)});document.documentElement.appendChild(ov)}var t=null;function sched(){clearTimeout(t);t=setTimeout(draw,60)}window.addEventListener('resize',sched);window.addEventListener('scroll',sched,true);window.addEventListener('load',sched);setTimeout(draw,50);setTimeout(draw,800);})();</script>
+HTML;
+        }
         $isAuto = false;
         $check = trim($rawHtmlDemo);
         if (preg_match('/^\s*<div class="c-section">\s*<\/div>\s*$/s', $check)) $check = '';
@@ -224,7 +232,7 @@ class ComponentsController extends Controller {
             . '<link rel="stylesheet" href="' . $baseUrl . '/css/pages.css">'
             . '<link rel="stylesheet" href="' . $baseUrl . '/css/components.min.css">'
             . '<style>html,body{background:' . $bodyBg . '}*{opacity:1!important;transform:none!important;transition:none!important;animation:none!important}</style>'
-            . $liveCss . '</head><body style="background:' . $bodyBg . '"><div class="content-body" style="padding:16px">' . $demo . '</div></body></html>';
+            . $liveCss . $debugHead . '</head><body style="background:' . $bodyBg . '"><div class="content-body" style="padding:16px">' . $demo . '</div></body></html>';
         $this->json(['success'=>true,'html'=>$doc,'chars'=>mb_strlen($doc),'slug'=>$slug,'auto'=>$isAuto,'demo'=>$htmlDemo]);
     }
 

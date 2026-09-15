@@ -37,6 +37,7 @@ $cat = $row['category'] ?? 'utilities';
         <span class="pg-spacer"></span>
         <button type="button" id="preview-open" class="btn btn-sm" title="Open preview in new tab">Open <i data-feather="external-link"></i></button>
         <button type="button" id="preview-copy" class="btn btn-sm" title="Copy demo HTML">Copy HTML</button>
+        <button type="button" id="preview-debug" class="btn btn-sm" aria-pressed="false" title="Highlight container box + padding">Layout</button>
     </div>
     <div class="preview-presets">
         <button type="button" class="btn btn-sm is-active" data-w="fluid">Fluid</button>
@@ -61,7 +62,7 @@ $cat = $row['category'] ?? 'utilities';
             <iframe id="preview-frame" sandbox="allow-scripts" title="Component preview"></iframe>
         </div>
     </div>
-    <div class="preview-hint muted small">Preview is live &amp; unsaved — <strong>Save &amp; Rebuild</strong> writes to <code>components.css</code> (.bak kept). Empty HTML shows an auto skeleton from CSS selectors. <kbd>Ctrl</kbd>+<kbd>S</kbd> saves, <kbd>Ctrl</kbd>+<kbd>Space</kbd> autocompletes.</div>
+    <div class="preview-hint muted small">Preview is live &amp; unsaved — <strong>Save &amp; Rebuild</strong> writes to <code>components.css</code> (.bak kept). Empty HTML shows an auto skeleton from CSS selectors. <strong>Layout</strong> highlights the container box + padding. <kbd>Ctrl</kbd>+<kbd>S</kbd> saves, <kbd>Ctrl</kbd>+<kbd>Space</kbd> autocompletes.</div>
 </section>
 
 <form method="POST" action="<?= BASE_URL ?>/admin/components/save" id="component-form" class="admin-form pg-form">

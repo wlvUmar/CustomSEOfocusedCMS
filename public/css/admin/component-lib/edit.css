@@ -10,6 +10,7 @@
 .pg-draft-actions{display:flex;gap:8px}
 .preview-panel{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px}
 .preview-toolbar{display:flex;gap:8px;align-items:center;padding:10px 12px;background:#fff;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.preview-toolbar .btn.is-active{background:var(--primary-dark);color:#fff;border-color:var(--primary-dark)}
 .pg-spacer{flex:1}
 .preview-presets{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 12px;background:#f9fafb;border-bottom:1px solid var(--border)}
 .preview-presets .btn.is-active{background:var(--primary-dark);color:#fff;border-color:var(--primary-dark)}
