@@ -4,7 +4,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 <div class="page-header">
     <div>
         <h1>Components</h1>
-        <p class="subtitle">DB-canonical library — file is generated. <?= $total ?> blocks across <?= count($categories) ?> categories.</p>
+        <p class="subtitle">Pick a block → playground (live preview + HTML/CSS side-by-side) → Save &amp; Rebuild. <?= $total ?> blocks across <?= count($categories) ?> categories.</p>
     </div>
     <div class="btn-group">
         <form method="POST" action="<?= BASE_URL ?>/admin/components/rebuild" class="inline-form" onsubmit="return confirm('Regenerate components.css from DB?');">
@@ -62,7 +62,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <td class="col-tokens"><?php if ($tokens): foreach (array_slice($tokens,0,4) as $t): ?><span class="token-chip"><?= e($t) ?></span><?php endforeach; if (count($tokens)>4): ?><span class="muted">+<?= count($tokens)-4 ?></span><?php endif; else: ?><span class="muted">—</span><?php endif; ?></td>
             <td class="muted small"><?= e(substr($r['updated_at'] ?? '',0,16)) ?></td>
             <td class="text-center">
-                <a href="<?= BASE_URL ?>/admin/components/edit/<?= e($r['slug']) ?>" class="btn btn-sm btn-primary" title="Edit"><i data-feather="edit"></i> Edit</a>
+                <a href="<?= BASE_URL ?>/admin/components/edit/<?= e($r['slug']) ?>" class="btn btn-sm btn-primary" title="Open playground"><i data-feather="edit"></i> Playground</a>
             </td>
         </tr>
         <?php endforeach; endif; ?>

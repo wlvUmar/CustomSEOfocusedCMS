@@ -191,8 +191,10 @@ $router->group('/admin/seo', function($router) {
 $router->group('/admin/components', function($router) {
     $router->get('/', function() { requireComponents('index'); });
     $router->get('/edit/{slug}', function($slug) { requireComponents('edit', $slug); });
+    $router->get('/revision', function() { requireComponents('revision'); });
     $router->post('/save', function() { requireComponents('save'); });
     $router->post('/preview', function() { requireComponents('preview'); });
+    $router->post('/restore', function() { requireComponents('restore'); });
     $router->post('/rebuild', function() { requireComponents('rebuild'); });
 });
 

@@ -136,7 +136,36 @@ class ComponentsController extends Controller {
         }
     }
 
-    /** JSON preview: POST { slug, css_body, html_demo } → { html, chars, auto } */
+    public function revision() {
+        $this->requireAuth();
+        $id = (int)($_GET['id'] ?? 0);
+        if (!$id) { $this->json(['success'=>false,'message'=>'Missing id'], 400); return; }
+        $revModel = new ComponentRevision();
+        $rev = $revModel->getById($id);
+        if (!$rev) { $this->json(['success'=>false,'message'=>'Revision not found'], 404); return; }
+        $snap = json_decode((string)($rev['snapshot'] ?? ''), true);
+        if (!is_array($snap)) { $this->json(['success'=>false,'message'=>'Snapshot corrupt'], 500); return; }
+        $this->json(['success'=>true,'css_body'=>(string)($snap['css_body'] ?? ''),'html_demo'=>(string)($snap['html_demo'] ?? ''),'slug'=>(string)($snap['slug'] ?? '')]);
+    }
+
+    public function restore() {
+        $this->requireAuth();
+        $this->requireCsrf();
+        $id = (int)($_POST['revision_id'] ?? 0);
+        if (!$id) { $_SESSION['error'] = 'Missing revision id'; $this->redirect('/admin/components'); return; }
+        try {
+            $revModel = new ComponentRevision();
+            $fresh = $revModel->restore($id);
+            try { Component::rebuildCss(); } catch (Throwable $e) {}
+            $_SESSION['success'] = 'Restored revision ' . $id . ' (' . ($fresh['slug'] ?? '') . ')';
+            $this->redirect('/admin/components/edit/' . urlencode($fresh['slug'] ?? ''));
+        } catch (Throwable $e) {
+            $_SESSION['error'] = 'Restore failed: ' . $e->getMessage();
+            $this->redirect('/admin/components');
+        }
+    }
+
+    /** JSON preview: POST { slug, css_body, html_demo, mods[], bg } → { html, chars, auto } */
     public function preview() {
         $this->requireAuth();
         $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '';
@@ -156,6 +185,15 @@ class ComponentsController extends Controller {
         if (mb_strlen($rawHtmlDemo) > 200 * 1024) {
             $this->json(['success'=>false,'message'=>'html_demo too large (max 200KB)'], 400); return;
         }
+        $mods = [];
+        if (!empty($data['mods']) && is_array($data['mods'])) {
+            foreach (array_slice($data['mods'], 0, 8) as $mod) {
+                $mod = strtolower(trim((string)$mod));
+                if (preg_match('/^[a-z0-9\-]+$/', $mod)) $mods[] = $mod;
+            }
+            $mods = array_values(array_unique($mods));
+        }
+        $bg = (($data['bg'] ?? 'light') === 'dark') ? 'dark' : 'light';
         $isAuto = false;
         $check = trim($rawHtmlDemo);
         if (preg_match('/^\s*<div class="c-section">\s*<\/div>\s*$/s', $check)) $check = '';
@@ -172,23 +210,33 @@ class ComponentsController extends Controller {
                     }
                 } catch (Throwable $e) {}
             }
-            $htmlDemo = $this->autoDemoHtml($slug ?: 'c-demo', $genCss, $rowCat);
+            $htmlDemo = $this->autoDemoHtml($slug ?: 'c-demo', $genCss, $rowCat, $mods);
             $isAuto = true;
         } else {
             $htmlDemo = $this->sanitizeHtmlFragment($rawHtmlDemo);
+            $htmlDemo = $this->applyModsToHtml($htmlDemo, $slug, $mods);
         }
         $baseUrl = defined('BASE_URL') ? BASE_URL : '';
         $liveCss = $cssBody !== '' ? '<style id="preview-override">' . $cssBody . '</style>' : '';
         $demo = $htmlDemo;
+        $bodyBg = $bg === 'dark' ? '#0f1117' : 'var(--surface)';
         $doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             . '<link rel="stylesheet" href="' . $baseUrl . '/css/pages.css">'
             . '<link rel="stylesheet" href="' . $baseUrl . '/css/components.min.css">'
-            . '<style>html,body{background:var(--surface)}*{opacity:1!important;transform:none!important;transition:none!important;animation:none!important}</style>'
-            . $liveCss . '</head><body><div class="content-body" style="padding:16px">' . $demo . '</div></body></html>';
+            . '<style>html,body{background:' . $bodyBg . '}*{opacity:1!important;transform:none!important;transition:none!important;animation:none!important}</style>'
+            . $liveCss . '</head><body style="background:' . $bodyBg . '"><div class="content-body" style="padding:16px">' . $demo . '</div></body></html>';
         $this->json(['success'=>true,'html'=>$doc,'chars'=>mb_strlen($doc),'slug'=>$slug,'auto'=>$isAuto,'demo'=>$htmlDemo]);
     }
 
-    private function autoDemoHtml(string $slug, string $cssBody, string $category): string {
+    private function applyModsToHtml(string $html, string $slug, array $mods): string {
+        if (!$mods || $slug === '') return $html;
+        $extra = '';
+        foreach ($mods as $mod) $extra .= ' ' . $slug . '--' . $mod;
+        $q = preg_quote($slug, '/');
+        return (string)preg_replace('/class="' . $q . '(?=["\s])/', 'class="' . $slug . $extra, $html, 1);
+    }
+
+    private function autoDemoHtml(string $slug, string $cssBody, string $category, array $mods = []): string {
         $slug = Component::sanitizeSlug($slug) ?: 'c-demo';
         if ($slug === 'c-shared') {
             return '<div class="c-section"><p class="c-kicker">Preview — c-shared</p><h2 class="c-title">Shared helpers</h2><p class="c-lead" style="color:var(--muted)">Base section + kicker + title + lead. Uses tokens from pages.css. Edit HTML demo to customize.</p><p style="display:flex;gap:8px;flex-wrap:wrap"><a class="c-btn" href="#">Primary</a> <a class="c-btn c-btn--ghost" href="#">Ghost</a></p><hr class="c-divider" /><p class="c-muted" style="font-size:13px">Tokens: var(--teal), var(--orange), var(--ink), var(--muted), var(--surface), var(--border)</p></div>';
@@ -205,11 +253,13 @@ class ComponentsController extends Controller {
                 }
             }
         }
-        $mods = [];
+        $detected = [];
         if ($cssBody !== '' && preg_match_all('/\.' . preg_quote($slug, '/') . '--([a-z0-9\-]+)/', $cssBody, $mm)) {
-            $mods = array_values(array_unique(array_map('strtolower', $mm[1])));
+            $detected = array_values(array_unique(array_map('strtolower', $mm[1])));
         }
-        $rootClass = $slug . ($mods ? ' ' . $slug . '--' . $mods[0] : '');
+        $active = $mods ?: array_slice($detected, 0, 1);
+        $rootClass = $slug;
+        foreach ($active as $am) $rootClass .= ' ' . $slug . '--' . $am;
         if ($parts) {
             $inner = '';
             foreach ($parts as $part) {
