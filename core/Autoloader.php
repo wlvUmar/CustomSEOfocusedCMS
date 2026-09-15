@@ -5,7 +5,7 @@
 class Autoloader {
     private static array $map = [
         'PageSectionsHelper' => 'models/ai/tools/PageSectionsHelper.php',
-        'PromptDoctrine'     => 'models/ai/PromptDoctrine.php',
+        'PromptLoader'       => 'models/ai/PromptLoader.php',
         // Add more as god object splits: 'PageReadTools' => '...', etc.
     ];
 

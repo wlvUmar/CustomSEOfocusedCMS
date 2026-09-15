@@ -3,6 +3,8 @@
 // Constructs model context: system + summary + window + pending + user.
 // Summarizes evicted turns via the same Opencode provider (low-cost).
 
+require_once BASE_PATH . '/models/ai/PromptLoader.php';
+
 class ContextBuilder {
 
     public static function buildMessages(string $systemPrompt, ?string $summary, array $historyWindow, array $pending, string $userMessage, bool $alreadyInHistory): array {
@@ -34,12 +36,20 @@ class ContextBuilder {
             $evictedText .= strtoupper($role) . ": " . $content . "\n";
         }
 
-        $prompt = "Summarize these evicted conversation turns into a compact summary (max 600 chars). Keep: user goals, pages/slugs touched, sections edited, hashes, pending approvals, last verification results, open todos. Exclude verbatim HTML. Previous summary:\n" . mb_substr((string)$prevSummary, 0, 1000) . "\n\nEvicted turns:\n" . $evictedText;
+        try {
+            $prompt = PromptLoader::render('summarizer-user', [
+                'prev_summary' => mb_substr((string)$prevSummary, 0, 1000),
+                'evicted_turns' => $evictedText,
+            ]);
+            $summarizerSystem = PromptLoader::load('summarizer-system');
+        } catch (Throwable $e) {
+            return null;
+        }
 
         try {
             require_once BASE_PATH . '/models/Opencode.php';
             $resp = Opencode::chatWithTools(
-                [['role'=>'system','content'=>'You are a conversation summarizer. Output only the summary, no preamble.'], ['role'=>'user','content'=>$prompt]],
+                [['role'=>'system','content'=>$summarizerSystem], ['role'=>'user','content'=>$prompt]],
                 Opencode::DEFAULT_MODEL,
                 [],
                 0.0,

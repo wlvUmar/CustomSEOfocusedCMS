@@ -4,6 +4,7 @@
 require_once BASE_PATH . '/models/Page.php';
 require_once BASE_PATH . '/models/IndexNow.php';
 require_once BASE_PATH . '/models/ContentRotation.php';
+require_once BASE_PATH . '/models/ai/PromptLoader.php';
 class PageAdminController extends Controller {
     private $pageModel;
     private $rotationModel;
@@ -170,33 +171,24 @@ class PageAdminController extends Controller {
             'meta_description_uz' => 'meta description (UZ / Uzbek)',
         ];
 
+        try {
+            $systemContent = PromptLoader::render('page-editor-generate', [
+                'field_label' => $fieldLabels[$field],
+                'site_name' => $siteName,
+                'lang_name' => $isRu ? 'Russian' : 'Uzbek',
+                'mode_edits' => $mode === 'edits',
+                'mode_full' => $mode !== 'edits',
+                'is_html' => $isHtml,
+                'is_short' => !$isHtml,
+            ]);
+        } catch (Throwable $e) {
+            $this->json(['success' => false, 'message' => 'AI prompt file missing: ' . $e->getMessage()], 500);
+            return;
+        }
+
         $system = [
             'role' => 'system',
-            'content' => 'You are a Staff-level HTML/CSS & Technical SEO specialist (15+ years, judged on W3C-valid semantic HTML5, Lighthouse 95+, WCAG 2.2 AA, CLS<0.1) for appliance buyback service in Tashkent, bilingual RU/UZ. '
-                . "You are editing the {$fieldLabels[$field]} of the page titled \"{$siteName}\".\n"
-                . ($mode === 'edits'
-                    ? "The user wants you to make TARGETED changes. Inspect the current value and decide which "
-                        . "small pieces need to change. Respond with ONLY a JSON object of this exact shape, no "
-                        . "explanations, no markdown fences:\n"
-                        . "{\"edits\":[{\"find\":\"<exact existing text to locate>\",\"replace\":\"<new text>\"}]}\n"
-                        . "- The 'find' text MUST appear verbatim in the current value; copy it exactly, character for character "
-                        . "(it is searched literally, so quote it precisely including punctuation and HTML tags).\n"
-                        . "- Each 'find' must be unique in the value (occur exactly once); if it appears several times, "
-                        . "include surrounding context to make it unique.\n"
-                        . "- For deletion, use \"replace\":\"\".\n"
-                        . "- Only include edits you actually intend to make; nothing else is touched.\n"
-                    : "- Respond with ONLY the final value for the field. No explanations, no markdown fences, no preamble.\n")
-                . 'Rules:' . "\n"
-                . '- Keep the language exactly as specified for this field (' . ($isRu ? 'Russian' : 'Uzbek') . ').' . "\n"
-                . '- Preserve all template variables exactly as-is: {{page.title}}, {{global.phone}}, {{global.email}}, '
-                . '{{global.address}}, {{global.working_hours}}, {{global.site_name}}, {{date.year}}, {{date.month}}, '
-                . 'and any other {{...}} placeholder. Never invent new variables.' . "\n"
-                . ($isHtml
-                    ? "- The current value is HTML. Preserve existing structure, CSS classes "
-                        . "(content-section, info-card, process-step, faq-item, links-tile, btn, btn-primary) and "
-                        . "inline styles unless explicitly asked to change. Use semantic tags, landmarks, heading hierarchy (h1→h2→h3 no skips), alt quality; prefer tokens var(--teal)/var(--teal-dark)/var(--orange) via get_design_tokens — custom hex only on explicit request + note debt; ensure WCAG 4.5:1 contrast; set loading=\"lazy\" + decoding=\"async\" and fetchpriority=\"high\" for hero, width/height to avoid CLS.\n"
-                    : "- For short fields respect pixel width ~580px (not just 60-70 chars); meta descriptions ~150-160 chars. Never author new meta keywords (deprecated). Consider CTR A/B: \" | Brand\" vs \" - \" testing.\n")
-                . '- If prompt is vague: (1) intent-match first 2 sentences, (2) craft 40-60 word answer block for featured snippet, (3) suggest 1-2 natural internal links, (4) never keyword-stuff.',
+            'content' => $systemContent,
         ];
 
         $user = [
@@ -314,39 +306,23 @@ class PageAdminController extends Controller {
         }
         $totalSections = $sections !== null ? count($sections) : 0;
 
+        try {
+            $systemContent = PromptLoader::render('page-editor-chat', [
+                'field_label' => $fieldLabels[$field],
+                'site_name' => $siteName,
+                'lang_name' => $isRu ? 'Russian' : 'Uzbek',
+                'is_html' => $isHtml,
+                'is_short' => !$isHtml,
+                'scoped' => $scopedSections !== null,
+            ]);
+        } catch (Throwable $e) {
+            $this->json(['success' => false, 'message' => 'AI prompt file missing: ' . $e->getMessage()], 500);
+            return;
+        }
+
         $system = [
             'role' => 'system',
-            'content' => "You are a Staff-level HTML/CSS & Technical SEO specialist (15+ years, W3C/Lighthouse/WCAG) for appliance buyback service in Tashkent, bilingual RU/UZ. "
-                . "You are editing the {$fieldLabels[$field]} of the page titled \"{$siteName}\".\n"
-                . "You work with the CURRENT value of the field, which may already contain changes from "
-                . "previous turns of this session.\n"
-                . "Rules:\n"
-                . "- Read the current value and the user request, then decide which small pieces must change.\n"
-                . "- Respond with ONLY a JSON object of this exact shape, no explanations, no markdown fences:\n"
-                . "{\"edits\":[{\"find\":\"<exact existing text>\",\"replace\":\"<new text>\",\"explanation\":\"<one short sentence>\"}]}\n"
-                . "- The \"find\" text MUST appear verbatim in the current value; copy it exactly, character for "
-                . "character, including punctuation and HTML tags. It is searched literally.\n"
-                . "- Each \"find\" must occur exactly once in the value; if it appears several times, include "
-                . "surrounding context to make it unique.\n"
-                . "- For deletion, use \"replace\": \"\".\n"
-                . "- Touch ONLY what the user asked for; leave everything else untouched. Do not rewrite "
-                . "unrelated lines and do not return the whole value.\n"
-                . "- Keep the language as specified for this field (" . ($isRu ? 'Russian' : 'Uzbek') . "). Check RU↔UZ semantic parity — keep language exactly as specified, never mix.\n"
-                . "- Preserve all template variables exactly as-is: {{page.title}}, {{global.phone}}, "
-                . "{{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}, "
-                . "{{date.year}}, {{date.month}} and any other {{...}} placeholder. Never invent new variables.\n"
-                . ($isHtml
-                    ? "- The value is HTML. Preserve existing structure, CSS classes "
-                        . "(content-section, info-card, process-step, faq-item, links-tile, btn, btn-primary) "
-                        . "and inline styles unless explicitly asked to change. Use semantic tags, landmarks, heading hierarchy (h1→h2→h3), alt quality; prefer tokens var(--teal) — custom hex only on explicit request; ensure WCAG 4.5:1 contrast; set loading/fetchpriority as needed.\n"
-                    : "- For short fields respect pixel width ~580px (not just 60-70 chars); meta descriptions ~150-160 chars. Never author new meta keywords; consider CTR A/B \" | Brand\" vs \" - \".\n")
-                . "- If prompt is vague: (1) intent-match first 2 sentences, (2) 40-60 word answer block for featured snippet, (3) suggest 1-2 natural internal links, (4) never keyword-stuff.\n"
-                . ($scopedSections !== null
-                    ? "- To save tokens you are only shown the section(s) of the field that look relevant to the "
-                        . "request, not the whole value. If the exact text you need to change is NOT visible in "
-                        . "what you were shown, respond with ONLY {\"edits\":[],\"need_more_context\":true} and "
-                        . "nothing else — you will then be shown the full field.\n"
-                    : ""),
+            'content' => $systemContent,
         ];
 
         $historyMessages = $this->buildHistoryMessages($history);

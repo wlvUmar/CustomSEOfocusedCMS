@@ -13,6 +13,8 @@ deployment:
     - /bin/cp -R /home/kuplyuta/appliances/controllers/. $DEPLOYPATH/controllers >> /home/kuplyuta/deploy.log 2>&1 || true
     - /bin/cp -R /home/kuplyuta/appliances/core/. $DEPLOYPATH/core >> /home/kuplyuta/deploy.log 2>&1 || true
     - /bin/cp -R /home/kuplyuta/appliances/models/. $DEPLOYPATH/models >> /home/kuplyuta/deploy.log 2>&1 || true
+    - mkdir -p $DEPLOYPATH/prompts >> /home/kuplyuta/deploy.log 2>&1 || true
+    - /bin/cp -R /home/kuplyuta/appliances/prompts/. $DEPLOYPATH/prompts >> /home/kuplyuta/deploy.log 2>&1 || true
     - /bin/cp -R /home/kuplyuta/appliances/views/. $DEPLOYPATH/views >> /home/kuplyuta/deploy.log 2>&1 || true
     - /bin/cp /home/kuplyuta/appliances/.htaccess $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1 || true
     - if [ -d /home/kuplyuta/appliances/scripts ]; then /bin/cp -R /home/kuplyuta/appliances/scripts/. $DEPLOYPATH/scripts >> /home/kuplyuta/deploy.log 2>&1 || true; fi

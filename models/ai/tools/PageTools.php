@@ -218,7 +218,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'update_section',
-                    'description' => 'Replace an ENTIRE section\'s HTML (marker preserved). Prefer classes + var(--teal) over inline style="" — avoid style="" unless explicitly asked. HTML >800 chars requires approval — keep small or use patch_section. Always follow with render_preview; then render_full_page once.',
+                    'description' => 'Replace an ENTIRE section\'s HTML (marker preserved). Prefer classes + var(--teal) over inline style="" — avoid style="" unless explicitly asked. HTML >800 chars requires approval — keep small or use patch_section. Use GSC terms naturally once; no keyword stuffing. Always follow with render_preview; then render_full_page once.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -237,7 +237,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'patch_section',
-                    'description' => 'Precise find-and-replace scoped to ONE section. Find must occur exactly once; copy from get_section. Replacement >800 chars requires approval. Prefer classes over inline style="". Use for small edits; update_section for full rewrites.',
+                    'description' => 'Precise find-and-replace scoped to ONE section. Find must occur exactly once; copy from get_section. Replacement >800 chars requires approval. Prefer classes over inline style="". Use GSC terms naturally once; no keyword stuffing. Use for small edits; update_section for full rewrites.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -369,7 +369,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'batch_update',
-                    'description' => 'Apply up to 10 targeted edits to one page atomically in one turn (saves turns). Each op is patch_section/str_replace_field/set_field/update_section/set_section_style/wrap_section/add_section_marker. Each op with replace/html/value >800 chars individually requires approval before batch executes — keep ops small. Use set_field when target field is empty (str_replace_field requires non-empty find). Prefer over sequential calls.',
+                    'description' => 'Apply up to 10 targeted edits to one page atomically in one turn (saves turns). Each op is patch_section/str_replace_field/set_field/update_section/set_section_style/wrap_section/add_section_marker. Each op with replace/html/value >800 chars individually requires approval before batch executes — keep ops small. Use set_field when target field is empty (str_replace_field requires non-empty find). Use GSC terms naturally once; no keyword stuffing. Prefer over sequential calls.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [

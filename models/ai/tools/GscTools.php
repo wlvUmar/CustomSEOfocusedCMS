@@ -44,7 +44,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_gsc_queries',
-                    'description' => 'Top search queries across the whole site. Find which keywords drive the most impressions/clicks, or which have high impressions but low CTR. Cached 2-3 day lag — call once per request and reuse.',
+                    'description' => 'Top search queries across the whole site. Find which keywords drive the most impressions/clicks, or which have high impressions but low CTR. Cached 2-3 day lag — call once per request and reuse. Queries are intent signals: use naturally once, no stuffing.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -75,7 +75,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'search_gsc_queries',
-                    'description' => 'Search GSC queries by keyword substring. Find all queries containing a term (e.g. "noutbuk", "tashkent") and see which pages they drive traffic to. Cached 2-3 day lag — call once per request and reuse.',
+                    'description' => 'Search GSC queries by keyword substring. Find all queries containing a term (e.g. "noutbuk", "tashkent") and see which pages they drive traffic to. Cached 2-3 day lag — call once per request and reuse. Queries are intent signals: use naturally once, no stuffing.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -91,7 +91,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'query_gsc',
-                    'description' => 'Flexible GSC Search Analytics query. Build any combination of dimensions (query, page, country, device, searchAppearance, date), filters, and ordering. Cached 2-3 day lag, not live after edits — call once per request and reuse. Returns {keys, impressions, clicks, ctr_percent, position}.',
+                    'description' => 'Flexible GSC Search Analytics query. Build any combination of dimensions (query, page, country, device, searchAppearance, date), filters, and ordering. Cached 2-3 day lag, not live after edits — call once per request and reuse. Returns {keys, impressions, clicks, ctr_percent, position}. Queries are intent signals: use naturally once, no stuffing.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [

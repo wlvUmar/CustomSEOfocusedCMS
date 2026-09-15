@@ -1111,9 +1111,12 @@
                         setActivity(data.text);
                         break;
                     case 'turn':
-                        setStatus('Thinking… turn ' + data.number + '/' + data.max + ' [' + runMode.toUpperCase() + ']', 'busy');
-                        setActivity('Thinking… turn ' + data.number + '/' + data.max + ' [' + runMode.toUpperCase() + ']');
-                        showTyping();
+                        {
+                            const turnLabel = data.max ? 'Thinking… turn ' + data.number + '/' + data.max : 'Thinking… turn ' + data.number;
+                            setStatus(turnLabel + ' [' + runMode.toUpperCase() + ']', 'busy');
+                            setActivity(turnLabel + ' [' + runMode.toUpperCase() + ']');
+                            showTyping();
+                        }
                         break;
                     case 'usage':
                         updateUsage(data);
@@ -1167,9 +1170,8 @@
                             setStatus('Awaiting approval', 'wait');
                         } else if (data.status === 'max_turns_exceeded') {
                             if (!assistantText && data.text) { assistantText = data.text; addAgentBubble(data.text); }
-                            const lim = (cfg.maxTurns || 100);
-                            addAgentBubble('⚠ Reached max tool turns (' + lim + ') — response truncated. Say "continue" to resume or use batch_update to combine edits.');
-                            setStatus('Max turns (' + lim + ') — continue?', 'error');
+                            addAgentBubble('⚠ Run stopped — say "continue" to resume or use batch_update to combine edits.');
+                            setStatus('Stopped — continue?', 'error');
                         } else if (data.status === 'cancelled') {
                             if (data.text) addAgentBubble(data.text);
                             addAgentBubble('⏹ Run cancelled — partial history saved. Send a follow-up to continue.');

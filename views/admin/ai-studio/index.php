@@ -163,7 +163,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     window.AI_STUDIO = {
         baseUrl: <?= json_encode(BASE_URL) ?>,
         csrf: <?= json_encode(generateCSRFToken()) ?>,
-        maxTurns: <?= (int)($maxTurns ?? 100) ?>
+        maxTurns: 0
     };
 </script>
 <script src="<?= BASE_URL ?>/js/admin/ai-studio.js?v=<?= (is_file(PUBLIC_PATH . '/js/admin/ai-studio.js') ? filemtime(PUBLIC_PATH . '/js/admin/ai-studio.js') : (is_file(BASE_PATH . '/public/js/admin/ai-studio.js') ? filemtime(BASE_PATH . '/public/js/admin/ai-studio.js') : time())) ?>"></script>

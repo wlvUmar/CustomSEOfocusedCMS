@@ -15,7 +15,7 @@ class MemoryTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'store_context',
-                    'description' => 'Persist a small key-value note for this session (cross-session DB). Use to remember decisions, page ids, slugs, or user preferences across turns and reloads. Keys: ^[a-z_][a-z0-9_]{1,40}$, values ≤4000 chars, ≤20 keys total. Never auto-injected — you must call get_context/list_context to recall.',
+                    'description' => 'Persist a small key-value note for future sessions (cross-session DB). History + SAVED MEMORY snapshot already cover this run — only call when the user says remember/pin, for decisions, page ids, slugs, preferences. Keys: ^[a-z_][a-z0-9_]{1,40}$, values ≤4000 chars, ≤20 keys total. Snapshot is auto-injected; no need to re-read after storing.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -30,7 +30,7 @@ class MemoryTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_context',
-                    'description' => 'Fetch one persisted context value by key. Returns null if not found with hint to call list_context.',
+                    'description' => 'Fetch one persisted context value by key. Rarely needed — SAVED MEMORY snapshot above is current; call only if the preview was truncated. Returns null if not found with hint to call list_context.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -44,7 +44,7 @@ class MemoryTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'list_context',
-                    'description' => 'List all persisted context keys with an 80-char preview of each value (not full values). Use to discover what is remembered.',
+                    'description' => 'List all persisted context keys with an 80-char preview of each value (not full values). Rarely needed — SAVED MEMORY snapshot above already lists them.',
                     'parameters' => ['type' => 'object', 'properties' => (object)[]],
                 ],
             ],
