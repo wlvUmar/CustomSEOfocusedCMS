@@ -59,6 +59,9 @@ define('OPENCODE_GO_API_KEY', getenv('OPENCODE_GO_API_KEY') ?: (getenv('OPENCODE
 define('OPENCODE_API_KEY', OPENCODE_GO_API_KEY);
 define('OPENROUTER_API_KEY', getenv('OPENROUTER_API_KEY') ?: '');
 
+// SerpApi live SERP for AI Studio (https://serpapi.com) — pay-per-search, cached 1h
+define('SERPAPI_API_KEY', getenv('SERPAPI_API_KEY') ?: '');
+
 // Google Search Console API (MCP-like live GSC for AI Studio)
 define('GSC_CLIENT_ID', getenv('GSC_CLIENT_ID') ?: '');
 define('GSC_CLIENT_SECRET', getenv('GSC_CLIENT_SECRET') ?: '');

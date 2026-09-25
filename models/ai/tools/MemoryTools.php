@@ -195,7 +195,7 @@ class MemoryTools {
             $content = self::tailFile($path, $tailSize);
             if ($content === '' ) continue;
             $content = preg_replace('/Authorization:\s*[^\n]+/i', 'Authorization: [redacted]', $content);
-            $content = preg_replace('/((?:api[_-]?key|secret|password|token|OPENCODE_API_KEY|OPENROUTER_API_KEY|GSC_CLIENT_SECRET|GSC_ENCRYPTION_KEY|BOT_API_SECRET)\s*[:=]\s*)([^\s\n"\'`,;]+)/i', '$1[redacted]', $content);
+            $content = preg_replace('/((?:api[_-]?key|secret|password|token|OPENCODE_API_KEY|OPENROUTER_API_KEY|GSC_CLIENT_SECRET|SERPAPI_API_KEY|GSC_ENCRYPTION_KEY|BOT_API_SECRET)\s*[:=]\s*)([^\s\n"\'`,;]+)/i', '$1[redacted]', $content);
             $content = preg_replace('/(sk-[a-zA-Z0-9_\-]{10,})/', '[redacted-sk]', $content);
             $content = preg_replace('/(Bearer\s+[a-zA-Z0-9_\-\.]+)/i', 'Bearer [redacted]', $content);
             $all = explode("\n", $content);
