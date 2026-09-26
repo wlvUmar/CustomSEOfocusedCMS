@@ -1,7 +1,7 @@
 <?php
 // path: ./models/ai/tools/FaqTools.php
-// Read/write tools for the faqs table. FAQs render into pages via the
-// {{faqs}} template loop, so they are part of page content.
+// Read/write tools for the faqs table. FAQs are their own part of the
+// page and auto-render as an accordion outside the content body.
 
 require_once BASE_PATH . '/models/FAQ.php';
 
@@ -194,7 +194,7 @@ class FaqTools {
             'is_active' => $isActive,
         ]);
         $fresh = $model->getById((int)$id);
-        return ['ok' => true, 'verified' => $fresh !== null, 'fresh_hash' => substr(md5(json_encode($fresh ?? [])),0,8), 'faq_id' => (int)$id, 'note' => 'FAQ created and verified. It renders on the page via the {{faqs}} loop.'];
+        return ['ok' => true, 'verified' => $fresh !== null, 'fresh_hash' => substr(md5(json_encode($fresh ?? [])),0,8), 'faq_id' => (int)$id, 'note' => 'FAQ created and verified. It auto-renders in the page FAQ accordion — no content edit needed.'];
     }
 
     private static function updateFaq(array $args): array {

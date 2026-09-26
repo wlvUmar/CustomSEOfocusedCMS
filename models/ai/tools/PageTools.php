@@ -37,7 +37,7 @@ class PageTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_page',
-                    'description' => 'Fetch one page by slug (preferred) or id, with its RU/UZ titles, content, and meta fields. Long HTML fields are truncated to ~12000 chars with a "truncated" flag and a sections_hint (see list_sections/get_section/get_content_chunk for exact find). For targeted edits copy find exactly from truncated preview or fetch the section untruncated.',
+                    'description' => 'Fetch one page by slug (preferred) or id, with its RU/UZ titles, content, and meta fields. content_* is the body only — hero, FAQ accordion, link widgets, header/footer auto-render outside it. Long HTML fields are truncated to ~12000 chars with a "truncated" flag and a sections_hint (see list_sections/get_section/get_content_chunk for exact find). For targeted edits copy find exactly from truncated preview or fetch the section untruncated.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -949,15 +949,16 @@ class PageTools {
                     if ($headings[$i] - $headings[$i-1] > 1) { $warnings[] = 'Heading skip h'.$headings[$i-1].'→h'.$headings[$i].' — keep sequential h1→h2→h3.'; break; }
                 }
             }
-            // Template vars preservation
+            // Template vars preservation (scalar placeholders only — shell parts live outside the body)
             if (preg_match_all('/\{\{\s*[^}]+\s*\}\}/', $oldHtml, $om)) {
                 $oldVars = array_unique($om[0]);
                 foreach ($oldVars as $v) {
+                    if (strtolower((string)preg_replace('/[\s{}]/', '', $v)) === 'faqs') continue;
                     if (strpos($newHtml, $v) === false && strpos($newHtml, trim($v)) === false) {
                         // allow {{page.title}} etc to be preserved in any whitespace variant
                         $alt = preg_replace('/\s+/', '', $v);
                         if (strpos(preg_replace('/\s+/', '', $newHtml), $alt) === false) {
-                            $warnings[] = 'Template var '.trim($v).' was in old section but missing in new HTML — preserve {{page.*}}/{{global.*}}/{{faqs}}.';
+                            $warnings[] = 'Template var '.trim($v).' was in old section but missing in new HTML — preserve {{page.*}}/{{global.*}}/{{date.*}}.';
                             break;
                         }
                     }
