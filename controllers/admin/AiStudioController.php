@@ -977,9 +977,121 @@ class AiStudioController extends Controller {
             }
         }
         if ($mode === 'plan') {
-            return $this->buildPlanPrompt() . $cachedAddon . $memoryAddon;
+            return $this->buildPlanPrompt() . $cachedAddon . $memoryAddon . $this->renderSessionState($ctx);
         }
-        return $this->buildBuildPrompt() . $cachedAddon . $memoryAddon;
+        return $this->buildBuildPrompt() . $cachedAddon . $memoryAddon . $this->renderSessionState($ctx);
+    }
+
+    /**
+     * SESSION STATE: numbers-only facts already fetched in this session.
+     * Rendered into every run's prompt so the model reuses data instead of
+     * re-fetching it. Capped at ~1500 chars; empty state renders nothing.
+     */
+    private function renderSessionState(?array $ctx): string {
+        if (!is_array($ctx)) return '';
+        $lines = [];
+        if (!empty($ctx['_pages']) && is_array($ctx['_pages'])) {
+            $parts = [];
+            foreach ($ctx['_pages'] as $slug => $p) {
+                if (!is_array($p)) continue;
+                $parts[] = $slug . '(#' . (int)($p['id'] ?? 0) . ', ' . round((int)($p['c'] ?? 0) / 1000, 1) . 'k)';
+            }
+            if (!empty($parts)) $lines[] = 'Pages seen: ' . implode(', ', array_slice($parts, 0, 15));
+        }
+        if (!empty($ctx['_writes']) && is_array($ctx['_writes'])) {
+            $parts = [];
+            foreach (array_slice($ctx['_writes'], -6) as $w) {
+                if (!is_array($w)) continue;
+                $parts[] = (string)($w['p'] ?? '?') . ':' . (string)($w['s'] ?? '') . ' @' . (string)($w['h'] ?? '') . (!empty($w['v']) ? ' ok' : '');
+            }
+            if (!empty($parts)) $lines[] = 'Writes: ' . implode(' | ', $parts);
+        }
+        if (!empty($ctx['_page_slugs']) && is_array($ctx['_page_slugs'])) {
+            $lines[] = 'Slug index: ' . (int)($ctx['_pages_total'] ?? count($ctx['_page_slugs'])) . ' pages (' . implode(', ', array_slice($ctx['_page_slugs'], 0, 12)) . (count($ctx['_page_slugs']) > 12 ? '…' : '') . ')';
+        }
+        if (!empty($ctx['_sections']) && is_array($ctx['_sections'])) {
+            $parts = [];
+            foreach ($ctx['_sections'] as $key => $s) {
+                if (!is_array($s)) continue;
+                $names = isset($s['names']) && is_array($s['names']) ? $s['names'] : [];
+                $parts[] = $key . ': ' . (int)($s['n'] ?? 0) . ' [' . implode(', ', array_slice($names, 0, 6)) . ']';
+            }
+            if (!empty($parts)) $lines[] = 'Sections: ' . implode(' | ', array_slice($parts, 0, 8));
+        }
+        if (!empty($ctx['_gsc']) && is_array($ctx['_gsc'])) {
+            $g = $ctx['_gsc'];
+            $lines[] = 'GSC ' . (int)$g['d'] . 'd: ' . (int)$g['imp'] . ' imp / ' . (int)$g['clk'] . ' clk / ' . (float)$g['ctr'] . '% / pos ' . (float)$g['pos'];
+        }
+        if (!empty($ctx['_gsc_pages']) && is_array($ctx['_gsc_pages'])) {
+            $parts = [];
+            foreach ($ctx['_gsc_pages'] as $slug => $t) {
+                if (!is_array($t)) continue;
+                $parts[] = $slug . ' ' . (int)$t['imp'] . '/' . (int)$t['clk'] . '/' . (float)$t['pos'];
+            }
+            if (!empty($parts)) $lines[] = 'GSC pages (imp/clk/pos): ' . implode(', ', array_slice($parts, 0, 10));
+        }
+        if (!empty($ctx['_queries']) && is_array($ctx['_queries'])) {
+            $lines[] = 'Top queries: ' . implode(', ', array_slice(array_map('strval', $ctx['_queries']), 0, 8));
+        }
+        if (!empty($ctx['_stats']) && is_array($ctx['_stats'])) {
+            $parts = [];
+            foreach ($ctx['_stats'] as $slug => $s) {
+                if (!is_array($s)) continue;
+                $parts[] = $slug . ' ' . (int)$s['v'] . 'v/' . (int)$s['c'] . 'c';
+            }
+            if (!empty($parts)) $lines[] = 'Traffic: ' . implode(', ', array_slice($parts, 0, 10));
+        }
+        if (!empty($ctx['_underperforming']) && is_array($ctx['_underperforming'])) {
+            $u = $ctx['_underperforming'];
+            $uslugs = isset($u['slugs']) && is_array($u['slugs']) ? $u['slugs'] : [];
+            $lines[] = 'Low traffic (' . (int)($u['m'] ?? 0) . 'm): ' . (int)($u['n'] ?? 0) . ' pages [' . implode(', ', array_slice(array_map('strval', $uslugs), 0, 8)) . ']';
+        }
+        if (!empty($ctx['_links']) && is_array($ctx['_links'])) {
+            $parts = [];
+            foreach ($ctx['_links'] as $slug => $l) {
+                if (!is_array($l)) continue;
+                $parts[] = $slug . ' ' . (int)$l['in'] . 'in/' . (int)$l['out'] . 'out';
+            }
+            if (!empty($parts)) $lines[] = 'Links: ' . implode(', ', array_slice($parts, 0, 8));
+        }
+        if (!empty($ctx['_sql']) && is_array($ctx['_sql'])) {
+            $parts = [];
+            foreach (array_slice($ctx['_sql'], -2, null, true) as $s) {
+                if (!is_array($s)) continue;
+                $parts[] = '"' . (string)($s['q'] ?? '') . '" -> ' . (int)($s['n'] ?? 0) . ' rows';
+            }
+            if (!empty($parts)) $lines[] = 'Ran SQL: ' . implode(' | ', $parts);
+        }
+        if (!empty($ctx['_serp']) && is_array($ctx['_serp'])) {
+            $parts = [];
+            foreach (array_slice($ctx['_serp'], -3, null, true) as $q => $s) {
+                if (!is_array($s)) continue;
+                $bits = [];
+                if (!empty($s['domains']) && is_array($s['domains'])) $bits[] = implode(',', array_slice(array_map('strval', $s['domains']), 0, 3));
+                if (!empty($s['related']) && is_array($s['related'])) $bits[] = 'related: ' . implode(',', array_slice(array_map('strval', $s['related']), 0, 4));
+                $parts[] = '"' . mb_substr((string)$q, 0, 40) . '": ' . implode('; ', $bits);
+            }
+            if (!empty($parts)) $lines[] = 'SERP: ' . implode(' | ', $parts);
+        }
+        if (!empty($ctx['_search']) && is_array($ctx['_search'])) {
+            $parts = [];
+            foreach (array_slice($ctx['_search'], -6, null, true) as $q => $n) {
+                $parts[] = '"' . mb_substr((string)$q, 0, 30) . '"->' . (int)$n;
+            }
+            if (!empty($parts)) $lines[] = 'Searches: ' . implode(', ', $parts);
+        }
+        if (!empty($ctx['_sec_hash']) && is_array($ctx['_sec_hash'])) {
+            $parts = [];
+            foreach (array_slice($ctx['_sec_hash'], -6, null, true) as $key => $s) {
+                if (!is_array($s)) continue;
+                $parts[] = (string)$key . '@' . (string)($s['h'] ?? '');
+            }
+            if (!empty($parts)) $lines[] = 'Section hash: ' . implode(', ', $parts);
+        }
+        if (empty($lines)) return '';
+        $block = "\n\n═══ SESSION STATE (this session — already fetched, do NOT re-call the same read with the same args; re-read a page only for verbatim HTML you don't have) ═══\n" . implode("\n", $lines);
+        if (mb_strlen($block) > 1500) $block = mb_substr($block, 0, 1500) . '…';
+        return $block;
     }
 
      private function buildPlanPrompt(): string {
@@ -1388,7 +1500,7 @@ class AiStudioController extends Controller {
         }
         if (!is_array($ctx)) $ctx = [];
         // Cache design tokens / global settings if seen in this run (so continue never re-reads them).
-        $ctx = $this->mergeTokensIntoContext($ctx, $messages);
+        $ctx = $this->mergeWorkingSetIntoContext($ctx, $messages);
         $this->persistSession($sessionId, $history, is_array($ctx)?$ctx:[], $model, $mode);
         if (!headers_sent()) {
             if (session_status() !== PHP_SESSION_ACTIVE) session_start();
@@ -1468,8 +1580,9 @@ class AiStudioController extends Controller {
         }
         // Cap context size to prevent unbounded growth
         if (count($ctx) > 20) {
-            // Keep cached tokens/settings + last 15 keys
-            $keep = ['_cached_tokens','_cached_tokens_at','_cached_global_settings','_cached_global_settings_at'];
+            // Keep cached tokens/settings + working set + last 15 keys
+            $keep = ['_cached_tokens','_cached_tokens_at','_cached_global_settings','_cached_global_settings_at',
+                '_pages','_pages_total','_page_slugs','_sections','_sec_hash','_gsc','_gsc_pages','_queries','_stats','_underperforming','_links','_sql','_serp','_search','_writes'];
             $newCtx = [];
             foreach ($keep as $k) if (isset($ctx[$k])) $newCtx[$k] = $ctx[$k];
             $others = array_diff_key($ctx, array_flip($keep));
@@ -1477,6 +1590,167 @@ class AiStudioController extends Controller {
             $ctx = array_merge($newCtx, $others);
         }
         return $ctx;
+    }
+
+    /**
+     * Session working set: numbers-only facts extracted from this run's tool
+     * results (pages seen, GSC/analytics snapshots, section hashes, writes).
+     * Rendered as SESSION STATE in the next run's prompt so the model reuses
+     * data instead of re-fetching it. Never stores HTML.
+     */
+    private function mergeWorkingSetIntoContext(array $ctx, array $messages): array {
+        $ctx = $this->mergeTokensIntoContext($ctx, $messages);
+        $calls = [];
+        foreach ($messages as $m) {
+            if (($m['role'] ?? '') === 'assistant' && isset($m['tool_calls']) && is_array($m['tool_calls'])) {
+                foreach ($m['tool_calls'] as $tc) {
+                    $id = (string)($tc['id'] ?? '');
+                    $nm = (string)($tc['function']['name'] ?? '');
+                    if ($id === '' || $nm === '') continue;
+                    $ag = json_decode((string)($tc['function']['arguments'] ?? '{}'), true);
+                    $calls[$id] = [$nm, is_array($ag) ? $ag : []];
+                }
+            }
+            if (($m['role'] ?? '') !== 'tool' || empty($m['content'])) continue;
+            $meta = $calls[(string)($m['tool_call_id'] ?? '')] ?? null;
+            if ($meta === null) continue;
+            $decoded = json_decode((string)$m['content'], true);
+            if (!is_array($decoded) || isset($decoded['error']) || isset($decoded['skipped'])) continue;
+            $this->accumulateWorkingSet($ctx, $meta[0], $meta[1], $decoded);
+        }
+        $caps = ['_pages' => 15, '_page_slugs' => 100, '_sections' => 15, '_sec_hash' => 30, '_gsc_pages' => 15, '_queries' => 8, '_stats' => 15, '_links' => 15, '_sql' => 5, '_serp' => 5, '_search' => 10, '_writes' => 10];
+        foreach ($caps as $k => $max) {
+            if (isset($ctx[$k]) && is_array($ctx[$k]) && count($ctx[$k]) > $max) {
+                $ctx[$k] = array_slice($ctx[$k], -$max, null, true);
+            }
+        }
+        return $ctx;
+    }
+
+    private function accumulateWorkingSet(array &$ctx, string $name, array $args, array $r): void {
+        switch ($name) {
+            case 'list_pages':
+                if (isset($r['pages']) && is_array($r['pages'])) {
+                    $slugs = [];
+                    foreach ($r['pages'] as $p) {
+                        if (is_array($p) && isset($p['slug'])) $slugs[] = (string)$p['slug'];
+                    }
+                    $ctx['_page_slugs'] = array_values(array_unique($slugs));
+                    $ctx['_pages_total'] = (int)($r['count'] ?? count($slugs));
+                }
+                break;
+            case 'get_page':
+                $slug = (string)($r['slug'] ?? $args['slug'] ?? '');
+                if ($slug === '') break;
+                $chars = mb_strlen((string)($r['content_ru'] ?? '')) + mb_strlen((string)($r['content_uz'] ?? ''));
+                $ctx['_pages'][$slug] = ['id' => (int)($r['id'] ?? 0), 't' => mb_substr((string)($r['title_ru'] ?? ''), 0, 60), 'c' => $chars];
+                break;
+            case 'search_content':
+                $ctx['_search'][(string)($r['query'] ?? '')] = (int)($r['count'] ?? 0);
+                break;
+            case 'list_sections':
+                $key = (int)($r['page_id'] ?? 0) . ':' . (string)($r['lang'] ?? '');
+                $names = [];
+                foreach (array_slice($r['sections'] ?? [], 0, 10) as $s) {
+                    if (is_array($s) && isset($s['name'])) $names[] = mb_substr((string)$s['name'], 0, 30);
+                }
+                $ctx['_sections'][$key] = ['n' => (int)($r['count'] ?? count($names)), 'names' => $names];
+                break;
+            case 'get_section':
+                $key = (int)($r['page_id'] ?? 0) . ':' . (string)($r['lang'] ?? '') . ':' . (string)($r['name'] ?? '');
+                if (isset($r['hash'])) $ctx['_sec_hash'][$key] = ['h' => (string)$r['hash'], 'c' => (int)($r['chars'] ?? 0)];
+                break;
+            case 'get_gsc_overview':
+                $ctx['_gsc'] = ['d' => (int)($r['days'] ?? 0), 'imp' => (int)($r['impressions'] ?? 0), 'clk' => (int)($r['clicks'] ?? 0), 'ctr' => (float)($r['ctr_percent'] ?? 0), 'pos' => (float)($r['avg_position'] ?? 0)];
+                break;
+            case 'get_page_gsc':
+                $slug = (string)($r['slug'] ?? '');
+                if ($slug !== '' && isset($r['totals']) && is_array($r['totals'])) {
+                    $t = $r['totals'];
+                    $ctx['_gsc_pages'][$slug] = ['imp' => (int)($t['impressions'] ?? 0), 'clk' => (int)($t['clicks'] ?? 0), 'ctr' => (float)($t['ctr_percent'] ?? 0), 'pos' => (float)($t['avg_position'] ?? 0)];
+                }
+                break;
+            case 'get_gsc_queries':
+                $out = [];
+                foreach (array_slice($r['queries'] ?? [], 0, 8) as $q) {
+                    if (is_array($q) && isset($q['query'])) $out[] = mb_substr((string)$q['query'], 0, 60) . ' (' . (int)($q['impressions'] ?? 0) . ')';
+                }
+                if (!empty($out)) $ctx['_queries'] = $out;
+                break;
+            case 'get_gsc_pages':
+                foreach (array_slice($r['pages'] ?? [], 0, 15) as $p) {
+                    if (!is_array($p) || !isset($p['slug'])) continue;
+                    $ctx['_gsc_pages'][(string)$p['slug']] = ['imp' => (int)($p['impressions'] ?? 0), 'clk' => (int)($p['clicks'] ?? 0), 'ctr' => (float)($p['ctr_percent'] ?? 0), 'pos' => (float)($p['avg_position'] ?? 0)];
+                }
+                break;
+            case 'search_gsc_queries':
+                $ctx['_search'][(string)($r['term'] ?? '')] = (int)($r['count'] ?? 0);
+                break;
+            case 'get_top_pages':
+                foreach ($r['pages'] ?? [] as $p) {
+                    if (!is_array($p) || !isset($p['slug'])) continue;
+                    $ctx['_stats'][(string)$p['slug']] = ['v' => (int)($p['visits'] ?? 0), 'c' => (int)($p['phone_calls'] ?? 0)];
+                }
+                break;
+            case 'get_page_stats':
+                $slug = (string)($r['slug'] ?? '');
+                if ($slug !== '' && isset($r['totals']) && is_array($r['totals'])) {
+                    $ctx['_stats'][$slug] = ['v' => (int)($r['totals']['visits'] ?? 0), 'c' => (int)($r['totals']['phone_calls'] ?? 0)];
+                }
+                break;
+            case 'get_underperforming_pages':
+                $slugs = [];
+                foreach (array_slice($r['pages'] ?? [], 0, 8) as $p) {
+                    if (is_array($p) && isset($p['slug'])) $slugs[] = (string)$p['slug'];
+                }
+                $ctx['_underperforming'] = ['m' => (int)($r['months'] ?? 0), 'n' => (int)($r['count'] ?? 0), 'slugs' => $slugs];
+                break;
+            case 'get_internal_links':
+                $slug = (string)($r['slug'] ?? '');
+                if ($slug !== '') {
+                    $ctx['_links'][$slug] = ['in' => count($r['inbound'] ?? []), 'out' => count($r['outbound'] ?? [])];
+                }
+                break;
+            case 'run_analytics_query':
+            case 'query_builder':
+                $sql = (string)($r['sql'] ?? '');
+                if ($sql === '') break;
+                $top = [];
+                foreach (array_slice($r['rows'] ?? [], 0, 4) as $row) {
+                    $j = json_encode($row, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    if ($j !== false) $top[] = mb_substr($j, 0, 150);
+                }
+                $ctx['_sql'][substr(sha1($sql), 0, 8)] = ['q' => mb_substr(preg_replace('/\s+/u', ' ', $sql) ?? $sql, 0, 80), 'n' => (int)($r['count'] ?? 0), 'top' => $top];
+                break;
+            case 'serp_search':
+                $domains = [];
+                foreach (array_slice($r['organic'] ?? [], 0, 3) as $o) {
+                    if (is_array($o) && isset($o['domain'])) $domains[] = (string)$o['domain'];
+                }
+                $ctx['_serp'][(string)($r['query'] ?? '')] = ['domains' => $domains];
+                break;
+            case 'serp_niche_overview':
+                $ctx['_serp'][(string)($r['query'] ?? '')] = [
+                    'related' => array_slice($r['related_searches'] ?? [], 0, 5),
+                    'domains' => array_column(array_slice($r['top_domains'] ?? [], 0, 5), 'domain'),
+                ];
+                break;
+            case 'update_section': case 'patch_section': case 'str_replace_field': case 'set_field':
+            case 'insert_section': case 'wrap_section': case 'batch_update': case 'set_custom_css':
+            case 'set_page_theme': case 'set_section_style': case 'auto_sectionize':
+                if (!isset($r['ok']) || $r['ok'] !== true) break;
+                $page = (string)($r['slug'] ?? $args['slug'] ?? $args['page_id'] ?? '?');
+                $sec = (string)($r['section'] ?? '');
+                if ($sec === '' && $name === 'batch_update' && isset($args['operations']) && is_array($args['operations'])) {
+                    $ops = [];
+                    foreach (array_slice($args['operations'], 0, 3) as $op) {
+                        if (is_array($op)) $ops[] = ($op['op'] ?? '?') . ':' . ($op['section'] ?? ($op['field'] ?? ''));
+                    }
+                    $sec = implode(',', $ops);
+                }
+                $ctx['_writes'][] = ['p' => $page, 's' => mb_substr($sec, 0, 80), 'h' => (string)($r['fresh_hash'] ?? ''), 'v' => !empty($r['verified']) ? 1 : 0];
+                break;
+        }
     }
 
     public static function staticPersistAfterRun(string $sessionId, array $messages, string $model, string $mode, ?array $ctxSnapshot, int $uid): void {
@@ -1492,7 +1766,7 @@ class AiStudioController extends Controller {
             foreach ($history as &$h) { if (isset($h['content']) && mb_strlen($h['content'])>4000) $h['content']=mb_substr($h['content'],0,4000)."\n…[truncated]"; }
             if (count($history) > 24) $history = array_slice($history,-24);
             $ctx = is_array($ctxSnapshot) ? $ctxSnapshot : [];
-            $ctx = $tmp->mergeTokensIntoContext($ctx, $messages);
+            $ctx = $tmp->mergeWorkingSetIntoContext($ctx, $messages);
             $histJson = json_encode($history, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
             $ctxJson = json_encode($ctx, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
             $tmp->ensureAiSessionsTable();
