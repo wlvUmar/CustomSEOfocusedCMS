@@ -77,9 +77,10 @@ class GscAuthController extends Controller {
             // Trigger a second save that sets access_token through private method → just let refresh do it.
             // Instead, directly use the same logic:
             $enc = $tmp;
-            $key = (string)(getenv('GSC_ENCRYPTION_KEY') ?: (getenv('BOT_API_SECRET') ?: ''));
+            $key = (string)((defined('GSC_ENCRYPTION_KEY') ? GSC_ENCRYPTION_KEY : '') ?: getenv('GSC_ENCRYPTION_KEY'));
+            if ($key === '') $key = (string)((defined('BOT_API_SECRET') ? BOT_API_SECRET : '') ?: getenv('BOT_API_SECRET'));
             if ($key !== '' && function_exists('openssl_encrypt')) {
-                $k = hash('sha256', $key, true);
+                $k = GscClient::deriveKey($key);
                 $iv = random_bytes(12);
                 $ct = openssl_encrypt($tmp, 'aes-256-gcm', $k, OPENSSL_RAW_DATA, $iv, $tag);
                 if ($ct !== false) $enc = 'gcm$' . base64_encode($iv . $tag . $ct);

@@ -2,15 +2,18 @@
 require_once BASE_PATH . '/models/Media.php';
 require_once BASE_PATH . '/models/PageMedia.php';
 require_once BASE_PATH . '/models/Page.php';
+require_once BASE_PATH . '/models/MediaService.php';
 
 class MediaController extends Controller {
     private $mediaModel;
     private $pageMediaModel;
+    private $mediaService;
 
     public function __construct() {
         parent::__construct();
         $this->mediaModel = new Media();
         $this->pageMediaModel = new PageMedia();
+        $this->mediaService = new MediaService($this->mediaModel, $this->pageMediaModel);
     }
 
     private function getCsrfToken() {
@@ -18,24 +21,7 @@ class MediaController extends Controller {
     }
 
     private function thumbUrlFor($filename) {
-        if (empty($filename)) return UPLOAD_URL . $filename;
-        // Try derived 480 variant first (generated on upload via generateResponsiveImageVariants)
-        if (function_exists('findExistingDerivedSources')) {
-            $srcs = findExistingDerivedSources($filename, [480]);
-            if (!empty($srcs['fallback'])) {
-                // srcs fallback is like "/uploads/derived/name_w480.jpg 480w" — take first URL
-                if (preg_match('/^(\S+)/', $srcs['fallback'], $m)) {
-                    $derived = $m[1]; // e.g. /uploads/derived/xxx_w480.jpg
-                    // findExistingDerivedSources returns path relative to site root; prefix with BASE_URL if needed
-                    if (defined('BASE_URL') && BASE_URL !== '' && strpos($derived, '://') === false && $derived[0] === '/') {
-                        return rtrim(BASE_URL, '/') . $derived;
-                    }
-                    return $derived;
-                }
-            }
-        }
-        // Fallback to original
-        return UPLOAD_URL . $filename;
+        return $this->mediaService->thumbUrlFor($filename);
     }
 
     public function listJson() {
@@ -264,60 +250,24 @@ class MediaController extends Controller {
             $this->json(['success' => false, 'message' => 'No file uploaded'], 400);
         }
         
-        $file = $_FILES['file'];
-        
-        // Validate file
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!in_array($file['type'], $allowedTypes)) {
-            error_log('Media upload: invalid type ' . ($file['type'] ?? ''));
-            $this->json(['success' => false, 'message' => 'Invalid file type'], 400);
+        $result = $this->mediaService->uploadSingle(
+            $_FILES['file'],
+            !empty($_POST['page_id']) ? $_POST['page_id'] : null,
+            $_POST['section'] ?? 'content',
+            $_POST['position'] ?? 0
+        );
+
+        if (empty($result['success'])) {
+            $code = $result['error'] === 'Failed to save file' ? 500 : 400;
+            $this->json(['success' => false, 'message' => $result['error']], $code);
         }
-        
-        if ($file['size'] > MAX_UPLOAD_SIZE) {
-            error_log('Media upload: file too large size=' . ($file['size'] ?? 0));
-            $this->json(['success' => false, 'message' => 'File too large'], 400);
-        }
-        
-        // Generate unique filename
-        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = uniqid() . '_' . time() . '.' . $ext;
-        $filepath = UPLOAD_PATH . $filename;
-        
-        // Create upload directory if not exists
-        if (!is_dir(UPLOAD_PATH)) {
-            mkdir(UPLOAD_PATH, 0755, true);
-        }
-        
-        // Move file
-        if (move_uploaded_file($file['tmp_name'], $filepath)) {
-            $data = [
-                'filename' => $filename,
-                'original_name' => $file['name'],
-                'file_size' => $file['size'],
-                'mime_type' => $file['type']
-            ];
-            
-            $mediaId = $this->mediaModel->create($data);
-            generateResponsiveImageVariants($filename, getResponsiveImageWidths());
-            
-            // If page_id is provided, attach immediately
-            if (!empty($_POST['page_id'])) {
-                $this->pageMediaModel->attachMedia($_POST['page_id'], $mediaId, [
-                    'section' => $_POST['section'] ?? 'content',
-                    'position' => $_POST['position'] ?? 0
-                ]);
-            }
-            
-            $this->json([
-                'success' => true,
-                'media_id' => $mediaId,
-                'filename' => $filename,
-                'url' => UPLOAD_URL . $filename
-            ]);
-        } else {
-            error_log('Media upload: move_uploaded_file failed to ' . $filepath);
-            $this->json(['success' => false, 'message' => 'Failed to save file'], 500);
-        }
+
+        $this->json([
+            'success' => true,
+            'media_id' => $result['media_id'],
+            'filename' => $result['filename'],
+            'url' => UPLOAD_URL . $result['filename']
+        ]);
     }
 
     public function delete() {
@@ -384,8 +334,8 @@ class MediaController extends Controller {
             'css_class' => $_POST['css_class'] ?? '',
             'lazy_load' => $_POST['lazy_load'] ?? 1
         ];
-        
-        $this->pageMediaModel->attachMedia($pageId, $mediaId, $data);
+
+        $this->mediaService->attach($pageId, $mediaId, $data);
         
         $_SESSION['success'] = 'Media attached to page successfully';
         $this->json(['success' => true]);
@@ -403,7 +353,7 @@ class MediaController extends Controller {
         $mediaId = $_POST['media_id'] ?? 0;
         $section = $_POST['section'] ?? null;
         
-        $this->pageMediaModel->detachMedia($pageId, $mediaId, $section);
+        $this->mediaService->detach($pageId, $mediaId, $section);
         
         $_SESSION['success'] = 'Media detached from page';
         $this->json(['success' => true]);
@@ -496,54 +446,10 @@ class MediaController extends Controller {
         $errors = [];
         $pageId = $_POST['page_id'] ?? null;
         $section = $_POST['section'] ?? 'content';
-        foreach ($_FILES['files']['tmp_name'] as $key => $tmpName) {
-            if ($_FILES['files']['error'][$key] !== UPLOAD_ERR_OK) {
-                $failed++;
-                $errors[] = $_FILES['files']['name'][$key] . ': Upload error';
-                error_log('Media bulk upload: upload error code=' . $_FILES['files']['error'][$key]);
-                continue;
-            }
-            
-            $file = [
-                'name' => $_FILES['files']['name'][$key],
-                'type' => $_FILES['files']['type'][$key],
-                'size' => $_FILES['files']['size'][$key]
-            ];
-            
-            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-            if (!in_array($file['type'], $allowedTypes) || $file['size'] > MAX_UPLOAD_SIZE) {
-                $failed++;
-                $errors[] = $file['name'] . ': Invalid file type or size';
-                error_log('Media bulk upload: invalid type/size name=' . $file['name'] . ' type=' . ($file['type'] ?? '') . ' size=' . ($file['size'] ?? 0));
-                continue;
-            }
-            
-            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $filename = uniqid() . '_' . time() . '_' . $key . '.' . $ext;
-            $filepath = UPLOAD_PATH . $filename;
-            
-            if (move_uploaded_file($tmpName, $filepath)) {
-                $mediaId = $this->mediaModel->create([
-                    'filename' => $filename,
-                    'original_name' => $file['name'],
-                    'file_size' => $file['size'],
-                    'mime_type' => $file['type']
-                ]);
-                generateResponsiveImageVariants($filename, getResponsiveImageWidths());
-                if ($pageId) {
-                    $this->pageMediaModel->attachMedia($pageId, $mediaId, [
-                        'section' => $section,
-                        'position' => $uploaded
-                    ]);
-                }
-                
-                $uploaded++;
-            } else {
-                $failed++;
-                $errors[] = $file['name'] . ': Failed to save file';
-                error_log('Media bulk upload: move_uploaded_file failed to ' . $filepath);
-            }
-        }
+        $result = $this->mediaService->uploadBulk($_FILES['files'], $pageId, $section);
+        $uploaded = $result['uploaded'];
+        $failed = $result['failed'];
+        $errors = $result['errors'];
         
         if ($isAjax) {
             $this->json([
@@ -582,17 +488,13 @@ class MediaController extends Controller {
                 }
                 
                 $section = $_POST['section'] ?? 'content';
-                foreach ($mediaIds as $mediaId) {
-                    $this->pageMediaModel->attachMedia($pageId, $mediaId, ['section' => $section]);
-                }
-                $_SESSION['success'] = count($mediaIds) . ' media items attached';
+                $count = $this->mediaService->bulkAttach($mediaIds, $pageId, $section);
+                $_SESSION['success'] = $count . ' media items attached';
                 break;
                 
             case 'delete':
-                foreach ($mediaIds as $mediaId) {
-                    $this->mediaModel->delete($mediaId);
-                }
-                $_SESSION['success'] = count($mediaIds) . ' media items deleted';
+                $count = $this->mediaService->bulkDelete($mediaIds);
+                $_SESSION['success'] = $count . ' media items deleted';
                 break;
                 
             default:
@@ -610,7 +512,7 @@ class MediaController extends Controller {
             return;
         }
 
-        $result = regenerateImageVariants();
+        $result = $this->mediaService->regenerate();
         if (empty($result['success'])) {
             $this->json($result, 500);
         }

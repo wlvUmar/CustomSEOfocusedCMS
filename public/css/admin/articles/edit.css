@@ -82,6 +82,11 @@
     margin-bottom: 1rem;
 }
 
+.current-image__img {
+    max-width: 300px;
+    border-radius: 8px;
+}
+
 .info-panel {
     background: #eff6ff;
     border: 1px solid #bfdbfe;

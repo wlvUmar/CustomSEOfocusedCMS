@@ -8,13 +8,10 @@ class Controller {
 
     protected function view($file, $data = []) {
         $data['pageName'] = $data['pageName'] ?? null;
-        // Prevent variable-variable overwrite of critical locals (project-02#1)
-        $blocked = ['db', 'router', 'this', '_SESSION', '_GET', '_POST', '_COOKIE', 'GLOBALS'];
-        foreach ($data as $key => $value) {
-            if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $key)) continue;
-            if (in_array($key, $blocked, true)) continue;
-            $$key = $value;
+        if (array_key_exists('file', $data) || array_key_exists('data', $data)) {
+            throw new InvalidArgumentException('Reserved view key used: file/data');
         }
+        extract($data, EXTR_SKIP);
         require BASE_PATH . '/views/' . $file . '.php';
     }
 

@@ -10,7 +10,14 @@
 (function() {
     'use strict';
 
-    const cfg = window.AI_CONFIG;
+    function readAiBoot() {
+        try {
+            const el = document.getElementById('ai-boot');
+            if (el && el.textContent.trim()) return JSON.parse(el.textContent);
+        } catch (e) { /* fall through */ }
+        return window.AI_CONFIG || null;
+    }
+    const cfg = readAiBoot();
     if (!cfg) return;
 
     // ---- Chat ('edits' mode) state ------------------------------------------
@@ -434,11 +441,11 @@
         const fullWrap = document.getElementById('ai-full-wrap');
         if (!chatWrap || !fullWrap) return;
         if (mode === 'edits') {
-            chatWrap.style.display = '';
-            fullWrap.style.display = 'none';
+            chatWrap.classList.remove('hidden');
+            fullWrap.classList.add('hidden');
         } else {
-            chatWrap.style.display = 'none';
-            fullWrap.style.display = '';
+            chatWrap.classList.add('hidden');
+            fullWrap.classList.remove('hidden');
         }
     }
 
@@ -479,7 +486,28 @@
         fullReset();
     };
 
-    // ---- Wire up events ----------------------------------------------------
+    // ---- Wire up events (replaces inline onclick in edit.php) ----------------
+    document.querySelectorAll('[data-ai="toggle"]').forEach(function(btn) {
+        btn.addEventListener('click', function() { toggleAiPanel(btn); });
+    });
+    const chatSendBtn = document.getElementById('ai-chat-send');
+    if (chatSendBtn) chatSendBtn.addEventListener('click', function() { chatSend(); });
+    const aiActions = { apply: chatApply, undo: chatUndo, reset: chatReset };
+    Object.keys(aiActions).forEach(function(key) {
+        document.querySelectorAll('[data-ai="' + key + '"]').forEach(function(btn) {
+            btn.addEventListener('click', aiActions[key]);
+        });
+    });
+    const fullWiring = { generate: fullRequest, regenerate: fullRequest, apply: 'aiApply', discard: 'aiDiscard' };
+    Object.keys(fullWiring).forEach(function(key) {
+        document.querySelectorAll('[data-ai-full="' + key + '"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const fn = fullWiring[key];
+                if (typeof fn === 'string') window[fn]();
+                else fn();
+            });
+        });
+    });
     document.querySelectorAll('.ai-chip').forEach(function(chip) {
         chip.addEventListener('click', function() {
             const ta = document.getElementById('ai-prompt');

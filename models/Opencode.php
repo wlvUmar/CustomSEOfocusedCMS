@@ -3,9 +3,10 @@
 // Provider: OpenCode Go (https://opencode.ai/zen/go)
 // Docs: https://opencode.ai/docs/go/ — per-model endpoints (responses / messages / chat)
 
+require_once BASE_PATH . '/models/BaseLlmClient.php';
 require_once BASE_PATH . '/models/OpenRouter.php';
 
-class Opencode {
+class Opencode extends BaseLlmClient {
     private const CHAT_ENDPOINT = 'https://opencode.ai/zen/go/v1/chat/completions';
     private const RESPONSES_ENDPOINT = 'https://opencode.ai/zen/go/v1/responses';
     private const MESSAGES_ENDPOINT = 'https://opencode.ai/zen/go/v1/messages';
@@ -131,12 +132,9 @@ class Opencode {
     }
 
     public static function getApiKeyForModel(string $model): string {
-        $trim = fn($v) => trim((string)$v, " \t\n\r\0\x0B\"'");
-        if (defined('OPENCODE_GO_API_KEY') && OPENCODE_GO_API_KEY !== '') { $v = $trim(OPENCODE_GO_API_KEY); if ($v !== '') return $v; }
-        $k = $trim(getenv('OPENCODE_GO_API_KEY') ?: '');
+        $k = parent::constOrEnv('OPENCODE_GO_API_KEY');
         if ($k !== '') return $k;
-        if (defined('OPENCODE_API_KEY') && OPENCODE_API_KEY !== '') { $v = $trim(OPENCODE_API_KEY); if ($v !== '') return $v; }
-        $k2 = $trim(getenv('OPENCODE_API_KEY') ?: '');
+        $k2 = parent::constOrEnv('OPENCODE_API_KEY');
         if ($k2 !== '') return $k2;
         $candidates = [
             (getenv('HOME') ?: ($_SERVER['HOME'] ?? '')) . '/.local/share/opencode/auth.json',
@@ -169,112 +167,68 @@ class Opencode {
         return self::CHAT_ENDPOINT;
     }
 
-    /** Fetch live model list from Go (cached 10min). Falls back to MODELS const. */
-    public static function fetchModels(): array {
-        $cacheFile = BASE_PATH . '/storage/opencode_models.json';
-        $ttl = 600;
-        if (is_file($cacheFile) && (time() - filemtime($cacheFile) < $ttl)) {
-            $fh = @fopen($cacheFile, 'r');
-            if ($fh) {
-                @flock($fh, LOCK_SH);
-                $raw = stream_get_contents($fh);
-                @flock($fh, LOCK_UN);
-                @fclose($fh);
-                $cached = json_decode((string)$raw, true);
-                if (is_array($cached) && isset($cached['data']) && is_array($cached['data'])) return $cached['data'];
-                if (is_array($cached) && isset($cached[0]['id'])) return $cached;
-            }
-        }
-        $merged = [];
-        $seen = [];
-        $endpoint = self::MODELS_ENDPOINT;
-        $apiKey = self::getApiKeyForModel(self::DEFAULT_MODEL);
-        $ch = curl_init($endpoint);
+    protected static function providerName(): string { return 'OpenCode'; }
+    protected static function modelsCacheFile(): string { return BASE_PATH . '/storage/opencode_models.json'; }
+    protected static function modelsEndpoint(): string { return self::MODELS_ENDPOINT; }
+    protected static function modelPricing(): array { return self::MODEL_PRICING; }
+    protected static function modelContextMap(): array {
+        return [
+            'opencode-go/grok-4.6' => 200000, 'opencode-go/gpt-5.6-luna' => 272000,
+            'opencode-go/glm-5.3-flash' => 131072, 'opencode-go/glm-5.3' => 131072,
+            'opencode-go/glm-5.2' => 131072, 'opencode-go/glm-5.1' => 131072,
+            'opencode-go/kimi-k2.6' => 131072, 'opencode-go/kimi-k3' => 131072, 'opencode-go/kimi-k2.7-code' => 131072,
+            'opencode-go/deepseek-v4-flash' => 131072, 'opencode-go/deepseek-v4.1-flash' => 131072,
+            'opencode-go/deepseek-v4-pro' => 131072, 'opencode-go/deepseek-v4-flash-vision-exp' => 131072,
+            'opencode-go/qwen3.6-plus' => 131072, 'opencode-go/qwen3.7-plus' => 131072, 'opencode-go/qwen3.7-max' => 200000,
+            'opencode-go/qwen3.8-flash' => 131072, 'opencode-go/qwen3.8-max' => 200000,
+            'opencode-go/minimax-m2.7' => 131072, 'opencode-go/minimax-m3' => 131072,
+            'opencode-go/mimo-v2.5' => 131072, 'opencode-go/mimo-v2.5-pro' => 131072,
+            'opencode-go/muse-spark-1.2-contributor' => 131072, 'opencode-go/muse-spark-1.3-contributor' => 131072,
+            'opencode-go/longcat-2.0' => 131072, 'opencode-go/hy3' => 131072, 'opencode-go/hy4-preview' => 131072,
+        ];
+    }
+    protected static function modelsAuthHeaders(string $apiKey): array {
         $headers = [];
         if ($apiKey !== '') $headers[] = 'Authorization: Bearer ' . $apiKey;
-        $headers[] = 'User-Agent: CustomSEOFocusedCMS-AIStudio/1.0 (+https://kuplyu-tashkent.uz)';
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_TIMEOUT => 8,
-            CURLOPT_CONNECTTIMEOUT => 4,
-        ]);
-        $resp = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        if ($resp !== false && $code >= 200 && $code < 300) {
-            $data = json_decode($resp, true);
-            $list = $data['data'] ?? (is_array($data) && isset($data[0]['id']) ? $data : null);
-            if (is_array($list) && $list) {
-                foreach ($list as $row) {
-                    if (!isset($row['id'])) continue;
-                    $id = (string)$row['id'];
-                    if ($id !== '' && strpos($id, '/') === false) {
-                        $id = 'opencode-go/' . $id;
-                        $row['id'] = $id;
-                    } elseif ($id !== '' && !str_starts_with($id, 'opencode-go/')) {
-                        $row['id'] = 'opencode-go/' . ltrim($id, '/');
-                    }
-                    if (isset($seen[$row['id']])) continue;
-                    $seen[$row['id']] = true;
-                    $merged[] = $row;
-                }
+        $headers[] = 'User-Agent: ' . parent::userAgent();
+        return $headers;
+    }
+    protected static function extractModelList(array $data): ?array {
+        $list = $data['data'] ?? (is_array($data) && isset($data[0]['id']) ? $data : null);
+        if (!is_array($list) || !$list) return null;
+        $merged = [];
+        $seen = [];
+        foreach ($list as $row) {
+            if (!isset($row['id'])) continue;
+            $id = (string)$row['id'];
+            if ($id !== '' && strpos($id, '/') === false) {
+                $id = 'opencode-go/' . $id;
+                $row['id'] = $id;
+            } elseif ($id !== '' && !str_starts_with($id, 'opencode-go/')) {
+                $row['id'] = 'opencode-go/' . ltrim($id, '/');
             }
+            if (isset($seen[$row['id']])) continue;
+            $seen[$row['id']] = true;
+            $merged[] = $row;
         }
-        if ($merged) {
-            @mkdir(dirname($cacheFile), 0750, true);
-            $fh = @fopen($cacheFile, 'c');
-            if ($fh) {
-                @flock($fh, LOCK_EX);
-                ftruncate($fh, 0);
-                fwrite($fh, json_encode(['data' => $merged]));
-                @flock($fh, LOCK_UN);
-                @fclose($fh);
-            } else {
-                @file_put_contents($cacheFile, json_encode(['data' => $merged]), LOCK_EX);
-            }
-            return $merged;
-        }
-        $fallback = [];
-        foreach (self::MODELS as $id => $label) {
-            $row = ['id' => $id, 'name' => $label];
-            if (isset(self::MODEL_PRICING[$id])) $row['pricing'] = self::MODEL_PRICING[$id];
-            $ctxMap = [
-                'opencode-go/grok-4.6' => 200000, 'opencode-go/gpt-5.6-luna' => 272000,
-                'opencode-go/glm-5.3-flash' => 131072, 'opencode-go/glm-5.3' => 131072,
-                'opencode-go/glm-5.2' => 131072, 'opencode-go/glm-5.1' => 131072,
-                'opencode-go/kimi-k2.6' => 131072, 'opencode-go/kimi-k3' => 131072, 'opencode-go/kimi-k2.7-code' => 131072,
-                'opencode-go/deepseek-v4-flash' => 131072, 'opencode-go/deepseek-v4.1-flash' => 131072,
-                'opencode-go/deepseek-v4-pro' => 131072, 'opencode-go/deepseek-v4-flash-vision-exp' => 131072,
-                'opencode-go/qwen3.6-plus' => 131072, 'opencode-go/qwen3.7-plus' => 131072, 'opencode-go/qwen3.7-max' => 200000,
-                'opencode-go/qwen3.8-flash' => 131072, 'opencode-go/qwen3.8-max' => 200000,
-                'opencode-go/minimax-m2.7' => 131072, 'opencode-go/minimax-m3' => 131072,
-                'opencode-go/mimo-v2.5' => 131072, 'opencode-go/mimo-v2.5-pro' => 131072,
-                'opencode-go/muse-spark-1.2-contributor' => 131072, 'opencode-go/muse-spark-1.3-contributor' => 131072,
-                'opencode-go/longcat-2.0' => 131072, 'opencode-go/hy3' => 131072, 'opencode-go/hy4-preview' => 131072,
-            ];
-            if (isset($ctxMap[$id])) $row['context_length'] = $ctxMap[$id];
-            $fallback[] = $row;
-        }
-        return $fallback;
+        return $merged ?: null;
+    }
+    protected static function timeoutHintText(): string {
+        return ' (model was slow/stream stalled — try ' . self::DEFAULT_MODEL . ' or gpt-5.6-luna)';
     }
 
     private static function getFallbackKey(string $model, string $primaryKey): string {
         $candidates = [];
-        $trim = fn($v) => trim((string)$v, " \t\n\r\0\x0B\"'");
-        $candidates[] = $trim(defined('OPENCODE_GO_API_KEY') ? OPENCODE_GO_API_KEY : '');
-        $candidates[] = $trim(getenv('OPENCODE_GO_API_KEY') ?: '');
-        $candidates[] = $trim(defined('OPENCODE_API_KEY') ? OPENCODE_API_KEY : '');
-        $candidates[] = $trim(getenv('OPENCODE_API_KEY') ?: '');
-        $candidates[] = $trim(defined('OPENROUTER_API_KEY') ? OPENROUTER_API_KEY : '');
-        $candidates[] = $trim(getenv('OPENROUTER_API_KEY') ?: '');
+        $candidates[] = parent::constOrEnv('OPENCODE_GO_API_KEY');
+        $candidates[] = parent::constOrEnv('OPENCODE_API_KEY');
+        $candidates[] = parent::constOrEnv('OPENROUTER_API_KEY');
         foreach ([(getenv('HOME') ?: ($_SERVER['HOME'] ?? '')) . '/.local/share/opencode/auth.json', (getenv('USERPROFILE') ?: '') . '/.local/share/opencode/auth.json'] as $authFile) {
             if ($authFile && is_file($authFile)) {
                 $raw = @file_get_contents($authFile);
                 $j = json_decode((string)$raw, true);
                 if (is_array($j)) {
-                    if (isset($j['opencode-go']['key'])) $candidates[] = $trim($j['opencode-go']['key']);
-                    if (isset($j['opencode']['key'])) $candidates[] = $trim($j['opencode']['key']);
+                    if (isset($j['opencode-go']['key'])) $candidates[] = parent::trimKey($j['opencode-go']['key']);
+                    if (isset($j['opencode']['key'])) $candidates[] = parent::trimKey($j['opencode']['key']);
                 }
             }
         }
@@ -285,7 +239,7 @@ class Opencode {
     }
 
     private static function buildHeaders(string $apiKey, string $format, string $sessionId = '', string $xTitle = ''): array {
-        $headers = ['Content-Type: application/json; charset=utf-8', 'User-Agent: CustomSEOFocusedCMS-AIStudio/1.0 (+https://kuplyu-tashkent.uz)'];
+        $headers = ['Content-Type: application/json; charset=utf-8', 'User-Agent: ' . parent::userAgent()];
         if ($sessionId !== '') $headers[] = 'x-opencode-session: ' . $sessionId;
         if ($xTitle !== '') $headers[] = 'X-Title: ' . $xTitle;
         if (defined('BASE_URL') && BASE_URL !== '') $headers[] = 'HTTP-Referer: ' . BASE_URL;
@@ -296,20 +250,6 @@ class Opencode {
             $headers[] = 'Authorization: Bearer ' . $apiKey;
         }
         return $headers;
-    }
-
-    private static function buildPayloadChat(string $apiModel, array $messages, array $tools, string $toolChoice, float $temperature, int $maxTokens): array {
-        $payload = [
-            'model'       => $apiModel,
-            'messages'    => $messages,
-            'temperature' => $temperature,
-            'max_tokens'  => $maxTokens,
-        ];
-        if (!empty($tools)) {
-            $payload['tools'] = $tools;
-            $payload['tool_choice'] = $toolChoice;
-        }
-        return $payload;
     }
 
     private static function buildPayloadResponses(string $apiModel, array $messages, array $tools, string $toolChoice, float $temperature, int $maxTokens): array {
@@ -488,21 +428,8 @@ class Opencode {
                 return ['content'=>$content,'tool_calls'=>$toolCalls ?: null,'finish_reason'=>$finishReason,'usage'=>$normUsage,'raw'=>$data];
             }
         }
-        $choice = $data['choices'][0] ?? null;
-        if (is_array($choice)) {
-            $msg = $choice['message'] ?? [];
-            $content = isset($msg['content']) && is_string($msg['content']) ? $msg['content'] : '';
-            if ($content === '' && isset($msg['reasoning']) && is_string($msg['reasoning']) && trim($msg['reasoning']) !== '') $content = trim($msg['reasoning']);
-            if ($content === '' && isset($msg['reasoning_details']) && is_array($msg['reasoning_details'])) {
-                $parts = array_map(fn($r) => $r['text'] ?? $r['content'] ?? '', $msg['reasoning_details']);
-                $joined = trim(implode("\n", array_filter($parts)));
-                if ($joined !== '') $content = $joined;
-            }
-            $toolCalls = $msg['tool_calls'] ?? null;
-            if (!is_array($toolCalls)) $toolCalls = null;
-            return ['content'=>$content,'tool_calls'=>$toolCalls,'finish_reason'=>$choice['finish_reason'] ?? null,'usage'=>$data['usage'] ?? null,'raw'=>$data];
-        }
-        return ['content'=>'','tool_calls'=>null,'finish_reason'=>null,'usage'=>$data['usage'] ?? null,'raw'=>$data];
+        [$oaContent, $oaToolCalls, $oaFinish, $oaUsage] = parent::normalizeOpenAiChoice($data);
+        return ['content'=>$oaContent,'tool_calls'=>$oaToolCalls,'finish_reason'=>$oaFinish,'usage'=>$oaUsage,'raw'=>$data];
     }
 
     public static function chat(
@@ -518,16 +445,15 @@ class Opencode {
         if ($apiKey === '') {
             throw new Exception("OpenCode Go API key is not configured. Add OPENCODE_GO_API_KEY to .env (https://opencode.ai/zen/go)");
         }
-        $maxTokens = max(256, min($maxTokens, 32000));
-        $temperature = max(0, min(2, (float)$temperature));
+        $maxTokens = parent::clampTokens($maxTokens);
+        $temperature = parent::clampTemp((float)$temperature);
         $apiModel = preg_replace('#^opencode-go/#', '', $model);
         $format = self::getFormatForModel($model);
         $endpoint = self::getEndpointForModel($model);
         if ($format === 'openai') $payloadArr = self::buildPayloadResponses($apiModel, $messages, [], 'auto', $temperature, $maxTokens);
         elseif ($format === 'anthropic') $payloadArr = self::buildPayloadAnthropic($apiModel, $messages, [], 'auto', $temperature, $maxTokens);
-        else $payloadArr = self::buildPayloadChat($apiModel, $messages, [], 'auto', $temperature, $maxTokens);
-        $payload = json_encode($payloadArr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        if ($payload === false) throw new Exception('Failed to encode request payload as JSON: ' . json_last_error_msg());
+        else $payloadArr = static::buildChatPayload($apiModel, $messages, [], 'auto', $temperature, $maxTokens);
+        $payload = parent::encodePayload($payloadArr, 'OpenCode');
         $headers = self::buildHeaders($apiKey, $format, $sessionId, 'CMS Page Editor');
         $attempt = 0;
         $lastError = null;
@@ -535,7 +461,7 @@ class Opencode {
         while ($attempt <= $retries) {
             $attempt++;
             try {
-                $data = self::doRequest($payload, $endpoint, $headers, 0, $apiKey, $model);
+                $data = self::goRequest($payload, $endpoint, $headers, 0, $apiKey, $model);
                 $norm = self::normalizeResponse($data, $format);
                 $content = $norm['content'] ?? '';
                 $finishReason = $norm['finish_reason'] ?? null;
@@ -568,7 +494,7 @@ class Opencode {
                         $triedFallback = true;
                         $headers = self::buildHeaders($fallback, $format, $sessionId, 'CMS Page Editor');
                         try {
-                            $data = self::doRequest($payload, $endpoint, $headers, 0, $fallback, $model);
+                            $data = self::goRequest($payload, $endpoint, $headers, 0, $fallback, $model);
                             $norm = self::normalizeResponse($data, $format);
                             $content = $norm['content'] ?? '';
                             if (trim($content) !== '') return trim($content);
@@ -582,70 +508,27 @@ class Opencode {
         throw $lastError ?? new Exception('OpenCode request failed');
     }
 
-    private static function doRequest(string $payload, string $endpoint, array $headers, int $retries, string $apiKey, string $model = ''): array {
-        $attempt = 0;
-        $lastError = null;
-        while ($attempt <= $retries) {
-            $attempt++;
-            $ch = curl_init($endpoint);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_POST           => true,
-                CURLOPT_POSTFIELDS     => $payload,
-                CURLOPT_HTTPHEADER     => $headers,
-                CURLOPT_TIMEOUT        => 180,
-                CURLOPT_CONNECTTIMEOUT => 15,
-                CURLOPT_LOW_SPEED_LIMIT => 10,
-                CURLOPT_LOW_SPEED_TIME  => 60,
-                CURLOPT_TCP_KEEPALIVE   => 1,
-            ]);
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $error = curl_error($ch);
-            $errno = curl_errno($ch);
-            curl_close($ch);
-            $transient = false;
-            if ($error) {
-                $isTimeout = $errno === 28 || stripos($error, 'timed out') !== false || stripos($error, 'timeout') !== false;
-                $hint = $isTimeout ? ' (model was slow/stream stalled — try ' . self::DEFAULT_MODEL . ' or gpt-5.6-luna)' : '';
-                $lastError = new Exception('OpenCode network error: ' . $error . $hint);
-                $transient = true;
-            } elseif ($httpCode === 401) {
-                $body = mb_substr((string)$response, 0, 800);
-                $masked = $apiKey !== '' ? substr($apiKey, 0, 8) . '…' . substr($apiKey, -4) . ' (' . strlen($apiKey) . ' chars)' : 'empty';
-                $hint = '';
-                if (str_contains(strtolower($body), 'expired') || str_contains(strtolower($body), 'revoked')) $hint = ' — key appears expired/revoked';
-                elseif (str_contains(strtolower($body), 'invalid')) $hint = ' — key rejected as invalid';
-                throw new Exception('OpenCode Go API key is invalid or unauthorized (model: ' . ($model ?: 'n/a') . ', key: ' . $masked . ')' . $hint . '. Body: ' . $body . '. Fix: check OPENCODE_GO_API_KEY in .env (https://opencode.ai/zen/go), ensure no quotes/spaces, then delete storage/opencode_models.json and retry.');
-            } elseif ($httpCode === 429) {
-                $lastError = new Exception('OpenCode rate limit exceeded. Please try again in a moment');
-                $transient = true;
-            } elseif ($httpCode >= 500) {
-                $body = mb_substr((string)$response, 0, 800);
-                $msg500 = 'OpenCode API error (HTTP ' . $httpCode . '): ' . $body;
-                if (str_contains(strtolower($body), 'internal server error')) {
-                    $msg500 .= ' — Opencode service temporarily unavailable.';
-                }
-                $lastError = new Exception($msg500);
-                $transient = true;
-            } elseif ($httpCode < 200 || $httpCode >= 300) {
-                $detail = mb_substr((string)$response, 0, 800);
-                if ($httpCode === 400 && str_contains(strtolower($detail), 'tool_choice')) $detail .= ' (tool_choice format mismatch for endpoint ' . $endpoint . ')';
-                throw new Exception('OpenCode API error (HTTP ' . $httpCode . '): ' . $detail);
-            }
-            if ($transient) {
-                if ($attempt <= $retries) {
-                    $delay = $httpCode >= 500 ? (1000000 * $attempt + random_int(0, 500000)) : (800000 + random_int(0, 700000));
-                    usleep($delay);
-                    continue;
-                }
-                throw $lastError;
-            }
-            $data = json_decode($response, true);
-            if (!is_array($data)) throw new Exception('OpenCode returned an invalid response');
-            return $data;
-        }
-        throw $lastError ?? new Exception('OpenCode request failed');
+    protected static function authErrorMessage(string $provider, string $response, string $apiKey, string $model): string {
+        $body = mb_substr($response, 0, 800);
+        $masked = $apiKey !== '' ? substr($apiKey, 0, 8) . '…' . substr($apiKey, -4) . ' (' . strlen($apiKey) . ' chars)' : 'empty';
+        $hint = '';
+        if (str_contains(strtolower($body), 'expired') || str_contains(strtolower($body), 'revoked')) $hint = ' — key appears expired/revoked';
+        elseif (str_contains(strtolower($body), 'invalid')) $hint = ' — key rejected as invalid';
+        return 'OpenCode Go API key is invalid or unauthorized (model: ' . ($model ?: 'n/a') . ', key: ' . $masked . ')' . $hint . '. Body: ' . $body . '. Fix: check OPENCODE_GO_API_KEY in .env (https://opencode.ai/zen/go), ensure no quotes/spaces, then delete storage/opencode_models.json and retry.';
+    }
+
+    protected static function serverErrorSuffix(string $body): string {
+        if (str_contains(strtolower($body), 'internal server error')) return ' — Opencode service temporarily unavailable.';
+        return '';
+    }
+
+    protected static function httpErrorHint(int $code, string $detail, string $endpoint): string {
+        if ($code === 400 && str_contains(strtolower($detail), 'tool_choice')) return ' (tool_choice format mismatch for endpoint ' . $endpoint . ')';
+        return '';
+    }
+
+    private static function goRequest(string $payload, string $endpoint, array $headers, int $retries, string $apiKey, string $model = ''): array {
+        return parent::_request($endpoint, $payload, $headers, $retries, 'OpenCode', $apiKey, $model, 10, 60, ' (model was slow/stream stalled — try ' . self::DEFAULT_MODEL . ' or gpt-5.6-luna)');
     }
 
     public static function chatWithTools(
@@ -663,18 +546,16 @@ class Opencode {
         if ($apiKey === '') {
             throw new Exception("OpenCode Go API key is not configured. Add OPENCODE_GO_API_KEY to .env (https://opencode.ai/zen/go)");
         }
-        $maxTokens = max(256, min($maxTokens, 32000));
-        $temperature = max(0, min(2, (float)$temperature));
-        $allowedChoices = ['auto','required','none'];
-        if (!in_array($toolChoice, $allowedChoices, true)) $toolChoice = 'auto';
+        $maxTokens = parent::clampTokens($maxTokens);
+        $temperature = parent::clampTemp((float)$temperature);
+        $toolChoice = parent::checkToolChoice($toolChoice);
         $apiModel = preg_replace('#^opencode-go/#', '', $model);
         $format = self::getFormatForModel($model);
         $endpoint = self::getEndpointForModel($model);
         if ($format === 'openai') $payloadArr = self::buildPayloadResponses($apiModel, $messages, $tools, $toolChoice, $temperature, $maxTokens);
         elseif ($format === 'anthropic') $payloadArr = self::buildPayloadAnthropic($apiModel, $messages, $tools, $toolChoice, $temperature, $maxTokens);
-        else $payloadArr = self::buildPayloadChat($apiModel, $messages, $tools, $toolChoice, $temperature, $maxTokens);
-        $payload = json_encode($payloadArr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        if ($payload === false) throw new Exception('Failed to encode request payload as JSON: ' . json_last_error_msg());
+        else $payloadArr = static::buildChatPayload($apiModel, $messages, $tools, $toolChoice, $temperature, $maxTokens);
+        $payload = parent::encodePayload($payloadArr, 'OpenCode');
         $headers = self::buildHeaders($apiKey, $format, $sessionId, 'CMS AI Studio');
         $attempt = 0;
         $lastError = null;
@@ -682,7 +563,7 @@ class Opencode {
         while ($attempt <= $retries) {
             $attempt++;
             try {
-                $data = self::doRequest($payload, $endpoint, $headers, 1, $apiKey, $model);
+                $data = self::goRequest($payload, $endpoint, $headers, 1, $apiKey, $model);
             } catch (Exception $e) {
                 $msg = $e->getMessage();
                 $is500 = str_contains($msg, 'HTTP 500') || str_contains($msg, 'Internal server error');
@@ -708,7 +589,7 @@ class Opencode {
                         $triedFallback = true;
                         $headers = self::buildHeaders($fallback, $format, $sessionId, 'CMS AI Studio');
                         try {
-                            $data = self::doRequest($payload, $endpoint, $headers, 1, $fallback, $model);
+                            $data = self::goRequest($payload, $endpoint, $headers, 1, $fallback, $model);
                             $apiKey = $fallback;
                         } catch (Exception $e2) {
                             throw $e;
@@ -720,10 +601,10 @@ class Opencode {
                     $fallbackChoice = 'auto';
                     if ($format === 'openai') $payloadArr2 = self::buildPayloadResponses($apiModel, $messages, $tools, $fallbackChoice, $temperature, $maxTokens);
                     elseif ($format === 'anthropic') $payloadArr2 = self::buildPayloadAnthropic($apiModel, $messages, $tools, $fallbackChoice, $temperature, $maxTokens);
-                    else $payloadArr2 = self::buildPayloadChat($apiModel, $messages, $tools, $fallbackChoice, $temperature, $maxTokens);
-                    $fallbackPayload = json_encode($payloadArr2, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    else $payloadArr2 = static::buildChatPayload($apiModel, $messages, $tools, $fallbackChoice, $temperature, $maxTokens);
+                    $fallbackPayload = parent::encodePayload($payloadArr2, 'OpenCode');
                     try {
-                        $data = self::doRequest($fallbackPayload, $endpoint, $headers, 1, $apiKey, $model);
+                        $data = self::goRequest($fallbackPayload, $endpoint, $headers, 1, $apiKey, $model);
                     } catch (Exception $e2) { throw $e; }
                 } else {
                     $lower = strtolower($msg);

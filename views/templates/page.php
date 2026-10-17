@@ -8,88 +8,14 @@ $applianceNameForSEO = $applianceName ?? '';
 
 <main>
 
-    <?php
-    // ─── HERO ────────────────────────────────────────────────────────────────
-    $pageTitle = $page["title_$lang"] ?? $page['title_ru'] ?? $page['slug'] ?? '';
-    require_once BASE_PATH . '/models/PageMedia.php';
-    $pageMediaModel = new PageMedia();
-    $heroMedia = $pageMediaModel->getPageMedia($page['id'], 'hero');
-    $hasHero = !empty($heroMedia);
-    $GLOBALS['heroTitleActive'] = $hasHero;
-    $GLOBALS['pageTitleRendered'] = $hasHero && !empty($pageTitle);
-    ?>
-
-    <section class="hero" id="hero">
-        <?php if ($hasHero): ?>
-        <div class="hero__bg auto-hero-section" id="hero-bg">
-            <?php echo processMediaPlaceholders('{{media-section:hero}}', $page['id']); ?>
-        </div>
-        <?php else: ?>
-        <div class="hero__bg hero__bg--gradient"></div>
-        <?php endif; ?>
-
-        <div class="hero__overlay"></div>
-
-        <div class="hero__content" data-animate="hero-card">
-            <?php if (!empty($pageTitle)): ?>
-            <h1 class="hero__title"><?= e($pageTitle) ?></h1>
-            <?php $GLOBALS['pageTitleRendered'] = true; ?>
-            <?php endif; ?>
-            <p class="hero__sub">
-                <?= $lang === 'ru'
-                    ? 'Честная цена · Выезд по Ташкенту · Оплата в день обращения'
-                    : 'Adolatli narx · Toshkent bo\'ylab chiqish · Murojaat kuni to\'lov' ?>
-            </p>
-            <div class="hero__actions">
-                <a href="tel:<?= preg_replace('/[^0-9+]/', '', $contactUi['phone'] ?? ($seo['phone'] ?? '')) ?>"
-                   class="hero__cta">
-                    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
-                    </svg>
-                    <?= $lang === 'ru' ? 'Позвонить' : 'Qo\'ng\'iroq' ?>
-                </a>
-
-                <?php if (($floatingCta['type'] ?? 'none') !== 'none' && !empty($floatingCta['url'])): ?>
-                <?php
-                $class = match ($floatingCta['type'] ?? 'telegram') {
-                    'instagram' => 'hero__cta hero__cta--instagram',
-                    'custom' => 'hero__cta hero__cta--custom',
-                    default => 'hero__cta hero__cta--telegram',
-                }; ?>
-
-                <a href="<?= e($floatingCta['url']) ?>"
-                   class="<?= $class ?>"
-                   target="_blank"
-                   rel="noopener noreferrer">
-
-                    <?php if (($floatingCta['type'] ?? 'telegram') === 'instagram'): ?>
-                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2zm0 1.8A3.95 3.95 0 0 0 3.8 7.75v8.5a3.95 3.95 0 0 0 3.95 3.95h8.5a3.95 3.95 0 0 0 3.95-3.95v-8.5a3.95 3.95 0 0 0-3.95-3.95h-8.5zm8.95 1.35a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 1.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 0 0 12 8.8z"/>
-                        </svg>
-                    <?php elseif (($floatingCta['type'] ?? 'telegram') === 'custom'): ?>
-                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M10.59 13.41a1 1 0 0 0 1.41 1.41l5.3-5.29v3.47a1 1 0 1 0 2 0V6a1 1 0 0 0-1-1h-7a1 1 0 1 0 0 2h3.47l-5.18 5.18zM5 6a1 1 0 0 1 1-1h2.5a1 1 0 1 1 0 2H7v10h10v-1.5a1 1 0 1 1 2 0V18a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6z"/>
-                        </svg>
-                    <?php else: ?>
-                        <!-- Telegram -->
-                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M22.05 1.577c-.393-.016-.784.08-1.117.235-.484.186-4.92 1.902-9.41 3.64-2.26.873-4.518 1.746-6.256 2.415-1.737.67-3.045 1.168-3.114 1.192-.46.16-1.082.362-1.61.984-.133.155-.267.354-.335.628s-.038.622.095.895c.265.547.714.773 1.244.976 1.76.564 3.58 1.102 5.087 1.608.556 1.96 1.09 3.927 1.618 5.89.174.394.553.54.944.544l-.002.02s.307.03.606-.042c.3-.07.677-.244 1.02-.565.377-.354 1.4-1.36 1.98-1.928l4.37 3.226.035.02s.484.34 1.192.388c.354.024.82-.044 1.22-.337.403-.294.67-.767.795-1.307.374-1.63 2.853-13.427 3.276-15.38z"/>
-                        </svg>
-                    <?php endif; ?>
-
-                    <?= e($floatingCta['label'] ?? ($lang === 'ru' ? 'Связаться' : 'Bog‘lanish')) ?>
-                </a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </section>
+    <?php require BASE_PATH . '/views/partials/hero.php'; ?>
 
     <?php
     // ─── INJECTED CONTENT ────────────────────────────────────────────────────
     // Render the CMS content; it emits .content-section, .info-grid, .info-card,
     // .process-step, .brands-list, .faq-item, etc.
     // The CSS below re-skins ALL of these so old class names still work fine.
-     $content = $page["content_$lang"];
+     $content = $page["content_$lang"] ?? $page['content_ru'] ?? $page['content_uz'] ?? '';
     $content = renderTemplate($content, $templateData);
     // Extract any <style> author put in content_ for full header/footer overrides
     $extractedFromContent = '';
@@ -101,7 +27,7 @@ $applianceNameForSEO = $applianceName ?? '';
         }
     }
     $content = sanitizeFrontendHtml($content);
-    $content = enhanceContentSEO($content, $page["title_$lang"], $applianceNameForSEO);
+    $content = enhanceContentSEO($content, $page["title_$lang"] ?? $page['title_ru'] ?? '', $applianceNameForSEO);
     $mediaBySection = [
         'banner' => $pageMediaModel->getPageMedia($page['id'], 'banner'),
         'content' => $pageMediaModel->getPageMedia($page['id'], 'content'),
@@ -114,177 +40,11 @@ $applianceNameForSEO = $applianceName ?? '';
     echo '</div>';
     ?>
 
-    <?php
-    // ─── GOOGLE REVIEW PANEL ─────────────────────────────────────────────────
-    if (!empty($seo['google_review_url'])):
-    ?>
-    <section class="review-strip" data-animate="fade-up">
-        <p class="review-strip__text">
-            <?= $lang === 'ru'
-                ? 'Если вам понравился сервис — будем рады вашему отзыву'
-                : 'Agar xizmatimiz yoqqan bo\'lsa — sharhingiz biz uchun muhim' ?>
-        </p>
-        <a class="review-strip__btn" href="<?= e($seo['google_review_url']) ?>"
-           target="_blank" rel="noopener noreferrer">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-            <?= $lang === 'ru' ? 'Оставить отзыв' : 'Sharh qoldirish' ?>
-        </a>
-    </section>
-    <?php endif; ?>
+    <?php require BASE_PATH . '/views/partials/review-strip.php'; ?>
 
-    <?php
-    // ─── LINK WIDGETS → image carousel ──────────────────────────────────────
-    require_once BASE_PATH . '/models/LinkWidget.php';
-    $widgetModel = new LinkWidget();
-    $pageLinks = $widgetModel->getLinksForPage($page['id']);
+    <?php require BASE_PATH . '/views/partials/links-carousel.php'; ?>
 
-    if ($page['show_link_widget'] && !empty($pageLinks)):
-
-        // Resolve a cover image per linked page: hero -> banner -> none.
-        // Reuses the same PageMedia model already instantiated above; one
-        // small query per tile (link widgets are a handful of items, not a
-        // big list, so this stays cheap).
-        $linkCovers = [];
-        $linkHires = [];
-        foreach ($pageLinks as $link) {
-            $targetId = $link['link_to_page_id'] ?? null;
-            $cover = null;
-            $hires = null;
-            if ($targetId) {
-                $coverMedia = $pageMediaModel->getPageMedia($targetId, 'hero');
-                if (empty($coverMedia)) {
-                    $coverMedia = $pageMediaModel->getPageMedia($targetId, 'banner');
-                }
-                if (!empty($coverMedia[0]['filename'])) {
-                    $fname = $coverMedia[0]['filename'];
-                    $cover = absoluteUrl('/uploads/' . $fname, $baseUrl);
-                    // hi-res variant for morph clone upgrade — same pipeline as hero srcset.
-                    // Picks the largest derived variant (1366 > 1024 > 768 > 640) so the
-                    // clone can swap mid-flight to a sharper source. Falls back to
-                    // original if no derived exists; JS will then keep the thumbnail
-                    // (soft at hero scale — honest pixel-data ceiling).
-                    $sources = buildResponsiveImageSources($fname, getResponsiveImageWidths());
-                    if ($sources && (!empty($sources['fallback']) || !empty($sources['webp']))) {
-                        $srcset = $sources['fallback'] ?? $sources['webp'];
-                        // also check webp for potentially larger variant
-                        if (!empty($sources['webp'])) $srcset = $sources['webp'];
-                        $parts = explode(',', $srcset);
-                        $last = trim(end($parts));
-                        $url = trim(explode(' ', $last)[0]);
-                        if ($url !== '') $hires = absoluteUrl($url, $baseUrl);
-                    }
-                    if (empty($hires)) {
-                        $name = pathinfo($fname, PATHINFO_FILENAME);
-                        $ext = strtolower(pathinfo($fname, PATHINFO_EXTENSION));
-                        foreach ([1366, 1024, 768, 640] as $w) {
-                            $candJpg = BASE_PATH . '/public/uploads/derived/' . $name . '_w' . $w . '.jpg';
-                            $candWebp = BASE_PATH . '/public/uploads/derived/' . $name . '_w' . $w . '.webp';
-                            if (file_exists($candJpg)) { $hires = absoluteUrl('/uploads/derived/' . $name . '_w' . $w . '.jpg', $baseUrl); break; }
-                            if (file_exists($candWebp)) { $hires = absoluteUrl('/uploads/derived/' . $name . '_w' . $w . '.webp', $baseUrl); break; }
-                        }
-                    }
-                    // ensure hires is distinct from cover so JS swap actually triggers
-                    if ($hires === $cover) $hires = null;
-                }
-            }
-            $linkCovers[$targetId] = $cover;
-            $linkHires[$targetId] = $hires;
-        }
-    ?>
-    <section class="links-section" data-animate="stagger">
-        <link rel="stylesheet" href="<?= BASE_URL ?>/css/hold-morph.css?v=<?= (is_file(PUBLIC_PATH . '/css/hold-morph.css') ? filemtime(PUBLIC_PATH . '/css/hold-morph.css') : (is_file(BASE_PATH . '/public/css/hold-morph.css') ? filemtime(BASE_PATH . '/public/css/hold-morph.css') : time())) ?>">
-        <div class="links-section__head">
-            <div class="section-label"><?= $lang === 'ru' ? 'Разделы' : 'Bo\'limlar' ?></div>
-            <h2 class="links-section__title">
-                <?= e(
-                    $page["widget_title_$lang"]
-                    ?? ($lang === 'ru' ? 'Полезные страницы' : 'Foydali sahifalar')
-                ) ?>
-            </h2>
-        </div>
-
-        <div class="links-carousel">
-            <button type="button" class="links-nav links-nav--prev" aria-label="<?= $lang === 'ru' ? 'Назад' : 'Orqaga' ?>">
-                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L8.414 11l4.293 4.293a1 1 0 01-1.414 1.414l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-            </button>
-            <button type="button" class="links-nav links-nav--next" aria-label="<?= $lang === 'ru' ? 'Вперёд' : 'Oldinga' ?>">
-                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L11.586 9 7.293 4.707a1 1 0 011.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
-            </button>
-
-            <div class="links-track" id="links-track">
-                <?php foreach ($pageLinks as $i => $link):
-                    $targetId = $link['link_to_page_id'] ?? null;
-                    $cover = $linkCovers[$targetId] ?? null;
-                    $tileClass = 'links-tile' . ($cover ? '' : ' links-tile--no-image');
-                    $titleText = $link["title_$lang"] ?? '';
-                    $initial = $titleText !== '' ? mb_strtoupper(mb_substr($titleText, 0, 1)) : '';
-                    $hiresForTile = $linkHires[$targetId] ?? null;
-                ?>
-                <a href="<?= BASE_URL ?>/<?= e($link['slug']) ?><?= $lang !== DEFAULT_LANGUAGE ? '/' . $lang : '' ?>"
-                   class="<?= $tileClass ?>"
-                   data-from="<?= e($page['slug']) ?>"
-                   data-to="<?= e($link['slug']) ?>"
-                   data-stagger="<?= $i ?>"
-                   <?= $cover ? 'data-cover="' . e($cover) . '"' : '' ?>
-                   <?= $hiresForTile ? 'data-cover-hires="' . e($hiresForTile) . '"' : '' ?>>
-                    <?php if ($cover): ?>
-                    <img class="links-tile__img" src="<?= e($cover) ?>" alt="" loading="lazy" decoding="async">
-                    <?php else: ?>
-                    <span class="links-tile__monogram" aria-hidden="true"><?= e($initial) ?></span>
-                    <?php endif; ?>
-                    <span class="links-tile__scrim" aria-hidden="true"></span>
-                    <span class="links-tile__content">
-                        <span class="links-tile__text"><?= e($titleText) ?></span>
-                        <span class="links-tile__arrow" aria-hidden="true">
-                            <svg viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                            </svg>
-                        </span>
-                    </span>
-                </a>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    </section>
-    <?php endif; ?>
-
-    <?php
-    // ─── FAQ ACCORDION ───────────────────────────────────────────────────────
-    // Moved out of the dark footer (where it was a flat <details> list that
-    // clashed with the rest of the page) and into the main content flow as a
-    // proper branded accordion. $faqs / generateFAQSchema() logic in
-    // header.php is untouched — this only changes where/how it's displayed.
-    if (!empty($faqs)):
-    ?>
-    <section class="faq-section" data-animate="fade-up">
-        <div class="section-label"><?= $lang === 'ru' ? 'Вопросы и ответы' : 'Savol-javoblar' ?></div>
-        <h2 class="faq-section__title">
-            <?= $lang === 'ru' ? 'Часто задаваемые вопросы' : 'Tez-tez beriladigan savollar' ?>
-        </h2>
-
-        <div class="faq-accordion">
-            <?php foreach ($faqs as $i => $faq): ?>
-            <div class="faq-acc-item<?= $i === 0 ? ' is-open' : '' ?>">
-                <button type="button" class="faq-acc-item__q" aria-expanded="<?= $i === 0 ? 'true' : 'false' ?>">
-                    <span class="faq-acc-item__q-text"><?= e($faq["question_$lang"]) ?></span>
-                    <span class="faq-acc-item__icon" aria-hidden="true">
-                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 7l5 5 5-5"/>
-                        </svg>
-                    </span>
-                </button>
-                <div class="faq-acc-item__a">
-                    <div class="faq-acc-item__a-inner">
-                        <p><?= nl2br(e($faq["answer_$lang"])) ?></p>
-                    </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-    </section>
-    <?php endif; ?>
+    <?php require BASE_PATH . '/views/partials/faq-accordion.php'; ?>
 
 </main>
 

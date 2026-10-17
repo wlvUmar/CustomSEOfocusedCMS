@@ -7,18 +7,17 @@
 require_once BASE_PATH . '/models/Opencode.php';
 require_once BASE_PATH . '/models/ai/AiToolRegistry.php';
 require_once BASE_PATH . '/models/ai/AiRunGuard.php';
+require_once BASE_PATH . '/models/ai/AiSessionStore.php';
 require_once BASE_PATH . '/models/ai/ContextBuilder.php';
 require_once BASE_PATH . '/models/ai/PromptLoader.php';
 require_once BASE_PATH . '/models/ai/SkillLoader.php';
+require_once BASE_PATH . '/models/ai/AiRateLimiter.php';
+require_once BASE_PATH . '/models/ai/AiPromptBuilder.php';
+require_once BASE_PATH . '/services/AiHistorySanitizer.php';
+require_once BASE_PATH . '/services/AiLogger.php';
 
 class AiStudioController extends Controller {
 
-    /** History depth kept for context (client sends the transcript each turn). */
-    private const MAX_HISTORY_TURNS = 12;
-    /** JSON-lines operational log for this feature (separate from php_errors.log). */
-    private const LOG_FILE = BASE_PATH . '/logs/ai-studio.log';
-    /** Verbose debug dump: raw prompts, messages, tool results (opt-in via ?debug=1 or header, always for errors). */
-    private const DEBUG_LOG_FILE = BASE_PATH . '/logs/ai-studio-debug.log';
 
     public function index() {
         $this->requireAuth();
@@ -56,49 +55,11 @@ class AiStudioController extends Controller {
         // Rate limit: 20 runs / 10 min per admin bound to user_id + IP, persisted to storage (bypass via cookie clear mitigated).
         $uid = (int)($_SESSION['user_id'] ?? 0);
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-        $rlKey = 'ai_studio_' . $uid . '_' . sha1($ip);
-        // Session bucket (fast path)
-        $rlData = $_SESSION["ratelimit_ai_studio_{$rlKey}"] ?? ['count' => 0, 'timestamp' => time()];
-        if (time() - $rlData['timestamp'] > 600) $rlData = ['count' => 0, 'timestamp' => time()];
-        // File-backed bucket with flock for atomicity across sessions
-        $rlDir = BASE_PATH . '/storage/ratelimit_ai_studio';
-        if (!is_dir($rlDir)) @mkdir($rlDir, 0750, true);
-        $rlFile = $rlDir . '/' . preg_replace('/[^a-z0-9_\-]/i', '_', $rlKey) . '.json';
-        $fileData = ['count' => 0, 'timestamp' => time()];
-        $fp = @fopen($rlFile, 'c+');
-        if ($fp) {
-            @flock($fp, LOCK_EX);
-            $raw = stream_get_contents($fp);
-            if ($raw !== false && $raw !== '') {
-                $j = json_decode($raw, true);
-                if (is_array($j) && isset($j['count'], $j['timestamp'])) $fileData = $j;
-            }
-            if (time() - (int)$fileData['timestamp'] > 600) $fileData = ['count' => 0, 'timestamp' => time()];
-            // Use max of session and file counts to prevent either alone bypassing
-            $effective = max((int)$rlData['count'], (int)$fileData['count']) + 1;
-            if ($effective > 20) {
-                $retryAfter = 600 - (time() - (int)$fileData['timestamp']);
-                if ($retryAfter < 1) $retryAfter = 60;
-                header('Retry-After: ' . $retryAfter);
-                @flock($fp, LOCK_UN); @fclose($fp);
-                $this->json(['success' => false, 'message' => 'AI Studio rate limit: max 20 runs per 10 minutes. Please wait.'], 429);
-            }
-            $fileData['count'] = $effective;
-            $fileData['timestamp'] = $rlData['timestamp'] = $fileData['timestamp']; // keep original window start
-            // persist both
-            ftruncate($fp, 0); rewind($fp); fwrite($fp, json_encode($fileData));
-            @flock($fp, LOCK_UN); @fclose($fp);
-            $rlData['count'] = $effective;
-        } else {
-            // Fallback to session only if file unavailable
-            $rlData['count']++;
-            if ($rlData['count'] > 20) {
-                $retryAfter = 600 - (time() - (int)$rlData['timestamp']);
-                header('Retry-After: ' . max(1, $retryAfter));
-                $this->json(['success' => false, 'message' => 'AI Studio rate limit: max 20 runs per 10 minutes. Please wait.'], 429);
-            }
+        $rl = AiRateLimiter::check($uid, $ip);
+        if (empty($rl['allowed'])) {
+            header('Retry-After: ' . (int)($rl['retryAfter'] ?? 60));
+            $this->json(['success' => false, 'message' => AiRateLimiter::MESSAGE], 429);
         }
-        $_SESSION["ratelimit_ai_studio_{$rlKey}"] = $rlData;
 
         $model = trim((string)($_POST['model'] ?? ''));
         // Model allowlist: opencode-go/* or live catalogue match.
@@ -107,7 +68,7 @@ class AiStudioController extends Controller {
         $model = Opencode::normalizeModel($model);
         if ($originalModel !== '' && $originalModel !== $model) {
             $sanitized = substr(preg_replace('/[^a-z0-9\/\-\.:_]/i', '', $originalModel), 0, 80);
-            $this->logAi('model_fallback', ['requested' => $sanitized !== '' ? $sanitized : '[empty]', 'fallback' => $model, 'allowed_via' => Opencode::isAllowedModel($originalModel) ? 'heuristic' : 'invalid']);
+            AiLogger::logAi('model_fallback', ['requested' => $sanitized !== '' ? $sanitized : '[empty]', 'fallback' => $model, 'allowed_via' => Opencode::isAllowedModel($originalModel) ? 'heuristic' : 'invalid']);
         }
         $message = trim((string)($_POST['message'] ?? ''));
         // Hard cap single message to avoid token blow-up (C1/H5).
@@ -115,20 +76,20 @@ class AiStudioController extends Controller {
             $message = mb_substr($message, 0, 8000) . "\n…[truncated to 8000 chars]";
         }
         $sessionId = trim((string)($_POST['session_id'] ?? ''));
-        $history = $this->sanitizeHistory($_POST['history'] ?? '[]');
-        $rawApproved = $this->sanitizeApproved($_POST['approved'] ?? '[]');
-        $pendingRaw = $this->sanitizePending($_POST['pending'] ?? '[]');
+        $history = AiHistorySanitizer::sanitizeHistory($_POST['history'] ?? '[]');
+        $rawApproved = AiHistorySanitizer::sanitizeApproved($_POST['approved'] ?? '[]');
+        $pendingRaw = AiHistorySanitizer::sanitizePending($_POST['pending'] ?? '[]');
         $mode = strtolower(trim((string)($_POST['mode'] ?? 'plan')));
         if (!in_array($mode, ['plan', 'build'], true)) $mode = 'plan';
         $approved = $this->filterApprovedByServerPending($rawApproved, $sessionId, $uid);
         $pending = $this->validatePendingAgainstServer($pendingRaw, $sessionId, $uid);
         $pendingMode = $this->getPendingMode($sessionId, $uid);
         if (!empty($pending) && $pendingMode !== null && $pendingMode !== $mode) {
-            $this->logAi('pending_mode_mismatch', ['session_id'=>substr($sessionId,0,12),'pending_mode'=>$pendingMode,'requested_mode'=>$mode]);
+            AiLogger::logAi('pending_mode_mismatch', ['session_id'=>substr($sessionId,0,12),'pending_mode'=>$pendingMode,'requested_mode'=>$mode]);
             $this->json(['success'=>false,'message'=>'Mode mismatch — approval was requested in '.strtoupper($pendingMode).' but you sent '.strtoupper($mode).'. Switch back to '.strtoupper($pendingMode).' to approve/deny.'], 400);
         }
         if (!empty($approved) && $pendingMode !== null && $pendingMode !== $mode) {
-            $this->logAi('approved_mode_mismatch', ['session_id'=>substr($sessionId,0,12),'pending_mode'=>$pendingMode,'requested_mode'=>$mode]);
+            AiLogger::logAi('approved_mode_mismatch', ['session_id'=>substr($sessionId,0,12),'pending_mode'=>$pendingMode,'requested_mode'=>$mode]);
             $this->json(['success'=>false,'message'=>'Mode mismatch — pending approval is in '.strtoupper($pendingMode).' but you sent '.strtoupper($mode).'. Switch back to '.strtoupper($pendingMode).'.'], 400);
         }
         // Tightened: require ≥22 chars (brute-force 8-char no longer accepted), UUID v4 36-char preferred.
@@ -190,9 +151,9 @@ class AiStudioController extends Controller {
         try {
             $earlyCtx = $_SESSION['ai_context'] ?? $this->loadSessionContext($sessionId) ?? [];
             if (!is_array($earlyCtx)) $earlyCtx = [];
-            $promptForLog = $this->buildSystemPrompt($mode, $earlyCtx);
+            $promptForLog = AiPromptBuilder::buildSystemPrompt($mode, $earlyCtx);
         } catch (Throwable $e) {
-            $this->logAi('prompt_missing', ['mode' => $mode, 'error' => mb_substr($e->getMessage(), 0, 200)]);
+            AiLogger::logAi('prompt_missing', ['mode' => $mode, 'error' => mb_substr($e->getMessage(), 0, 200)]);
             $this->json(['success' => false, 'message' => 'AI prompt file missing: ' . $e->getMessage()], 500);
         }
 
@@ -204,7 +165,7 @@ class AiStudioController extends Controller {
         if (empty($claim['claimed'])) {
             $qid = AiRunGuard::enqueue($sessionId, $uid, $message, $history, $model, $mode);
             $pos = AiRunGuard::queuedCount($sessionId, $uid);
-            $this->logAi('run_queued', ['session_id'=>$sessionId,'queue_id'=>$qid,'position'=>$pos]);
+            AiLogger::logAi('run_queued', ['session_id'=>$sessionId,'queue_id'=>$qid,'position'=>$pos]);
             $this->json(['success'=>true,'queued'=>true,'queue_id'=>$qid,'position'=>$pos,'message'=>'Run queued — previous turn still active. It will auto-start after current run completes.'], 409);
         }
 
@@ -247,7 +208,7 @@ class AiStudioController extends Controller {
         @set_time_limit(0);
 
         $this->startStream();
-        $this->logAi('run_start', [
+        AiLogger::logAi('run_start', [
             'model' => $model,
             'mode' => $mode,
             'message_len' => mb_strlen($message),
@@ -257,7 +218,7 @@ class AiStudioController extends Controller {
             'prompt_chars' => mb_strlen($promptForLog),
         ]);
         if ($this->shouldDebug()) {
-            $this->logDebug('prompt_raw', [
+            AiLogger::logDebug('prompt_raw', [
                 'model' => $model,
                 'mode' => $mode,
                 'prompt_meta' => PromptLoader::fileMeta($mode === 'build' ? 'ai-studio-build' : 'ai-studio-plan'),
@@ -329,7 +290,7 @@ class AiStudioController extends Controller {
         try {
             for ($turn = 1; ; $turn++) {
                 if (AiRunGuard::isCancelled($sessionId, $uid, $runToken)) {
-                    $this->logAi('run_cancelled', ['turn'=>$turn,'duration_ms'=>$this->elapsedMs($startedAt)]);
+                    AiLogger::logAi('run_cancelled', ['turn'=>$turn,'duration_ms'=>$this->elapsedMs($startedAt)]);
                     $this->sse('activity', ['text'=>'Cancelled — stopping…']);
                     $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
                     // attempt summary on cancel as well
@@ -345,7 +306,7 @@ class AiStudioController extends Controller {
 
                 // Soft redirect: exactly 5 consecutive read-only turns in BUILD → single nudge, then leave it alone
                 if ($mode === 'build' && $consecutiveReadOnlyTurns === 5) {
-                    $this->logAi('waste_guard', ['turn'=>$turn,'consecutive_readonly'=>$consecutiveReadOnlyTurns,'msg'=>'5+ read-only turns — redirecting to write']);
+                    AiLogger::logAi('waste_guard', ['turn'=>$turn,'consecutive_readonly'=>$consecutiveReadOnlyTurns,'msg'=>'5+ read-only turns — redirecting to write']);
                     $this->sse('activity', ['text' => 'Redirecting to useful write…']);
                     $hint = $consecutiveReadOnlyTurns >= 7
                         ? 'You have done ' . $consecutiveReadOnlyTurns . ' read-only turns. Redirect: pick ONE concrete improvement for the appliance & furniture buyback funnel (e.g. refine next thinnest section, add internal links via batch_update, or polish hero copy) and WRITE it now — do not re-fetch the same get_page/get_section. If you are truly done, summarize what changed.'
@@ -385,7 +346,7 @@ class AiStudioController extends Controller {
                     $this->sse('activity', ['text' => 'Context trimmed to fit token budget']);
                 }
                 if ($this->shouldDebug()) {
-                    $this->logDebug('turn_request', [
+                    AiLogger::logDebug('turn_request', [
                         'turn' => $turn,
                         'model' => $model,
                         'messages' => $messages,
@@ -408,7 +369,7 @@ class AiStudioController extends Controller {
                         $isDup = str_contains($emsg, 'Duplicate function_call_output') || str_contains($emsg, 'Each function_call must have exactly one');
                         if ($isDup && $chatAttempts === 0) {
                             $chatAttempts++;
-                            $this->logAi('retry_dup_fix', ['turn'=>$turn,'msg'=>mb_substr($emsg,0,400)]);
+                            AiLogger::logAi('retry_dup_fix', ['turn'=>$turn,'msg'=>mb_substr($emsg,0,400)]);
                             $this->sse('activity', ['text' => 'Fixing duplicate tool sequence… retrying']);
                             continue;
                         }
@@ -416,7 +377,7 @@ class AiStudioController extends Controller {
                     }
                 }
                 if ($this->shouldDebug()) {
-                    $this->logDebug('turn_response', [
+                    AiLogger::logDebug('turn_response', [
                         'turn' => $turn,
                         'model' => $model,
                         'content' => $response['content'] ?? '',
@@ -448,7 +409,7 @@ class AiStudioController extends Controller {
 
                 }
 
-                $this->logAi('model_turn', [
+                AiLogger::logAi('model_turn', [
                     'turn' => $turn,
                     'model' => $model,
                     'prompt_tokens' => (int)($usage['prompt_tokens'] ?? 0),
@@ -471,7 +432,7 @@ class AiStudioController extends Controller {
                         $isContinue = preg_match('/^(continue|продолжай|дальше|далее)\s*$/iu', trim($message));
                         $isAcknowledgeLoop = preg_match('/(no more confirmations|got it|понял|без подтверждений)/iu', (string)$response['content']);
                         if ($isAcknowledgeLoop || $isContinue || mb_strlen(trim((string)$response['content'])) < 400) {
-                            $this->logAi('build_nudge', ['turn'=>$turn,'reason'=> $isAcknowledgeLoop ? 'ack_loop' : ($isContinue ? 'continue_no_tool' : 'no_tool_in_build'), 'content_preview'=> mb_substr((string)$response['content'],0,200)]);
+                            AiLogger::logAi('build_nudge', ['turn'=>$turn,'reason'=> $isAcknowledgeLoop ? 'ack_loop' : ($isContinue ? 'continue_no_tool' : 'no_tool_in_build'), 'content_preview'=> mb_substr((string)$response['content'],0,200)]);
                             $this->sse('activity', ['text' => 'Build nudge: forcing tool call…']);
                             $messages[] = [
                                 'role' => 'assistant',
@@ -497,7 +458,7 @@ class AiStudioController extends Controller {
 
                 foreach ($toolCalls as $idx => $tc) {
                     if (AiRunGuard::isCancelled($sessionId, $uid, $runToken)) {
-                        $this->logAi('tool_cancelled', ['tool'=>$tc['function']['name']??'unknown','turn'=>$turn]);
+                        AiLogger::logAi('tool_cancelled', ['tool'=>$tc['function']['name']??'unknown','turn'=>$turn]);
                         $toolMsgId = $tc['id'] ?? sha1(($tc['function']['name']??'').':'.(string)($tc['function']['arguments']??''));
                         $messages[] = ['role'=>'tool','tool_call_id'=>$toolMsgId,'content'=>json_encode(['status'=>'cancelled','note'=>'Run cancelled by user'], JSON_UNESCAPED_UNICODE)];
                         $haltForApproval = false;
@@ -514,7 +475,7 @@ class AiStudioController extends Controller {
                         $msg = 'Invalid tool arguments JSON for ' . $name . ': ' . $err . ' — request valid JSON.';
                         $this->sse('tool_result', ['tool' => $name, 'ok' => false, 'message' => $msg, 'summary' => 'Error: ' . $msg]);
                         $messages[] = ['role' => 'tool', 'tool_call_id' => $toolMsgId, 'content' => json_encode(['error' => $msg, 'code'=>'VALIDATION_ERROR','retryable'=>false, '_untrusted_tool_output'=>true], JSON_UNESCAPED_UNICODE)];
-                        $this->logAi('tool_call', ['name' => $name, 'call_id' => $toolMsgId, 'type' => 'error', 'args' => mb_substr((string)$rawArgs, 0, 500), 'error' => 'malformed_json']);
+                        AiLogger::logAi('tool_call', ['name' => $name, 'call_id' => $toolMsgId, 'type' => 'error', 'args' => mb_substr((string)$rawArgs, 0, 500), 'error' => 'malformed_json']);
                         continue;
                     }
 
@@ -526,7 +487,7 @@ class AiStudioController extends Controller {
                     // 03-code-bugs #4: deterministic call_id fallback to avoid collisions when model omits id
                     $toolMsgId = $tc['id'] ?? $out['call_id'] ?? AiToolRegistry::callId($name, $args);
 
-                    $this->logAi('tool_call', [
+                    AiLogger::logAi('tool_call', [
                         'name' => $name,
                         'call_id' => $out['call_id'] ?? $toolMsgId,
                         'type' => $out['type'],
@@ -534,7 +495,7 @@ class AiStudioController extends Controller {
                         'duration_ms' => $toolMs,
                     ]);
                     if ($this->shouldDebug()) {
-                        $this->logDebug('tool_result_raw', [
+                        AiLogger::logDebug('tool_result_raw', [
                             'turn' => $turn,
                             'tool' => $name,
                             'call_id' => $out['call_id'] ?? $toolMsgId,
@@ -590,7 +551,7 @@ class AiStudioController extends Controller {
                             'reason' => $out['reason'],
                             'pending' => $pendingPair,
                         ]);
-                        $this->logAi('approval_requested', [
+                        AiLogger::logAi('approval_requested', [
                             'call_id' => $out['call_id'],
                             'call_ids' => $approvalCallIds,
                             'tool' => $name,
@@ -645,7 +606,7 @@ class AiStudioController extends Controller {
                             'tool_call_id' => $toolMsgId,
                             'content' => json_encode(['error'=>'VERIFICATION_FAILED: '.$msg,'code'=>'VERIFICATION_FAILED','retryable'=>true,'_untrusted_tool_output'=>true,'fresh_hash'=>$out['result']['fresh_hash']??null], JSON_UNESCAPED_UNICODE),
                         ];
-                        $this->logAi('tool_verification_failed', ['tool'=>$name,'call_id'=>$toolMsgId,'fresh_hash'=>$out['result']['fresh_hash']??'']);
+                        AiLogger::logAi('tool_verification_failed', ['tool'=>$name,'call_id'=>$toolMsgId,'fresh_hash'=>$out['result']['fresh_hash']??'']);
                         continue;
                     }
 
@@ -705,14 +666,14 @@ class AiStudioController extends Controller {
                     $key = $nm . ':' . $ag;
                     $callCounts[$key] = ($callCounts[$key] ?? 0) + 1;
                     if ($callCounts[$key] === 3 && AiToolRegistry::isPlanAllowed($nm)) {
-                        $this->logAi('repeat_guard', ['turn'=>$turn,'tool'=>$nm,'args'=>mb_substr($ag,0,200),'count'=>3]);
+                        AiLogger::logAi('repeat_guard', ['turn'=>$turn,'tool'=>$nm,'args'=>mb_substr($ag,0,200),'count'=>3]);
                         $this->sse('activity', ['text' => 'Redirect: repeated ' . $nm . ' ×3 — using cached result.']);
                         $messages[] = ['role' => 'user', 'content' => 'SYSTEM REDIRECT: Repeated ' . $nm . ' with identical args 3× — you already have this data. Reuse it; if the requested work is done, summarize and stop without further tool calls.'];
                     }
                 }
 
                 if ($haltForApproval) {
-                    $this->logAi('run_end', [
+                    AiLogger::logAi('run_end', [
                         'status' => 'awaiting_approval',
                         'turns' => $turnsUsed,
                         'duration_ms' => $this->elapsedMs($startedAt),
@@ -734,13 +695,13 @@ class AiStudioController extends Controller {
 
             // Soft preview reminder: if HTML was written but never previewed, hint the model/next turn — do not block, just log + nudge
             if ($didWriteHtml && !$didPreview && $mode === 'build') {
-                $this->logAi('preview_missing', ['turns'=>$turnsUsed,'hint'=>'visual edit without render_preview/render_full_page']);
+                AiLogger::logAi('preview_missing', ['turns'=>$turnsUsed,'hint'=>'visual edit without render_preview/render_full_page']);
                 if ($finalText !== '' && stripos($finalText, 'preview') === false) {
                     $finalText .= "\n\n[Hint: you made HTML edits without calling render_preview/render_full_page — call render_preview for the changed section(s) + render_full_page once before marking complete.]";
                 }
             }
             $this->sse('done', ['status' => 'complete', 'text' => $finalText, 'mode' => $mode]);
-            $this->logAi('run_end', [
+            AiLogger::logAi('run_end', [
                 'status' => 'complete',
                 'turns' => $turnsUsed,
                 'prompt_tokens' => $usageTotal['prompt'],
@@ -773,9 +734,9 @@ class AiStudioController extends Controller {
                 $logCtx['endpoint'] = Opencode::getEndpointForModel($model);
                 $logCtx['model_format'] = Opencode::getFormatForModel($model);
             }
-            $this->logAi('run_error', $logCtx);
+            AiLogger::logAi('run_error', $logCtx);
             if ($this->shouldDebug()) {
-                $this->logDebug('run_error_raw', [
+                AiLogger::logDebug('run_error_raw', [
                     'exception' => $msg,
                     'file' => $e->getFile() . ':' . $e->getLine(),
                     'trace' => mb_substr($e->getTraceAsString(), 0, 4000),
@@ -852,67 +813,6 @@ class AiStudioController extends Controller {
         return (int)round((microtime(true) - $since) * 1000);
     }
 
-    private function logAi(string $event, array $ctx = []): void {
-        $sid = $_SESSION['ai_session_id'] ?? ($_POST['session_id'] ?? null);
-        // Redact secrets from log context (tool args may contain keys)
-        $ctx = $this->redactForLog($ctx);
-        $line = json_encode([
-            'ts' => date('Y-m-d H:i:s'),
-            'event' => $event,
-            'user' => $_SESSION['username'] ?? 'admin',
-            'user_id' => $_SESSION['user_id'] ?? null,
-            'session_id' => $sid ? substr((string)$sid, 0, 12) : null,
-            'model' => $ctx['model'] ?? null,
-        ] + $ctx, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        if ($line === false) return;
-        // Rotate if >10MB with lock to prevent race (07#9)
-        if (is_file(self::LOG_FILE) && @filesize(self::LOG_FILE) > 10 * 1024 * 1024) {
-            $lock = @fopen(self::LOG_FILE, 'a');
-            if ($lock && @flock($lock, LOCK_EX | LOCK_NB)) {
-                // Re-check size after acquiring lock
-                clearstatcache(true, self::LOG_FILE);
-                if (@filesize(self::LOG_FILE) > 10 * 1024 * 1024) {
-                    @flock($lock, LOCK_UN);
-                    @fclose($lock);
-                    @rename(self::LOG_FILE, self::LOG_FILE . '.' . date('Y-m-d_His'));
-                } else {
-                    @flock($lock, LOCK_UN);
-                    @fclose($lock);
-                }
-            } elseif ($lock) {
-                @fclose($lock);
-            }
-        }
-        @error_log($line . "\n", 3, self::LOG_FILE);
-    }
-
-    private function logDebug(string $event, array $payload = []): void {
-        $sid = $_SESSION['ai_session_id'] ?? ($_POST['session_id'] ?? null);
-        $line = json_encode([
-            'ts' => date('Y-m-d H:i:s.v'),
-            'event' => $event,
-            'session_id' => $sid ? substr((string)$sid, 0, 16) : null,
-        ] + $payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
-        if ($line === false) $line = json_encode(['ts'=>date('Y-m-d H:i:s'), 'event'=>$event, 'error'=>'json_encode failed']);
-        if (is_file(self::DEBUG_LOG_FILE) && @filesize(self::DEBUG_LOG_FILE) > 20 * 1024 * 1024) {
-            $lock = @fopen(self::DEBUG_LOG_FILE, 'a');
-            if ($lock && @flock($lock, LOCK_EX | LOCK_NB)) {
-                clearstatcache(true, self::DEBUG_LOG_FILE);
-                if (@filesize(self::DEBUG_LOG_FILE) > 20 * 1024 * 1024) {
-                    @flock($lock, LOCK_UN);
-                    @fclose($lock);
-                    @rename(self::DEBUG_LOG_FILE, self::DEBUG_LOG_FILE . '.' . date('Y-m-d_His'));
-                } else {
-                    @flock($lock, LOCK_UN);
-                    @fclose($lock);
-                }
-            } elseif ($lock) {
-                @fclose($lock);
-            }
-        }
-        @error_log($line . "\n", 3, self::DEBUG_LOG_FILE);
-    }
-
     private function shouldDebug(): bool {
         if (isset($_POST['debug']) && $_POST['debug'] === '1') return true;
         if (isset($_GET['debug']) && $_GET['debug'] === '1') return true;
@@ -924,336 +824,19 @@ class AiStudioController extends Controller {
         return false;
     }
 
-    private function redactForLog(array $ctx): array {
-        $out = [];
-        foreach ($ctx as $k => $v) {
-            if (is_string($v)) {
-                $v = preg_replace('/(Authorization:\s*)[^\n]+/i', '$1[redacted]', $v) ?? $v;
-                $v = preg_replace('/((?:api[_-]?key|secret|password|token|OPENCODE_API_KEY|OPENROUTER_API_KEY|GSC_CLIENT_SECRET|GSC_ENCRYPTION_KEY|BOT_API_SECRET)\s*[:=]\s*)([^\s\n"\'`,;]+)/i', '$1[redacted]', $v) ?? $v;
-                $v = preg_replace('/(sk-[a-zA-Z0-9_\-]{10,})/', '[redacted-sk]', $v) ?? $v;
-                $v = preg_replace('/(Bearer\s+[a-zA-Z0-9_\-\.]+)/i', 'Bearer [redacted]', $v) ?? $v;
-            } elseif (is_array($v)) {
-                $v = $this->redactForLog($v);
-            }
-            $out[$k] = $v;
-        }
-        return $out;
-    }
-
-    // ------------------------------------------------------------------
-    // Prompt + helpers
-    // ------------------------------------------------------------------
-
-    private function buildSystemPrompt(string $mode = 'plan', ?array $ctx = null): string {
-        $mode = $mode === 'build' ? 'build' : 'plan';
-        // Inject cached design tokens so continue doesn't re-fetch get_design_tokens (reliable history continuity)
-        $cachedAddon = '';
-        if (is_array($ctx) && isset($ctx['_cached_tokens']) && is_array($ctx['_cached_tokens'])) {
-            $age = isset($ctx['_cached_tokens_at']) ? (time() - (int)$ctx['_cached_tokens_at']) : 999999;
-            if ($age < 3600) {
-                $tokJson = json_encode($ctx['_cached_tokens'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                if ($tokJson !== false && mb_strlen($tokJson) > 20) {
-                    if (mb_strlen($tokJson) > 2000) $tokJson = mb_substr($tokJson, 0, 2000) . '…[truncated]';
-                    $cachedAddon = "\n\n═══ CACHED DESIGN TOKENS (from earlier turn, " . $age . "s ago — do NOT call get_design_tokens again; use this) ═══\n" . $tokJson;
-                }
-            }
-        }
-        $memoryAddon = '';
-        if (is_array($ctx)) {
-            $lines = [];
-            $chars = 0;
-            foreach ($ctx as $k => $v) {
-                if (!is_string($k) || $k === '' || $k[0] === '_') continue;
-                if (!is_string($v) && !is_numeric($v)) continue;
-                $v = (string)$v;
-                if ($v === '') continue;
-                $show = mb_strlen($v) > 120 ? mb_substr($v, 0, 120) . '…' : $v;
-                $line = $k . ': ' . $show;
-                $chars += mb_strlen($line);
-                if ($chars > 800) break;
-                $lines[] = $line;
-            }
-            if (!empty($lines)) {
-                $memoryAddon = "\n\n═══ SAVED MEMORY (auto-injected — current, do NOT call list_context/get_context to re-read; only call store_context when the user says remember/pin) ═══\n" . implode("\n", $lines);
-            }
-        }
-        if ($mode === 'plan') {
-            return $this->buildPlanPrompt() . $cachedAddon . $memoryAddon . SkillLoader::agentsBlock() . $this->renderSessionState($ctx);
-        }
-        return $this->buildBuildPrompt() . $cachedAddon . $memoryAddon . SkillLoader::agentsBlock() . $this->renderSessionState($ctx);
-    }
-
-    /**
-     * SESSION STATE: numbers-only facts already fetched in this session.
-     * Rendered into every run's prompt so the model reuses data instead of
-     * re-fetching it. Capped at ~1500 chars; empty state renders nothing.
-     */
-    private function renderSessionState(?array $ctx): string {
-        if (!is_array($ctx)) return '';
-        $lines = [];
-        if (!empty($ctx['_pages']) && is_array($ctx['_pages'])) {
-            $parts = [];
-            foreach ($ctx['_pages'] as $slug => $p) {
-                if (!is_array($p)) continue;
-                $parts[] = $slug . '(#' . (int)($p['id'] ?? 0) . ', ' . round((int)($p['c'] ?? 0) / 1000, 1) . 'k)';
-            }
-            if (!empty($parts)) $lines[] = 'Pages seen: ' . implode(', ', array_slice($parts, 0, 15));
-        }
-        if (!empty($ctx['_writes']) && is_array($ctx['_writes'])) {
-            $parts = [];
-            foreach (array_slice($ctx['_writes'], -6) as $w) {
-                if (!is_array($w)) continue;
-                $parts[] = (string)($w['p'] ?? '?') . ':' . (string)($w['s'] ?? '') . ' @' . (string)($w['h'] ?? '') . (!empty($w['v']) ? ' ok' : '');
-            }
-            if (!empty($parts)) $lines[] = 'Writes: ' . implode(' | ', $parts);
-        }
-        if (!empty($ctx['_page_slugs']) && is_array($ctx['_page_slugs'])) {
-            $lines[] = 'Slug index: ' . (int)($ctx['_pages_total'] ?? count($ctx['_page_slugs'])) . ' pages (' . implode(', ', array_slice($ctx['_page_slugs'], 0, 12)) . (count($ctx['_page_slugs']) > 12 ? '…' : '') . ')';
-        }
-        if (!empty($ctx['_sections']) && is_array($ctx['_sections'])) {
-            $parts = [];
-            foreach ($ctx['_sections'] as $key => $s) {
-                if (!is_array($s)) continue;
-                $names = isset($s['names']) && is_array($s['names']) ? $s['names'] : [];
-                $parts[] = $key . ': ' . (int)($s['n'] ?? 0) . ' [' . implode(', ', array_slice($names, 0, 6)) . ']';
-            }
-            if (!empty($parts)) $lines[] = 'Sections: ' . implode(' | ', array_slice($parts, 0, 8));
-        }
-        if (!empty($ctx['_gsc']) && is_array($ctx['_gsc'])) {
-            $g = $ctx['_gsc'];
-            $lines[] = 'GSC ' . (int)$g['d'] . 'd: ' . (int)$g['imp'] . ' imp / ' . (int)$g['clk'] . ' clk / ' . (float)$g['ctr'] . '% / pos ' . (float)$g['pos'];
-        }
-        if (!empty($ctx['_gsc_pages']) && is_array($ctx['_gsc_pages'])) {
-            $parts = [];
-            foreach ($ctx['_gsc_pages'] as $slug => $t) {
-                if (!is_array($t)) continue;
-                $parts[] = $slug . ' ' . (int)$t['imp'] . '/' . (int)$t['clk'] . '/' . (float)$t['pos'];
-            }
-            if (!empty($parts)) $lines[] = 'GSC pages (imp/clk/pos): ' . implode(', ', array_slice($parts, 0, 10));
-        }
-        if (!empty($ctx['_queries']) && is_array($ctx['_queries'])) {
-            $lines[] = 'Top queries: ' . implode(', ', array_slice(array_map('strval', $ctx['_queries']), 0, 8));
-        }
-        if (!empty($ctx['_stats']) && is_array($ctx['_stats'])) {
-            $parts = [];
-            foreach ($ctx['_stats'] as $slug => $s) {
-                if (!is_array($s)) continue;
-                $parts[] = $slug . ' ' . (int)$s['v'] . 'v/' . (int)$s['c'] . 'c';
-            }
-            if (!empty($parts)) $lines[] = 'Traffic: ' . implode(', ', array_slice($parts, 0, 10));
-        }
-        if (!empty($ctx['_underperforming']) && is_array($ctx['_underperforming'])) {
-            $u = $ctx['_underperforming'];
-            $uslugs = isset($u['slugs']) && is_array($u['slugs']) ? $u['slugs'] : [];
-            $lines[] = 'Low traffic (' . (int)($u['m'] ?? 0) . 'm): ' . (int)($u['n'] ?? 0) . ' pages [' . implode(', ', array_slice(array_map('strval', $uslugs), 0, 8)) . ']';
-        }
-        if (!empty($ctx['_monthly']) && is_array($ctx['_monthly'])) {
-            $mm = $ctx['_monthly'];
-            $lines[] = 'Monthly (' . (int)($mm['m'] ?? 0) . 'm): ' . (int)($mm['v'] ?? 0) . 'v/' . (int)($mm['c'] ?? 0) . 'c';
-        }
-        if (!empty($ctx['_links']) && is_array($ctx['_links'])) {
-            $parts = [];
-            foreach ($ctx['_links'] as $slug => $l) {
-                if (!is_array($l)) continue;
-                $parts[] = $slug . ' ' . (int)$l['in'] . 'in/' . (int)$l['out'] . 'out';
-            }
-            if (!empty($parts)) $lines[] = 'Links: ' . implode(', ', array_slice($parts, 0, 8));
-        }
-        if (!empty($ctx['_sql']) && is_array($ctx['_sql'])) {
-            $parts = [];
-            foreach (array_slice($ctx['_sql'], -2, null, true) as $s) {
-                if (!is_array($s)) continue;
-                $parts[] = '"' . (string)($s['q'] ?? '') . '" -> ' . (int)($s['n'] ?? 0) . ' rows';
-            }
-            if (!empty($parts)) $lines[] = 'Ran SQL: ' . implode(' | ', $parts);
-        }
-        if (!empty($ctx['_serp']) && is_array($ctx['_serp'])) {
-            $parts = [];
-            foreach (array_slice($ctx['_serp'], -3, null, true) as $q => $s) {
-                if (!is_array($s)) continue;
-                $bits = [];
-                if (!empty($s['domains']) && is_array($s['domains'])) $bits[] = implode(',', array_slice(array_map('strval', $s['domains']), 0, 3));
-                if (!empty($s['related']) && is_array($s['related'])) $bits[] = 'related: ' . implode(',', array_slice(array_map('strval', $s['related']), 0, 4));
-                $parts[] = '"' . mb_substr((string)$q, 0, 40) . '": ' . implode('; ', $bits);
-            }
-            if (!empty($parts)) $lines[] = 'SERP: ' . implode(' | ', $parts);
-        }
-        if (!empty($ctx['_search']) && is_array($ctx['_search'])) {
-            $parts = [];
-            foreach (array_slice($ctx['_search'], -6, null, true) as $q => $n) {
-                $parts[] = '"' . mb_substr((string)$q, 0, 30) . '"->' . (int)$n;
-            }
-            if (!empty($parts)) $lines[] = 'Searches: ' . implode(', ', $parts);
-        }
-        if (!empty($ctx['_sec_hash']) && is_array($ctx['_sec_hash'])) {
-            $parts = [];
-            foreach (array_slice($ctx['_sec_hash'], -6, null, true) as $key => $s) {
-                if (!is_array($s)) continue;
-                $parts[] = (string)$key . '@' . (string)($s['h'] ?? '');
-            }
-            if (!empty($parts)) $lines[] = 'Section hash: ' . implode(', ', $parts);
-        }
-        if (empty($lines)) return '';
-        $block = "\n\n═══ SESSION STATE (this session — already fetched, do NOT re-call the same read with the same args; re-read a page only for verbatim HTML you don't have) ═══\n" . implode("\n", $lines);
-        if (mb_strlen($block) > 1500) $block = mb_substr($block, 0, 1500) . '…';
-        return $block;
-    }
-
-     private function buildPlanPrompt(): string {
-        return PromptLoader::load('ai-studio-plan');
-    }
-
-    private function buildBuildPrompt(): string {
-        return PromptLoader::load('ai-studio-build');
-    }
-
-    private function sanitizeHistory($history): array {
-        $decoded = json_decode((string)$history, true);
-        $messages = [];
-        if (is_array($decoded)) {
-            foreach ($decoded as $turn) {
-                if (!is_array($turn)) continue;
-                $role = in_array($turn['role'] ?? '', ['user', 'assistant', 'tool'], true) ? $turn['role'] : null;
-                if ($role === 'tool' && empty($turn['tool_call_id'])) continue;
-                $content = (string)($turn['content'] ?? '');
-                $content = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $content);
-                if (preg_match('/^\s*(system|assistant\s*\(system\)|ignore\s+previous\s+instructions)/i', $content)) {
-                    $content = '[filtered system-like prefix] ' . ltrim(preg_replace('/^\s*(system|assistant\s*\(system\)|ignore\s+previous\s+instructions)[:\-]*/i', '', $content));
-                }
-                if (mb_strlen($content) > 4000) $content = mb_substr($content, 0, 4000) . "\n…[truncated]";
-                if ($role && $content !== '') {
-                    $entry = ['role' => $role, 'content' => $content];
-                    if ($role === 'tool' && !empty($turn['tool_call_id'])) {
-                        $tcid = substr((string)$turn['tool_call_id'], 0, 64);
-                        $entry['tool_call_id'] = $tcid;
-                    }
-                    if ($role === 'assistant' && isset($turn['tool_calls']) && is_array($turn['tool_calls'])) {
-                        $validCalls = [];
-                        foreach ($turn['tool_calls'] as $tc) {
-                            if (!is_array($tc) || !isset($tc['function'])) continue;
-                            $id = (string)($tc['id'] ?? '');
-                            $name = (string)($tc['function']['name'] ?? '');
-                            $args = (string)($tc['function']['arguments'] ?? '{}');
-                            if ($id === '' || $name === '' || strlen($id) > 64 || strlen($name) > 64 || strlen($args) > 65536) continue;
-                            if (json_decode($args) === null && $args !== '{}' && $args !== '') continue;
-                            $validCalls[] = ['id'=>$id,'type'=>'function','function'=>['name'=>$name,'arguments'=>$args]];
-                        }
-                        if (!empty($validCalls)) $entry['tool_calls'] = $validCalls;
-                    }
-                    $hashParts = $role . ':' . ($entry['tool_call_id'] ?? '') . ':' . sha1($content);
-                    if (isset($entry['tool_calls'])) $hashParts .= ':' . sha1(json_encode($entry['tool_calls']));
-                    $lastHash = null;
-                    if (!empty($messages)) {
-                        $last = end($messages);
-                        $lastHash = ($last['role'] ?? '') . ':' . ($last['tool_call_id'] ?? '') . ':' . sha1($last['content'] ?? '');
-                        if (isset($last['tool_calls'])) $lastHash .= ':' . sha1(json_encode($last['tool_calls']));
-                    }
-                    if ($hashParts === $lastHash) continue;
-                    $messages[] = $entry;
-                }
-                if (count($messages) >= 48) break;
-            }
-            if (count($messages) > self::MAX_HISTORY_TURNS * 2) {
-                $messages = array_slice($messages, -self::MAX_HISTORY_TURNS * 2);
-            }
-        }
-        return $messages;
-    }
-
-    private function sanitizeApproved($approved): array {
-        $decoded = json_decode((string)$approved, true);
-        if (!is_array($decoded)) return [];
-        $out = [];
-        $seen = [];
-        foreach ($decoded as $id) {
-            if (count($out) >= 20) break; // cap array size (C)
-            if (is_string($id) && preg_match('/^[a-f0-9]{40}$/', $id) && !isset($seen[$id])) {
-                $seen[$id] = true;
-                $out[] = $id;
-            }
-        }
-        return $out;
-    }
-
-    /**
-     * Validate the interrupted tool context a follow-up run (Approve/Deny)
-     * sends back: an assistant message carrying exactly one tool_call,
-     * immediately followed by its tool result. Strictly data — never
-     * auto-executed; it just gives the model the exact call to re-issue.
-     */
-    private function sanitizePending($pending): array {
-        $decoded = json_decode((string)$pending, true);
-        if (!is_array($decoded) || count($decoded) < 2) return [];
-        $out = [];
-
-        $assistant = $decoded[0] ?? null;
-        if (is_array($assistant) && ($assistant['role'] ?? '') === 'assistant') {
-            $toolCalls = $assistant['tool_calls'] ?? null;
-            if (is_array($toolCalls) && count($toolCalls) === 1) {
-                $tc = $toolCalls[0];
-                $fn = is_array($tc) ? ($tc['function'] ?? null) : null;
-                if (is_array($tc) && is_array($fn)) {
-                    $id = (string)($tc['id'] ?? '');
-                    $name = (string)($fn['name'] ?? '');
-                    $arguments = (string)($fn['arguments'] ?? '{}');
-                    // 06-06: reject oversize IDs instead of silent substr truncation (prevents ID collision pairing wrong tool)
-                    if (strlen($id) > 64 || strlen($name) > 64) return [];
-                    if ($id !== '' && $name !== '' && strlen($arguments) <= 65536
-                        && json_decode($arguments) !== null) {
-                        $out[] = [
-                            'role' => 'assistant',
-                            'content' => (string)($assistant['content'] ?? ''),
-                            'tool_calls' => [[
-                                'id' => $id,
-                                'type' => 'function',
-                                'function' => [
-                                    'name' => $name,
-                                    'arguments' => $arguments,
-                                ],
-                            ]],
-                        ];
-                    }
-                }
-            }
-        }
-
-        $tool = $decoded[1] ?? null;
-        if (is_array($tool) && ($tool['role'] ?? '') === 'tool' && $out !== []) {
-            $callId = (string)($tool['tool_call_id'] ?? '');
-            $content = (string)($tool['content'] ?? '');
-            if (strlen($callId) > 64) return [];
-            if ($callId !== '' && $content !== '' && strlen($content) <= 65536
-                && $callId === ($out[0]['tool_calls'][0]['id'] ?? '')) {
-                $out[] = [
-                    'role' => 'tool',
-                    'tool_call_id' => $callId,
-                    'content' => $content,
-                ];
-            } else {
-                return [];
-            }
-        } else {
-            return [];
-        }
-
-        return $out;
-    }
-
     // ------------------------------------------------------------------
     // Sessions DB (cross-session persistence)
     // ------------------------------------------------------------------
     public function sessions() {
         $this->requireAuth();
-        $this->ensureAiSessionsTable();
         $uid = (int)($_SESSION['user_id'] ?? 0);
-        $rows = Database::getInstance()->fetchAll("SELECT id, title, model, mode, updated_at, created_at FROM ai_sessions WHERE user_id = ? ORDER BY updated_at DESC LIMIT 50", [$uid]);
+        $rows = AiSessionStore::listSessions($uid);
         $this->json(['success'=>true,'sessions'=>$rows]);
     }
     public function session(string $id) {
         $this->requireAuth();
-        $this->ensureAiSessionsTable();
         $uid = (int)($_SESSION['user_id'] ?? 0);
-        $row = Database::getInstance()->fetchOne("SELECT * FROM ai_sessions WHERE id = ? AND user_id = ?", [$id,$uid]);
+        $row = AiSessionStore::getSession($id, $uid);
         if (!$row) $this->json(['success'=>false,'message'=>'Session not found'],404);
         $history = json_decode($row['history'] ?? '[]', true);
         $context = json_decode($row['context'] ?? '{}', true);
@@ -1266,9 +849,7 @@ class AiStudioController extends Controller {
             $this->json(['success'=>false,'message'=>'CSRF token validation failed'], 400);
         }
         $uid = (int)($_SESSION['user_id'] ?? 0);
-        Database::getInstance()->query("DELETE FROM ai_sessions WHERE id = ? AND user_id = ?", [$id,$uid]);
-        try { $this->ensureAiPendingTable(); Database::getInstance()->query("DELETE FROM ai_pending_approvals WHERE session_id=? AND user_id=?", [$id,$uid]); } catch (Throwable $e) {}
-        try { Database::getInstance()->query("DELETE FROM ai_run_queue WHERE session_id=? AND user_id=?", [$id,$uid]); } catch(Throwable $e) {}
+        AiSessionStore::deleteSession($id, $uid);
         $this->json(['success'=>true]);
     }
 
@@ -1285,192 +866,51 @@ class AiStudioController extends Controller {
     public function queueStatus(string $id) {
         $this->requireAuth();
         $uid = (int)($_SESSION['user_id'] ?? 0);
-        $row = Database::getInstance()->fetchOne("SELECT run_state, cancel_requested FROM ai_sessions WHERE id=? AND user_id=?", [$id,$uid]);
-        $q = AiRunGuard::queuedCount($id,$uid);
-        $this->json(['success'=>true,'run_state'=>$row['run_state']??'idle','cancel_requested'=>(int)($row['cancel_requested']??0),'queued'=>$q]);
+        $st = AiSessionStore::queueStatus($id, $uid);
+        $this->json(['success'=>true,'run_state'=>$st['run_state'],'cancel_requested'=>(int)$st['cancel_requested'],'queued'=>$st['queued']]);
     }
-    private static bool $aiSessionsTableEnsured = false;
-     private function ensureAiSessionsTable(): void {
-        if (self::$aiSessionsTableEnsured) return;
-        try {
-            Database::getInstance()->query("CREATE TABLE IF NOT EXISTS ai_sessions (
-                id CHAR(36) PRIMARY KEY,
-                user_id INT NOT NULL,
-                title VARCHAR(200) DEFAULT '',
-                model VARCHAR(80) NOT NULL DEFAULT 'deepseek/deepseek-chat',
-                mode ENUM('plan','build') NOT NULL DEFAULT 'plan',
-                history JSON NULL,
-                context JSON NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_user_updated (user_id, updated_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-            self::$aiSessionsTableEnsured = true;
-            try { AiRunGuard::ensureColumns(); } catch(Throwable $e) {}
-        } catch (Throwable $e) {
-            error_log('ensureAiSessionsTable failed: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-        }
+    private function ensureAiSessionsTable(): void {
+        AiSessionStore::ensureSessionsTable();
     }
 
-    private static bool $aiPendingTableEnsured = false;
     private function ensureAiPendingTable(): void {
-        if (self::$aiPendingTableEnsured) return;
-        try {
-            Database::getInstance()->query("CREATE TABLE IF NOT EXISTS ai_pending_approvals (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                session_id CHAR(36) NOT NULL,
-                user_id INT NOT NULL,
-                call_id VARCHAR(64) NOT NULL,
-                tool VARCHAR(64) NOT NULL,
-                plan TEXT,
-                reason TEXT,
-                pending_json JSON NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE KEY uniq_session_call (session_id, user_id, call_id),
-                INDEX idx_session_user (session_id, user_id),
-                INDEX idx_created (created_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-            self::$aiPendingTableEnsured = true;
-            try {
-                $cols = Database::getInstance()->fetchAll("SHOW COLUMNS FROM ai_pending_approvals LIKE 'mode'");
-                if (empty($cols)) {
-                    Database::getInstance()->query("ALTER TABLE ai_pending_approvals ADD COLUMN mode ENUM('plan','build') NOT NULL DEFAULT 'plan' AFTER reason");
-                }
-            } catch (Throwable $ignored) {}
-        } catch (Throwable $e) {
-            error_log('ensureAiPendingTable failed: ' . $e->getMessage());
-        }
+        AiSessionStore::ensurePendingTable();
     }
 
     private function savePendingApprovals(string $sessionId, int $uid, string $tool, array $callIds, array $pendingPair, string $plan, string $reason, string $mode = 'plan'): void {
-        if ($sessionId === '' || $uid <= 0 || empty($callIds)) return;
-        $mode = $mode === 'build' ? 'build' : 'plan';
-        try {
-            $this->ensureAiPendingTable();
-            $pendingJson = json_encode($pendingPair, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            foreach ($callIds as $cid) {
-                if (!preg_match('/^[a-f0-9]{40}$/', $cid)) continue;
-                try {
-                    Database::getInstance()->query(
-                        "INSERT INTO ai_pending_approvals (session_id, user_id, call_id, tool, plan, reason, mode, pending_json) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE tool=VALUES(tool), plan=VALUES(plan), reason=VALUES(reason), mode=VALUES(mode), pending_json=VALUES(pending_json), created_at=NOW()",
-                        [$sessionId, $uid, $cid, $tool, mb_substr($plan,0,2000), mb_substr($reason,0,500), $mode, $pendingJson]
-                    );
-                } catch (Throwable $e) {
-                    if (str_contains($e->getMessage(), 'Unknown column') && str_contains($e->getMessage(), 'mode')) {
-                        Database::getInstance()->query(
-                            "INSERT INTO ai_pending_approvals (session_id, user_id, call_id, tool, plan, reason, pending_json) VALUES (?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE tool=VALUES(tool), plan=VALUES(plan), reason=VALUES(reason), pending_json=VALUES(pending_json), created_at=NOW()",
-                            [$sessionId, $uid, $cid, $tool, mb_substr($plan,0,2000), mb_substr($reason,0,500), $pendingJson]
-                        );
-                    } else throw $e;
-                }
-            }
-        } catch (Throwable $e) {
-            error_log('savePendingApprovals failed: ' . $e->getMessage());
-        }
+        AiSessionStore::savePending($sessionId, $uid, $tool, $callIds, $pendingPair, $plan, $reason, $mode);
     }
 
     private function getPendingMode(string $sessionId, int $uid): ?string {
-        if ($sessionId === '' || $uid <= 0) return null;
-        try {
-            $this->ensureAiPendingTable();
-            $row = Database::getInstance()->fetchOne("SELECT mode FROM ai_pending_approvals WHERE session_id=? AND user_id=? LIMIT 1", [$sessionId,$uid]);
-            if (!$row || !isset($row['mode'])) return null;
-            $m = strtolower(trim((string)$row['mode']));
-            return in_array($m, ['plan','build'], true) ? $m : null;
-        } catch (Throwable $e) { return null; }
+        return AiSessionStore::pendingMode($sessionId, $uid);
     }
 
     private function filterApprovedByServerPending(array $approved, string $sessionId, int $uid): array {
-        if (empty($approved) || $sessionId === '' || $uid <= 0) return [];
-        try {
-            $this->ensureAiPendingTable();
-            $placeholders = implode(',', array_fill(0, count($approved), '?'));
-            $params = array_merge([$sessionId, $uid], $approved);
-            $rows = Database::getInstance()->fetchAll("SELECT call_id FROM ai_pending_approvals WHERE session_id=? AND user_id=? AND call_id IN ($placeholders)", $params);
-            $valid = array_column($rows, 'call_id');
-            return array_values(array_intersect($approved, $valid));
-        } catch (Throwable $e) { return []; }
+        return AiSessionStore::filterApproved($sessionId, $uid, $approved);
     }
 
     private function validatePendingAgainstServer(array $pending, string $sessionId, int $uid): array {
-        if (empty($pending) || $sessionId === '' || $uid <= 0) return [];
-        try {
-            $this->ensureAiPendingTable();
-            $row = Database::getInstance()->fetchOne("SELECT call_id FROM ai_pending_approvals WHERE session_id=? AND user_id=? LIMIT 1", [$sessionId,$uid]);
-            if (!$row) return [];
-            $cid = (string)($pending[0]['tool_calls'][0]['id'] ?? '');
-            if ($cid !== '') {
-                $exists = Database::getInstance()->fetchOne("SELECT call_id FROM ai_pending_approvals WHERE session_id=? AND user_id=? AND call_id=?", [$sessionId,$uid,$cid]);
-                if (!$exists) {
-                    $any = Database::getInstance()->fetchOne("SELECT call_id FROM ai_pending_approvals WHERE session_id=? AND user_id=? LIMIT 1", [$sessionId,$uid]);
-                    if (!$any) return [];
-                }
-            }
-            return $pending;
-        } catch (Throwable $e) { return []; }
+        return AiSessionStore::validatePending($sessionId, $uid, $pending);
     }
 
     private function clearPendingApprovals(string $sessionId, int $uid, ?array $callIds = null): void {
-        if ($sessionId === '' || $uid <= 0) return;
-        try {
-            $this->ensureAiPendingTable();
-            if ($callIds === null) {
-                Database::getInstance()->query("DELETE FROM ai_pending_approvals WHERE session_id=? AND user_id=?", [$sessionId,$uid]);
-            } elseif (!empty($callIds)) {
-                $ph = implode(',', array_fill(0, count($callIds), '?'));
-                $params = array_merge([$sessionId,$uid], $callIds);
-                Database::getInstance()->query("DELETE FROM ai_pending_approvals WHERE session_id=? AND user_id=? AND call_id IN ($ph)", $params);
-            }
-        } catch (Throwable $e) {}
+        AiSessionStore::clearPending($sessionId, $uid, $callIds);
     }
 
     private function isDeniedMessage(string $msg): bool {
         return str_contains($msg, '[Denied]') || stripos($msg, 'denied') !== false;
     }
     private function loadSessionHistory(string $sessionId): array {
-        try {
-            $this->ensureAiSessionsTable();
-            $uid = (int)($_SESSION['user_id'] ?? 0);
-            $row = Database::getInstance()->fetchOne("SELECT history FROM ai_sessions WHERE id = ? AND user_id = ?", [$sessionId,$uid]);
-            if (!$row || empty($row['history'])) return [];
-            $arr = is_string($row['history']) ? json_decode($row['history'], true) : $row['history'];
-            return is_array($arr) ? $arr : [];
-        } catch (Throwable $e) { return []; }
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        return AiSessionStore::loadHistory($sessionId, $uid);
     }
     private function loadSessionContext(string $sessionId): array {
-        try {
-            $this->ensureAiSessionsTable();
-            $uid = (int)($_SESSION['user_id'] ?? 0);
-            $row = Database::getInstance()->fetchOne("SELECT context FROM ai_sessions WHERE id = ? AND user_id = ?", [$sessionId,$uid]);
-            if (!$row || empty($row['context'])) return [];
-            $arr = is_string($row['context']) ? json_decode($row['context'], true) : $row['context'];
-            return is_array($arr) ? $arr : [];
-        } catch (Throwable $e) { return []; }
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        return AiSessionStore::loadContext($sessionId, $uid);
     }
     private function persistSession(string $sessionId, array $history, array $context, string $model, string $mode): void {
-        try {
-            $this->ensureAiSessionsTable();
-            $uid = (int)($_SESSION['user_id'] ?? 0);
-            if (count($history) > 24) $history = array_slice($history, -24);
-            $title = '';
-            foreach ($history as $m) { if (($m['role']??'')==='user' && !empty($m['content'])) { $raw = trim((string)$m['content']); $raw = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $raw); $raw = strip_tags($raw); $raw = preg_replace('/\s+/u', ' ', $raw); $title = mb_substr($raw,0,120); break; } }
-            $histJson = json_encode($history, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
-            $ctxJson = json_encode($context, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
-            $exists = Database::getInstance()->fetchOne("SELECT id, version FROM ai_sessions WHERE id = ? AND user_id = ?", [$sessionId, $uid]);
-            if ($exists) {
-                try {
-                    Database::getInstance()->query("UPDATE ai_sessions SET history=?, context=?, model=?, mode=?, title=?, version=version+1, updated_at=NOW() WHERE id=? AND user_id=?", [$histJson,$ctxJson,$model,$mode,$title,$sessionId,$uid]);
-                } catch(Throwable $e) {
-                    Database::getInstance()->query("UPDATE ai_sessions SET history=?, context=?, model=?, mode=?, title=?, updated_at=NOW() WHERE id=? AND user_id=?", [$histJson,$ctxJson,$model,$mode,$title,$sessionId,$uid]);
-                }
-            } else {
-                try {
-                    Database::getInstance()->query("INSERT INTO ai_sessions (id,user_id,title,model,mode,history,context,version) VALUES (?,?,?,?,?,?,?,1)", [$sessionId,$uid,$title,$model,$mode,$histJson,$ctxJson]);
-                } catch(Throwable $e) {
-                    Database::getInstance()->query("INSERT INTO ai_sessions (id,user_id,title,model,mode,history,context) VALUES (?,?,?,?,?,?,?)", [$sessionId,$uid,$title,$model,$mode,$histJson,$ctxJson]);
-                }
-            }
-        } catch (Throwable $e) { error_log('persistSession failed: '.$e->getMessage()); }
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        AiSessionStore::saveSession($sessionId, $uid, $history, $context, $model, $mode);
     }
     private function persistAfterRun(string $sessionId, array $messages, string $model, string $mode, ?array $ctxSnapshot = null): void {
         // $messages includes system + history + new turns — extract user/assistant/tool for storage
@@ -1506,7 +946,8 @@ class AiStudioController extends Controller {
         if (!is_array($ctx)) $ctx = [];
         // Cache design tokens / global settings if seen in this run (so continue never re-reads them).
         $ctx = $this->mergeWorkingSetIntoContext($ctx, $messages);
-        $this->persistSession($sessionId, $history, is_array($ctx)?$ctx:[], $model, $mode);
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        AiSessionStore::saveSession($sessionId, $uid, $history, is_array($ctx) ? $ctx : [], $model, $mode);
         if (!headers_sent()) {
             if (session_status() !== PHP_SESSION_ACTIVE) session_start();
             if (session_status() === PHP_SESSION_ACTIVE) {
@@ -1781,17 +1222,7 @@ class AiStudioController extends Controller {
             if (count($history) > 24) $history = array_slice($history,-24);
             $ctx = is_array($ctxSnapshot) ? $ctxSnapshot : [];
             $ctx = $tmp->mergeWorkingSetIntoContext($ctx, $messages);
-            $histJson = json_encode($history, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
-            $ctxJson = json_encode($ctx, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
-            $tmp->ensureAiSessionsTable();
-            $exists = Database::getInstance()->fetchOne("SELECT id FROM ai_sessions WHERE id = ? AND user_id = ?", [$sessionId, $uid]);
-            if ($exists) {
-                Database::getInstance()->query("UPDATE ai_sessions SET history=?, context=?, model=?, mode=?, updated_at=NOW() WHERE id=? AND user_id=?", [$histJson,$ctxJson,$model,$mode,$sessionId,$uid]);
-            } else {
-                $title = '';
-                foreach ($history as $m) { if (($m['role']??'')==='user' && !empty($m['content'])) { $raw = trim((string)$m['content']); $raw = strip_tags($raw); $title = mb_substr(preg_replace('/\s+/u',' ',$raw),0,120); break; } }
-                Database::getInstance()->query("INSERT INTO ai_sessions (id,user_id,title,model,mode,history,context) VALUES (?,?,?,?,?,?,?)", [$sessionId,$uid,$title,$model,$mode,$histJson,$ctxJson]);
-            }
+            AiSessionStore::saveAfterRun($sessionId, $uid, $history, $ctx, $model, $mode);
         } catch (Throwable $e) { error_log('staticPersistAfterRun failed: '.$e->getMessage()); }
     }
 

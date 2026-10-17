@@ -2,6 +2,7 @@
 // path: ./controllers/admin/RotationAdminController.php 
 
 require_once BASE_PATH . '/models/ContentRotation.php';
+require_once BASE_PATH . '/models/ContentRotationCsv.php';
 require_once BASE_PATH . '/models/Page.php';
 
 
@@ -464,96 +465,25 @@ class RotationAdminController extends Controller {
             }
             
             try {
-                $data = [];
-                
-                if ($ext === 'csv') {
-                    $data = $this->parseCSV($file['tmp_name']);
-                } else {
-                    $content = file_get_contents($file['tmp_name']);
-                    $data = json_decode($content, true);
-                    if (json_last_error() !== JSON_ERROR_NONE) {
-                        throw new Exception('Invalid JSON format');
-                    }
-                }
-                
-                $created = 0;
-                $errors = [];
-                
-                foreach ($data as $index => $row) {
-                    // Validate required fields
-                    if (empty($row['page_id']) || empty($row['active_month'])) {
-                        $errors[] = "Row " . ($index + 1) . ": Missing page_id or active_month";
-                        continue;
-                    }
-                    
-                    // Check if month already has content
-                    if ($this->rotationModel->monthHasContent($row['page_id'], $row['active_month'])) {
-                        $errors[] = "Row " . ($index + 1) . ": Month {$row['active_month']} already has content";
-                        continue;
-                    }
-                    
-                    // Prepare data with new fields
-                    $insertData = [
-                        'page_id' => (int)$row['page_id'],
-                        'active_month' => (int)$row['active_month'],
-                        'title_ru' => $row['title_ru'] ?? null,
-                        'title_uz' => $row['title_uz'] ?? null,
-                        'description_ru' => $row['description_ru'] ?? null,
-                        'description_uz' => $row['description_uz'] ?? null,
-                        'content_ru' => $row['content_ru'] ?? '',
-                        'content_uz' => $row['content_uz'] ?? '',
-                        'is_active' => isset($row['is_active']) ? (int)$row['is_active'] : 1,
-                        'meta_title_ru' => $row['meta_title_ru'] ?? null,
-                        'meta_title_uz' => $row['meta_title_uz'] ?? null,
-                        'meta_description_ru' => $row['meta_description_ru'] ?? null,
-                        'meta_description_uz' => $row['meta_description_uz'] ?? null,
-                        'meta_keywords_ru' => $row['meta_keywords_ru'] ?? null,
-                        'meta_keywords_uz' => $row['meta_keywords_uz'] ?? null,
-                        'og_title_ru' => $row['og_title_ru'] ?? null,
-                        'og_title_uz' => $row['og_title_uz'] ?? null,
-                        'og_description_ru' => $row['og_description_ru'] ?? null,
-                        'og_description_uz' => $row['og_description_uz'] ?? null,
-                        'og_image' => $row['og_image'] ?? null,
-                        'jsonld_ru' => $row['jsonld_ru'] ?? null,
-                        'jsonld_uz' => $row['jsonld_uz'] ?? null
-                    ];
-                    
-                    if ($this->rotationModel->create($insertData)) {
-                        $created++;
-                    } else {
-                        $errors[] = "Row " . ($index + 1) . ": Failed to create rotation";
-                    }
-                }
-                
+                $csv = new ContentRotationCsv($this->rotationModel);
+                $data = $csv->parseFile($file['tmp_name'], $ext);
+                $result = $csv->importRows($data);
+                $created = $result['created'];
+                $errors = $result['errors'];
+
                 $message = "Created $created rotation(s)";
                 if (!empty($errors)) {
                     $message .= ". Errors: " . implode(', ', array_slice($errors, 0, 5));
                 }
-                
+
                 $_SESSION['success'] = $message;
-                
+
             } catch (Exception $e) {
                 $_SESSION['error'] = 'Upload failed: ' . $e->getMessage();
             }
-            
+
             $this->redirect('/admin/rotations/overview');
         }
-
-    private function parseCSV($filepath) {
-        $data = [];
-        $handle = fopen($filepath, 'r');
-        
-        // Get headers from first row
-        $headers = fgetcsv($handle);
-        $headers = array_map('trim', $headers);
-        
-        while (($row = fgetcsv($handle)) !== false) {
-            $data[] = array_combine($headers, $row);
-        }
-        
-        fclose($handle);
-        return $data;
-    }
 
     public function downloadTemplate() {
         $this->requireAuth();

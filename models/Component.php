@@ -346,18 +346,12 @@ class Component {
         $tmpIn = $cssPath . '.min.tmp.in.' . getmypid();
         $tmpOut = $minPath . '.tmp.' . getmypid();
         @file_put_contents($tmpIn, $cssBody);
-        $cmd = 'npx --yes clean-css-cli --version 2>/dev/null';
-        $hasCleancss = false;
-        $out = @shell_exec($cmd);
-        if ($out !== null && stripos($out, 'clean-css') !== false) $hasCleancss = true;
-        if ($hasCleancss || true) {
-            $cleancssCmd = 'npx cleancss -o ' . escapeshellarg($tmpOut) . ' ' . escapeshellarg($tmpIn) . ' 2>/dev/null';
-            @shell_exec($cleancssCmd);
-            if (is_file($tmpOut) && @filesize($tmpOut) > 0) {
-                $min = (string)@file_get_contents($tmpOut);
-                if ($min !== '' && @rename($tmpOut, $minPath)) { $usedCli = true; }
-                else { @unlink($tmpOut); }
-            }
+        $cleancssCmd = 'npx cleancss -o ' . escapeshellarg($tmpOut) . ' ' . escapeshellarg($tmpIn) . ' 2>/dev/null';
+        @shell_exec($cleancssCmd);
+        if (is_file($tmpOut) && @filesize($tmpOut) > 0) {
+            $min = (string)@file_get_contents($tmpOut);
+            if ($min !== '' && @rename($tmpOut, $minPath)) { $usedCli = true; }
+            else { @unlink($tmpOut); }
         }
         @unlink($tmpIn);
         if (!$usedCli) {

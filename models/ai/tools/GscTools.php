@@ -2,6 +2,11 @@
 // path: ./models/ai/tools/GscTools.php
 // READ-ONLY GSC tools — live Google Search Console Search Analytics API via GscClient.
 // When GSC is not connected the tools return empty with a connect hint (no CSV fallback UI).
+//
+// BOUNDARY (sugar vs flexible) — Граница: готовые срезы / Tayyor kesmalar:
+// Sugar first: get_gsc_overview (site totals), get_page_gsc (one page),
+// get_gsc_queries / get_gsc_pages (top lists), search_gsc_queries (substring).
+// Use query_gsc ONLY for custom dimensions/filters the sugar tools lack.
 
 require_once BASE_PATH . '/core/Database.php';
 require_once BASE_PATH . '/models/GscClient.php';
@@ -91,7 +96,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'query_gsc',
-                    'description' => 'Flexible GSC Search Analytics query. Build any combination of dimensions (query, page, country, device, searchAppearance, date), filters, and ordering. Cached 2-3 day lag, not live after edits — call once per request and reuse. Returns {keys, impressions, clicks, ctr_percent, position}. Queries are intent signals: use naturally once, no stuffing.',
+                    'description' => 'FLEXIBLE GSC query — use ONLY when sugar tools (get_gsc_overview/get_page_gsc/get_gsc_queries/get_gsc_pages/search_gsc_queries) lack the dimensions/filters you need. Build any combination of dimensions (query, page, country, device, searchAppearance, date), filters, and ordering. Отвечайте на языке пользователя (RU/UZ). / Foydalanuvchi tilida javob bering (RU/UZ). Cached 2-3 day lag, not live after edits — call once per request and reuse. Returns {keys, impressions, clicks, ctr_percent, position}. Queries are intent signals: use naturally once, no stuffing.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -136,34 +141,57 @@ class GscTools {
         return GscClient::isConfigured() && GscClient::isConnected();
     }
 
+    private static function days(array $args, int $def = 28, int $max = 90): int {
+        return isset($args['days']) ? max(1, min($max, (int)$args['days'])) : $def;
+    }
+
+    private static function limit(array $args, int $def = 20, int $max = 50): int {
+        return isset($args['limit']) ? max(1, min($max, (int)$args['limit'])) : $def;
+    }
+
+    private static function order(array $args, string $key, array $allowed, string $def): string {
+        $v = (string)($args[$key] ?? '');
+        return in_array($v, $allowed, true) ? $v : $def;
+    }
+
+    private static function apiMetrics(array $r): array {
+        return [
+            'impressions' => (int)($r['impressions'] ?? 0),
+            'clicks' => (int)($r['clicks'] ?? 0),
+            'ctr_percent' => round((float)($r['ctr'] ?? 0) * 100, 2),
+            'position' => round((float)($r['position'] ?? 0), 2),
+        ];
+    }
+
+    private static function ctrOf(array $r): float {
+        return (float)($r['ctr_percent'] ?? $r['ctr'] ?? 0);
+    }
+
+    private static function posOf(array $r): float {
+        return (float)($r['position'] ?? $r['avg_position'] ?? 0);
+    }
+
+    private static function sortRows(array &$rows, string $orderBy): void {
+        usort($rows, function($a, $b) use ($orderBy) {
+            if ($orderBy === 'clicks') return $b['clicks'] <=> $a['clicks'];
+            if ($orderBy === 'ctr') return self::ctrOf($b) <=> self::ctrOf($a);
+            if ($orderBy === 'position') return self::posOf($a) <=> self::posOf($b);
+            return $b['impressions'] <=> $a['impressions'];
+        });
+    }
+
+    private static function dbOrder(string $orderBy): string {
+        return match ($orderBy) { 'clicks' => 'clicks DESC', 'ctr' => 'ctr DESC', 'position' => 'position ASC', default => 'impressions DESC' };
+    }
+
     private static function ensureTable(): void {
-        $db = Database::getInstance();
-        $exists = $db->fetchOne("SHOW TABLES LIKE 'gsc_data'");
-        if (!$exists) {
-            $db->query("CREATE TABLE IF NOT EXISTS `gsc_data` (
-              `id` int(11) NOT NULL AUTO_INCREMENT,
-              `page_slug` varchar(255) NOT NULL,
-              `query` varchar(500) NOT NULL,
-              `clicks` int(11) UNSIGNED NOT NULL DEFAULT 0,
-              `impressions` int(11) UNSIGNED NOT NULL DEFAULT 0,
-              `ctr` decimal(5,2) NOT NULL DEFAULT 0.00,
-              `position` decimal(10,2) NOT NULL DEFAULT 0.00,
-              `date` date DEFAULT NULL,
-              `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-              `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-              PRIMARY KEY (`id`),
-              UNIQUE KEY `uniq_page_query_date` (`page_slug`,`query`(191),`date`),
-              KEY `idx_page_slug` (`page_slug`),
-              KEY `idx_query` (`query`(191)),
-              KEY `idx_date` (`date`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-        }
+        // DDL lives in migrations/2026_08_23_add_gsc_data.sql — never here.
     }
 
     // ---- overview ------------------------------------------------------
 
     private static function overview(array $args): array {
-        $days = isset($args['days']) ? max(1, min(365, (int)$args['days'])) : 28;
+        $days = self::days($args, 28, 365);
         // Try live API first.
         if (self::shouldUseApi()) {
             try {
@@ -244,9 +272,9 @@ class GscTools {
     private static function pageGsc(array $args): array {
         $slug = trim((string)($args['slug'] ?? ''));
         if ($slug === '') throw new InvalidArgumentException('slug is required');
-        $days = isset($args['days']) ? max(1, min(90, (int)$args['days'])) : 28;
-        $limit = isset($args['limit']) ? max(1, min(50, (int)$args['limit'])) : 20;
-        $orderBy = in_array($args['order_by'] ?? '', ['impressions', 'clicks', 'position'], true) ? $args['order_by'] : 'impressions';
+        $days = self::days($args);
+        $limit = self::limit($args);
+        $orderBy = self::order($args, 'order_by', ['impressions', 'clicks', 'position'], 'impressions');
 
         if (self::shouldUseApi()) {
             try {
@@ -261,20 +289,12 @@ class GscTools {
                     foreach ($rows as $r) {
                         $q = (string)($r['keys'][0] ?? '');
                         if ($q === '') continue;
-                        $imp = (int)($r['impressions'] ?? 0);
-                        $clk = (int)($r['clicks'] ?? 0);
-                        $ctr = round((float)($r['ctr'] ?? 0) * 100, 2);
-                        $pos = (float)($r['position'] ?? 0);
-                        $map[$q] = ['query' => $q, 'impressions' => $imp, 'clicks' => $clk, 'ctr_percent' => $ctr, 'position' => round($pos, 2)];
-                        $totImp += $imp; $totClk += $clk; $posWeighted += $pos * $imp;
+                        $m = self::apiMetrics($r);
+                        $map[$q] = ['query' => $q, 'impressions' => $m['impressions'], 'clicks' => $m['clicks'], 'ctr_percent' => $m['ctr_percent'], 'position' => $m['position']];
+                        $totImp += $m['impressions']; $totClk += $m['clicks']; $posWeighted += $m['position'] * $m['impressions'];
                     }
                     $queries = array_values($map);
-                    // Client-side sort.
-                    usort($queries, function($a, $b) use ($orderBy) {
-                        if ($orderBy === 'position') return $a['position'] <=> $b['position'];
-                        if ($orderBy === 'clicks') return $b['clicks'] <=> $a['clicks'];
-                        return $b['impressions'] <=> $a['impressions'];
-                    });
+                    self::sortRows($queries, $orderBy);
                     $queries = array_slice($queries, 0, $limit);
                     $avgPos = $totImp > 0 ? round($posWeighted / $totImp, 2) : 0;
                     $ctrTot = $totImp > 0 ? round(100.0 * $totClk / $totImp, 2) : 0;
@@ -325,10 +345,10 @@ class GscTools {
     }
 
     private static function gscQueries(array $args): array {
-        $days = isset($args['days']) ? max(1, min(90, (int)$args['days'])) : 28;
-        $limit = isset($args['limit']) ? max(1, min(50, (int)$args['limit'])) : 20;
+        $days = self::days($args);
+        $limit = self::limit($args);
         $minImp = isset($args['min_impressions']) ? max(0, (int)$args['min_impressions']) : 0;
-        $orderBy = in_array($args['order_by'] ?? '', ['impressions', 'clicks', 'ctr', 'position'], true) ? $args['order_by'] : 'impressions';
+        $orderBy = self::order($args, 'order_by', ['impressions', 'clicks', 'ctr', 'position'], 'impressions');
 
         if (self::shouldUseApi()) {
             try {
@@ -338,23 +358,18 @@ class GscTools {
                     $out = [];
                     foreach ($rows as $r) {
                         $q = (string)($r['keys'][0] ?? '');
-                        $imp = (int)($r['impressions'] ?? 0);
-                        if ($imp < $minImp) continue;
+                        $m = self::apiMetrics($r);
+                        if ($m['impressions'] < $minImp) continue;
                         $out[] = [
                             'query' => $q,
                             'page_slug' => '', // aggregated across pages when only query dimension
-                            'impressions' => $imp,
-                            'clicks' => (int)($r['clicks'] ?? 0),
-                            'ctr_percent' => round((float)($r['ctr'] ?? 0) * 100, 2),
-                            'position' => round((float)($r['position'] ?? 0), 2),
+                            'impressions' => $m['impressions'],
+                            'clicks' => $m['clicks'],
+                            'ctr_percent' => $m['ctr_percent'],
+                            'position' => $m['position'],
                         ];
                     }
-                    usort($out, function($a,$b) use ($orderBy) {
-                        if ($orderBy === 'clicks') return $b['clicks'] <=> $a['clicks'];
-                        if ($orderBy === 'ctr') return $b['ctr_percent'] <=> $a['ctr_percent'];
-                        if ($orderBy === 'position') return $a['position'] <=> $b['position'];
-                        return $b['impressions'] <=> $a['impressions'];
-                    });
+                    self::sortRows($out, $orderBy);
                     $out = array_slice($out, 0, $limit);
                     // If we need page_slug per query, do a second call with both dimensions and map?
                     // For now return query-only.
@@ -365,7 +380,7 @@ class GscTools {
 
         self::ensureTable();
         $db = Database::getInstance();
-        $orderSql = match ($orderBy) { 'clicks' => 'clicks DESC', 'ctr' => 'ctr DESC', 'position' => 'position ASC', default => 'impressions DESC' };
+        $orderSql = self::dbOrder($orderBy);
         $having = $minImp > 0 ? "HAVING impressions >= {$minImp}" : '';
         $rows = $db->fetchAll(
             "SELECT query, page_slug, SUM(impressions) AS impressions, SUM(clicks) AS clicks,
@@ -380,9 +395,9 @@ class GscTools {
     }
 
     private static function gscPages(array $args): array {
-        $days = isset($args['days']) ? max(1, min(90, (int)$args['days'])) : 28;
-        $limit = isset($args['limit']) ? max(1, min(50, (int)$args['limit'])) : 15;
-        $orderBy = in_array($args['order_by'] ?? '', ['impressions', 'clicks', 'ctr'], true) ? $args['order_by'] : 'impressions';
+        $days = self::days($args);
+        $limit = self::limit($args, 15);
+        $orderBy = self::order($args, 'order_by', ['impressions', 'clicks', 'ctr'], 'impressions');
 
         if (self::shouldUseApi()) {
             try {
@@ -392,22 +407,17 @@ class GscTools {
                     $out = [];
                     foreach ($rows as $r) {
                         $pageUrl = (string)($r['keys'][0] ?? '');
-                        $slug = GscClient::slugFromPage($pageUrl);
-                        $imp = (int)($r['impressions'] ?? 0);
+                        $m = self::apiMetrics($r);
                         $out[] = [
-                            'slug' => $slug, 'page' => $pageUrl,
-                            'impressions' => $imp,
-                            'clicks' => (int)($r['clicks'] ?? 0),
-                            'ctr_percent' => round((float)($r['ctr'] ?? 0) * 100, 2),
-                            'avg_position' => round((float)($r['position'] ?? 0), 2),
+                            'slug' => GscClient::slugFromPage($pageUrl), 'page' => $pageUrl,
+                            'impressions' => $m['impressions'],
+                            'clicks' => $m['clicks'],
+                            'ctr_percent' => $m['ctr_percent'],
+                            'avg_position' => $m['position'],
                             'distinct_queries' => null,
                         ];
                     }
-                    usort($out, function($a,$b) use ($orderBy) {
-                        if ($orderBy === 'clicks') return $b['clicks'] <=> $a['clicks'];
-                        if ($orderBy === 'ctr') return $b['ctr_percent'] <=> $a['ctr_percent'];
-                        return $b['impressions'] <=> $a['impressions'];
-                    });
+                    self::sortRows($out, $orderBy);
                     $out = array_slice($out, 0, $limit);
                     return ['days' => $days, 'source' => 'api', 'start_date' => $start, 'end_date' => $end, 'order_by' => $orderBy, 'pages' => $out, 'count' => count($out)];
                 }
@@ -416,7 +426,7 @@ class GscTools {
 
         self::ensureTable();
         $db = Database::getInstance();
-        $orderSql = $orderBy === 'ctr' ? 'ctr DESC' : $orderBy . ' DESC';
+        $orderSql = self::dbOrder($orderBy);
         $rows = $db->fetchAll(
             "SELECT page_slug, SUM(impressions) AS impressions, SUM(clicks) AS clicks,
                     ROUND(CASE WHEN SUM(impressions)=0 THEN 0 ELSE 100.0*SUM(clicks)/SUM(impressions) END,2) AS ctr,
@@ -432,8 +442,8 @@ class GscTools {
     private static function searchQueries(array $args): array {
         $term = trim((string)($args['term'] ?? ''));
         if ($term === '') throw new InvalidArgumentException('term is required');
-        $days = isset($args['days']) ? max(1, min(90, (int)$args['days'])) : 28;
-        $limit = isset($args['limit']) ? max(1, min(50, (int)$args['limit'])) : 20;
+        $days = self::days($args);
+        $limit = self::limit($args);
 
         if (self::shouldUseApi()) {
             try {
@@ -447,15 +457,16 @@ class GscTools {
                         $q = (string)($r['keys'][0] ?? '');
                         $pageUrl = (string)($r['keys'][1] ?? '');
                         if (mb_stripos($q, $needle, 0, 'UTF-8') === false) continue;
+                        $m = self::apiMetrics($r);
                         $out[] = [
                             'query' => $q, 'page_slug' => GscClient::slugFromPage($pageUrl), 'page' => $pageUrl,
-                            'impressions' => (int)($r['impressions'] ?? 0),
-                            'clicks' => (int)($r['clicks'] ?? 0),
-                            'ctr_percent' => round((float)($r['ctr'] ?? 0) * 100, 2),
-                            'position' => round((float)($r['position'] ?? 0), 2),
+                            'impressions' => $m['impressions'],
+                            'clicks' => $m['clicks'],
+                            'ctr_percent' => $m['ctr_percent'],
+                            'position' => $m['position'],
                         ];
                     }
-                    usort($out, fn($a,$b) => $b['impressions'] <=> $a['impressions']);
+                    self::sortRows($out, 'impressions');
                     $out = array_slice($out, 0, $limit);
                     return ['term' => $term, 'days' => $days, 'source' => 'api', 'start_date' => $start, 'end_date' => $end, 'queries' => $out, 'count' => count($out)];
                 }
@@ -483,7 +494,7 @@ class GscTools {
         if (!self::shouldUseApi()) {
             throw new InvalidArgumentException('GSC not connected — connect Search Console in AI Studio to use query_gsc. Sugar tools fall back to cached gsc_data, but query_gsc is live-API only.');
         }
-        $days = isset($args['days']) ? max(1, min(90, (int)$args['days'])) : 28;
+        $days = self::days($args);
         $startDate = isset($args['startDate']) ? trim((string)$args['startDate']) : '';
         $endDate = isset($args['endDate']) ? trim((string)$args['endDate']) : '';
         if ($startDate !== '' || $endDate !== '') {
@@ -521,7 +532,7 @@ class GscTools {
         if (!empty($filters)) $filterGroups = [['filters' => $filters]];
 
         $limit = isset($args['limit']) ? max(1, min(100, (int)$args['limit'])) : 25;
-        $orderBy = in_array($args['orderBy'] ?? '', ['impressions','clicks','ctr','position'], true) ? $args['orderBy'] : 'impressions';
+        $orderBy = self::order($args, 'orderBy', ['impressions','clicks','ctr','position'], 'impressions');
 
         $rows = GscClient::searchAnalytics($start, $end, $dims, $filterGroups, $limit * 2);
         if ($rows === null) {
@@ -531,12 +542,13 @@ class GscTools {
         foreach ($rows as $r) {
             $keys = $r['keys'] ?? [];
             if (!is_array($keys)) $keys = [];
+            $m = self::apiMetrics($r);
             $entry = [
                 'keys' => $keys,
-                'impressions' => (int)($r['impressions'] ?? 0),
-                'clicks' => (int)($r['clicks'] ?? 0),
-                'ctr_percent' => round((float)($r['ctr'] ?? 0) * 100, 2),
-                'position' => round((float)($r['position'] ?? 0), 2),
+                'impressions' => $m['impressions'],
+                'clicks' => $m['clicks'],
+                'ctr_percent' => $m['ctr_percent'],
+                'position' => $m['position'],
             ];
             // Map keys to dimension names for ergonomics
             foreach ($dims as $i => $d) {
@@ -547,12 +559,7 @@ class GscTools {
             }
             $out[] = $entry;
         }
-        usort($out, function($a,$b) use ($orderBy) {
-            if ($orderBy === 'clicks') return $b['clicks'] <=> $a['clicks'];
-            if ($orderBy === 'ctr') return $b['ctr_percent'] <=> $a['ctr_percent'];
-            if ($orderBy === 'position') return $a['position'] <=> $b['position'];
-            return $b['impressions'] <=> $a['impressions'];
-        });
+        self::sortRows($out, $orderBy);
         $out = array_slice($out, 0, $limit);
         return [
             'source' => 'api',

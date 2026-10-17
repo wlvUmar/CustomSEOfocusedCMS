@@ -7,7 +7,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <?php if ($page): ?>
 <div class="ai-panel">
-    <button type="button" class="ai-panel__toggle" onclick="toggleAiPanel(this)">
+    <button type="button" class="ai-panel__toggle" data-ai="toggle">
         <span class="ai-panel__toggle-title">
             <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l1.6 4.9L18.5 8.5l-4.9 1.6L12 15l-1.6-4.9L5.5 8.5l4.9-1.6zM18 14l.8 2.4 2.4.8-2.4.8L18 20.4l-.8-2.4-2.4-.8 2.4-.8zM5 16l.6 1.9 1.9.6-1.9.6L5 21l-.6-1.9-1.9-.6 1.9-.6z"/>
@@ -65,7 +65,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
             <div class="ai-chat__input">
                 <textarea id="ai-chat-prompt" rows="2" placeholder="e.g. Change the second paragraph to say we also pay for broken fridges..."></textarea>
-                <button type="button" id="ai-chat-send" class="btn btn-primary" onclick="aiChatSend()">
+                <button type="button" id="ai-chat-send" class="btn btn-primary" data-ai="send">
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
                     </svg>
@@ -79,13 +79,13 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <input type="checkbox" id="ai-autoapply" checked>
                     Auto-apply changes to field
                 </label>
-                <button type="button" class="btn btn-primary btn-sm" onclick="aiChatApply()">Apply all changes to field</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="aiChatUndo()">Undo last</button>
-                <button type="button" class="btn btn-sm" onclick="aiChatReset()">Reset</button>
+                <button type="button" class="btn btn-primary btn-sm" data-ai="apply">Apply all changes to field</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-ai="undo">Undo last</button>
+                <button type="button" class="btn btn-sm" data-ai="reset">Reset</button>
             </div>
         </div>
 
-        <div id="ai-full-wrap" style="display:none;">
+        <div id="ai-full-wrap" class="hidden">
             <div class="ai-panel__chips">
                 <button type="button" class="ai-chip" data-prompt="Rewrite this content to be clearer, more engaging and persuasive. Keep the same meaning and structure.">✍️ Rewrite</button>
                 <button type="button" class="ai-chip" data-prompt="Improve this content for SEO: strengthen keywords, readability and user intent. Do not change the factual claims.">🎯 Improve SEO</button>
@@ -101,7 +101,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
             </div>
 
             <div class="ai-panel__actions">
-                <button type="button" id="ai-generate" class="btn btn-primary" onclick="aiGenerate()">
+                <button type="button" id="ai-generate" class="btn btn-primary" data-ai-full="generate">
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
@@ -117,9 +117,9 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </div>
                 <div id="ai-result-content" class="ai-panel__result-content"></div>
                 <div class="ai-panel__result-actions">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="aiApply()">Apply to field</button>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="aiRegenerate()">Regenerate</button>
-                    <button type="button" class="btn btn-sm" onclick="aiDiscard()">Discard</button>
+                    <button type="button" class="btn btn-primary btn-sm" data-ai-full="apply">Apply to field</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-ai-full="regenerate">Regenerate</button>
+                    <button type="button" class="btn btn-sm" data-ai-full="discard">Discard</button>
                 </div>
             </div>
         </div>
@@ -134,10 +134,10 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <?php endif; ?>
     
     <div class="tabs">
-        <button type="button" class="tab-btn active" onclick="switchTab('general')">General</button>
-        <button type="button" class="tab-btn" onclick="switchTab('design')">Design</button>
-        <button type="button" class="tab-btn" onclick="switchTab('seo')">SEO & Meta</button>
-        <button type="button" class="tab-btn" onclick="switchTab('advanced')">Advanced SEO</button>
+        <button type="button" class="tab-btn active" data-tab="general">General</button>
+        <button type="button" class="tab-btn" data-tab="design">Design</button>
+        <button type="button" class="tab-btn" data-tab="seo">SEO & Meta</button>
+        <button type="button" class="tab-btn" data-tab="advanced">Advanced SEO</button>
     </div>
     
     <div id="tab-general" class="tab-content active">
@@ -154,79 +154,33 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </div>
         
         <?php
-        // Normalize current parent for reliable selected handling (NULL/''/0 = root, otherwise int)
-        $currentParentId = $page['parent_id'] ?? null;
-        if ($currentParentId === '' || $currentParentId === 0 || $currentParentId === '0') $currentParentId = null;
-        $isRootSelected = $currentParentId === null;
-        // Fallback: if current parent exists but was filtered from $allPages (e.g. stale descendant exclusion), ensure it is still selectable
-        $parentIdsInList = array_column($allPages ?? [], 'id');
-        $fallbackParent = null;
-        if ($currentParentId !== null && !in_array((int)$currentParentId, array_map('intval', $parentIdsInList), true)) {
-            try {
-                if (!class_exists('Page', false)) require_once BASE_PATH . '/models/Page.php';
-                $fallbackParent = (new Page())->getById((int)$currentParentId);
-            } catch (Throwable $e) { $fallbackParent = null; }
+        $parentBootPages = [];
+        foreach (($allPages ?? []) as $ap) {
+            $parentBootPages[] = [
+                'id' => (int)($ap['id'] ?? 0),
+                'parent_id' => (int)($ap['parent_id'] ?? 0),
+                'sort_order' => (int)($ap['sort_order'] ?? 0),
+                'title' => $ap['title_ru'] ?? $ap['slug'] ?? '',
+                'slug' => $ap['slug'] ?? '',
+            ];
         }
+        $currentParentRaw = $page['parent_id'] ?? null;
+        $currentParentBoot = ($currentParentRaw === '' || $currentParentRaw === null || (int)$currentParentRaw === 0) ? '' : (int)$currentParentRaw;
+        $pagesEditBoot = [
+            'pageId' => isset($page['id']) ? (int)$page['id'] : null,
+            'currentPageId' => isset($page['id']) ? (int)$page['id'] : null,
+            'currentParentId' => $currentParentBoot,
+            'allPages' => $parentBootPages,
+        ];
         ?>
         <div class="form-group">
             <label>Parent Page (Optional - for hierarchy)</label>
-            <select name="parent_id" class="form-control" data-current-parent="<?= $currentParentId !== null ? (int)$currentParentId : '' ?>" id="parent_id_select">
-                <option value="" <?= $isRootSelected ? 'selected' : '' ?>>— Root Level (No Parent) —</option>
-                <?php if ($fallbackParent): ?>
-                    <option value="<?= (int)$fallbackParent['id'] ?>" selected>↳ <?= e($fallbackParent['title_ru'] ?? $fallbackParent['slug']) ?> (current parent)</option>
-                <?php endif; ?>
-                <?php if (!empty($allPages)): ?>
-                    <?php 
-                    if (!function_exists('renderParentPageOptions')) {
-                    function renderParentPageOptions($pages, $currentPageId = null, $parentId = 0, $depth = 0, $maxDepth = 3, $selectedParentId = null) {
-                        $output = '';
-                        if ($depth > $maxDepth) return $output;
-                        
-                        $childPages = array_filter($pages, function($p) use ($parentId, $currentPageId) {
-                            if ($currentPageId && (int)$p['id'] === (int)$currentPageId) return false;
-                            $pid = $p['parent_id'] ?? null;
-                            if ($pid === '' || $pid === null) $pid = 0;
-                            return (int)$pid === (int)$parentId;
-                        });
-                        
-                        usort($childPages, function($a, $b) {
-                            return ($a['sort_order'] ?? 0) <=> ($b['sort_order'] ?? 0);
-                        });
-                        
-                        foreach ($childPages as $p) {
-                            $indent = str_repeat('  ', $depth) . ($depth > 0 ? '└ ' : '');
-                            $isSelected = $selectedParentId !== null && $selectedParentId !== '' && (string)$selectedParentId === (string)$p['id'];
-                            $output .= sprintf(
-                                '<option value="%d" %s>%s%s</option>' . "\n",
-                                $p['id'],
-                                $isSelected ? 'selected' : '',
-                                $indent,
-                                e($p['title_ru'] ?? $p['slug'])
-                            );
-                            $output .= renderParentPageOptions($pages, $currentPageId, $p['id'], $depth + 1, $maxDepth, $selectedParentId);
-                        }
-                        return $output;
-                    }
-                    }
-                    echo renderParentPageOptions($allPages, $page['id'] ?? null, 0, 0, 3, $currentParentId);
-                    ?>
-                <?php endif; ?>
+            <select name="parent_id" class="form-control" data-current-parent="<?= $currentParentBoot ?>" id="parent_id_select">
+                <option value="">— Root Level (No Parent) —</option>
             </select>
+            <script id="pages-parent-boot" type="application/json"><?= json_encode(['currentPageId' => $pagesEditBoot['currentPageId'], 'currentParentId' => $pagesEditBoot['currentParentId'], 'allPages' => $pagesEditBoot['allPages']], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
             <small class="help-subtext">Create a page hierarchy. URLs remain flat, but breadcrumbs will show the path.</small>
         </div>
-        <script>
-        // Defensive: ensure the select reflects the current parent even if PHP rendering was stale/cached
-        (function(){
-            var sel = document.getElementById('parent_id_select');
-            if (!sel) return;
-            var cur = sel.getAttribute('data-current-parent');
-            if (cur !== null && cur !== '' && sel.value !== cur) {
-                // Only override if the expected value exists as an option
-                var has = Array.prototype.some.call(sel.options, function(o){ return o.value === cur; });
-                if (has) sel.value = cur;
-            }
-        })();
-        </script>
         
         <div class="form-row">
             <div class="form-group">
@@ -265,335 +219,37 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 }
             } catch (Throwable $e) { $slotsData = []; }
         ?>
-        <div class="form-group" id="media-slots-panel" style="margin-top:18px">
-            <label style="display:flex;align-items:center;gap:8px">Media slots on this page <span id="media-slots-count" style="font-weight:400;color:#6b7280;font-size:12px"></span></label>
-            <div id="media-slots-list" style="display:grid;gap:10px;margin-top:8px"></div>
+        <div class="form-group c-slots-panel" id="media-slots-panel">
+            <label class="c-slots-label">Media slots on this page <span id="media-slots-count" class="c-slots-count"></span></label>
+            <div id="media-slots-list" class="c-slots-list"></div>
             <small class="help-subtext">Detected from <code>{{media.*}}</code> in RU/UZ content. Save the page first, then attach images. Empty slots stay invisible on the site.</small>
         </div>
         <!-- Inline media picker modal (no navigation away) -->
-        <div id="media-picker-modal" class="modal" style="display:none">
-            <div class="modal-content" style="max-width:900px;width:92vw;max-height:86vh;display:flex;flex-direction:column">
+        <div id="media-picker-modal" class="modal">
+            <div class="modal-content c-picker-content">
                 <div class="modal-header">
                     <h3 id="media-picker-title">Choose image</h3>
-                    <button type="button" onclick="closeMediaPicker()" class="btn-close">&times;</button>
+                    <button type="button" data-picker="close" class="btn-close">&times;</button>
                 </div>
-                <div style="padding:10px 14px;border-bottom:1px solid #e5e7eb;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-                    <div style="display:flex;gap:6px">
-                        <button type="button" class="btn btn-sm media-picker-filter active" data-filter="all" onclick="pickerSetFilter('all')">All</button>
-                        <button type="button" class="btn btn-sm media-picker-filter" data-filter="unused" onclick="pickerSetFilter('unused')">Unused</button>
-                        <button type="button" class="btn btn-sm media-picker-filter" data-filter="used" onclick="pickerSetFilter('used')">Used</button>
-                        <button type="button" class="btn btn-sm media-picker-filter" data-filter="attached" onclick="pickerSetFilter('attached')">Attached to this page</button>
+                <div class="c-picker-bar">
+                    <div class="c-picker-filters">
+                        <button type="button" class="btn btn-sm media-picker-filter active" data-picker-filter="all">All</button>
+                        <button type="button" class="btn btn-sm media-picker-filter" data-picker-filter="unused">Unused</button>
+                        <button type="button" class="btn btn-sm media-picker-filter" data-picker-filter="used">Used</button>
+                        <button type="button" class="btn btn-sm media-picker-filter" data-picker-filter="attached">Attached to this page</button>
                     </div>
-                    <input type="text" id="media-picker-search" placeholder="Search filename..." oninput="pickerSearch()" style="flex:1;min-width:160px;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px">
-                    <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0">Upload & attach<input type="file" id="media-picker-upload" accept="image/*" multiple style="display:none" onchange="pickerUpload(this)"></label>
+                    <input type="text" id="media-picker-search" placeholder="Search filename..." class="c-picker-search">
+                    <label class="btn btn-secondary btn-sm c-upload-label">Upload & attach<input type="file" id="media-picker-upload" accept="image/*" multiple class="c-hidden-input"></label>
                 </div>
-                <div id="media-picker-grid" style="overflow:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));grid-auto-rows:160px;gap:12px;align-content:start;flex:1;background:#f9fafb;isolation:isolate"></div>
-                <div id="media-picker-status" style="padding:8px 14px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280"></div>
-                <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
+                <div id="media-picker-grid" class="c-picker-grid"></div>
+                <div id="media-picker-status" class="c-picker-status"></div>
+                <div class="modal-footer c-picker-footer">
                     <a id="media-picker-open-library" href="#" target="_blank" class="btn btn-sm">Open full library →</a>
-                    <button type="button" onclick="closeMediaPicker()" class="btn">Close</button>
+                    <button type="button" data-picker="close" class="btn">Close</button>
                 </div>
             </div>
         </div>
-        <script>
-        (function(){
-            const pageId = <?= (int)$page['id'] ?>;
-            const csrf = '<?= htmlspecialchars(generateCSRFToken(), ENT_QUOTES) ?>';
-            const csrfMeta = document.querySelector('meta[name="csrf-token"]')?.content || csrf;
-            const getCsrf = ()=> document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken || csrfMeta || csrf;
-            const baseUrl = '<?= BASE_URL ?>';
-            const thumbBase = baseUrl + '/uploads/';
-            let slotsData = <?= json_encode($slotsData, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) ?>;
-            const RESERVED = new Set(['hero','banner']);
-            let pickerSlot = null;
-            let pickerFilter = 'all';
-            let pickerQuery = '';
-            function getEditorContent(id){
-                try{ const ed = tinymce.get(id); if(ed) return ed.getContent(); }catch(e){}
-                const el=document.getElementById(id); return el?el.value:'';
-            }
-            function scanSlots(){
-                const raw = (getEditorContent('content_ru')||'') + '\n' + (getEditorContent('content_uz')||'');
-                const re = /\{\{media\.([a-zA-Z0-9_-]+)\}\}/g;
-                const found=new Set(); let m;
-                while((m=re.exec(raw))){ const k=m[1]; if(!RESERVED.has(k)) found.add(k); }
-                return Array.from(found).sort();
-            }
-            function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-            function render(){
-                const slots = scanSlots();
-                const list=document.getElementById('media-slots-list');
-                const countEl=document.getElementById('media-slots-count');
-                if(!list) return;
-                countEl.textContent = slots.length ? `(${slots.length} slot${slots.length>1?'s':''})` : '(no slots detected — add {{media.your_key}} to content)';
-                if(!slots.length){ list.innerHTML='<div style="color:#9ca3af;font-size:13px;padding:10px;border:1px dashed #d1d5db;border-radius:8px">No {{media.*}} tokens found in content. Example: <code>{{media.card_fridges}}</code> then save and attach.</div>'; return; }
-                list.innerHTML='';
-                slots.forEach(slot=>{
-                    const items = slotsData[slot]||[];
-                    const row=document.createElement('div');
-                    row.style.cssText='display:flex;align-items:center;gap:12px;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb';
-                    let thumbsHtml='';
-                    if(!items.length){
-                        thumbsHtml = '<span style="width:56px;height:56px;display:grid;place-items:center;border:1px dashed #d1d5db;border-radius:6px;color:#9ca3af;font-size:11px;text-align:center">⚠<br>empty</span>';
-                    } else {
-                        thumbsHtml = items.map(it=>{
-                            const mid = it.media_id || it.id;
-                            const fname = escHtml(it.filename||'');
-                            const oname = escHtml(it.original_name||it.filename||'');
-                            return `<div class="slot-thumb" data-media-id="${mid}" title="${oname} — ID ${mid}" style="position:relative;width:56px;height:56px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;flex-shrink:0;background:#fff">
-                                <img src="${baseUrl}/uploads/${fname}" alt="${oname}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" decoding="async">
-                                <button type="button" onclick="detachSingle('${slot}', ${mid}, this)" title="Detach this image" class="slot-thumb-x" style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:999px;background:#ef4444;color:#fff;border:1.5px solid #fff;display:grid;place-items:center;font-size:13px;line-height:1;cursor:pointer;opacity:0;transition:opacity .14s, transform .14s;box-shadow:0 2px 8px rgba(0,0,0,.28);transform:scale(.92)">×</button>
-                            </div>`;
-                        }).join('');
-                    }
-                    const meta = items.length ? `${items.length} image${items.length>1?'s':''} — ${items.length===1?'single':'gallery'}` : 'invisible on site until attached';
-                    row.innerHTML=`
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;min-width:64px;align-items:center">${thumbsHtml}</div>
-                        <div style="flex:1;min-width:0">
-                            <div style="font-family:monospace;font-size:13px;font-weight:600">{{media.${slot}}}</div>
-                            <div style="font-size:12px;color:#6b7280">${meta}</div>
-                        </div>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <button type="button" class="btn btn-primary btn-sm" onclick="openMediaPicker('${slot}')">Choose image</button>
-                            <a href="${baseUrl}/admin/media?attach_slot=${encodeURIComponent(slot)}&page_id=${pageId}" class="btn btn-secondary btn-sm" title="Open full library in new tab" target="_blank">Library ↗</a>
-                            ${items.length ? `<button type="button" class="btn btn-sm" style="background:#fef2f2;color:#991b1b;border:1px solid #fecaca" data-slot="${slot}" onclick="detachSlot('${slot}')">Detach all</button>` : ''}
-                        </div>`;
-                    list.appendChild(row);
-                });
-                // hover red X
-                list.querySelectorAll('.slot-thumb').forEach(el=>{
-                    el.addEventListener('mouseenter', ()=>{ const b=el.querySelector('.slot-thumb-x'); if(b){b.style.opacity='1'; b.style.transform='scale(1)';}});
-                    el.addEventListener('mouseleave', ()=>{ const b=el.querySelector('.slot-thumb-x'); if(b){b.style.opacity='0'; b.style.transform='scale(.92)';}});
-                    // always show X on touch devices after tap
-                    el.addEventListener('click', (e)=>{ if(e.target.closest('.slot-thumb-x')) return; const b=el.querySelector('.slot-thumb-x'); if(b && getComputedStyle(b).opacity==='0'){ b.style.opacity='1'; b.style.transform='scale(1)'; setTimeout(()=>{b.style.opacity='0'; b.style.transform='scale(.92)';}, 2200);}});
-                });
-            }
-            window.detachSingle = async function(slot, mediaId, btnEl){
-                if(!mediaId) return;
-                // find filename for confirm
-                const item = (slotsData[slot]||[]).find(x=> String(x.media_id||x.id)===String(mediaId));
-                const name = item ? (item.original_name||item.filename||mediaId) : mediaId;
-                if(!confirm(`Detach "${name}" from {{media.${slot}}}?`)) return;
-                if(btnEl) { btnEl.disabled=true; btnEl.textContent='…'; }
-                try{
-                    const fd=new FormData(); fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('media_id', mediaId); fd.append('section', slot);
-                    const r=await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
-                    const j=await r.json().catch(()=>({}));
-                    if(!r.ok || j.success===false) throw new Error(j.message||('HTTP '+r.status));
-                    // update local state without reload
-                    if(slotsData[slot]) slotsData[slot] = slotsData[slot].filter(x=> String(x.media_id||x.id)!==String(mediaId));
-                    render();
-                    if(pickerSlot && document.getElementById('media-picker-modal')?.style.display!=='none') pickerLoad();
-                    // tiny toast
-                    const list=document.getElementById('media-slots-list');
-                    if(list){
-                        const t=document.createElement('div');
-                        t.textContent='Detached ✓';
-                        t.style.cssText='position:fixed;bottom:18px;right:18px;background:#111827;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;opacity:0;transition:opacity .2s';
-                        document.body.appendChild(t); requestAnimationFrame(()=>t.style.opacity='1'); setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),250);}, 1600);
-                    }
-                } catch(e){
-                    alert('Detach failed: '+(e.message||e));
-                    if(btnEl){ btnEl.disabled=false; btnEl.textContent='×'; }
-                }
-            };
-            window.detachSlot = async function(slot){
-                if(!confirm(`Detach all ${((slotsData[slot]||[]).length)} image(s) from {{media.${slot}}}?`)) return;
-                const items = [...(slotsData[slot]||[])];
-                for(const it of items){
-                    const fd=new FormData(); fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('media_id', it.media_id); fd.append('section', slot);
-                    const r=await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
-                    const j=await r.json().catch(()=>({}));
-                    if(!r.ok || j.success===false){ alert('Detach failed for '+it.filename+': '+(j.message||r.status)); return; }
-                }
-                slotsData[slot]=[];
-                render();
-                if(pickerSlot && document.getElementById('media-picker-modal')?.style.display!=='none') pickerLoad();
-            };
-            // Picker functions
-            window.openMediaPicker = async function(slot){
-                pickerSlot = slot;
-                document.getElementById('media-picker-title').textContent = 'Choose image for {{media.'+slot+'}}';
-                document.getElementById('media-picker-open-library').href = baseUrl + '/admin/media?attach_slot='+encodeURIComponent(slot)+'&page_id='+pageId;
-                document.getElementById('media-picker-modal').style.display='flex';
-                document.getElementById('media-picker-modal').classList.add('active');
-                pickerFilter = 'all';
-                document.querySelectorAll('.media-picker-filter').forEach(b=>b.classList.toggle('active', b.dataset.filter===pickerFilter));
-                document.getElementById('media-picker-search').value='';
-                pickerQuery='';
-                await pickerLoad();
-            };
-            window.closeMediaPicker = function(){
-                document.getElementById('media-picker-modal').style.display='none';
-                document.getElementById('media-picker-modal').classList.remove('active');
-                pickerSlot=null;
-            };
-            window.pickerSetFilter = function(f){
-                pickerFilter=f;
-                document.querySelectorAll('.media-picker-filter').forEach(b=>b.classList.toggle('active', b.dataset.filter===f));
-                pickerLoad();
-            };
-            window.pickerSearch = function(){
-                pickerQuery = document.getElementById('media-picker-search').value.trim().toLowerCase();
-                pickerLoad();
-            };
-            async function pickerLoad(){
-                const grid=document.getElementById('media-picker-grid');
-                const status=document.getElementById('media-picker-status');
-                grid.innerHTML='<div style="grid-column:1/-1;padding:20px;text-align:center;color:#6b7280">Loading…</div>';
-                status.textContent='';
-                try {
-                    const url = baseUrl + '/admin/media/list?filter='+encodeURIComponent(pickerFilter)+'&page_id='+pageId+'&q='+encodeURIComponent(pickerQuery)+'&limit=100';
-                    const r = await fetch(url, {headers:{'Accept':'application/json'}});
-                    const j = await r.json();
-                    if (!j.success) throw new Error(j.message||'load failed');
-                    let items = j.media || [];
-                    // client-side search fallback (filename/original_name) if server didn't filter
-                    if (pickerQuery) {
-                        const q = pickerQuery;
-                        items = items.filter(it => (it.original_name||'').toLowerCase().includes(q) || (it.filename||'').toLowerCase().includes(q));
-                    }
-                    status.textContent = items.length + ' image(s) — filter: '+pickerFilter+' (including unused & used)';
-                    if (!items.length) { grid.innerHTML='<div style="grid-column:1/-1;padding:20px;text-align:center;color:#9ca3af">No images match filter/search. Try “All” or upload.</div>'; return; }
-                    grid.innerHTML='';
-                    items.forEach(it=>{
-                        const attached = it.is_attached_to_page;
-                        const card=document.createElement('div');
-                        card.style.cssText='border:1px solid '+(attached?'#22c55e':'#e5e7eb')+';border-radius:10px;overflow:hidden;background:#fff;position:relative;height:160px;cursor:pointer;isolation:isolate;'+(attached?'outline:2px solid #22c55e;outline-offset:-2px':'');
-                        let imgUrl = it.thumb_url || (thumbBase + it.filename);
-                        // thumb_url from server may be absolute (BASE_URL + /uploads/...) or root /uploads/... — ensure it resolves
-                        if(imgUrl && imgUrl.startsWith('/uploads/') && baseUrl) imgUrl = baseUrl + imgUrl;
-                        const safeName = escHtml(it.original_name||it.filename||'');
-                        const kb = Math.round((it.file_size||0)/1024);
-                        card.innerHTML=`
-                            <img src="${imgUrl}" alt="${safeName.replace(/"/g,'&quot;')}" style="width:100%;height:100%;object-fit:cover;display:block;background:#f3f4f6" loading="lazy" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid'">
-                            <div style="display:none;position:absolute;inset:0;place-items:center;background:#f3f4f6;color:#9ca3af;font-size:11px;padding:8px;text-align:center">${safeName}</div>
-                            ${attached ? `<span style="position:absolute;top:7px;right:7px;background:#22c55e;color:#fff;font-size:11px;font-weight:700;padding:3px 7px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:1">✓</span>` : ''}
-                            <span style="position:absolute;top:7px;left:7px;background:rgba(0,0,0,.58);color:#fff;font-size:10px;padding:2px 6px;border-radius:999px;backdrop-filter:blur(4px)">#${it.id} · ${kb}KB</span>
-                            <div style="position:absolute;inset:auto 0 0 0;background:linear-gradient(transparent, rgba(0,0,0,.72));padding:28px 8px 8px;color:#fff;z-index:1">
-                                <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${safeName}">${safeName}</div>
-                                <div style="font-size:10px;opacity:.88">${it.usage_count||0} page(s)${it.attached_section ? ' · '+escHtml(it.attached_section) : ''}</div>
-                            </div>
-                            <div class="picker-hover" style="position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.34);opacity:0;transition:opacity .16s;z-index:2">
-                                <span style="background:#fff;color:#111827;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.22);transform:translateY(2px);transition:transform .16s">${attached ? 'Re-attach' : 'Attach to '+escHtml(pickerSlot)}</span>
-                            </div>`;
-                        card.addEventListener('mouseenter', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='1'; h.firstElementChild.style.transform='translateY(0)'; }});
-                        card.addEventListener('mouseleave', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='0'; h.firstElementChild.style.transform='translateY(2px)'; }});
-                        card.addEventListener('click', ()=> pickerAttach(it.id, card));
-                        // also handle touch: first tap shows hover, second attaches? For now single tap attaches directly (as before)
-                        const _btn = card; // for pickerAttach btn param compatibility
-                        // store for fallback
-                        card._pickerId = it.id;
-                        grid.appendChild(card);
-                    });
-                } catch(e){
-                    grid.innerHTML='<div style="grid-column:1/-1;padding:12px;color:#b91c1c">Load failed: '+(e.message||e)+'</div>';
-                }
-            }
-            window.pickerAttach = async function(mediaId, btn){
-                if (!pickerSlot) return;
-                const isBtn = btn && btn.tagName === 'BUTTON';
-                if(isBtn){ btn.disabled=true; const old=btn.textContent; btn.textContent='…'; btn._old=old; }
-                else if(btn && btn.classList && btn.classList.contains('picker-hover')){ /* card overlay, ignore */ }
-                const fd=new FormData();
-                fd.append('csrf_token', getCsrf());
-                fd.append('page_id', pageId);
-                fd.append('media_id', mediaId);
-                fd.append('section', pickerSlot);
-                try{
-                    const r=await fetch(baseUrl+'/admin/media/attach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
-                    const j=await r.json().catch(()=>({}));
-                    if(!r.ok || j.success===false) throw new Error(j.message||('HTTP '+r.status));
-                    // update local slotsData without reload — fetch attached row for thumb
-                    try{
-                        const infoR = await fetch(baseUrl+'/admin/media/info?id='+encodeURIComponent(mediaId), {headers:{'Accept':'application/json'}});
-                        const infoJ = await infoR.json().catch(()=>null);
-                        const mediaRow = infoJ && infoJ.media ? infoJ.media : {id:mediaId, filename:''};
-                        // try to get filename from picker grid data if info missing
-                        if(!mediaRow.filename){
-                            const url = baseUrl + '/admin/media/list?filter=all&page_id='+pageId+'&limit=200';
-                            // fallback: find in current grid
-                        }
-                        // push to slotsData
-                        if(!slotsData[pickerSlot]) slotsData[pickerSlot]=[];
-                        const exists = slotsData[pickerSlot].some(x=> String(x.media_id||x.id)===String(mediaId));
-                        if(!exists){
-                            // construct minimal row matching getPageMedia shape
-                            slotsData[pickerSlot].push({media_id: mediaId, id: mediaId, filename: mediaRow.filename || '', original_name: mediaRow.original_name || mediaRow.filename || ('#'+mediaId), section: pickerSlot});
-                            // if filename empty, fetch again via list
-                            if(!mediaRow.filename){
-                                const lr = await fetch(baseUrl+'/admin/media/list?filter=all&page_id='+pageId+'&limit=200', {headers:{'Accept':'application/json'}});
-                                const lj = await lr.json().catch(()=>({}));
-                                const found = (lj.media||[]).find(x=> String(x.id)===String(mediaId));
-                                if(found){ const last = slotsData[pickerSlot][slotsData[pickerSlot].length-1]; last.filename = found.filename; last.original_name = found.original_name; }
-                            }
-                        }
-                    }catch(_){ /* ignore, still render with id only */ }
-                    render();
-                    pickerLoad(); // refresh picker attached badges
-                    closeMediaPicker();
-                    const t=document.createElement('div');
-                    t.textContent='✅ Attached to {{media.'+pickerSlot+'}}';
-                    t.style.cssText='position:fixed;bottom:18px;right:18px;background:#065f46;color:#fff;padding:9px 13px;border-radius:9px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;opacity:0;transition:opacity .18s';
-                    document.body.appendChild(t); requestAnimationFrame(()=>t.style.opacity='1'); setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),240);}, 1700);
-                }catch(e){
-                    alert('Attach failed: '+(e.message||e));
-                    if(isBtn && btn){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
-                } finally {
-                    if(isBtn && btn && btn.disabled && btn.textContent==='…'){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
-                }
-            };
-            window.pickerUpload = async function(input){
-                const files=input.files;
-                if(!files||!files.length) return;
-                if(!pickerSlot){ alert('Pick a slot first'); return; }
-                const fd=new FormData();
-                Array.from(files).forEach(f=>fd.append('files[]', f));
-                fd.append('csrf_token', getCsrf());
-                fd.append('page_id', pageId);
-                fd.append('section', pickerSlot);
-                const status=document.getElementById('media-picker-status');
-                status.textContent='Uploading '+files.length+' file(s)…';
-                try{
-                    const r=await fetch(baseUrl+'/admin/media/bulk-upload', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
-                    const ct=r.headers.get('content-type')||'';
-                    const txt=await r.text();
-                    if(!r.ok) throw new Error('HTTP '+r.status+': '+txt.slice(0,200));
-                    if(!ct.includes('application/json')) throw new Error('Expected JSON got '+ct);
-                    const j=JSON.parse(txt);
-                    if(!j.success && !j.uploaded) throw new Error(j.message||'upload failed');
-                    status.textContent='Uploaded '+j.uploaded+' file(s) and attached to {{media.'+pickerSlot+'}}';
-                    input.value='';
-                    // update slots panel without reload: refetch attached for this slot
-                    try{
-                        const ar = await fetch(baseUrl+'/admin/media/list?filter=attached&page_id='+pageId, {headers:{'Accept':'application/json'}});
-                        const aj = await ar.json().catch(()=>({}));
-                        if(aj.success && Array.isArray(aj.media)){
-                            const forSlot = aj.media.filter(x=> String(x.section||'')===String(pickerSlot));
-                            // map to slotsData shape expected by render()
-                            slotsData[pickerSlot] = forSlot.map(x=>({media_id: x.media_id||x.id, id: x.media_id||x.id, filename: x.filename, original_name: x.original_name, section: x.section}));
-                            render();
-                        }
-                    }catch(_){}
-                    await pickerLoad();
-                }catch(e){
-                    status.textContent='Upload failed: '+e.message;
-                    alert('Upload failed: '+e.message);
-                    input.value='';
-                }
-            };
-            // close on overlay click / ESC
-            document.getElementById('media-picker-modal').addEventListener('click', (e)=>{ if(e.target.id==='media-picker-modal') closeMediaPicker(); });
-            document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeMediaPicker(); });
-            let t=null;
-            function schedule(){ clearTimeout(t); t=setTimeout(render, 600); }
-            document.addEventListener('DOMContentLoaded', render);
-            setInterval(()=>{ const cur=scanSlots().join(','); if(window._lastSlots!==cur){window._lastSlots=cur; render();}}, 1500);
-            setTimeout(()=>{ try{ tinymce.on('AddEditor', e=>{ e.editor.on('change keyup', schedule); }); ['content_ru','content_uz'].forEach(id=>{ const ed=tinymce.get(id); if(ed) ed.on('change keyup', schedule); }); }catch(e){}}, 1200);
-            // listen for cross-tab attach from library (if user used Library ↗)
-            window.addEventListener('message', (e)=>{ if(e.data && e.data.type==='media-attached' && String(e.data.pageId)===String(pageId)){ setTimeout(()=>location.reload(), 300); }});
-        })();
-        </script>
+        <script id="pages-edit-boot" type="application/json"><?= json_encode(array_merge($pagesEditBoot, ['csrf' => htmlspecialchars(generateCSRFToken(), ENT_QUOTES), 'baseUrl' => BASE_URL, 'slotsData' => $slotsData]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
         <?php endif; ?>
         
         <div class="form-row">
@@ -631,7 +287,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </div>
 
         <?php if ($page): ?>
-        <div id="rotation_selection_group" class="form-group" style="display: <?= ($page['rotation_mode'] ?? 'auto') == 'manual' ? 'block' : 'none' ?>;">
+        <div id="rotation_selection_group" class="form-group<?= ($page['rotation_mode'] ?? 'auto') == 'manual' ? '' : ' hidden' ?>">
             <label for="selected_rotation_id">Select Rotation to Display</label>
             <?php 
             $availableRotations = $availableRotations ?? [];
@@ -690,7 +346,7 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> header { background: linear-gradient
 /* Override footer */
 body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
 /* Use any of 100+ components: .c-stats, .c-feature-split, .c-pricing, etc. */
-" spellcheck="false" style="font-family: monospace; font-size: 13px;"><?= e($page['custom_css'] ?? '') ?></textarea>
+" spellcheck="false" class="code c-code"><?= e($page['custom_css'] ?? '') ?></textarea>
             <small class="help-subtext">Leave empty to keep global defaults. CSS is injected after <code>pages.min.css</code> + <code>components.min.css</code> so it wins. Allowed: any selectors, CSS variables, @media. Blocked: @import, javascript: vectors. Loaded via <code>&lt;style id=&quot;page-custom-css&quot;&gt;</code> in head.</small>
         </div>
     </div>
@@ -792,55 +448,74 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
 </form>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.7.0/tinymce.min.js"></script>
-<script>
-tinymce.init({
-    selector: '.tinymce',
-    height: 400,
-    menubar: false,
-    plugins: 'fullscreen code',
-    toolbar: 'fullscreen code',
-     content_css: [
-        '<?= BASE_URL ?>/css/pages.min.css',
-        '<?= BASE_URL ?>/css/components.min.css'
-    ],
-    content_style: '.hero__content,.content-section,.info-card,.process-step,.brands-list,.faq-item,.condition-item,.review-strip,.links-tile,.faq-section{opacity:1!important;transform:none!important}',
-});
-
-// Handle rotation mode toggle
-document.addEventListener('DOMContentLoaded', function() {
-    const rotationModeSelect = document.getElementById('rotation_mode');
-    const rotationSelectionGroup = document.getElementById('rotation_selection_group');
-    
-    if (rotationModeSelect) {
-        rotationModeSelect.addEventListener('change', function() {
-            if (rotationSelectionGroup) {
-                rotationSelectionGroup.style.display = this.value === 'manual' ? 'block' : 'none';
-            }
-        });
-    }
-});
-</script>
+<script src="<?= BASE_URL ?>/js/admin/pages-edit.js"></script>
 
 <?php if ($page): ?>
-<script>
-    window.AI_CONFIG = {
-        pageId: <?= (int)$page['id'] ?>,
-        csrf: '<?= $_SESSION['csrf_token'] ?? '' ?>',
-        endpoint: '<?= BASE_URL ?>/admin/pages/ai-edit',
-        chatEndpoint: '<?= BASE_URL ?>/admin/pages/ai-chat',
-        fields: {
-            content_ru: { type: 'tinymce', label: 'Content (RU)' },
-            content_uz: { type: 'tinymce', label: 'Content (UZ)' },
-            title_ru: { type: 'input', selector: '[name="title_ru"]', label: 'Title (RU)' },
-            title_uz: { type: 'input', selector: '[name="title_uz"]', label: 'Title (UZ)' },
-            meta_title_ru: { type: 'input', selector: '[name="meta_title_ru"]', label: 'Meta title (RU)' },
-            meta_title_uz: { type: 'input', selector: '[name="meta_title_uz"]', label: 'Meta title (UZ)' },
-            meta_description_ru: { type: 'input', selector: '[name="meta_description_ru"]', label: 'Meta description (RU)' },
-            meta_description_uz: { type: 'input', selector: '[name="meta_description_uz"]', label: 'Meta description (UZ)' },
-        }
-    };
-</script>
+<script id="ai-boot" type="application/json"><?= json_encode([
+    'pageId' => (int)$page['id'],
+    'csrf' => $_SESSION['csrf_token'] ?? '',
+    'endpoint' => BASE_URL . '/admin/pages/ai-edit',
+    'chatEndpoint' => BASE_URL . '/admin/pages/ai-chat',
+    'fields' => [
+        'content_ru' => ['type' => 'tinymce', 'label' => 'Content (RU)'],
+        'content_uz' => ['type' => 'tinymce', 'label' => 'Content (UZ)'],
+        'title_ru' => ['type' => 'input', 'selector' => '[name="title_ru"]', 'label' => 'Title (RU)'],
+        'title_uz' => ['type' => 'input', 'selector' => '[name="title_uz"]', 'label' => 'Title (UZ)'],
+        'meta_title_ru' => ['type' => 'input', 'selector' => '[name="meta_title_ru"]', 'label' => 'Meta title (RU)'],
+        'meta_title_uz' => ['type' => 'input', 'selector' => '[name="meta_title_uz"]', 'label' => 'Meta title (UZ)'],
+        'meta_description_ru' => ['type' => 'input', 'selector' => '[name="meta_description_ru"]', 'label' => 'Meta description (RU)'],
+        'meta_description_uz' => ['type' => 'input', 'selector' => '[name="meta_description_uz"]', 'label' => 'Meta description (UZ)'],
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
 <script src="<?= BASE_URL ?>/js/admin/pages-ai.js"></script>
 <?php endif; ?>
+
+<style>
+.c-slots-panel{margin-top:18px}
+.c-slots-label{display:flex;align-items:center;gap:8px}
+.c-slots-count{font-weight:400;color:#6b7280;font-size:12px}
+.c-slots-list{display:grid;gap:10px;margin-top:8px}
+.c-picker-content{max-width:900px;width:92vw;max-height:86vh;display:flex;flex-direction:column}
+.c-picker-bar{padding:10px 14px;border-bottom:1px solid #e5e7eb;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.c-picker-filters{display:flex;gap:6px}
+.c-picker-search{flex:1;min-width:160px;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px}
+.c-upload-label{cursor:pointer;margin:0}
+.c-hidden-input{display:none!important}
+.c-picker-grid{overflow:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));grid-auto-rows:160px;gap:12px;align-content:start;flex:1;background:#f9fafb;isolation:isolate}
+.c-picker-status{padding:8px 14px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280}
+.c-picker-footer{display:flex;justify-content:space-between;align-items:center}
+.c-code{font-family:monospace;font-size:13px}
+.c-slot-row{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--teal);border-radius:10px;background:#f9fafb}
+.c-slot-thumbs{display:flex;gap:6px;flex-wrap:wrap;min-width:64px;align-items:center}
+.c-slot-main{flex:1;min-width:0}
+.c-slot-key{font-family:monospace;font-size:13px;font-weight:600}
+.c-slot-meta{font-size:12px;color:#6b7280}
+.c-slot-actions{display:flex;gap:6px;flex-wrap:wrap}
+.c-slot-detach{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+.c-slot-thumb{position:relative;width:56px;height:56px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;flex-shrink:0;background:#fff}
+.c-slot-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.c-slot-empty{width:56px;height:56px;display:grid;place-items:center;border:1px dashed #d1d5db;border-radius:6px;color:#9ca3af;font-size:11px;text-align:center}
+.c-slot-x{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:999px;background:#ef4444;color:#fff;border:1.5px solid #fff;display:grid;place-items:center;font-size:13px;line-height:1;cursor:pointer;opacity:0;transition:opacity .14s,transform .14s;box-shadow:0 2px 8px rgba(0,0,0,.28);transform:scale(.92)}
+.c-toast{position:fixed;bottom:18px;right:18px;background:#111827;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;opacity:0;transition:opacity .2s}
+.c-toast-ok{background:#065f46;padding:9px 13px;border-radius:9px}
+.c-empty-slots{color:#9ca3af;font-size:13px;padding:10px;border:1px dashed #d1d5db;border-radius:8px}
+.c-picker-card{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;background:#fff;position:relative;height:160px;cursor:pointer;isolation:isolate}
+.c-picker-card-attached{border-color:var(--teal);outline:2px solid var(--teal);outline-offset:-2px}
+.c-picker-img{width:100%;height:100%;object-fit:cover;display:block;background:#f3f4f6}
+.c-picker-img-broken{display:none}
+.c-picker-fallback{display:none;position:absolute;inset:0;place-items:center;background:#f3f4f6;color:#9ca3af;font-size:11px;padding:8px;text-align:center}
+.c-picker-fallback-show{display:grid}
+.c-picker-fallback{display:none;position:absolute;inset:0;place-items:center;background:#f3f4f6;color:#9ca3af;font-size:11px;padding:8px;text-align:center}
+.c-picker-check{position:absolute;top:7px;right:7px;background:var(--teal);color:#fff;font-size:11px;font-weight:700;padding:3px 7px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:1}
+.c-picker-tag{position:absolute;top:7px;left:7px;background:rgba(0,0,0,.58);color:#fff;font-size:10px;padding:2px 6px;border-radius:999px}
+.c-picker-cap{position:absolute;inset:auto 0 0 0;background:linear-gradient(transparent,rgba(0,0,0,.72));padding:28px 8px 8px;color:#fff;z-index:1}
+.c-picker-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-picker-sub{font-size:10px;opacity:.88}
+.c-picker-hover{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.34);opacity:0;transition:opacity .16s;z-index:2}
+.c-picker-hover span{background:#fff;color:#111827;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.22);transform:translateY(2px);transition:transform .16s}
+.c-picker-loading{grid-column:1/-1;padding:20px;text-align:center;color:#6b7280}
+.c-picker-empty{grid-column:1/-1;padding:20px;text-align:center;color:#9ca3af}
+.c-picker-error{grid-column:1/-1;padding:12px;color:#b91c1c}
+</style>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

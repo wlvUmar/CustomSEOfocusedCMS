@@ -84,7 +84,7 @@ class Router {
                 }
             }
 
-            error_log("Router 404: $method $uri");
+            if (function_exists('logDebug')) { logDebug("Router 404: $method $uri"); }
             $this->error(404);
 
         } catch (\Throwable $e) {

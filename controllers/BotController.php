@@ -4,6 +4,8 @@ require_once BASE_PATH . '/models/ProductRequest.php';
 require_once BASE_PATH . '/models/ProductRequestImage.php';
 require_once BASE_PATH . '/models/BotUser.php';
 require_once BASE_PATH . '/models/BotRequestMapping.php';
+require_once BASE_PATH . '/models/BotNonceStore.php';
+require_once BASE_PATH . '/models/BotUploadValidator.php';
 require_once BASE_PATH . '/models/RequestAccessToken.php';
 
 class BotController extends Controller {
@@ -12,7 +14,7 @@ class BotController extends Controller {
     }
 
     private function authorizeBotRequest($bodyForSig) {
-        $secret = getenv('BOT_API_SECRET') ?: '';
+        $secret = (string)((defined('BOT_API_SECRET') ? BOT_API_SECRET : '') ?: getenv('BOT_API_SECRET'));
         $timestamp = $_SERVER['HTTP_X_BOT_TIMESTAMP'] ?? '';
         $signature = $_SERVER['HTTP_X_BOT_SIGNATURE'] ?? '';
 
@@ -29,7 +31,8 @@ class BotController extends Controller {
         }
 
         $nonceKey = hash('sha256', $timestamp . ':' . $signature);
-        if ($this->isNonceUsed($nonceKey)) {
+        $nonceStore = new BotNonceStore();
+        if ($nonceStore->isNonceUsed($nonceKey)) {
             return false;
         }
 
@@ -42,13 +45,13 @@ class BotController extends Controller {
             // also accept legacy format secret:ts:body for one release window
             $expectedLegacySecret = hash_hmac('sha256', $secret . ':' . $timestamp . ':' . $legacyBody, $secret);
             if (hash_equals($expected1738, $signature) || hash_equals($expectedLegacySecret, $signature)) {
-                error_log('[BotController] legacy RFC1738 signature accepted - bot should upgrade to RFC3986');
+                logDebug('[BotController] legacy RFC1738 signature accepted - bot should upgrade to RFC3986');
                 $ok = true;
             }
         }
 
         if ($ok) {
-            $this->markNonce($nonceKey);
+            $nonceStore->markNonce($nonceKey);
         }
 
         return $ok;
@@ -60,54 +63,6 @@ class BotController extends Controller {
         return $out;
     }
 
-    private function isNonceUsed($nonceKey) {
-        $dir = BASE_PATH . '/storage/bot_nonces';
-        $file = $dir . '/' . $nonceKey . '.json';
-        if (!is_file($file)) {
-            return false;
-        }
-        $data = @json_decode(@file_get_contents($file), true);
-        if (!$data || !isset($data['expires'])) {
-            return false;
-        }
-        if (time() > (int)$data['expires']) {
-            @unlink($file);
-            return false;
-        }
-        return true;
-    }
-
-    private function markNonce($nonceKey) {
-        $dir = BASE_PATH . '/storage/bot_nonces';
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0750, true);
-        }
-        $file = $dir . '/' . $nonceKey . '.json';
-        $tmp = $file . '.' . bin2hex(random_bytes(4)) . '.tmp';
-        $payload = json_encode(['expires' => time() + 120]);
-        $fh = @fopen($tmp, 'wb');
-        if ($fh) {
-            if (flock($fh, LOCK_EX)) {
-                fwrite($fh, $payload);
-                fflush($fh);
-                flock($fh, LOCK_UN);
-            }
-            fclose($fh);
-            @rename($tmp, $file);
-        } else {
-            @file_put_contents($file, $payload, LOCK_EX);
-        }
-        // lazy prune expired nonces (1% chance to avoid per-request scan)
-        if (mt_rand(1, 100) === 1) {
-            foreach (@glob($dir . '/*.json') ?: [] as $f) {
-                $d = @json_decode(@file_get_contents($f), true);
-                if ($d && isset($d['expires']) && time() > (int)$d['expires']) {
-                    @unlink($f);
-                }
-            }
-        }
-    }
-
     private function requireBotAuth($bodyForSig) {
         if (!$this->authorizeBotRequest($bodyForSig)) {
             $this->json(['success' => false, 'message' => 'Unauthorized'], 401);
@@ -116,186 +71,80 @@ class BotController extends Controller {
 
     // POST /api/bot/requests
     public function createRequest() {
-        error_log("[BotController] createRequest() called");
-
         $telegram_id = $_POST['telegram_id'] ?? null;
         $description = $_POST['description'] ?? '';
-
-        error_log("[BotController] telegram_id=$telegram_id, description_len=" . strlen($description));
 
         $body_for_sig = $this->buildSignedBody([
             'telegram_id' => $telegram_id,
             'description' => $description,
         ]);
         if (!$this->authorizeBotRequest($body_for_sig)) {
-            error_log("[BotController] Authorization failed");
+            logDebug('[BotController] createRequest auth failed');
             $this->json(['success' => false, 'message' => 'Unauthorized'], 401);
             return;
         }
 
-        error_log("[BotController] Authorization passed");
-
-        $files = $this->normalizeUploadedFiles($_FILES);
+        $validator = new BotUploadValidator();
+        $files = $validator->normalizeUploadedFiles($_FILES);
         if (empty($files)) {
-            error_log("[BotController] No image files uploaded");
+            logDebug('[BotController] createRequest no image uploaded');
             $this->json(['success' => false, 'message' => 'No image uploaded'], 400);
             return;
         }
 
-        $allowed = ['image/jpeg','image/png','image/webp','image/gif'];
-        $maxPhotos = 4;
-        if (count($files) > $maxPhotos) {
-            error_log("[BotController] Too many images uploaded: " . count($files));
-            $this->json(['success' => false, 'message' => 'Too many images uploaded'], 400);
+        $countError = $validator->checkCount($files);
+        if ($countError) {
+            logDebug('[BotController] createRequest rejected: ' . $countError['message']);
+            $this->json(['success' => false, 'message' => $countError['message']], $countError['code']);
             return;
         }
 
-        // Ensure upload directory exists before writing the uploaded image.
-        if (!is_dir(UPLOAD_PATH)) {
-            error_log("[BotController] Creating upload directory: " . UPLOAD_PATH);
-            if (!mkdir(UPLOAD_PATH, 0755, true)) {
-                error_log("[BotController] Failed to create upload directory: " . UPLOAD_PATH);
-                $this->json(['success' => false, 'message' => 'Failed to create upload directory'], 500);
-                return;
-            }
+        if (!is_dir(UPLOAD_PATH) && !mkdir(UPLOAD_PATH, 0755, true)) {
+            logDebug('[BotController] createRequest upload dir failed: ' . UPLOAD_PATH);
+            $this->json(['success' => false, 'message' => 'Failed to create upload directory'], 500);
+            return;
         }
-        clearstatcache(true, UPLOAD_PATH);
-        error_log("[BotController] upload dir exists=" . (is_dir(UPLOAD_PATH) ? 'YES' : 'NO') . ", writable=" . (is_writable(UPLOAD_PATH) ? 'YES' : 'NO'));
 
-        $requestImageModel = new ProductRequestImage();
         $savedImages = [];
-        $allowedExts = ['jpg','jpeg','png','webp','gif'];
-
-        foreach ($files as $index => $file) {
-            error_log("[BotController] Received file #" . ($index + 1) . ": " . $file['name'] . ", type=" . $file['type'] . ", size=" . $file['size']);
-
-            if (!isset($file['tmp_name']) || !isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK) {
-                error_log("[BotController] Upload error at index $index: " . ($file['error'] ?? 'missing'));
-                $this->json(['success' => false, 'message' => 'Invalid image upload'], 400);
+        foreach ($files as $file) {
+            $error = $validator->validateFile($file);
+            if ($error) {
+                logDebug('[BotController] createRequest upload rejected: ' . $error['message']);
+                $this->json(['success' => false, 'message' => $error['message']], $error['code']);
                 return;
             }
-
-            if (!is_uploaded_file($file['tmp_name'])) {
-                error_log("[BotController] Not an uploaded file at index $index");
-                $this->json(['success' => false, 'message' => 'Invalid image upload'], 400);
-                return;
-            }
-
-            if ($file['size'] > MAX_UPLOAD_SIZE) {
-                error_log("[BotController] File too large at index $index");
-                $this->json(['success' => false, 'message' => 'File too large'], 400);
-                return;
-            }
-
-            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            if ($ext === '') {
-                error_log("[BotController] Missing extension at index $index");
-                $this->json(['success' => false, 'message' => 'Invalid image type'], 400);
-                return;
-            }
-            if (!in_array($ext, $allowedExts, true)) {
-                error_log("[BotController] Extension not allowed at index $index: $ext");
-                $this->json(['success' => false, 'message' => 'Invalid image type'], 400);
-                return;
-            }
-
-            if (!function_exists('finfo_open')) {
-                error_log("[BotController] finfo missing, rejecting upload");
-                $this->json(['success' => false, 'message' => 'Server upload validation unavailable'], 500);
-                return;
-            }
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $realMime = $finfo ? finfo_file($finfo, $file['tmp_name']) : null;
-            if ($finfo) finfo_close($finfo);
-            // normalize jpg
-            $normalizedMime = $realMime === 'image/jpg' ? 'image/jpeg' : $realMime;
-            if (!in_array($normalizedMime, $allowed, true)) {
-                error_log("[BotController] MIME mismatch at index $index: real=$realMime ext=$ext");
-                $this->json(['success' => false, 'message' => 'Invalid image type'], 400);
-                return;
-            }
-            // double-extension guard: ensure mime matches ext family
-            $extToMime = ['jpg'=>'image/jpeg','jpeg'=>'image/jpeg','png'=>'image/png','webp'=>'image/webp','gif'=>'image/gif'];
-            if (isset($extToMime[$ext]) && $extToMime[$ext] !== $normalizedMime) {
-                // allow jpg/jpeg interchange
-                if (!($ext==='jpg' && $normalizedMime==='image/jpeg') && !($ext==='jpeg' && $normalizedMime==='image/jpeg')) {
-                    error_log("[BotController] Ext vs MIME mismatch at index $index: $ext vs $normalizedMime");
-                    $this->json(['success' => false, 'message' => 'Invalid image type'], 400);
-                    return;
-                }
-            }
-
-            $filename = 'bot_' . bin2hex(random_bytes(8)) . '.' . $ext;
+            $filename = 'bot_' . bin2hex(random_bytes(8)) . '.' . $validator->extensionFor($file['name']);
             $path = UPLOAD_PATH . $filename;
-
-            error_log("[BotController] Moving file to: $path");
-
             if (!move_uploaded_file($file['tmp_name'], $path)) {
-                error_log("[BotController] Failed to move file to: $path");
+                logDebug('[BotController] createRequest move failed: ' . $path);
                 $this->json(['success' => false, 'message' => 'Failed to save file'], 500);
                 return;
             }
             @chmod($path, 0644);
-
             $savedImages[] = UPLOAD_URL . $filename;
         }
 
-        error_log("[BotController] File saved successfully");
-
-        // Persist product request
         $prModel = new ProductRequest();
         $request_id = $prModel->create([
             'image_path' => $savedImages[0] ?? '',
             'description' => $description
         ]);
 
-        error_log("[BotController] Created product request: id=$request_id");
-
+        $requestImageModel = new ProductRequestImage();
         foreach (array_slice($savedImages, 1) as $sortOrder => $imagePath) {
             $requestImageModel->create($request_id, $imagePath, $sortOrder);
         }
 
-        // Persist bot user and mapping
         $botUser = new BotUser();
         $botUser->upsert($telegram_id, '', '');
 
         $mapping = new BotRequestMapping();
         $mapping->create($request_id, $telegram_id);
 
-        error_log("[BotController] Created bot user and mapping");
+        $nonceStore = new BotNonceStore();
+        $nonceStore->maybePrune();
 
         $this->json(['success' => true, 'request_id' => (int)$request_id], 201);
-    }
-
-    private function normalizeUploadedFiles($files) {
-        if (isset($files['images']) && isset($files['images']['name'])) {
-            return $this->flattenFileArray($files['images']);
-        }
-
-        if (isset($files['image']) && isset($files['image']['name'])) {
-            return $this->flattenFileArray($files['image']);
-        }
-
-        return [];
-    }
-
-    private function flattenFileArray($fileSpec) {
-        if (!is_array($fileSpec['name'])) {
-            return [$fileSpec];
-        }
-
-        $result = [];
-        $count = count($fileSpec['name']);
-        for ($i = 0; $i < $count; $i++) {
-            $result[] = [
-                'name' => $fileSpec['name'][$i],
-                'type' => $fileSpec['type'][$i],
-                'tmp_name' => $fileSpec['tmp_name'][$i],
-                'error' => $fileSpec['error'][$i],
-                'size' => $fileSpec['size'][$i],
-            ];
-        }
-        return $result;
     }
 
     // POST /api/bot/users

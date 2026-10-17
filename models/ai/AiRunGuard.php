@@ -5,30 +5,7 @@
 class AiRunGuard {
 
     public static function ensureColumns(): void {
-        try {
-            $db = Database::getInstance();
-            $db->query("ALTER TABLE ai_sessions ADD COLUMN IF NOT EXISTS run_state ENUM('idle','running','queued') NOT NULL DEFAULT 'idle' AFTER mode");
-            $db->query("ALTER TABLE ai_sessions ADD COLUMN IF NOT EXISTS run_token CHAR(36) NULL AFTER run_state");
-            $db->query("ALTER TABLE ai_sessions ADD COLUMN IF NOT EXISTS cancel_requested TINYINT(1) NOT NULL DEFAULT 0 AFTER run_token");
-            $db->query("ALTER TABLE ai_sessions ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1 AFTER cancel_requested");
-            $db->query("ALTER TABLE ai_sessions ADD COLUMN IF NOT EXISTS summary MEDIUMTEXT NULL AFTER context");
-            $db->query("ALTER TABLE ai_sessions ADD COLUMN IF NOT EXISTS summary_updated_at DATETIME NULL AFTER summary");
-            $db->query("CREATE TABLE IF NOT EXISTS ai_run_queue (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                session_id CHAR(36) NOT NULL,
-                user_id INT NOT NULL,
-                message TEXT NOT NULL,
-                history JSON NULL,
-                model VARCHAR(80) NOT NULL DEFAULT 'opencode-go/muse-spark-1.2-contributor',
-                mode ENUM('plan','build') NOT NULL DEFAULT 'plan',
-                status ENUM('queued','claimed','done','cancelled') NOT NULL DEFAULT 'queued',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_session_status (session_id, status),
-                INDEX idx_user_created (user_id, created_at)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-        } catch (Throwable $e) {
-            error_log('AiRunGuard ensureColumns: ' . $e->getMessage());
-        }
+        // DDL lives in migrations/009_ai_studio_hardening.php — never here.
     }
 
     public static function tryClaim(string $sessionId, int $uid, string $runToken): array {

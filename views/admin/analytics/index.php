@@ -1,17 +1,17 @@
 <?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
-<div class="page-header" style="justify-content: flex-end;">
+<div class="page-header c-page-end">
     <div class="header-actions">
-    <select id="periodSelect" onchange="updateAnalyticsFilters()" class="btn">
-        <optgroup label="Daily">
+    <select id="periodSelect" class="btn">
+        <optgroup label="Ежедневные">
             <option value="range:today" <?= ($stats['range'] ?? '') === 'today' ? 'selected' : '' ?>>Сегодня</option>
             <option value="range:yesterday" <?= ($stats['range'] ?? '') === 'yesterday' ? 'selected' : '' ?>>Вчера</option>
             <option value="range:day_before" <?= ($stats['range'] ?? '') === 'day_before' ? 'selected' : '' ?>>Позавчера</option>
         </optgroup>
-        <optgroup label="Weekly">
+        <optgroup label="Еженедельные">
             <option value="range:last_week" <?= ($stats['range'] ?? '') === 'last_week' ? 'selected' : '' ?>>Прошлая неделя (Пн–Вс)</option>
         </optgroup>
-        <optgroup label="Monthly">
+        <optgroup label="Ежемесячные">
             <option value="months:1" <?= empty($stats['range']) && $stats['months'] == 1 ? 'selected' : '' ?>>Последний месяц</option>
             <option value="months:3" <?= empty($stats['range']) && $stats['months'] == 3 ? 'selected' : '' ?>>Последние 3 месяца</option>
             <option value="months:6" <?= empty($stats['range']) && $stats['months'] == 6 ? 'selected' : '' ?>>Последние 6 месяцев</option>
@@ -27,63 +27,90 @@
 </div>
 
 <?php if (!empty($stats['range_label'])): ?>
-<div style="margin: 0 0 16px; color: #64748b; font-size: 13px;">
+<div class="c-period">
     Период: <strong><?= e($stats['range_label']) ?></strong>
 </div>
 <?php endif; ?>
 
-<script>
-function updateAnalyticsFilters() {
-    const selection = document.getElementById('periodSelect').value;
-    const params = new URLSearchParams(window.location.search);
-
-    if (selection.startsWith('range:')) {
-        params.set('range', selection.replace('range:', ''));
-        params.delete('months');
-    } else if (selection.startsWith('months:')) {
-        params.set('months', selection.replace('months:', ''));
-        params.delete('range');
-    }
-
-    const slug = document.getElementById('pageSlugFilter');
-    const utm = document.getElementById('utmSourceFilter');
-    if (slug && slug.value) params.set('slug', slug.value); else params.delete('slug');
-    if (utm && utm.value) params.set('utm_source', utm.value); else params.delete('utm_source');
-
-    history.pushState(null, '', '?' + params.toString());
-    updateDashboard();
-}
-
-function updateSlugUtmFilters() {
-    const params = new URLSearchParams(window.location.search);
-    const slug = document.getElementById('pageSlugFilter');
-    const utm = document.getElementById('utmSourceFilter');
-    if (slug && slug.value) params.set('slug', slug.value); else params.delete('slug');
-    if (utm && utm.value) params.set('utm_source', utm.value); else params.delete('utm_source');
-    history.pushState(null, '', '?' + params.toString());
-    updateDashboard();
-}
-</script>
 
 <!-- Performance Scorecards (GSC Style) -->
-<script>
-    window.baseUrl = '<?= BASE_URL ?>';
-</script>
-<script>
-    const visitsChartData = <?= json_encode($stats['visits_chart'] ?? []) ?>;
-    const clicksChartData = <?= json_encode($stats['clicks_chart'] ?? []) ?>;
-    const phonesChartData = <?= json_encode($stats['phone_calls_chart'] ?? []) ?>;
-
-    window.performanceChartData = {
-        labels: Object.keys(visitsChartData || {}),
-        visits: Object.values(visitsChartData || {}),
-        clicks: Object.values(clicksChartData || {}),
-        phones: Object.values(phonesChartData || {})
-    };
-</script>
-<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=8"></script>
+<?php
+$analyticsBoot = [
+    'labels' => array_keys($stats['visits_chart'] ?? []),
+    'visits' => array_values($stats['visits_chart'] ?? []),
+    'clicks' => array_values($stats['clicks_chart'] ?? []),
+    'phones' => array_values($stats['phone_calls_chart'] ?? []),
+];
+?>
+<script>window.performanceChartData = <?= json_encode($analyticsBoot) ?>;</script>
+<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=9"></script>
 
 <style>
+    :root { --teal: #0e9f8a; }
+    .c-page-end { justify-content: flex-end; }
+    .c-period { margin: 0 0 16px; color: #64748b; font-size: 13px; }
+    .c-ficon { width: 14px; height: 14px; }
+    .c-ficon-sm { width: 12px; height: 12px; }
+    .c-chart-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .c-chart-title { margin: 0; }
+    .c-filters { display: flex; gap: 8px; align-items: center; }
+    .c-select { padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: #fff; color: #1e293b; }
+    .c-sec-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .c-sub { color: #64748b; font-size: 13px; }
+    .c-sub-top { margin-top: -8px; }
+    .c-sub-mb { margin-bottom: 16px; }
+    .c-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+    .c-table-wide { min-width: 500px; }
+    .c-thead { background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+    .c-th { padding: 12px; font-size: 13px; color: #64748b; font-weight: 600; }
+    .c-th-l { text-align: left; }
+    .c-th-c { text-align: center; }
+    .c-sort { cursor: pointer; user-select: none; }
+    .c-row { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .c-td { padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
+    .c-td-l { border-left: 1px solid #f1f5f9; border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+    .c-td-r { border-right: 1px solid #f1f5f9; border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+    .c-rank { font-weight: 600; color: #94a3b8; font-size: 14px; }
+    .c-td-name { font-size: 14px; color: #1e293b; font-weight: 500; }
+    .c-slug { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .c-num { text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; }
+    .c-blue { color: #3b82f6; }
+    .c-grn-t { color: #10b981; }
+    .c-amb-t { color: #f59e0b; }
+    .c-sky-t { color: #0284c7; }
+    .c-bar { height: 6px; border-radius: 3px; overflow: hidden; }
+    .c-bar-blue { background: #e0e7ff; }
+    .c-bar-grn { background: #d1fae5; }
+    .c-bar-amb { background: #fef3c7; }
+    .c-bar-sky { background: #cffafe; }
+    .c-fill { display: block; height: 100%; border-radius: 3px; }
+    .c-fill-blue { background: #3b82f6; }
+    .c-fill-grn { background: var(--teal); }
+    .c-fill-amb { background: #f59e0b; }
+    .c-fill-sky { background: #0284c7; }
+    .c-td-c { text-align: center; }
+    .c-pill { display: inline-block; padding: 4px 12px; font-size: 13px; font-weight: 600; }
+    .c-pill-r12 { border-radius: 12px; }
+    .c-pill-r6 { border-radius: 6px; }
+    .c-grn { background: #d1fae5; color: #059669; }
+    .c-amb { background: #fef3c7; color: #d97706; }
+    .c-red { background: #fee2e2; color: #dc2626; }
+    .c-pur { background: #f3e8ff; color: #7c3aed; }
+    .c-empty { padding: 40px; text-align: center; color: #94a3b8; }
+    .c-hidden { display: none !important; }
+    .c-insights { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+    .c-mini { display: flex; align-items: center; padding: 16px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s; }
+    .c-mini-ic { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; margin-right: 12px; }
+    .c-bg-amb { background: #fff7ed; color: #f59e0b; }
+    .c-bg-blue { background: #e0e7ff; color: #3b82f6; }
+    .c-bg-grn { background: #d1fae5; color: var(--teal); }
+    .c-mini-eyebrow { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+    .c-mini-val { font-size: 15px; font-weight: 700; color: #1e293b; }
+    .c-debug { background: #1e293b; color: #e2e8f0; padding: 20px; border-radius: 8px; margin-top: 30px; font-family: monospace; font-size: 12px; border: 2px solid #f59e0b; }
+    .c-debug-t { margin-bottom: 10px; color: #f59e0b; font-weight: bold; }
+    .c-debug-r { margin-bottom: 10px; }
+    .c-debug-f { margin-top: 15px; padding-top: 15px; border-top: 1px solid #475569; }
+    .c-debug-ok { color: #10b981; }
     .performance-scorecards {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -107,14 +134,11 @@ function updateSlugUtmFilters() {
     }
     .performance-scorecard:last-child { border-right: none; }
     .performance-scorecard:hover { background: #f8fafc; }
-    
     .performance-scorecard.active.visits { border-top: 4px solid #3b82f6; padding-top: 16px; }
-    .performance-scorecard.active.clicks { border-top: 4px solid #10b981; padding-top: 16px; }
+    .performance-scorecard.active.clicks { border-top: 4px solid var(--teal); padding-top: 16px; }
     .performance-scorecard.active.phones { border-top: 4px solid #f59e0b; padding-top: 16px; }
     .performance-scorecard.active.ctr { border-top: 4px solid #8b5cf6; padding-top: 16px; }
-    
     .performance-scorecard:not(.active) { opacity: 0.6; }
-    
     .sc-label { color: #64748b; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
     .sc-value { font-size: 24px; font-weight: 700; color: #1e293b; }
     .sc-change { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
@@ -128,26 +152,26 @@ function updateSlugUtmFilters() {
     $totalClicks = $stats['total']['total_clicks'] ?? 0;
     $totalPhones = $stats['total']['total_phone_calls'] ?? 0;
     $overallCtr = $totalVisits > 0 ? round(($totalPhones / $totalVisits) * 100, 2) : 0;
-    
+
     $scorecards = [
         ['label' => 'Всего визитов', 'icon' => 'eye', 'value' => $totalVisits, 'class' => 'visits', 'metric' => 'visits'],
         ['label' => 'Всего кликов', 'icon' => 'mouse-pointer', 'value' => $totalClicks, 'class' => 'clicks', 'metric' => 'clicks'],
         ['label' => 'Звонков', 'icon' => 'phone', 'value' => $totalPhones, 'class' => 'phones', 'metric' => 'phone_calls'],
         ['label' => 'CTR звонков', 'icon' => 'percent', 'value' => $overallCtr . '%', 'class' => 'ctr', 'metric' => 'ctr']
     ];
-    
+
     foreach ($scorecards as $sc):
         $change = $stats['trends']['changes'][$sc['metric']] ?? 0;
     ?>
     <div class="performance-scorecard active <?= $sc['class'] ?>" data-metric="<?= $sc['metric'] ?>">
         <div class="sc-label">
-            <i data-feather="<?= $sc['icon'] ?>" style="width: 14px; height: 14px;"></i>
+            <i data-feather="<?= $sc['icon'] ?>" class="c-ficon"></i>
             <?= $sc['label'] ?>
         </div>
         <div class="sc-value"><?= is_numeric($sc['value']) ? number_format($sc['value']) : $sc['value'] ?></div>
         <?php if (isset($stats['trends']['changes'][$sc['metric']])): ?>
         <div class="sc-change <?= $change >= 0 ? 'positive' : 'negative' ?>">
-            <i data-feather="<?= $change >= 0 ? 'trending-up' : 'trending-down' ?>" style="width: 12px; height: 12px;"></i>
+            <i data-feather="<?= $change >= 0 ? 'trending-up' : 'trending-down' ?>" class="c-ficon-sm"></i>
             <?= abs($change) ?>%
         </div>
         <?php endif; ?>
@@ -157,8 +181,8 @@ function updateSlugUtmFilters() {
 
 <!-- Performance Line Graph (GSC-style) -->
 <div class="chart-box">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0;"><i data-feather="activity"></i> Общая статистика</h2>
+    <div class="c-chart-head">
+        <h2 class="c-chart-title"><i data-feather="activity"></i> Общая статистика</h2>
 
         <?php
         $currentSlug = $stats['slug'] ?? '';
@@ -166,14 +190,14 @@ function updateSlugUtmFilters() {
         $allSlugs = $stats['all_page_slugs'] ?? [];
         $allUtmSources = $stats['all_utm_sources'] ?? [];
         ?>
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <select id="pageSlugFilter" onchange="updateSlugUtmFilters()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
+        <div class="c-filters">
+            <select id="pageSlugFilter" class="c-select">
                 <option value="">Все страницы</option>
                 <?php foreach ($allSlugs as $s): ?>
                 <option value="<?= e($s) ?>" <?= $currentSlug === $s ? 'selected' : '' ?>><?= e($s) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select id="utmSourceFilter" onchange="updateSlugUtmFilters()" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
+            <select id="utmSourceFilter" class="c-select">
                 <option value="">Все UTM-источники</option>
                 <option value="direct" <?= $currentUtm === 'direct' ? 'selected' : '' ?>>Прямой</option>
                 <?php foreach ($allUtmSources as $source): ?>
@@ -182,7 +206,7 @@ function updateSlugUtmFilters() {
                     <?php endif; ?>
                 <?php endforeach; ?>
             </select>
-            <select id="aggregationSelect" onchange="updateDashboard(this.value)" style="padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; background: white; color: #1e293b;">
+            <select id="aggregationSelect" class="c-select">
                 <option value="daily" <?= ($stats['aggregation'] ?? 'monthly') === 'daily' ? 'selected' : '' ?>>По дням</option>
                 <option value="weekly" <?= ($stats['aggregation'] ?? 'monthly') === 'weekly' ? 'selected' : '' ?>>По неделям</option>
                 <option value="monthly" <?= ($stats['aggregation'] ?? 'monthly') === 'monthly' ? 'selected' : '' ?>>По месяцам</option>
@@ -194,34 +218,34 @@ function updateSlugUtmFilters() {
 
 <!-- Top Pages Performance -->
 <div class="chart-box">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <div class="c-sec-head">
         <div>
             <h2><i data-feather="trending-up"></i> Популярные страницы</h2>
             <?php if (!empty($stats['range_label'])): ?>
-            <div style="margin-top: -8px; color: #64748b; font-size: 13px;">
+            <div class="c-sub c-sub-top">
                 Период: <?= e($stats['range_label']) ?>
             </div>
             <?php endif; ?>
         </div>
     </div>
-    
+
     <?php
     $topPerformers = $stats['top_performers'] ?? [];
     $maxVisits = !empty($topPerformers) ? max(array_column($topPerformers, 'visits')) : 1;
     $maxClicks = !empty($topPerformers) ? max(array_column($topPerformers, 'clicks')) : 1;
     $maxPhones = !empty($topPerformers) ? max(array_column($topPerformers, 'phone_calls')) : 1;
     ?>
-    
+
     <div class="table-scroll">
-    <table id="top-performers-table" style="width: 100%; border-collapse: separate; border-spacing: 0 8px;">
-        <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+    <table id="top-performers-table" class="c-table">
+        <thead class="c-thead">
             <tr>
-                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">#</th>
-                <th data-sort-key="page_slug" style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;"><span class="th-label">Страница</span><span class="sort-indicator">↕</span></th>
-                <th data-sort-key="visits" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;"><span class="th-label">Визиты</span><i data-feather="eye" class="th-icon"></i><span class="sort-indicator">↕</span></th>
-                <th data-sort-key="clicks" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;"><span class="th-label">Клики</span><i data-feather="mouse-pointer" class="th-icon"></i><span class="sort-indicator">↕</span></th>
-                <th data-sort-key="phone_calls" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;"><span class="th-label">Звонки</span><i data-feather="phone" class="th-icon"></i><span class="sort-indicator">↕</span></th>
-                <th data-sort-key="ctr" style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600; cursor: pointer; user-select: none;">CTR <span class="sort-indicator">↕</span></th>
+                <th class="c-th c-th-l">#</th>
+                <th data-sort-key="page_slug" class="c-th c-th-l c-sort"><span class="th-label">Страница</span><span class="sort-indicator">↕</span></th>
+                <th data-sort-key="visits" class="c-th c-th-c c-sort"><span class="th-label">Визиты</span><i data-feather="eye" class="th-icon"></i><span class="sort-indicator">↕</span></th>
+                <th data-sort-key="clicks" class="c-th c-th-c c-sort"><span class="th-label">Клики</span><i data-feather="mouse-pointer" class="th-icon"></i><span class="sort-indicator">↕</span></th>
+                <th data-sort-key="phone_calls" class="c-th c-th-c c-sort"><span class="th-label">Звонки</span><i data-feather="phone" class="th-icon"></i><span class="sort-indicator">↕</span></th>
+                <th data-sort-key="ctr" class="c-th c-th-c c-sort">CTR <span class="sort-indicator">↕</span></th>
             </tr>
         </thead>
         <tbody>
@@ -238,39 +262,40 @@ function updateSlugUtmFilters() {
                 $clicksWidth = $maxClicks > 0 ? ($clicks / $maxClicks) * 100 : 0;
                 $phonesWidth = $maxPhones > 0 ? ($phoneCalls / $maxPhones) * 100 : 0;
                 $displaySlug = mb_strlen($page['page_slug'] ?? '') > 12 ? mb_substr($page['page_slug'], 0, 12) . '...' : ($page['page_slug'] ?? '');
+                $ctrCls = $ctr >= 5 ? 'c-grn' : ($ctr >= 2 ? 'c-amb' : 'c-red');
             ?>
             <tr
+                class="c-row"
                 data-page-slug="<?= e((string)($page['page_slug'] ?? '')) ?>"
                 data-utm-source="<?= e($utmSource) ?>"
                 data-visits="<?= $visits ?>"
                 data-clicks="<?= $clicks ?>"
                 data-phone-calls="<?= $phoneCalls ?>"
                 data-ctr="<?= $ctr ?>"
-                style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);"
             >
-                <td data-rank-cell style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 600; color: #94a3b8; font-size: 14px;"><?= $index + 1 ?></td>
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; font-size: 14px; color: #1e293b; font-weight: 500;">
-                    <div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<?= htmlspecialchars($page['page_slug']) ?>"><?= htmlspecialchars($displaySlug) ?></div>
+                <td data-rank-cell class="c-td c-td-l c-rank"><?= $index + 1 ?></td>
+                <td class="c-td c-td-name">
+                    <div class="c-slug" title="<?= htmlspecialchars($page['page_slug']) ?>"><?= htmlspecialchars($displaySlug) ?></div>
                 </td>
-                <td data-label="Visits" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
-                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #3b82f6;"><?= number_format($visits) ?></div>
-                    <div style="background: #e0e7ff; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #3b82f6; height: 100%; width: <?= $visitsWidth ?>%; border-radius: 3px;"></div></div>
+                <td data-label="Visits" class="c-td">
+                    <div class="c-num c-blue"><?= number_format($visits) ?></div>
+                    <div class="c-bar c-bar-blue"><i class="c-fill c-fill-blue" data-w="<?= $visitsWidth ?>"></i></div>
                 </td>
-                <td data-label="Clicks" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
-                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #10b981;"><?= number_format($clicks) ?></div>
-                    <div style="background: #d1fae5; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #10b981; height: 100%; width: <?= $clicksWidth ?>%; border-radius: 3px;"></div></div>
+                <td data-label="Clicks" class="c-td">
+                    <div class="c-num c-grn-t"><?= number_format($clicks) ?></div>
+                    <div class="c-bar c-bar-grn"><i class="c-fill c-fill-grn" data-w="<?= $clicksWidth ?>"></i></div>
                 </td>
-                <td data-label="Phone Calls" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
-                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #f59e0b;"><?= number_format($phoneCalls) ?></div>
-                    <div style="background: #fef3c7; height: 6px; border-radius: 3px; overflow: hidden;"><div style="background: #f59e0b; height: 100%; width: <?= $phonesWidth ?>%; border-radius: 3px;"></div></div>
+                <td data-label="Phone Calls" class="c-td">
+                    <div class="c-num c-amb-t"><?= number_format($phoneCalls) ?></div>
+                    <div class="c-bar c-bar-amb"><i class="c-fill c-fill-amb" data-w="<?= $phonesWidth ?>"></i></div>
                 </td>
-                <td data-label="CTR" style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-top-right-radius: 8px; border-bottom-right-radius: 8px; text-align: center;">
-                    <span style="display: inline-block; padding: 4px 12px; background: <?= $ctr >= 5 ? '#d1fae5' : ($ctr >= 2 ? '#fef3c7' : '#fee2e2') ?>; color: <?= $ctr >= 5 ? '#059669' : ($ctr >= 2 ? '#d97706' : '#dc2626') ?>; border-radius: 12px; font-size: 13px; font-weight: 600;"><?= $ctr ?>%</span>
+                <td data-label="CTR" class="c-td c-td-r c-td-c">
+                    <span class="c-pill c-pill-r12 <?= $ctrCls ?>"><?= $ctr ?>%</span>
                 </td>
             </tr>
             <?php endforeach; ?>
             <?php else: ?>
-            <tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">Данных пока нет</td></tr>
+            <tr><td colspan="6" class="c-empty">Данных пока нет</td></tr>
             <?php endif; ?>
         </tbody>
     </table>
@@ -278,62 +303,62 @@ function updateSlugUtmFilters() {
 </div>
 
 <!-- UTM Source Performance -->
-<div class="chart-box" id="utmStatsContainer"<?= empty($stats['utm_stats']) ? ' style="display:none"' : '' ?>>
+<div class="chart-box<?= empty($stats['utm_stats']) ? ' c-hidden' : '' ?>" id="utmStatsContainer">
     <h2><i data-feather="link"></i> Трафик по UTM-источникам</h2>
     <?php if (!empty($stats['range_label'])): ?>
-    <div style="margin-top: -8px; margin-bottom: 16px; color: #64748b; font-size: 13px;">
+    <div class="c-sub c-sub-top c-sub-mb">
         Период: <?= e($stats['range_label']) ?>
     </div>
     <?php endif; ?>
-    
+
     <div class="table-scroll">
-    <table style="width: 100%; min-width: 500px; border-collapse: separate; border-spacing: 0 8px;">
-        <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+    <table class="c-table c-table-wide">
+        <thead class="c-thead">
             <tr>
-                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 600;">UTM-источник</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Клики</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Звонки</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Всего действий</th>
-                <th style="padding: 12px; text-align: center; font-size: 13px; color: #64748b; font-weight: 600;">Затронуто страниц</th>
+                <th class="c-th c-th-l">UTM-источник</th>
+                <th class="c-th c-th-c">Клики</th>
+                <th class="c-th c-th-c">Звонки</th>
+                <th class="c-th c-th-c">Всего действий</th>
+                <th class="c-th c-th-c">Затронуто страниц</th>
             </tr>
         </thead>
         <tbody id="utmStatsBody">
-            <?php 
+            <?php
             $totalClicks = array_sum(array_column($stats['utm_stats'], 'clicks'));
             $totalCalls = array_sum(array_column($stats['utm_stats'], 'phone_calls'));
             $maxActions = max(array_map(function($s) { return $s['clicks'] + $s['phone_calls']; }, $stats['utm_stats'])) ?: 1;
-            
-            foreach ($stats['utm_stats'] as $source): 
+
+            foreach ($stats['utm_stats'] as $source):
                 $clicks = (int)($source['clicks'] ?? 0);
                 $calls = (int)($source['phone_calls'] ?? 0);
                 $total = $clicks + $calls;
                 $pages = (int)($source['pages_affected'] ?? 0);
                 $width = ($total / $maxActions) * 100;
             ?>
-            <tr style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9; border-top-left-radius: 8px; border-bottom-left-radius: 8px; font-weight: 600; color: #1e293b;">
+            <tr class="c-row">
+                <td class="c-td c-td-l c-td-name">
                     <?= e(!empty($source['utm_source']) ? $source['utm_source'] : 'direct') ?>
                 </td>
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; text-align: center;">
-                    <span style="display: inline-block; padding: 4px 12px; background: #d1fae5; color: #059669; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                <td class="c-td c-td-c">
+                    <span class="c-pill c-pill-r6 c-grn">
                         <?= number_format($clicks) ?>
                     </span>
                 </td>
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; text-align: center;">
-                    <span style="display: inline-block; padding: 4px 12px; background: #fef3c7; color: #d97706; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                <td class="c-td c-td-c">
+                    <span class="c-pill c-pill-r6 c-amb">
                         <?= number_format($calls) ?>
                     </span>
                 </td>
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
-                    <div style="text-align: right; margin-bottom: 4px; font-size: 14px; font-weight: 600; color: #0284c7;">
+                <td class="c-td">
+                    <div class="c-num c-sky-t">
                         <?= number_format($total) ?>
                     </div>
-                    <div style="background: #cffafe; height: 6px; border-radius: 3px; overflow: hidden;">
-                        <div style="background: #0284c7; height: 100%; width: <?= $width ?>%; border-radius: 3px;"></div>
+                    <div class="c-bar c-bar-sky">
+                        <i class="c-fill c-fill-sky" data-w="<?= $width ?>"></i>
                     </div>
                 </td>
-                <td style="padding: 16px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; border-top-right-radius: 8px; border-bottom-right-radius: 8px; text-align: center;">
-                    <span style="display: inline-block; padding: 4px 12px; background: #f3e8ff; color: #7c3aed; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                <td class="c-td c-td-r c-td-c">
+                    <span class="c-pill c-pill-r6 c-pur">
                         <?= number_format($pages) ?>
                     </span>
                 </td>
@@ -346,39 +371,39 @@ function updateSlugUtmFilters() {
 
 
 <!-- Insight Mini-Cards -->
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px;">
+<div class="c-insights">
     <?php
     $rotationImpact = $this->getAnalyticsModel()->getRotationImpact($stats['months']);
     $navStats = $this->getAnalyticsModel()->getNavigationStats($stats['months']);
     $crawlStats = $this->getAnalyticsModel()->getCrawlInsights(7);
     ?>
-    <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
-        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #fff7ed; color: #f59e0b; border-radius: 10px; margin-right: 12px;">
+    <a href="<?= BASE_URL ?>/admin/analytics/rotation" class="mini-insight-card c-mini">
+        <div class="c-mini-ic c-bg-amb">
             <i data-feather="repeat"></i>
         </div>
         <div>
-            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Ротация</div>
-            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $rotationImpact['avg_engagement'] ?>% средний CTR</div>
+            <div class="c-mini-eyebrow">Ротация</div>
+            <div class="c-mini-val"><?= $rotationImpact['avg_engagement'] ?>% средний CTR</div>
         </div>
     </a>
-    
-    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
-        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #e0e7ff; color: #3b82f6; border-radius: 10px; margin-right: 12px;">
+
+    <a href="<?= BASE_URL ?>/admin/analytics/navigation" class="mini-insight-card c-mini">
+        <div class="c-mini-ic c-bg-blue">
             <i data-feather="git-branch"></i>
         </div>
         <div>
-            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Навигация</div>
-            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= number_format($navStats['total_clicks'] ?? 0) ?> переходов</div>
+            <div class="c-mini-eyebrow">Навигация</div>
+            <div class="c-mini-val"><?= number_format($navStats['total_clicks'] ?? 0) ?> переходов</div>
         </div>
     </a>
-    
-    <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="mini-insight-card" style="display: flex; align-items: center; padding: 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; text-decoration: none; transition: all 0.2s;">
-        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #d1fae5; color: #10b981; border-radius: 10px; margin-right: 12px;">
+
+    <a href="<?= BASE_URL ?>/admin/analytics/crawl" class="mini-insight-card c-mini">
+        <div class="c-mini-ic c-bg-grn">
             <i data-feather="activity"></i>
         </div>
         <div>
-            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Обход</div>
-            <div style="font-size: 15px; font-weight: 700; color: #1e293b;"><?= $crawlStats['pages_crawled'] ?? 0 ?> стр. (7д)</div>
+            <div class="c-mini-eyebrow">Обход</div>
+            <div class="c-mini-val"><?= $crawlStats['pages_crawled'] ?? 0 ?> стр. (7д)</div>
         </div>
     </a>
 </div>
@@ -386,142 +411,30 @@ function updateSlugUtmFilters() {
 
 <?php if (!IS_PRODUCTION): ?>
 <!-- DEBUG PANEL -->
-<div style="background: #1e293b; color: #e2e8f0; padding: 20px; border-radius: 8px; margin-top: 30px; font-family: monospace; font-size: 12px; border: 2px solid #f59e0b;">
-    <div style="margin-bottom: 10px; color: #f59e0b; font-weight: bold;">🔧 DEBUG PANEL</div>
-    
-    <div style="margin-bottom: 10px;">
+<div class="c-debug">
+    <div class="c-debug-t">🔧 DEBUG PANEL</div>
+
+    <div class="c-debug-r">
         <strong>Chart.js Loaded:</strong> <span id="debug-chartjs">checking...</span>
     </div>
-    
-    <div style="margin-bottom: 10px;">
+
+    <div class="c-debug-r">
         <strong>Visits Data:</strong> <span id="debug-visits">checking...</span>
     </div>
-    
-    <div style="margin-bottom: 10px;">
+
+    <div class="c-debug-r">
         <strong>Clicks Data:</strong> <span id="debug-clicks">checking...</span>
     </div>
-    
-    <div style="margin-bottom: 10px;">
+
+    <div class="c-debug-r">
         <strong>Canvas Elements:</strong> <span id="debug-canvas">checking...</span>
     </div>
-    
-    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #475569;">
-        <strong style="color: #10b981;">✓ Check browser Console (F12) for detailed logs</strong>
+
+    <div class="c-debug-f">
+        <strong class="c-debug-ok">✓ Check browser Console (F12) for detailed logs</strong>
     </div>
 </div>
 <?php endif; ?>
 
-<script>
-// Chart update function is now defined in analytics.js
-
-if (window.DEBUG) {
-    console.log('=== ANALYTICS DATA DEBUG ===');
-    console.log('Performance data:', window.performanceChartData);
-    console.log('=== END DATA DEBUG ===');
-}
-
-// Update debug panel (only if DEBUG enabled)
-if (window.DEBUG) {
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(function() {
-            const chartJsEl = document.getElementById('debug-chartjs');
-            const performanceEl = document.getElementById('debug-visits');
-            const canvasEl = document.getElementById('debug-canvas');
-            
-            if (chartJsEl) chartJsEl.textContent = (typeof Chart !== 'undefined') ? '✓ YES' : '✗ NO';
-            if (performanceEl) {
-                performanceEl.parentElement.querySelector('strong').textContent = 'Performance Data:';
-                performanceEl.textContent = (window.performanceChartData && window.performanceChartData.labels.length > 0) 
-                    ? '✓ ' + window.performanceChartData.labels.length + ' data points'
-                    : '✗ No data';
-            }
-            
-            const clicksEl = document.getElementById('debug-clicks');
-            if (clicksEl) clicksEl.parentElement.style.display = 'none'; // Hide old clicks check
-            
-            const performanceCanvas = !!document.getElementById('performanceChart');
-            const topPagesCanvas = !!document.getElementById('topPagesChart');
-            if (canvasEl) canvasEl.textContent = (performanceCanvas && topPagesCanvas) ? '✓ Both found' : '✗ Missing: ' + 
-                (!performanceCanvas ? 'performance' : '') + 
-                (!topPagesCanvas ? ' topPages' : '');
-        }, 100);
-    });
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    const table = document.getElementById('top-performers-table');
-    if (!table) return;
-
-    const tbody = table.querySelector('tbody');
-    const sortableHeaders = table.querySelectorAll('thead [data-sort-key]');
-    if (!tbody || !sortableHeaders.length) return;
-
-    const sortState = { key: '', dir: 'desc' };
-
-    const getValue = (row, key) => {
-        if (key === 'page_slug') return String(row.dataset.pageSlug || '').toLowerCase();
-        if (key === 'utm_source') return String(row.dataset.utmSource || '').toLowerCase();
-        if (key === 'visits') return Number(row.dataset.visits || 0);
-        if (key === 'clicks') return Number(row.dataset.clicks || 0);
-        if (key === 'phone_calls') return Number(row.dataset.phoneCalls || 0);
-        if (key === 'ctr') return Number(row.dataset.ctr || 0);
-        return 0;
-    };
-
-    const updateIndicators = () => {
-        sortableHeaders.forEach((header) => {
-            const indicator = header.querySelector('.sort-indicator');
-            if (!indicator) return;
-            if (header.dataset.sortKey === sortState.key) {
-                indicator.textContent = sortState.dir === 'asc' ? '▲' : '▼';
-            } else {
-                indicator.textContent = '↕';
-            }
-        });
-    };
-
-    const applySort = () => {
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        rows.sort((a, b) => {
-            const aVal = getValue(a, sortState.key);
-            const bVal = getValue(b, sortState.key);
-
-            if (typeof aVal === 'string' && typeof bVal === 'string') {
-                const cmp = aVal.localeCompare(bVal);
-                return sortState.dir === 'asc' ? cmp : -cmp;
-            }
-
-            const cmp = aVal - bVal;
-            return sortState.dir === 'asc' ? cmp : -cmp;
-        });
-
-        rows.forEach((row, index) => {
-            const rankCell = row.querySelector('[data-rank-cell]');
-            if (rankCell) rankCell.textContent = String(index + 1);
-            tbody.appendChild(row);
-        });
-
-        updateIndicators();
-    };
-
-    sortableHeaders.forEach((header) => {
-        header.addEventListener('click', function () {
-            const key = this.dataset.sortKey;
-            if (!key) return;
-
-            if (sortState.key === key) {
-                sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
-            } else {
-                sortState.key = key;
-                sortState.dir = key === 'page_slug' || key === 'utm_source' ? 'asc' : 'desc';
-            }
-
-            applySort();
-        });
-    });
-});
-
-
-</script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

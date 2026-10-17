@@ -1,98 +1,24 @@
 <?php
 // NEW FILE: models/JsonLdGenerator.php
+// Thin facade over models/jsonld/* builders. All public signatures unchanged.
+
+require_once BASE_PATH . '/models/JsonLdBase.php';
+require_once BASE_PATH . '/models/jsonld/OrganizationBuilder.php';
+require_once BASE_PATH . '/models/jsonld/WebsiteBuilder.php';
+require_once BASE_PATH . '/models/jsonld/BreadcrumbBuilder.php';
+require_once BASE_PATH . '/models/jsonld/ImageBuilder.php';
 
 class JsonLdGenerator {
-    
+
     /**
      * Generate Organization/LocalBusiness schema
      */
     public static function generateOrganization($data) {
-        $schema = [
-            "@context" => "https://schema.org",
-            "@type" => $data['type'] ?? "LocalBusiness",
-            "name" => $data['name'],
-            "url" => $data['url'],
-        ];
-        
-        if (!empty($data['id'])) {
-            $schema['@id'] = $data['id'];
-        }
-        
-        if (!empty($data['logo'])) {
-            $logoData = ['@type' => 'ImageObject', 'url' => $data['logo']];
-            if (!empty($data['logo_width'])) $logoData['width'] = $data['logo_width'];
-            if (!empty($data['logo_height'])) $logoData['height'] = $data['logo_height'];
-            $schema['logo'] = $logoData;
-        }
-        
-        if (!empty($data['image'])) {
-            $schema['image'] = $data['image'];
-        }
-        
-        if (!empty($data['description'])) {
-            $description = $data['description'];
-            
-            $description = str_replace(["\r\n", "\r", "\n"], ' ', $description);
-            
-            $description = preg_replace('/\+?\d[\d\s\-\(\)]{7,}\d/', '', $description);
-            
-            $description = preg_replace('/(?:звоните|позвоните|call us?|телефон)[\s:!\.—\-]*(?:\s|$)/ui', '', $description);
-            
-            $description = preg_replace('/\s{2,}/', ' ', trim($description));
-            
-            if (mb_strlen($description) > 300) {
-                $description = mb_substr($description, 0, 297) . '...';
-            }
-            
-            if (!empty(trim($description))) {
-                $schema['description'] = $description;
-            }
-        }
-        
-        if (!empty($data['telephone'])) {
-            $schema['telephone'] = $data['telephone'];
-        }
-        
-        if (!empty($data['email'])) {
-            $schema['email'] = $data['email'];
-        }
-        
-        if (!empty($data['address'])) {
-            $schema['address'] = [
-                "@type" => "PostalAddress",
-                "streetAddress" => $data['address'],
-                "addressLocality" => $data['city'] ?? '',
-                "addressRegion" => $data['region'] ?? '',
-                "postalCode" => $data['postal'] ?? '',
-                "addressCountry" => $data['country'] ?? 'UZ'
-            ];
-        }
-        
-        if (!empty($data['latitude']) && !empty($data['longitude'])) {
-            $schema['geo'] = [
-                '@type' => 'GeoCoordinates',
-                'latitude' => (float)$data['latitude'],
-                'longitude' => (float)$data['longitude']
-            ];
-        }
-        
-        if (!empty($data['opening_hours'])) {
-            $schema['openingHours'] = is_array($data['opening_hours']) 
-                ? $data['opening_hours'] 
-                : [$data['opening_hours']];
-        }
-        
-        if (!empty($data['price_range'])) {
-            $schema['priceRange'] = $data['price_range'];
-        }
-        
-        if (!empty($data['social_media'])) {
-            $schema['sameAs'] = array_values(array_filter($data['social_media']));
-        }
-        
-        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        $schema = OrganizationBuilder::buildFromData($data);
+        $schema = array_merge(array("@context" => "https://schema.org"), $schema);
+        return JsonLdBase::encode($schema);
     }
-    
+
     /**
      * Generate Service schema with provider reference
      */
@@ -103,23 +29,14 @@ class JsonLdGenerator {
             "serviceType" => $data['service_type'],
             "name" => $data['name']
         ];
-        
+
         if (!empty($data['description'])) {
-            $description = $data['description'];
-            
-            $description = str_replace(["\r\n", "\r", "\n"], ' ', $description);
-            
-            $description = preg_replace('/\+?\d[\d\s\-\(\)]{7,}\d/', '', $description);
-            
-            $description = preg_replace('/(?:звоните|позвоните|call us?|телефон)[\s:!\.—\-]*(?:\s|$)/ui', '', $description);
-            
-            $description = preg_replace('/\s{2,}/', ' ', trim($description));
-            
+            $description = JsonLdBase::cleanDescription($data['description']);
             if (!empty($description)) {
                 $schema['description'] = $description;
             }
         }
-        
+
         if (!empty($data['provider'])) {
             if (is_array($data['provider'])) {
                 $schema['provider'] = $data['provider'];
@@ -130,7 +47,7 @@ class JsonLdGenerator {
                 ];
             }
         }
-        
+
         if (!empty($data['image'])) {
             if (is_array($data['image'])) {
                 $schema['image'] = array_values(array_unique($data['image']));
@@ -138,7 +55,7 @@ class JsonLdGenerator {
                 $schema['image'] = $data['image'];
             }
         }
-        
+
         if (!empty($data['area_served'])) {
             if (is_array($data['area_served'])) {
                 $schema['areaServed'] = $data['area_served'];
@@ -149,7 +66,7 @@ class JsonLdGenerator {
                 ];
             }
         }
-        
+
         if (!empty($data['service_phone'])) {
             $schema['availableChannel'] = [
                 '@type' => 'ServiceChannel',
@@ -159,7 +76,7 @@ class JsonLdGenerator {
                 ]
             ];
         }
-        
+
         if (!empty($data['price'])) {
             $schema['offers'] = [
                 "@type" => "Offer",
@@ -167,42 +84,23 @@ class JsonLdGenerator {
                 "priceCurrency" => $data['currency'] ?? 'UZS'
             ];
         }
-        
+
         if (!empty($data['social_media'])) {
             $schema['sameAs'] = array_values(array_filter($data['social_media']));
         }
-        
-        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+
+        return JsonLdBase::encode($schema);
     }
-    
+
     /**
      * Generate BreadcrumbList schema
      */
     public static function generateBreadcrumbs($items, $baseUrl, $pageUrl = '') {
-        $listItems = [];
-        
-        foreach ($items as $index => $item) {
-            $listItems[] = [
-                "@type" => "ListItem",
-                "position" => $index + 1,
-                "name" => $item['name'],
-                "item" => rtrim($baseUrl, '/') . '/' . ltrim($item['url'], '/')
-            ];
-        }
-        
-        $schema = [
-            "@context" => "https://schema.org",
-            "@type" => "BreadcrumbList",
-            "itemListElement" => $listItems
-        ];
-        
-        if (!empty($pageUrl)) {
-            $schema['@id'] = $pageUrl . '#breadcrumb';
-        }
-        
-        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        $schema = BreadcrumbBuilder::buildList($items, $baseUrl, $pageUrl);
+        $schema = array_merge(array("@context" => "https://schema.org"), $schema);
+        return JsonLdBase::encode($schema);
     }
-    
+
     /**
      * Generate Article/BlogPosting schema
      */
@@ -213,18 +111,18 @@ class JsonLdGenerator {
             "headline" => $data['headline'],
             "description" => $data['description']
         ];
-        
+
         if (!empty($data['image'])) {
             $schema['image'] = $data['image'];
         }
-        
+
         if (!empty($data['author'])) {
             $schema['author'] = [
                 "@type" => "Person",
                 "name" => $data['author']
             ];
         }
-        
+
         if (!empty($data['publisher'])) {
             $schema['publisher'] = [
                 "@type" => "Organization",
@@ -235,86 +133,36 @@ class JsonLdGenerator {
                 ]
             ];
         }
-        
+
         if (!empty($data['date_published'])) {
             $schema['datePublished'] = $data['date_published'];
         }
-        
+
         if (!empty($data['date_modified'])) {
             $schema['dateModified'] = $data['date_modified'];
         }
-        
-        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+
+        return JsonLdBase::encode($schema);
     }
-    
+
     /**
      * Generate ImageObject schema
      */
     public static function generateImage($data) {
-        $schema = [
-            "@context" => "https://schema.org",
-            "@type" => "ImageObject",
-            "url" => $data['url'],
-            "contentUrl" => $data['url']
-        ];
-        
-        if (!empty($data['id'])) {
-            $schema['@id'] = $data['id'];
-        }
-        
-        if (!empty($data['caption'])) {
-            $schema['caption'] = $data['caption'];
-        }
-        
-        if (!empty($data['width'])) {
-            $schema['width'] = $data['width'];
-        }
-        
-        if (!empty($data['height'])) {
-            $schema['height'] = $data['height'];
-        }
-        
-        if (!empty($data['description'])) {
-            $schema['description'] = $data['description'];
-        }
-        
-        if (!empty($data['name'])) {
-            $schema['name'] = $data['name'];
-        }
-        
-        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        $schema = ImageBuilder::build($data);
+        $schema = array_merge(array("@context" => "https://schema.org"), $schema);
+        return JsonLdBase::encode($schema);
     }
-    
+
     /**
      * Generate WebSite schema with search action
      */
     public static function generateWebsite($data) {
-        $schema = [
-            "@context" => "https://schema.org",
-            "@type" => "WebSite",
-            "name" => $data['name'],
-            "url" => $data['url']
-        ];
-        
-        if (!empty($data['description'])) {
-            $schema['description'] = $data['description'];
-        }
-        
-        // Add search action if search URL provided
-        if (!empty($data['search_url'])) {
-            $schema['potentialAction'] = [
-                "@type" => "SearchAction",
-                "target" => [
-                    "@type" => "EntryPoint",
-                    "urlTemplate" => $data['search_url'] . "?q={search_term_string}"
-                ],
-                "query-input" => "required name=search_term_string"
-            ];
-        }
-        
-        return json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        $schema = WebsiteBuilder::buildFromData($data);
+        $schema = array_merge(array("@context" => "https://schema.org"), $schema);
+        return JsonLdBase::encode($schema);
     }
-    
+
     /**
      * Merge multiple schemas into a single @graph structure
      * Removes empty schemas and validates @id references
@@ -323,20 +171,20 @@ class JsonLdGenerator {
         $graph = [];
         $ids = [];
         $decodedSchemas = [];
-        
+
         // Decode and normalize schemas
         foreach ($schemas as $schemaJson) {
             if (empty($schemaJson)) continue;
-            
+
             $decoded = json_decode($schemaJson, true);
             if (!is_array($decoded) || json_last_error() !== JSON_ERROR_NONE) continue;
-            
+
             // Remove @context from individual schemas (will be in root)
             unset($decoded['@context']);
-            
+
             $decodedSchemas[] = $decoded;
         }
-        
+
         // Build graph and track @ids
         foreach ($decodedSchemas as $decoded) {
             if (!empty($decoded['@id'])) {
@@ -346,12 +194,12 @@ class JsonLdGenerator {
                 }
                 $ids[] = $decoded['@id'];
             }
-            
+
             $graph[] = $decoded;
         }
-        
+
         if (empty($graph)) return '';
-        
+
         $idAliases = [];
         foreach ($ids as $id) {
             $idAliases[$id] = true;
@@ -363,7 +211,7 @@ class JsonLdGenerator {
                 }
             }
         }
-        
+
         foreach ($graph as $schema) {
             if (!empty($schema['provider']) && is_array($schema['provider'])) {
                 $providerId = $schema['provider']['@id'] ?? null;
@@ -393,12 +241,12 @@ class JsonLdGenerator {
                 }
             }
         }
-        
+
         $merged = [
             '@context' => 'https://schema.org',
             '@graph' => $graph
         ];
-        
-        return json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+
+        return JsonLdBase::encode($merged);
     }
 }

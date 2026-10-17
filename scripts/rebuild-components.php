@@ -31,14 +31,6 @@ try {
     }
     $stats = Component::rebuildCss();
     echo "components rebuilt: " . json_encode($stats) . "\n";
-    // rebuild writes to BASE_PATH/public; sync to public_html if different
-    $srcCss = BASE_PATH . '/public/css/components.css';
-    $srcMin = BASE_PATH . '/public/css/components.min.css';
-    $dstCss = '/home/kuplyuta/public_html/css/components.css';
-    $dstMin = '/home/kuplyuta/public_html/css/components.min.css';
-    if (is_file($srcCss) && $srcCss !== $dstCss) @copy($srcCss, $dstCss);
-    if (is_file($srcMin) && $srcMin !== $dstMin) @copy($srcMin, $dstMin);
-    if (is_file($dstCss)) echo "components synced to public_html\n";
 } catch (Throwable $e) {
     echo "component rebuild skip: " . $e->getMessage() . "\n";
     exit(0);

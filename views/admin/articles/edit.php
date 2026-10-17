@@ -171,7 +171,7 @@ $title = $isEdit ? 'Edit Article' : 'New Article';
                 <div class="current-image">
                     <img src="<?= BASE_URL ?>/uploads/<?= htmlspecialchars($article['image']) ?>" 
                          alt="Current featured image"
-                         style="max-width: 300px; border-radius: 8px;">
+                         class="current-image__img">
                     <input type="hidden" name="image" value="<?= htmlspecialchars($article['image']) ?>">
                 </div>
             <?php endif; ?>

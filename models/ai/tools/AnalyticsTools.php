@@ -5,6 +5,13 @@
 // analytics_internal_links_monthly / analytics_rotations).
 // There is no keyword/SERP-position data in this CMS — the agent reasons
 // over visits, clicks, phone calls, CTR, crawl frequency and internal links.
+//
+// BOUNDARY (summary vs ad-hoc) — Граница: готовые сводки / Tayyor xulosa:
+// This file = FIXED summaries backed by models/Analytics.php (topPages,
+// pageStats, underperforming, crawlFrequency, internalLinks,
+// rotationEffectiveness, monthlySummary, siteOverview). Prefer these for
+// standard questions. Use AnalyticsQueryTools (run_analytics_query,
+// query_builder) ONLY for bespoke cuts the fixed tools can't answer.
 
 require_once BASE_PATH . '/models/Analytics.php';
 require_once BASE_PATH . '/models/ai/ReportSnippets.php';
@@ -17,7 +24,7 @@ class AnalyticsTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_top_pages',
-                    'description' => 'Top pages ordered by conversion rate (phone calls per visit), with visits, clicks, calls and CTR. Call once per request and reuse — do not re-query after edits.',
+                    'description' => 'FIXED summary: top pages ordered by conversion rate (phone calls per visit), with visits, clicks, calls and CTR. Prefer this over run_analytics_query for standard "best pages" questions. Call once per request and reuse — do not re-query after edits. Отвечайте на языке пользователя (RU/UZ). / Foydalanuvchi tilida javob bering (RU/UZ).',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -100,7 +107,7 @@ class AnalyticsTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_monthly_summary',
-                    'description' => 'One-call site summary for "how did last month go" questions: totals + top pages + weakest pages, with a ready markdown table. Paste its markdown verbatim, then max 3 bullets. Call once per request and reuse.',
+                    'description' => 'FIXED summary for "how did last month go" questions: totals + top pages + weakest pages, with a ready markdown table. Prefer this over run_analytics_query. Paste its markdown verbatim, then max 3 bullets. Call once per request and reuse. Отвечайте на языке пользователя (RU/UZ). / Foydalanuvchi tilida javob bering (RU/UZ).',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -113,7 +120,7 @@ class AnalyticsTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_site_overview',
-                    'description' => 'Site health snapshot: totals, data freshness (latest analytics date), published page count, languages. Start here for vague "how is the site doing" questions.',
+                    'description' => 'FIXED site health snapshot: totals, data freshness (latest analytics date), published page count, languages. Start here for vague "how is the site doing" questions; use run_analytics_query only for bespoke cuts. Отвечайте на языке пользователя (RU/UZ). / Foydalanuvchi tilida javob bering (RU/UZ).',
                     'parameters' => ['type' => 'object', 'properties' => (object)[]],
                 ],
             ],
@@ -142,9 +149,17 @@ class AnalyticsTools {
         throw new InvalidArgumentException("Unknown tool: {$name}");
     }
 
+    private static function months(array $args, int $def = 3, int $max = 24): int {
+        return isset($args['months']) ? max(1, min($max, (int)$args['months'])) : $def;
+    }
+
+    private static function limit(array $args, int $def = 10, int $max = 20): int {
+        return isset($args['limit']) ? max(1, min($max, (int)$args['limit'])) : $def;
+    }
+
     private static function topPages(array $args): array {
-        $months = isset($args['months']) ? max(1, min(24, (int)$args['months'])) : 3;
-        $limit = isset($args['limit']) ? max(1, min(20, (int)$args['limit'])) : 10;
+        $months = self::months($args, 3, 24);
+        $limit = self::limit($args, 10, 20);
         $model = new Analytics();
         $rows = $model->getTopPerformers($months, $limit);
         $out = [];
@@ -162,7 +177,7 @@ class AnalyticsTools {
 
     private static function pageStats(array $args): array {
         $slug = trim((string)($args['slug'] ?? ''));
-        $months = isset($args['months']) ? max(1, min(24, (int)$args['months'])) : 3;
+        $months = self::months($args, 3, 24);
         if ($slug === '') throw new InvalidArgumentException('slug is required');
         $model = new Analytics();
         $rows = $model->getPageStats($months, $slug);
@@ -189,7 +204,7 @@ class AnalyticsTools {
     }
 
     private static function underperforming(array $args): array {
-        $months = isset($args['months']) ? max(1, min(24, (int)$args['months'])) : 3;
+        $months = self::months($args, 3, 24);
         $maxVisits = isset($args['max_visits']) ? max(0, (int)$args['max_visits']) : 1;
         $db = Database::getInstance();
         $sql = "SELECT p.id, p.slug, p.title_ru, p.title_uz, p.is_published,
@@ -239,7 +254,7 @@ class AnalyticsTools {
 
     private static function internalLinks(array $args): array {
         $slug = trim((string)($args['slug'] ?? ''));
-        $months = isset($args['months']) ? max(1, min(24, (int)$args['months'])) : 3;
+        $months = self::months($args, 3, 24);
         $model = new Analytics();
         if ($slug !== '') {
             $inbound = $model->getInboundLinks($slug, $months);
@@ -276,7 +291,7 @@ class AnalyticsTools {
     }
 
     private static function rotationEffectiveness(array $args): array {
-        $months = isset($args['months']) ? max(1, min(24, (int)$args['months'])) : 6;
+        $months = self::months($args, 6, 24);
         $model = new Analytics();
         $rows = $model->getRotationEffectiveness($months);
         $out = [];
@@ -296,7 +311,7 @@ class AnalyticsTools {
     }
 
     private static function monthlySummary(array $args): array {
-        $months = isset($args['months']) ? max(1, min(12, (int)$args['months'])) : 1;
+        $months = self::months($args, 1, 12);
         $model = new Analytics();
         $total = $model->getTotalStats($months) ?: [];
         $top = $model->getTopPerformers($months, 8);

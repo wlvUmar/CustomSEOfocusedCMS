@@ -1,19 +1,19 @@
 <?php require BASE_PATH . '/views/admin/layout/header.php'; ?>
 
 <div class="page-header">
-    <h1><i data-feather="git-branch"></i> Internal Links Manager</h1>
+    <h1><i data-feather="git-branch"></i> Менеджер внутренних ссылок</h1>
     <div class="btn-group">
-        <button onclick="expandAll()" class="btn btn-secondary">
+        <button type="button" data-action="expand" class="btn btn-secondary" aria-label="Развернуть всё">
             <i data-feather="maximize-2"></i>
         </button>
-        <button onclick="collapseAll()" class="btn btn-secondary">
+        <button type="button" data-action="collapse" class="btn btn-secondary" aria-label="Свернуть всё">
             <i data-feather="minimize-2"></i>
         </button>
-        <button onclick="showAutoConnectModal()" class="btn btn-primary">
-            <i data-feather="zap"></i> Auto-Connect
+        <button type="button" data-action="auto" class="btn btn-primary">
+            <i data-feather="zap"></i> Авто-связка
         </button>
-        <button onclick="showBulkModal()" class="btn btn-secondary">
-            <i data-feather="layers"></i> Bulk
+        <button type="button" data-action="bulk" class="btn btn-secondary">
+            <i data-feather="layers"></i> Массово
         </button>
     </div>
 </div>
@@ -21,62 +21,62 @@
 <!-- Network Stats -->
 <div class="stats-grid">
     <div class="stat-card">
-        <div class="stat-icon" style="background: #3b82f6;">
+        <div class="stat-icon c-si-blue">
             <i data-feather="file-text"></i>
         </div>
         <div class="stat-info">
             <h3><?= $stats['total_pages'] ?></h3>
-            <p>Total Pages</p>
+            <p>Всего страниц</p>
         </div>
     </div>
-    
+
     <div class="stat-card">
-        <div class="stat-icon" style="background: #10b981;">
+        <div class="stat-icon c-si-grn">
             <i data-feather="link"></i>
         </div>
         <div class="stat-info">
             <h3><?= $stats['total_links'] ?></h3>
-            <p>Total Links</p>
+            <p>Всего ссылок</p>
         </div>
     </div>
-    
+
     <div class="stat-card">
-        <div class="stat-icon" style="background: #f59e0b;">
+        <div class="stat-icon c-si-amb">
             <i data-feather="activity"></i>
         </div>
         <div class="stat-info">
             <h3><?= $stats['density_percentage'] ?>%</h3>
-            <p>Network Density</p>
+            <p>Плотность сети</p>
         </div>
     </div>
-    
+
     <div class="stat-card">
-        <div class="stat-icon" style="background: #8b5cf6;">
+        <div class="stat-icon c-si-pur">
             <i data-feather="folder"></i>
         </div>
         <div class="stat-info">
             <h3><?= $stats['total_root_pages'] ?? 0 ?></h3>
-            <p>Root Pages</p>
+            <p>Корневых страниц</p>
         </div>
     </div>
-    
+
     <div class="stat-card">
-        <div class="stat-icon" style="background: #06b6d4;">
+        <div class="stat-icon c-si-cyan">
             <i data-feather="layers"></i>
         </div>
         <div class="stat-info">
             <h3><?= $stats['hierarchy_depth'] ?? 0 ?></h3>
-            <p>Max Depth</p>
+            <p>Макс. глубина</p>
         </div>
     </div>
-    
+
     <div class="stat-card <?= ($stats['orphan_pages'] ?? 0) > 0 ? 'stat-warning' : '' ?>">
-        <div class="stat-icon" style="background: #ef4444;">
+        <div class="stat-icon c-si-red">
             <i data-feather="alert-circle"></i>
         </div>
         <div class="stat-info">
             <h3><?= $stats['orphan_pages'] ?></h3>
-            <p>Orphan Pages</p>
+            <p>Орфаны</p>
         </div>
     </div>
 </div>
@@ -84,20 +84,20 @@
 <div class="info-banner">
     <i data-feather="info"></i>
     <div>
-        <strong>Network Density:</strong> <?= $stats['density_percentage'] ?>% 
-        (<?= $stats['total_links'] ?> of <?= $stats['max_possible_links'] ?> possible connections)
+        <strong>Плотность сети:</strong> <?= $stats['density_percentage'] ?>%
+        (<?= $stats['total_links'] ?> из <?= $stats['max_possible_links'] ?> возможных связей)
         <br>
-        <strong>Average:</strong> <?= $stats['avg_links_per_page'] ?> links per page
+        <strong>В среднем:</strong> <?= $stats['avg_links_per_page'] ?> ссылок на страницу
     </div>
 </div>
 
 <!-- Filter Buttons -->
 <div class="section-header">
-    <h2>Pages & Link Status</h2>
+    <h2>Страницы и статус ссылок</h2>
     <div class="filter-buttons">
-        <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="root">Root</button>
-        <button class="filter-btn" data-filter="orphan">Orphans</button>
+        <button type="button" class="filter-btn active" data-filter="all">Все</button>
+        <button type="button" class="filter-btn" data-filter="root">Корни</button>
+        <button type="button" class="filter-btn" data-filter="orphan">Орфаны</button>
     </div>
 </div>
 
@@ -105,26 +105,26 @@
 <table class="data-table">
     <thead>
         <tr>
-            <th style="width: 40px;">
-                <input type="checkbox" id="select-all" onchange="toggleAll(this)">
+            <th class="c-w40">
+                <input type="checkbox" id="select-all">
             </th>
-            <th>Page</th>
-            <th>Hierarchy</th>
-            <th style="text-align: center;">Outgoing</th>
-            <th style="text-align: center;">Incoming</th>
-            <th style="text-align: center;">Widget</th>
-            <th>Actions</th>
+            <th>Страница</th>
+            <th>Иерархия</th>
+            <th class="c-th-c">Исходящие</th>
+            <th class="c-th-c">Входящие</th>
+            <th class="c-th-c">Виджет</th>
+            <th>Действия</th>
         </tr>
     </thead>
     <tbody>
-        <?php foreach ($pages as $page): 
+        <?php foreach ($pages as $page):
             $isRoot = empty($page['parent_id']);
             $hasChildren = !empty($page['children']);
             $isOrphan = $page['outgoing_links'] == 0 && $page['incoming_links'] == 0 && $isRoot;
             $depth = $page['level'] ?? 0;
             $indent = $depth * 25;
         ?>
-        <tr class="page-row depth-<?= $depth ?>" 
+        <tr class="page-row depth-<?= $depth ?>"
             data-page-id="<?= $page['id'] ?>"
             data-is-root="<?= $isRoot ? '1' : '0' ?>"
             data-is-child="<?= !$isRoot ? '1' : '0' ?>"
@@ -133,13 +133,13 @@
                 <input type="checkbox" class="page-checkbox" value="<?= $page['id'] ?>">
             </td>
             <td>
-                <div style="display: flex; align-items: center; padding-left: <?= $indent ?>px;">
+                <div class="c-flex" data-indent="<?= $indent ?>">
                     <?php if ($depth > 0): ?>
-                        <span style="color: #9ca3af; margin-right: 4px;">↳</span>
+                        <span class="c-arrow">↳</span>
                     <?php endif; ?>
-                    
+
                     <?php if ($hasChildren): ?>
-                        <button class="toggle-children" onclick="toggleChildren(<?= $page['id'] ?>)" type="button">
+                        <button class="toggle-children" data-page-toggle="<?= $page['id'] ?>" type="button" aria-label="Показать/скрыть дочерние">
                             <i data-feather="chevron-down"></i>
                         </button>
                     <?php else: ?>
@@ -149,9 +149,9 @@
                     <div>
                         <strong><?= e($page['title_ru']) ?></strong>
                         <?php if ($isOrphan): ?>
-                        <span class="badge badge-danger" style="margin-left: 8px;">Orphan</span>
+                        <span class="badge badge-danger c-ml8">Орфан</span>
                         <?php endif; ?>
-                        <div style="font-size: 0.85em; color: #6b7280;">
+                        <div class="c-sub2">
                             <?= e($page['slug']) ?>
                         </div>
                     </div>
@@ -162,46 +162,46 @@
                     <?php if ($page['parent']): ?>
                         <div class="hierarchy-badge">
                             <i data-feather="corner-down-right"></i>
-                            Sub of: <?= e($page['parent']['title_ru']) ?>
+                            Подстраница: <?= e($page['parent']['title_ru']) ?>
                         </div>
                     <?php else: ?>
                         <span class="hierarchy-badge root">
-                            <i data-feather="folder"></i> Root
+                            <i data-feather="folder"></i> Корень
                         </span>
                     <?php endif; ?>
-                    
+
                     <?php if ($hasChildren): ?>
                         <span class="hierarchy-badge children">
-                            <i data-feather="layers"></i> <?= count($page['children']) ?> sub-pages
+                            <i data-feather="layers"></i> <?= count($page['children']) ?> подстраниц
                         </span>
                     <?php endif; ?>
                 </div>
             </td>
-            <td style="text-align: center;">
-                <span class="badge" style="background: #3b82f6;">
+            <td class="c-td-c">
+                <span class="badge c-badge-blue">
                     <?= $page['outgoing_links'] ?>
                 </span>
             </td>
-            <td style="text-align: center;">
-                <span class="badge" style="background: #10b981;">
+            <td class="c-td-c">
+                <span class="badge c-badge-grn">
                     <?= $page['incoming_links'] ?>
                 </span>
             </td>
-            <td style="text-align: center;">
+            <td class="c-td-c">
                 <?php if ($page['show_link_widget']): ?>
-                <span class="badge badge-success">ON</span>
+                <span class="badge badge-success">ВКЛ</span>
                 <?php else: ?>
-                <span class="badge badge-secondary">OFF</span>
+                <span class="badge badge-secondary">ВЫКЛ</span>
                 <?php endif; ?>
             </td>
             <td>
                 <div class="action-buttons">
-                    <a href="<?= BASE_URL ?>/admin/internal-links/manage/<?= $page['id'] ?>" 
-                       class="btn btn-sm" title="Manage Links">
-                        <i data-feather="edit"></i> Manage
+                    <a href="<?= BASE_URL ?>/admin/internal-links/manage/<?= $page['id'] ?>"
+                       class="btn btn-sm" title="Управлять ссылками">
+                        <i data-feather="edit"></i> Управлять
                     </a>
-                    <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>" 
-                       class="btn btn-sm btn-secondary" title="Edit Page">
+                    <a href="<?= BASE_URL ?>/admin/pages/edit/<?= $page['id'] ?>"
+                       class="btn btn-sm btn-secondary" title="Редактировать страницу">
                         <i data-feather="file-text"></i>
                     </a>
                 </div>
@@ -212,44 +212,44 @@
 </table>
 
 <!-- Auto-Connect Modal -->
-<div id="auto-connect-modal" class="modal" style="display: none;">
+<div id="auto-connect-modal" class="modal c-hidden">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i data-feather="zap"></i> Auto-Connect Pages</h2>
-            <button onclick="closeAutoConnectModal()" class="close-btn"><i data-feather="x"></i></button>
+            <h2><i data-feather="zap"></i> Авто-связка страниц</h2>
+            <button type="button" data-action="close-auto" class="close-btn" aria-label="Закрыть"><i data-feather="x"></i></button>
         </div>
-        
+
         <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/auto-connect">
             <?= csrfField() ?>
             <div class="form-group">
-                <label><strong>Connection Strategy:</strong></label>
+                <label><strong>Стратегия:</strong></label>
                 <select name="strategy" required>
-                    <option value="hierarchy-aware" selected>Hierarchy-Aware (Recommended)</option>
-                    <option value="all-to-all">All-to-All: Connect every page to every other page</option>
-                    <option value="related">Smart: Connect related pages based on content</option>
-                    <option value="popular-to-all">Hub Model: Connect all pages to popular pages</option>
+                    <option value="hierarchy-aware" selected>С учётом иерархии (рекомендуется)</option>
+                    <option value="all-to-all">Все-со-всеми: связать каждую страницу с каждой</option>
+                    <option value="related">Умная: связать похожие по контенту</option>
+                    <option value="popular-to-all">Хаб: связать всё с популярными</option>
                 </select>
                 <small>
-                    <strong>Hierarchy-Aware:</strong> Links parent↔children, children↔siblings, and related pages based on your page hierarchy.
+                    <strong>С учётом иерархии:</strong> связывает родителя↔детей, детей↔соседей и похожие страницы по иерархии.
                 </small>
             </div>
-            
+
             <div class="form-group">
-                <label><strong>Max Links per Page:</strong></label>
+                <label><strong>Макс. ссылок на страницу:</strong></label>
                 <input type="number" name="max_links" value="5" min="1" max="20">
             </div>
-            
+
             <div class="alert alert-warning">
                 <i data-feather="alert-triangle"></i>
-                <strong>Warning:</strong> This will create many links at once. Existing links will not be duplicated.
+                <strong>Внимание:</strong> будет создано много ссылок сразу. Существующие дублироваться не будут.
             </div>
-            
+
             <div class="modal-actions">
                 <button type="submit" class="btn btn-primary">
-                    <i data-feather="zap"></i> Auto-Connect
+                    <i data-feather="zap"></i> Связать
                 </button>
-                <button type="button" onclick="closeAutoConnectModal()" class="btn btn-secondary">
-                    <i data-feather="x-circle"></i> Cancel
+                <button type="button" data-action="close-auto" class="btn btn-secondary">
+                    <i data-feather="x-circle"></i> Отмена
                 </button>
             </div>
         </form>
@@ -257,45 +257,45 @@
 </div>
 
 <!-- Bulk Actions Modal -->
-<div id="bulk-modal" class="modal" style="display: none;">
+<div id="bulk-modal" class="modal c-hidden">
     <div class="modal-content">
         <div class="modal-header">
-            <h2><i data-feather="layers"></i> Bulk Actions</h2>
-            <button onclick="closeBulkModal()" class="close-btn"><i data-feather="x"></i></button>
+            <h2><i data-feather="layers"></i> Массовые действия</h2>
+            <button type="button" data-action="close-bulk" class="close-btn" aria-label="Закрыть"><i data-feather="x"></i></button>
         </div>
-        
-        <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/bulk-action" onsubmit="return validateBulkForm()">
+
+        <form method="POST" action="<?= BASE_URL ?>/admin/internal-links/bulk-action" id="bulkForm">
             <?= csrfField() ?>
             <div class="form-group">
-                <label><strong>Action:</strong></label>
-                <select name="action" id="bulk-action" onchange="toggleTargetField()" required>
-                    <option value="">Select action...</option>
-                    <option value="add-links">Add link to all selected pages</option>
-                    <option value="remove-links">Remove link from all selected pages</option>
-                    <option value="enable-widget">Enable link widget for selected pages</option>
-                    <option value="disable-widget">Disable link widget for selected pages</option>
+                <label><strong>Действие:</strong></label>
+                <select name="action" id="bulk-action" required>
+                    <option value="">Выберите действие...</option>
+                    <option value="add-links">Добавить ссылку на выбранные страницы</option>
+                    <option value="remove-links">Убрать ссылку с выбранных страниц</option>
+                    <option value="enable-widget">Включить виджет ссылок</option>
+                    <option value="disable-widget">Выключить виджет ссылок</option>
                 </select>
             </div>
-            
-            <div class="form-group" id="target-page-group" style="display: none;">
-                <label><strong>Target Page:</strong></label>
+
+            <div class="form-group c-hidden" id="target-page-group">
+                <label><strong>Целевая страница:</strong></label>
                 <select name="target_page_id" id="target-page">
-                    <option value="">Select page...</option>
+                    <option value="">Выберите страницу...</option>
                     <?php foreach ($pages as $page): ?>
                     <option value="<?= $page['id'] ?>"><?= e($page['title_ru']) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <small>All selected pages will link to/unlink from this page</small>
+                <small>Выбранные страницы будут ссылаться на неё / отвязаны от неё</small>
             </div>
-            
+
             <input type="hidden" name="page_ids" id="bulk-page-ids">
-            
+
             <div class="modal-actions">
                 <button type="submit" class="btn btn-primary">
-                    <i data-feather="check"></i> Apply to <span id="selected-count">0</span> Page(s)
+                    <i data-feather="check"></i> Применить к <span id="selected-count">0</span> стр.
                 </button>
-                <button type="button" onclick="closeBulkModal()" class="btn btn-secondary">
-                    <i data-feather="x-circle"></i> Cancel
+                <button type="button" data-action="close-bulk" class="btn btn-secondary">
+                    <i data-feather="x-circle"></i> Отмена
                 </button>
             </div>
         </form>
@@ -303,6 +303,22 @@
 </div>
 
 <style>
+:root { --teal: #0e9f8a; }
+.c-hidden { display: none !important; }
+.c-w40 { width: 40px; }
+.c-th-c, .c-td-c { text-align: center; }
+.c-flex { display: flex; align-items: center; }
+.c-arrow { color: #9ca3af; margin-right: 4px; }
+.c-ml8 { margin-left: 8px; }
+.c-sub2 { font-size: 0.85em; color: #6b7280; }
+.c-si-blue { background: #3b82f6; }
+.c-si-grn { background: var(--teal); }
+.c-si-amb { background: #f59e0b; }
+.c-si-pur { background: #8b5cf6; }
+.c-si-cyan { background: #06b6d4; }
+.c-si-red { background: #ef4444; }
+.c-badge-blue { background: #3b82f6; }
+.c-badge-grn { background: var(--teal); }
 .section-header {
     display: flex;
     justify-content: space-between;
@@ -331,9 +347,9 @@
 }
 
 .filter-btn.active {
-    background: #2563eb;
+    background: var(--teal);
     color: white;
-    border-color: #2563eb;
+    border-color: var(--teal);
 }
 
 .hierarchy-info {
@@ -411,118 +427,7 @@
 }
 </style>
 
-<script>
-function filterPages(type) {
-    const rows = document.querySelectorAll('.page-row');
-    const buttons = document.querySelectorAll('.filter-btn');
-    
-    buttons.forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`[data-filter="${type}"]`).classList.add('active');
-    
-    rows.forEach(row => {
-        let show = false;
-        
-        switch(type) {
-            case 'all':
-                show = true;
-                break;
-            case 'root':
-                show = row.dataset.isRoot === '1';
-                break;
-            case 'children':
-                show = row.dataset.isChild === '1';
-                break;
-            case 'orphan':
-                show = row.dataset.isOrphan === '1';
-                break;
-        }
-        
-        row.style.display = show ? '' : 'none';
-        
-        // Reset hierarchy visibility when filtering
-        if (type !== 'all') {
-            row.classList.remove('hidden');
-        }
-    });
-}
-
-function toggleChildren(pageId) {
-    const btn = document.querySelector(`[data-page-id="${pageId}"] .toggle-children`);
-    const allRows = document.querySelectorAll('.page-row');
-    
-    let foundCurrent = false;
-    let currentDepth = -1;
-    
-    for (let row of allRows) {
-        if (row.dataset.pageId == pageId) {
-            foundCurrent = true;
-            currentDepth = parseInt(row.className.match(/depth-(\d+)/)[1]);
-            continue;
-        }
-        
-        if (foundCurrent) {
-            const rowDepthMatch = row.className.match(/depth-(\d+)/);
-            if (!rowDepthMatch) continue;
-            
-            const rowDepth = parseInt(rowDepthMatch[1]);
-            
-            if (rowDepth <= currentDepth) {
-                break;
-            }
-            
-            // If we are collapsing, hide all descendants
-            if (!btn.classList.contains('collapsed')) {
-                row.classList.add('hidden');
-                // Also collapse the children buttons of descendants to keep state consistent
-                const childBtn = row.querySelector('.toggle-children');
-                if (childBtn) childBtn.classList.add('collapsed');
-            } else {
-                // If we are expanding, only show direct children (depth + 1)
-                // BUT we need to be careful. If we just show depth+1, we might leave their children hidden (correct).
-                if (rowDepth === currentDepth + 1) {
-                    row.classList.remove('hidden');
-                    // Ensure the direct child is set to collapsed initially
-                     const childBtn = row.querySelector('.toggle-children');
-                     if (childBtn) childBtn.classList.add('collapsed');
-                }
-            }
-        }
-    }
-    
-    btn.classList.toggle('collapsed');
-}
-
-function expandAll() {
-    document.querySelectorAll('.page-row').forEach(row => {
-        row.classList.remove('hidden');
-    });
-    document.querySelectorAll('.toggle-children').forEach(btn => {
-        btn.classList.remove('collapsed');
-    });
-}
-
-function collapseAll() {
-    document.querySelectorAll('.page-row').forEach(row => {
-        const depthMatch = row.className.match(/depth-(\d+)/);
-        if (depthMatch && parseInt(depthMatch[1]) > 0) {
-            row.classList.add('hidden');
-        }
-    });
-    document.querySelectorAll('.toggle-children').forEach(btn => {
-        btn.classList.add('collapsed');
-    });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const filterButtons = document.querySelectorAll('.filter-btn');
-    filterButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            const type = this.dataset.filter;
-            filterPages(type);
-        });
-    });
-});
-</script>
+<script src="<?= BASE_URL ?>/js/admin/internal-links.js"></script>
 
 <script src="<?= BASE_URL ?>/js/admin/features/internal-links.js"></script>
 

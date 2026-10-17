@@ -23,6 +23,8 @@ class Autoloader {
         $candidates = [
             BASE_PATH . '/models/' . $class . '.php',
             BASE_PATH . '/core/' . $class . '.php',
+            BASE_PATH . '/services/' . $class . '.php',
+            BASE_PATH . '/models/analytics/' . $class . '.php',
             BASE_PATH . '/models/ai/tools/' . $class . '.php',
             BASE_PATH . '/models/ai/' . $class . '.php',
         ];

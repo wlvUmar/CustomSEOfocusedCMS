@@ -2,6 +2,10 @@
 // path: ./models/Page.php
  
 class Page {
+    public const ROTATION_MANUAL = 'manual';
+    public const ROTATION_AUTO = 'auto';
+    public const ROTATION_DISABLED = 'disabled';
+
     private $db;
 
     public function __construct() {
@@ -64,12 +68,12 @@ class Page {
         }
 
         // Respect explicit rotation_mode if provided (fix project-05 #3: creation ignored manual)
-        if (array_key_exists('rotation_mode', $data) && in_array($data['rotation_mode'], ['auto','manual','disabled'], true)) {
+        if (array_key_exists('rotation_mode', $data) && in_array($data['rotation_mode'], [self::ROTATION_AUTO, self::ROTATION_MANUAL, self::ROTATION_DISABLED], true)) {
             $rotationMode = $data['rotation_mode'];
         } elseif (array_key_exists('enable_rotation', $data)) {
-            $rotationMode = !empty($data['enable_rotation']) ? 'auto' : 'disabled';
+            $rotationMode = !empty($data['enable_rotation']) ? self::ROTATION_AUTO : self::ROTATION_DISABLED;
         } else {
-            $rotationMode = $data['rotation_mode'] ?? 'auto';
+            $rotationMode = $data['rotation_mode'] ?? self::ROTATION_AUTO;
         }
         
         $this->db->query($sql, [
@@ -151,7 +155,7 @@ class Page {
         }
         
         // Use explicit rotation_mode if provided, otherwise keep current
-        $rotationMode = array_key_exists('rotation_mode', $data) ? $data['rotation_mode'] : ($currentPage['rotation_mode'] ?? 'auto');
+        $rotationMode = array_key_exists('rotation_mode', $data) ? $data['rotation_mode'] : ($currentPage['rotation_mode'] ?? self::ROTATION_AUTO);
         
         $sql = "UPDATE pages SET 
                     slug = ?, title_ru = ?, title_uz = ?, 
