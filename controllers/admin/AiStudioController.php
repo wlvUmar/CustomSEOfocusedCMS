@@ -9,6 +9,7 @@ require_once BASE_PATH . '/models/ai/AiToolRegistry.php';
 require_once BASE_PATH . '/models/ai/AiRunGuard.php';
 require_once BASE_PATH . '/models/ai/ContextBuilder.php';
 require_once BASE_PATH . '/models/ai/PromptLoader.php';
+require_once BASE_PATH . '/models/ai/SkillLoader.php';
 
 class AiStudioController extends Controller {
 
@@ -977,9 +978,9 @@ class AiStudioController extends Controller {
             }
         }
         if ($mode === 'plan') {
-            return $this->buildPlanPrompt() . $cachedAddon . $memoryAddon . $this->renderSessionState($ctx);
+            return $this->buildPlanPrompt() . $cachedAddon . $memoryAddon . SkillLoader::agentsBlock() . $this->renderSessionState($ctx);
         }
-        return $this->buildBuildPrompt() . $cachedAddon . $memoryAddon . $this->renderSessionState($ctx);
+        return $this->buildBuildPrompt() . $cachedAddon . $memoryAddon . SkillLoader::agentsBlock() . $this->renderSessionState($ctx);
     }
 
     /**
@@ -1045,6 +1046,10 @@ class AiStudioController extends Controller {
             $u = $ctx['_underperforming'];
             $uslugs = isset($u['slugs']) && is_array($u['slugs']) ? $u['slugs'] : [];
             $lines[] = 'Low traffic (' . (int)($u['m'] ?? 0) . 'm): ' . (int)($u['n'] ?? 0) . ' pages [' . implode(', ', array_slice(array_map('strval', $uslugs), 0, 8)) . ']';
+        }
+        if (!empty($ctx['_monthly']) && is_array($ctx['_monthly'])) {
+            $mm = $ctx['_monthly'];
+            $lines[] = 'Monthly (' . (int)($mm['m'] ?? 0) . 'm): ' . (int)($mm['v'] ?? 0) . 'v/' . (int)($mm['c'] ?? 0) . 'c';
         }
         if (!empty($ctx['_links']) && is_array($ctx['_links'])) {
             $parts = [];
@@ -1618,7 +1623,7 @@ class AiStudioController extends Controller {
             if (!is_array($decoded) || isset($decoded['error']) || isset($decoded['skipped'])) continue;
             $this->accumulateWorkingSet($ctx, $meta[0], $meta[1], $decoded);
         }
-        $caps = ['_pages' => 15, '_page_slugs' => 100, '_sections' => 15, '_sec_hash' => 30, '_gsc_pages' => 15, '_queries' => 8, '_stats' => 15, '_links' => 15, '_sql' => 5, '_serp' => 5, '_search' => 10, '_writes' => 10];
+        $caps = ['_pages' => 15, '_page_slugs' => 100, '_sections' => 15, '_sec_hash' => 30, '_gsc_pages' => 15, '_queries' => 8, '_stats' => 15, '_monthly' => 1, '_links' => 15, '_sql' => 5, '_serp' => 5, '_search' => 10, '_writes' => 10];
         foreach ($caps as $k => $max) {
             if (isset($ctx[$k]) && is_array($ctx[$k]) && count($ctx[$k]) > $max) {
                 $ctx[$k] = array_slice($ctx[$k], -$max, null, true);
@@ -1688,6 +1693,15 @@ class AiStudioController extends Controller {
                 break;
             case 'get_top_pages':
                 foreach ($r['pages'] ?? [] as $p) {
+                    if (!is_array($p) || !isset($p['slug'])) continue;
+                    $ctx['_stats'][(string)$p['slug']] = ['v' => (int)($p['visits'] ?? 0), 'c' => (int)($p['phone_calls'] ?? 0)];
+                }
+                break;
+            case 'get_monthly_summary':
+                if (isset($r['totals']) && is_array($r['totals'])) {
+                    $ctx['_monthly'] = ['m' => (int)($r['months'] ?? 0), 'v' => (int)($r['totals']['visits'] ?? 0), 'c' => (int)($r['totals']['phone_calls'] ?? 0)];
+                }
+                foreach ($r['top'] ?? [] as $p) {
                     if (!is_array($p) || !isset($p['slug'])) continue;
                     $ctx['_stats'][(string)$p['slug']] = ['v' => (int)($p['visits'] ?? 0), 'c' => (int)($p['phone_calls'] ?? 0)];
                 }
@@ -1856,6 +1870,10 @@ class AiStudioController extends Controller {
 
     /** Human-readable one-liner for the transcript; keeps the feed tidy. */
     private function summarizeResult(string $tool, $result): string {
+        if (is_array($result) && isset($result['markdown']) && is_string($result['markdown'])) {
+            $md = $result['markdown'];
+            return mb_strlen($md) > 600 ? mb_substr($md, 0, 600) . '…[truncated]' : $md;
+        }
         if (is_string($result)) {
             $s = mb_substr($result, 0, 300);
             return mb_strlen($result) > 300 ? $s . '…[truncated]' : $s;

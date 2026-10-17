@@ -7,6 +7,7 @@
 // over visits, clicks, phone calls, CTR, crawl frequency and internal links.
 
 require_once BASE_PATH . '/models/Analytics.php';
+require_once BASE_PATH . '/models/ai/ReportSnippets.php';
 
 class AnalyticsTools {
 
@@ -95,6 +96,27 @@ class AnalyticsTools {
                     ],
                 ],
             ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_monthly_summary',
+                    'description' => 'One-call site summary for "how did last month go" questions: totals + top pages + weakest pages, with a ready markdown table. Paste its markdown verbatim, then max 3 bullets. Call once per request and reuse.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'months' => ['type' => 'integer', 'description' => 'Lookback window in months (default 1).'],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_site_overview',
+                    'description' => 'Site health snapshot: totals, data freshness (latest analytics date), published page count, languages. Start here for vague "how is the site doing" questions.',
+                    'parameters' => ['type' => 'object', 'properties' => (object)[]],
+                ],
+            ],
         ];
     }
 
@@ -112,6 +134,10 @@ class AnalyticsTools {
                 return self::internalLinks($args);
             case 'get_rotation_effectiveness':
                 return self::rotationEffectiveness($args);
+            case 'get_monthly_summary':
+                return self::monthlySummary($args);
+            case 'get_site_overview':
+                return self::siteOverview();
         }
         throw new InvalidArgumentException("Unknown tool: {$name}");
     }
@@ -267,5 +293,36 @@ class AnalyticsTools {
             ];
         }
         return ['months' => $months, 'pages' => $out, 'count' => count($out)];
+    }
+
+    private static function monthlySummary(array $args): array {
+        $months = isset($args['months']) ? max(1, min(12, (int)$args['months'])) : 1;
+        $model = new Analytics();
+        $total = $model->getTotalStats($months) ?: [];
+        $top = $model->getTopPerformers($months, 8);
+        $topOut = [];
+        foreach ($top as $r) {
+            $topOut[] = ['slug' => $r['page_slug'], 'visits' => (int)$r['visits'], 'phone_calls' => (int)$r['phone_calls'], 'ctr_percent' => (float)$r['ctr']];
+        }
+        $weak = array_slice(array_reverse($topOut), 0, 5);
+        $totals = ['visits' => (int)($total['total_visits'] ?? 0), 'clicks' => (int)($total['total_clicks'] ?? 0), 'phone_calls' => (int)($total['total_phone_calls'] ?? 0)];
+        $label = $months === 1 ? 'Last month' : "Last {$months} months";
+        return ['months' => $months, 'totals' => $totals, 'top' => $topOut, 'weakest' => $weak, 'markdown' => ReportSnippets::monthlySummary($totals, $topOut, $weak, $label)];
+    }
+
+    private static function siteOverview(): array {
+        $model = new Analytics();
+        $total = $model->getTotalStats(1) ?: [];
+        $db = Database::getInstance();
+        $fresh = null;
+        try { $fresh = $db->fetchOne("SELECT MAX(date) AS d FROM analytics_hourly"); } catch (Throwable $e) {}
+        $pages = 0;
+        try { $r = $db->fetchOne("SELECT COUNT(*) AS n FROM pages WHERE is_published = 1"); $pages = (int)($r['n'] ?? 0); } catch (Throwable $e) {}
+        return [
+            'last_month' => ['visits' => (int)($total['total_visits'] ?? 0), 'clicks' => (int)($total['total_clicks'] ?? 0), 'phone_calls' => (int)($total['total_phone_calls'] ?? 0)],
+            'data_through' => $fresh['d'] ?? null,
+            'published_pages' => $pages,
+            'note' => 'Internal analytics (2-3 day lag), not GSC.',
+        ];
     }
 }

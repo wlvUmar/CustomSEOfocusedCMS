@@ -15,6 +15,7 @@ require_once BASE_PATH . '/models/ai/tools/FaqTools.php';
 require_once BASE_PATH . '/models/ai/tools/GscTools.php';
 require_once BASE_PATH . '/models/ai/tools/SerpTools.php';
 require_once BASE_PATH . '/models/ai/tools/MemoryTools.php';
+require_once BASE_PATH . '/models/ai/tools/SkillTools.php';
 require_once BASE_PATH . '/models/ai/ToolEnvelope.php';
 
 class AiToolRegistry {
@@ -30,6 +31,7 @@ class AiToolRegistry {
         GscTools::class,
         SerpTools::class,
         MemoryTools::class,
+        SkillTools::class,
     ];
 
     /**
@@ -53,9 +55,9 @@ class AiToolRegistry {
         'list_rotations', 'get_rotation',
         // Analytics read
         'get_top_pages', 'get_page_stats', 'get_underperforming_pages', 'get_crawl_frequency', 'get_internal_links', 'get_rotation_effectiveness',
-        'run_analytics_query', 'query_builder',
+        'run_analytics_query', 'query_builder', 'get_monthly_summary', 'get_site_overview',
         // Site read + preview (preview is non-persistent)
-        'get_global_settings', 'get_template_variables', 'get_design_tokens', 'render_preview', 'render_full_page',
+        'get_global_settings', 'get_template_variables', 'get_design_tokens', 'render_preview', 'render_full_page', 'get_server_status',
         // Faq read
         'list_faqs', 'get_faq',
         // GSC read
@@ -64,6 +66,8 @@ class AiToolRegistry {
         'serp_search', 'serp_niche_overview',
         // Memory + debug read-only (get_tool_logs is BUILD-only due to secret leakage risk — 01-security #9)
         'list_context', 'get_context',
+        // Skills (read-only playbooks)
+        'list_skills', 'read_skill',
     ];
 
     private static ?array $cachedDefs = null;

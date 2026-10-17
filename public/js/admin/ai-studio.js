@@ -555,26 +555,100 @@
         scrollTranscript();
     }
 
-    function addToolEvent(tool, summary, ok) {
+    // ---- Thinking group -----------------------------------------------------
+    // Tool calls no longer post one message each. Instead each turn gets a
+    // single collapsible "Thinking…" group; every tool_result appends one
+    // compact row. Approval requests keep their own prominent event.
+    let thinkingGroup = null;
+    let thinkingList = null;
+    let thinkingLabel = null;
+    let thinkingCount = null;
+    let thinkingChev = null;
+    let thinkingTools = 0;
+    let thinkingFailed = 0;
+    let thinkingFinished = false;
+
+    function resetThinking() {
+        thinkingGroup = null;
+        thinkingList = null;
+        thinkingLabel = null;
+        thinkingCount = null;
+        thinkingChev = null;
+        thinkingTools = 0;
+        thinkingFailed = 0;
+        thinkingFinished = false;
+    }
+
+    function ensureThinking() {
+        if (thinkingGroup && thinkingGroup.isConnected) return;
         hideTyping();
+        resetThinking();
         const wrap = document.createElement('div');
-        wrap.className = 'ai-tool-event' + (ok ? '' : ' ai-tool-event--error');
+        wrap.className = 'ai-thinking';
         const head = document.createElement('button');
         head.type = 'button';
-        head.className = 'ai-tool-event__head';
-        head.innerHTML = '<span class="ai-tool-event__dot"></span><span class="ai-tool-event__name"></span><span class="ai-tool-event__chev"></span>';
-        head.querySelector('.ai-tool-event__name').textContent = tool;
-        const body = document.createElement('pre');
-        body.className = 'ai-tool-event__body';
-        body.textContent = summary || '';
+        head.className = 'ai-thinking__head';
+        const spin = document.createElement('span');
+        spin.className = 'ai-thinking__spinner';
+        thinkingLabel = document.createElement('span');
+        thinkingLabel.className = 'ai-thinking__label';
+        thinkingLabel.textContent = 'Thinking…';
+        thinkingCount = document.createElement('span');
+        thinkingCount.className = 'ai-thinking__count';
+        thinkingChev = document.createElement('span');
+        thinkingChev.className = 'ai-thinking__chev';
+        thinkingChev.textContent = '▾';
+        head.appendChild(spin);
+        head.appendChild(thinkingLabel);
+        head.appendChild(thinkingCount);
+        head.appendChild(thinkingChev);
+        thinkingList = document.createElement('ul');
+        thinkingList.className = 'ai-thinking__list';
         wrap.appendChild(head);
-        wrap.appendChild(body);
+        wrap.appendChild(thinkingList);
         head.addEventListener('click', () => {
-            body.hidden = !body.hidden;
-            head.querySelector('.ai-tool-event__chev').textContent = body.hidden ? '▸' : '▾';
+            thinkingList.hidden = !thinkingList.hidden;
+            thinkingChev.textContent = thinkingList.hidden ? '▸' : '▾';
         });
+        thinkingGroup = wrap;
         els.transcript.appendChild(wrap);
         scrollTranscript();
+    }
+
+    function addToolRow(tool, summary, ok) {
+        ensureThinking();
+        hideTyping();
+        thinkingTools++;
+        if (!ok) thinkingFailed++;
+        const li = document.createElement('li');
+        li.className = 'ai-thinking__row' + (ok ? '' : ' ai-thinking__row--error');
+        const dot = document.createElement('span');
+        dot.className = 'ai-thinking__dot';
+        const name = document.createElement('span');
+        name.className = 'ai-thinking__tool';
+        name.textContent = tool;
+        const sum = document.createElement('span');
+        sum.className = 'ai-thinking__summary';
+        sum.textContent = summary || (ok ? 'done' : 'failed');
+        sum.title = summary || '';
+        li.appendChild(dot);
+        li.appendChild(name);
+        li.appendChild(sum);
+        thinkingList.appendChild(li);
+        thinkingCount.textContent = thinkingTools + (thinkingTools === 1 ? ' tool' : ' tools')
+            + (thinkingFailed ? ' · ' + thinkingFailed + ' failed' : '');
+        scrollTranscript();
+    }
+
+    function finishThinking() {
+        if (thinkingFinished || !thinkingGroup || !thinkingGroup.isConnected) return;
+        thinkingFinished = true;
+        hideTyping();
+        thinkingGroup.classList.add('ai-thinking--done');
+        if (thinkingFailed) thinkingGroup.classList.add('ai-thinking--failed');
+        thinkingLabel.textContent = 'Thought';
+        thinkingList.hidden = true;
+        if (thinkingChev) thinkingChev.textContent = '▸';
     }
 
     function addApprovalEvent(plan) {
@@ -1055,6 +1129,7 @@
         setBusy(true);
         hideApproval();
         resetPreviewAccumulation();
+        resetThinking();
         addUserBubble(userText, runMode);
         els.input.value = '';
         els.input.style.height = 'auto';
@@ -1080,6 +1155,7 @@
                     try { abortCtrl.abort(); } catch (_) {}
                     hideTyping();
                     hideActivity();
+                    finishThinking();
                     setStatus('Timeout', 'error');
                     addAgentBubble('⚠ No response from server for 180s — the run may have stalled (host buffer / PHP timeout / model error). Check logs/ai-studio.log or try a cheaper model.');
                 }
@@ -1126,7 +1202,7 @@
                         addAgentBubble(data.text);
                         break;
                     case 'tool_result':
-                        addToolEvent(data.tool, data.summary, data.ok);
+                        addToolRow(data.tool, data.summary, data.ok);
                         setActivity(data.ok ? 'Done: ' + data.tool : 'Failed: ' + data.tool);
                         // 04-07: surface PLAN blocked as actionable — highlight toggle
                         if (!data.ok && data.summary && data.summary.indexOf('Blocked in PLAN') !== -1) {
@@ -1153,6 +1229,7 @@
                     case 'error':
                         hideTyping();
                         hideActivity();
+                        finishThinking();
                         addAgentBubble('⚠ ' + data.message);
                         setStatus('Error', 'error');
                         break;
@@ -1160,6 +1237,7 @@
                         receivedDone = true;
                         hideTyping();
                         hideActivity();
+                        finishThinking();
                         if (data.status === 'complete') {
                             if (!assistantText) {
                                 assistantText = data.text || '';
@@ -1225,6 +1303,7 @@
             // Absolute guarantee: never leave spinner/typing visible after a turn finishes.
             hideTyping();
             hideActivity();
+            finishThinking();
         }
 
         if (assistantText) {

@@ -71,6 +71,14 @@ class SiteTools {
                     ],
                 ],
             ],
+            [
+                'type' => 'function',
+                'function' => [
+                    'name' => 'get_server_status',
+                    'description' => 'Deployed-server snapshot: PHP version, disk free, latest analytics date, git hash if available. Read-only diagnostics for "is the site healthy" questions.',
+                    'parameters' => ['type' => 'object', 'properties' => (object)[]],
+                ],
+            ],
         ];
     }
 
@@ -86,6 +94,8 @@ class SiteTools {
                 return self::renderPreview($args);
             case 'render_full_page':
                 return self::renderFullPage($args);
+            case 'get_server_status':
+                return self::serverStatus();
         }
         throw new InvalidArgumentException("Unknown tool: {$name}");
     }
@@ -387,5 +397,20 @@ class SiteTools {
         $truncated = false;
         if (mb_strlen($doc) > 200 * 1024) { $doc = mb_substr($doc,0,200*1024); $truncated = true; }
         return ['html'=>$doc,'chars'=>mb_strlen($doc),'lang'=>$lang,'hasRotation'=>$hasRotation,'page_id'=>$pageId,'slug'=>$pageSlug,'truncated'=>$truncated];
+    }
+
+    private static function serverStatus(): array {
+        $fresh = null;
+        try { $fresh = Database::getInstance()->fetchOne("SELECT MAX(date) AS d FROM analytics_hourly"); } catch (Throwable $e) {}
+        $git = '';
+        $head = BASE_PATH . '/.git/HEAD';
+        if (is_file($head)) {
+            $ref = trim((string)@file_get_contents($head));
+            if (str_starts_with($ref, 'ref:')) {
+                $f = BASE_PATH . '/.git/' . trim(substr($ref, 4));
+                if (is_file($f)) $git = substr(trim((string)@file_get_contents($f)), 0, 7);
+            }
+        }
+        return ['php' => PHP_VERSION, 'disk_free_mb' => (int)(@disk_free_space(BASE_PATH) / 1048576), 'data_through' => $fresh['d'] ?? null, 'git' => $git, 'time' => date('Y-m-d H:i:s')];
     }
 }
