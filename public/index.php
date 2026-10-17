@@ -151,20 +151,6 @@ $router->get('/admin/ai-studio/gsc-auth', function() { requireAdminController('G
 $router->get('/admin/ai-studio/gsc-callback', function() { requireAdminController('GscAuthController', 'callback'); });
 $router->post('/admin/ai-studio/gsc-disconnect', function() { requireAdminController('GscAuthController', 'disconnect'); });
 
-// $router->group('/admin/media', function($router) {
-//     $router->get('/', function() { requireMediaAdmin('index'); });
-//     $router->post('/upload', function() { requireMediaAdmin('upload'); });
-//     $router->post('/delete', function() { requireMediaAdmin('delete'); });
-//     $router->post('/bulk-upload', function() { requireMediaAdmin('bulkUpload'); });
-    
-//     // NEW ROUTES for media-page management
-//     $router->post('/attach-to-page', function() { requireMediaAdmin('attachToPage'); });
-//     $router->post('/detach-from-page', function() { requireMediaAdmin('detachFromPage'); });
-//     $router->get('/get-media-info', function() { requireMediaAdmin('getMediaInfo'); });
-//     $router->post('/bulk-action', function() { requireMediaAdmin('bulkAction'); });
-//     $router->post('/update-positions', function() { requireMediaAdmin('updatePositions'); });
-// });
-
 // Admin Analytics
 $router->group('/admin/analytics', function($router) {
     $router->get('/', function() { requireAnalytics('index'); });

@@ -54,3 +54,9 @@ watcher.py
 package.json
 package-lock.json
 /public/css/backup
+# Runtime token/cache dirs (never commit)
+storage/bot_nonces/
+storage/ratelimit_ai_studio/
+storage/gsc_cache/
+.ipynb_checkpoints/
+test-dedup-insert.php

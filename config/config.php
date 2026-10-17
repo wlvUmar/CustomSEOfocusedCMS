@@ -62,6 +62,8 @@ define('OPENROUTER_API_KEY', getenv('OPENROUTER_API_KEY') ?: '');
 // SerpApi live SERP for AI Studio (https://serpapi.com) — pay-per-search, cached 1h
 define('SERPAPI_API_KEY', getenv('SERPAPI_API_KEY') ?: '');
 
+// Bot API shared secret (Telegram bot auth). Source: .env BOT_API_SECRET.
+define('BOT_API_SECRET', getenv('BOT_API_SECRET') ?: '');
 // Google Search Console API (MCP-like live GSC for AI Studio)
 define('GSC_CLIENT_ID', getenv('GSC_CLIENT_ID') ?: '');
 define('GSC_CLIENT_SECRET', getenv('GSC_CLIENT_SECRET') ?: '');
