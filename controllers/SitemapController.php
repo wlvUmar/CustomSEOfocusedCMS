@@ -22,16 +22,14 @@ class SitemapController extends Controller {
      */
     public function generateSitemapIndex() {
         $baseUrl = $this->getAbsoluteBaseUrl();
-        $pageTemplateTs = $this->getPageTemplateTimestamp();
-        $articleTemplateTs = $this->getArticleTemplateTimestamp();
-        $pages = $this->pageModel->getAll(false); 
+        $pages = $this->pageModel->getAll(false);
         $articles = $this->articleModel->getAll(true);
-        $pagesLastmodTs = $this->getMaxEntityLastmod($pages, $pageTemplateTs);
-        $articlesLastmodTs = $this->getMaxEntityLastmod($articles, $articleTemplateTs);
-        $indexLastmodTs = max($pagesLastmodTs, $articlesLastmodTs, time());
+        // Content-only lastmod (no file mtimes, no time()) so index lastmod is stable across deploys.
+        $pagesLastmodTs = $this->getMaxEntityLastmod($pages, true);
+        $articlesLastmodTs = $this->getMaxEntityLastmod($articles, false);
 
         $this->sendXmlResponse(
-            $this->renderer->renderSitemapIndex($baseUrl, $pagesLastmodTs, $articlesLastmodTs, $indexLastmodTs)
+            $this->renderer->renderSitemapIndex($baseUrl, $pagesLastmodTs, $articlesLastmodTs)
         );
     }
 
@@ -41,12 +39,11 @@ class SitemapController extends Controller {
     public function generatePagesSitemap() {
         $baseUrl = $this->getAbsoluteBaseUrl();
         $pages = $this->pageModel->getAll(false);
-        $templateLastmodTs = $this->getPageTemplateTimestamp();
-        // Fetch max rotation updated_at per page to reflect rotation edits in lastmod (fixes stale sitemap after rotation-only updates) — cached per-request, only for enable_rotation=1
+        // Rotation max per page (enable_rotation=1 only) feeds content lastmod — cached per-request.
         $rotationMax = $this->getRotationMaxMap();
 
         $this->sendXmlResponse(
-            $this->renderer->renderPagesSitemap($baseUrl, $pages, $templateLastmodTs, $rotationMax)
+            $this->renderer->renderPagesSitemap($baseUrl, $pages, $rotationMax)
         );
     }
 
@@ -56,10 +53,9 @@ class SitemapController extends Controller {
     public function generateArticlesSitemap() {
         $baseUrl = $this->getAbsoluteBaseUrl();
         $articles = $this->articleModel->getAll(true); // Published only
-        $templateLastmodTs = $this->getArticleTemplateTimestamp();
 
         $this->sendXmlResponse(
-            $this->renderer->renderArticlesSitemap($baseUrl, $articles, $templateLastmodTs)
+            $this->renderer->renderArticlesSitemap($baseUrl, $articles)
         );
     }
 
@@ -82,60 +78,25 @@ class SitemapController extends Controller {
         return $cache;
     }
 
-    private function getMaxEntityLastmod($items, $templateTs) {
-        $max = $templateTs ?: 0;
-        // Include rotation max for pages that have rotations
-        $rotMaxByPage = $this->getRotationMaxMap();
+    /**
+     * Max content timestamp across items (updated_at, plus rotation max for pages).
+     * Returns 0 when no timestamp is known; the renderer then omits <lastmod>.
+     * Never uses file mtimes or time(): those churn on every deploy.
+     */
+    private function getMaxEntityLastmod(array $items, bool $applyRotation): int {
+        $max = 0;
+        $rotMaxByPage = $applyRotation ? $this->getRotationMaxMap() : [];
         foreach ($items as $item) {
             $updated = $item['updated_at'] ?? null;
-            $ts = $updated ? strtotime($updated) : 0;
-            if (isset($item['id']) && isset($rotMaxByPage[(int)$item['id']])) {
-                $ts = max($ts, $rotMaxByPage[(int)$item['id']]);
+            $ts = $updated ? (int)strtotime((string)$updated) : 0;
+            if ($applyRotation && isset($item['id']) && isset($rotMaxByPage[(int)$item['id']])) {
+                $ts = max($ts, (int)$rotMaxByPage[(int)$item['id']]);
             }
-            if ($ts && $ts > $max) {
+            if ($ts > $max) {
                 $max = $ts;
             }
         }
-        return $max > 0 ? $max : time();
-    }
-
-    private function getPageTemplateTimestamp() {
-        return $this->getLastModifiedTimestamp([
-            '/views/templates/header.php',
-            '/views/templates/footer.php',
-            '/views/templates/page.php',
-            '/core/helpers.php',
-            '/models/GlobalJsonLdGenerator.php',
-            '/models/JsonLdGenerator.php',
-            '/controllers/PageController.php'
-        ]);
-    }
-
-    private function getArticleTemplateTimestamp() {
-        return $this->getLastModifiedTimestamp([
-            '/views/templates/header.php',
-            '/views/templates/footer.php',
-            '/views/templates/article.php',
-            '/core/helpers.php',
-            '/models/GlobalJsonLdGenerator.php',
-            '/models/ArticleJsonLdGenerator.php',
-            '/models/JsonLdGenerator.php',
-            '/controllers/ArticleController.php'
-        ]);
-    }
-
-    private function getLastModifiedTimestamp($paths) {
-        $max = 0;
-        foreach ($paths as $path) {
-            $full = BASE_PATH . '/' . ltrim($path, '/');
-            if (file_exists($full)) {
-                $mtime = filemtime($full);
-                if ($mtime && $mtime > $max) {
-                    $max = $mtime;
-                }
-            }
-        }
-        return $max > 0 ? $max : time();
+        return $max;
     }
 
     private function sendXmlResponse(string $body): void {

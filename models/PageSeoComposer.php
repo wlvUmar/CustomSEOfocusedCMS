@@ -34,7 +34,7 @@ class PageSeoComposer {
         $faqSchemaArray = null;
         if (!empty($faqs)) {
             require_once BASE_PATH . '/models/JsonLdGenerator.php';
-            $pageUrl = $baseUrl . '/' . $page['slug'] . ($lang !== DEFAULT_LANGUAGE ? '/' . $lang : '');
+            $pageUrl = canonicalUrlForPage($page['slug'], $lang);
             // FIX: generateFAQSchema is a helper function, not a class method
             $faqSchemaJson = generateFAQSchema($faqs, $lang, $pageUrl);
             $faqSchemaArray = json_decode($faqSchemaJson, true);
