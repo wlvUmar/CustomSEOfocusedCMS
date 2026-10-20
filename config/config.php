@@ -62,6 +62,10 @@ define('OPENROUTER_API_KEY', getenv('OPENROUTER_API_KEY') ?: '');
 // SerpApi live SERP for AI Studio (https://serpapi.com) — pay-per-search, cached 1h
 define('SERPAPI_API_KEY', getenv('SERPAPI_API_KEY') ?: '');
 
+// IndexNow API key (https://www.indexnow.org). Key file is generated under PUBLIC_PATH.
+// Empty = legacy fallback in models/IndexNow.php (deprecated).
+define('INDEXNOW_API_KEY', getenv('INDEXNOW_API_KEY') ?: '');
+
 // Bot API shared secret (Telegram bot auth). Source: .env BOT_API_SECRET.
 define('BOT_API_SECRET', getenv('BOT_API_SECRET') ?: '');
 // Google Search Console API (MCP-like live GSC for AI Studio)

@@ -60,3 +60,5 @@ storage/ratelimit_ai_studio/
 storage/gsc_cache/
 .ipynb_checkpoints/
 test-dedup-insert.php
+!AGENTS.md
+!docs/seo-operator-setup.md

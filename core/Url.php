@@ -4,6 +4,8 @@
 // Pure string logic only - no DB, no HTML.
 
 class Url {
+    const NON_PROD_SENTINEL_BASE = 'http://invalid.localhost';
+
     /**
      * Resolve the absolute canonical site base URL used for SEO/meta and JSON-LD.
      *
@@ -20,7 +22,15 @@ class Url {
             return rtrim($baseUrl, '/');
         }
 
-        // BASE_URL not configured as absolute — fail-closed to canonical production host.
+        // Non-production (or IS_PRODUCTION undefined): never emit the production host.
+        // Returns an RFC 6761 reserved sentinel so canonical/OG/hreflang/JSON-LD values
+        // are visibly wrong in dev instead of leaking production URLs.
+        if (!defined('IS_PRODUCTION') || !IS_PRODUCTION) {
+            error_log('[siteBaseUrl] non-production: BASE_URL missing or not absolute; returning sentinel');
+            return self::NON_PROD_SENTINEL_BASE;
+        }
+
+        // Production: BASE_URL not configured as absolute — fail-closed to canonical production host.
         // Previous code fell back to $_SERVER['HTTP_HOST'] which enables host-header
         // poisoning (e.g. sitemap emitting http://192.168.100.7 or evil.com).
         if ($baseUrl === '') {

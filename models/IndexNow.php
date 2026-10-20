@@ -2,10 +2,13 @@
 // path: ./models/IndexNow.php
 
 class IndexNow {
-    // Generated 32-character hex key
-    private const API_KEY = '7f5e8d9c2a3b4c5d6e7f8a9b0c1d2e3f';
-    private const KEY_FILE_NAME = '7f5e8d9c2a3b4c5d6e7f8a9b0c1d2e3f.txt';
+    // Legacy key, leaked in git history. Used ONLY as a backward-compat fallback
+    // when INDEXNOW_API_KEY is not configured. Rotate by setting INDEXNOW_API_KEY.
+    private const LEGACY_API_KEY = '7f5e8d9c2a3b4c5d6e7f8a9b0c1d2e3f';
     private const API_ENDPOINT = 'https://api.indexnow.org/indexnow';
+
+    /** @var bool Per-request guard so the key file is checked at most once. */
+    private static $keyFileChecked = false;
 
     /**
      * Submit a URL or list of URLs to IndexNow
@@ -17,17 +20,42 @@ class IndexNow {
             $urls = [$urls];
         }
 
-        // Ensure key file exists
-        self::ensureKeyFile();
+        $apiKey = self::resolveApiKey();
+
+        // Host and keyLocation come from the canonical BASE_URL, never from the request Host header.
+        $base = Url::siteBaseUrl();
+        $host = parse_url($base, PHP_URL_HOST);
+        if (!is_string($host) || $host === '') {
+            return 'IndexNow: invalid site base URL';
+        }
+
+        self::ensureKeyFile($apiKey);
 
         $data = [
-            'host' => $_SERVER['HTTP_HOST'],
-            'key' => self::API_KEY,
-            'keyLocation' => (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]/" . self::KEY_FILE_NAME,
+            'host' => $host,
+            'key' => $apiKey,
+            'keyLocation' => $base . '/' . self::keyFileName($apiKey),
             'urlList' => $urls
         ];
 
         return self::sendRequest($data);
+    }
+
+    /**
+     * Resolve the API key: INDEXNOW_API_KEY (preferred), else legacy fallback with a deprecation log.
+     */
+    private static function resolveApiKey() {
+        $key = defined('INDEXNOW_API_KEY') ? trim((string)INDEXNOW_API_KEY) : '';
+        if ($key !== '') {
+            return $key;
+        }
+
+        error_log('[IndexNow] DEPRECATED: INDEXNOW_API_KEY is not set; falling back to the hardcoded legacy key. Set INDEXNOW_API_KEY in .env and rotate the key.');
+        return self::LEGACY_API_KEY;
+    }
+
+    private static function keyFileName($apiKey) {
+        return $apiKey . '.txt';
     }
 
     /**
@@ -66,17 +94,32 @@ class IndexNow {
     }
 
     /**
-     * Ensure the API key file exists in the public directory
+     * Ensure the key file exists in PUBLIC_PATH with the key as its content.
+     * Idempotent: checks the filesystem at most once per request, and only writes
+     * when the file is missing or its content does not match the key.
      */
-    public static function ensureKeyFile() {
-        $filePath = PUBLIC_PATH . '/' . self::KEY_FILE_NAME;
-        
-        if (!file_exists($filePath)) {
-            if (file_put_contents($filePath, self::API_KEY) !== false) {
-                logInfo("[IndexNow] Created key file at $filePath");
-            } else {
-                logDebug("[IndexNow] Failed to create key file at $filePath");
-            }
+    public static function ensureKeyFile($apiKey = null) {
+        if (self::$keyFileChecked) {
+            return true;
         }
+        if ($apiKey === null) {
+            $apiKey = self::resolveApiKey();
+        }
+
+        $filePath = rtrim(PUBLIC_PATH, '/\\') . '/' . self::keyFileName($apiKey);
+
+        if (is_file($filePath) && trim((string)@file_get_contents($filePath)) === $apiKey) {
+            self::$keyFileChecked = true;
+            return true;
+        }
+
+        if (file_put_contents($filePath, $apiKey) !== false) {
+            logInfo("[IndexNow] Created key file at $filePath");
+            self::$keyFileChecked = true;
+            return true;
+        }
+
+        logDebug("[IndexNow] Failed to create key file at $filePath");
+        return false;
     }
 }

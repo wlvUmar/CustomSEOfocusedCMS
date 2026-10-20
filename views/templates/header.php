@@ -4,12 +4,12 @@ require_once BASE_PATH . '/models/JsonLdGenerator.php';
 
 $lang = $lang ?? getCurrentLanguage();
 
-$metaTitle = $page["meta_title_$lang"] ?? $page["title_$lang"] ?? $seo["site_name_$lang"];
+$metaTitle = trim((string)($page["meta_title_$lang"] ?? '')) ?: (trim((string)($page["title_$lang"] ?? '')) ?: trim((string)($seo["site_name_$lang"] ?? '')));
 $metaKeywords = $page["meta_keywords_$lang"] ?? $seo["meta_keywords_$lang"] ?? '';
-$metaDescription = $page["meta_description_$lang"] ?? $seo["meta_description_$lang"] ?? '';
+$metaDescription = trim((string)($page["meta_description_$lang"] ?? '')) ?: trim((string)($seo["meta_description_$lang"] ?? ''));
 
-$ogTitle = $page["og_title_$lang"] ?? $metaTitle;
-$ogDescription = $page["og_description_$lang"] ?? $metaDescription;
+$ogTitle = trim((string)($page["og_title_$lang"] ?? '')) ?: $metaTitle;
+$ogDescription = trim((string)($page["og_description_$lang"] ?? '')) ?: $metaDescription;
 $baseUrl = siteBaseUrl();
 $ogImage = absoluteUrl($page['og_image'] ?? ($seo['org_logo'] ?? '/css/logo.png'), $baseUrl);
 
@@ -116,13 +116,24 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <meta name="robots" content="index, follow">
     <meta name="author" content="<?= e($seo["site_name_$lang"]) ?>">
     
-    <link rel="canonical" href="<?= $canonicalUrl ?>">
-    <link rel="alternate" hreflang="ru" href="<?= canonicalUrlForPage($page['slug'] ?? '', 'ru') ?>">
-    <link rel="alternate" hreflang="uz" href="<?= canonicalUrlForPage($page['slug'] ?? '', 'uz') ?>">
-    <link rel="alternate" hreflang="x-default" href="<?= canonicalUrlForPage($page['slug'] ?? '', 'ru') ?>">
+    <link rel="canonical" href="<?= e($canonicalUrl) ?>">
+    <?php
+    // hreflang only for languages that have published content for this page
+    $hreflangLangs = [];
+    foreach (SUPPORTED_LANGUAGES as $hlang) {
+        if (trim((string)($page["title_$hlang"] ?? '')) !== '' || trim((string)($page["content_$hlang"] ?? '')) !== '') {
+            $hreflangLangs[] = $hlang;
+        }
+    }
+    foreach ($hreflangLangs as $hlang): ?>
+    <link rel="alternate" hreflang="<?= e($hlang) ?>" href="<?= e(canonicalUrlForPage($page['slug'] ?? '', $hlang)) ?>">
+    <?php endforeach; ?>
+    <?php if (!empty($hreflangLangs)): ?>
+    <link rel="alternate" hreflang="x-default" href="<?= e(canonicalUrlForPage($page['slug'] ?? '', in_array(DEFAULT_LANGUAGE, $hreflangLangs, true) ? DEFAULT_LANGUAGE : $hreflangLangs[0])) ?>">
+    <?php endif; ?>
      
     <meta property="og:type" content="website">
-    <meta property="og:url" content="<?= $canonicalUrl ?>">
+    <meta property="og:url" content="<?= e($canonicalUrl) ?>">
     <meta property="og:title" content="<?= e($ogTitle) ?>">
     <meta property="og:description" content="<?= e($ogDescription) ?>">
     <meta property="og:image" content="<?= e($ogImage) ?>">
@@ -130,7 +141,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
     <meta property="og:site_name" content="<?= e($seo["site_name_$lang"]) ?>">
     
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="<?= $canonicalUrl ?>">
+    <meta name="twitter:url" content="<?= e($canonicalUrl) ?>">
     <meta name="twitter:title" content="<?= e($ogTitle) ?>">
     <meta name="twitter:description" content="<?= e($ogDescription) ?>">
     <meta name="twitter:image" content="<?= e($ogImage) ?>">
