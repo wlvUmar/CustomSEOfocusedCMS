@@ -58,3 +58,20 @@ $router->get('/api/bot/requests/{id}', function($id) {
 $router->get('/api/health', function() {
     echo "OK";
 });
+
+// Read-only SEO operator API (Bearer tokens, seo_api_tokens). Spec: docs/seo-operator-setup.md §1.
+$router->get('/api/seo/v1/pages', function() {
+    ControllerFactory::seoApi('pages');
+});
+
+$router->get('/api/seo/v1/page/{slug}', function($slug) {
+    ControllerFactory::seoApi('page', $slug);
+});
+
+$router->get('/api/seo/v1/stats/top-pages', function() {
+    ControllerFactory::seoApi('topPages');
+});
+
+$router->get('/api/seo/v1/gsc/summary', function() {
+    ControllerFactory::seoApi('gscSummary');
+});

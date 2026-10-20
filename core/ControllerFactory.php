@@ -100,4 +100,9 @@ class ControllerFactory {
         $c = self::make('controllers/BotController.php', 'BotController');
         $arg !== null ? $c->$method($arg) : $c->$method();
     }
+
+    public static function seoApi(string $method, mixed $arg = null): void {
+        $c = self::make('controllers/Api/SeoApiController.php', 'SeoApiController');
+        $arg !== null ? $c->$method($arg) : $c->$method();
+    }
 }

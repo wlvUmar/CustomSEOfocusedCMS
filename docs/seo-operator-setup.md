@@ -19,12 +19,12 @@ Status: **PLAN / PROPOSAL.** Nothing in this document is implemented yet unless 
 ### 1.1 Endpoint
 
 ```
-POST /api/seo/token            (issue; owner-only, run from admin UI or CLI)
-GET  /api/seo/v1/pages         Authorization: Bearer <token>
-GET  /api/seo/v1/page/{slug}
-GET  /api/seo/v1/stats/top-pages?days=28
-GET  /api/seo/v1/gsc/summary?days=28       (reads gsc_tokens via GscClient; no token exposed)
-GET  /api/seo/v1/serp/cache?q=...          (cache only; no new SerpApi calls)
+POST /api/seo/token            (NOT BUILT — tokens are issued via CLI only: scripts/issue-seo-token.php)
+GET  /api/seo/v1/pages         Authorization: Bearer ***        (built)
+GET  /api/seo/v1/page/{slug}                                     (built)
+GET  /api/seo/v1/stats/top-pages?days=28                         (built)
+GET  /api/seo/v1/gsc/summary?days=28       (built; reads gsc_tokens via GscClient; no token exposed)
+GET  /api/seo/v1/serp/cache?q=...          (NOT BUILT)
 ```
 
 Read-only. No write endpoints in v1.
@@ -32,7 +32,7 @@ Read-only. No write endpoints in v1.
 ### 1.2 Token design
 
 - Random 32 bytes (`random_bytes`), shown **once**; store only `sha256(token)` in a new table `seo_api_tokens`:
-  `id, label, token_hash CHAR(64) UNIQUE, scopes SET('pages','stats','gsc','serp'), created_at, expires_at (default +30d), last_used_at, revoked_at, ip_allowlist NULL`.
+  `id, label, token_hash CHAR(64) UNIQUE, scopes SET('pages','stats','gsc'), created_at, expires_at (default +30d), last_used_at, revoked_at`. Not built: `serp` scope, `ip_allowlist`.
 - Compare with `hash_equals`. Reject expired/revoked. Rate limit per token (e.g. 120 req/min) using the existing bot nonce/rate infrastructure pattern.
 - Log `token_id`, route, status, time — never the token.
 - Transport: HTTPS only. Reject `Authorization` over plain HTTP.
@@ -40,7 +40,10 @@ Read-only. No write endpoints in v1.
 
 ### 1.3 Migration
 
-`migrations/012_seo_api_tokens.php` (same pattern as `011_gsc_tokens.php`, `CREATE TABLE IF NOT EXISTS`). Not created yet.
+✅ `migrations/013_seo_api_tokens.php` (created; `CREATE TABLE IF NOT EXISTS`, same pattern as `011_gsc_tokens.php`). `012` is already taken by `012_ai_pending_approvals.php`.
+- Implemented scopes: `pages`, `stats`, `gsc`. `serp` scope and `ip_allowlist` are not built.
+- Implemented routes: `GET /api/seo/v1/pages`, `/page/{slug}`, `/stats/top-pages`, `/gsc/summary`. `/serp/cache` and `POST /api/seo/token` are not built.
+- Issue tokens with the CLI only: `php scripts/issue-seo-token.php issue --label=... --scopes=pages,stats,gsc --days=30` (also `list`, `revoke --id=N`).
 
 ### 1.4 Hermes side
 

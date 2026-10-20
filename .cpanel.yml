@@ -19,6 +19,7 @@ deployment:
     - /bin/cp -R /home/kuplyuta/appliances/views/. $DEPLOYPATH/views >> /home/kuplyuta/deploy.log 2>&1 || true
     - /bin/cp /home/kuplyuta/appliances/.htaccess $DEPLOYPATH >> /home/kuplyuta/deploy.log 2>&1 || true
     - if [ -d /home/kuplyuta/appliances/scripts ]; then /bin/cp -R /home/kuplyuta/appliances/scripts/. $DEPLOYPATH/scripts >> /home/kuplyuta/deploy.log 2>&1 || true; fi
+    - if [ -d /home/kuplyuta/appliances/migrations ]; then /bin/cp -R /home/kuplyuta/appliances/migrations/. $DEPLOYPATH/migrations >> /home/kuplyuta/deploy.log 2>&1 || true; fi
     # Preserve live components.css if DB library exists (admin edits are DB-canonical, file-generated)
     - if [ -f $PUBLICPATH/css/components.css ]; then cp $PUBLICPATH/css/components.css /tmp/components.css.bak 2>/dev/null || true; cp $PUBLICPATH/css/components.min.css /tmp/components.min.css.bak 2>/dev/null || true; fi
     # Public folder
