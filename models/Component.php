@@ -157,7 +157,9 @@ class Component {
                 (int)($data['sort'] ?? 0),
             ]
         );
-        return (int)$this->db->lastInsertId();
+        $id = (int)$this->db->lastInsertId();
+        AuditLog::logCreate('component', $id, $data['slug'], $this->getById($id) ?: $data);
+        return $id;
     }
 
     public function update(int $id, array $data): void {
@@ -212,10 +214,13 @@ class Component {
                 $id,
             ]
         );
+        AuditLog::logUpdate('component', $id, $merged['slug'], $current, $this->getById($id), ['slug', 'category', 'title', 'description', 'html_demo', 'css_body', 'variants', 'status', 'sort']);
     }
 
     public function delete(int $id): void {
+        $row = $this->getById($id);
         $this->db->query("DELETE FROM ai_components WHERE id=?", [$id]);
+        if ($row) AuditLog::logDelete('component', $id, $row['slug'], $row);
     }
 
     private function extractTokens(string $css): array {

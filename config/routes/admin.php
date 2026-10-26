@@ -130,6 +130,9 @@ $router->get('/admin/ai-studio/gsc-auth', function() { ControllerFactory::admin(
 $router->get('/admin/ai-studio/gsc-callback', function() { ControllerFactory::admin('GscAuthController', 'callback'); });
 $router->post('/admin/ai-studio/gsc-disconnect', function() { ControllerFactory::admin('GscAuthController', 'disconnect'); });
 
+// Admin Change Log
+$router->get('/admin/audit-log', function() { ControllerFactory::admin('AuditLogController', 'index'); });
+
 // Admin Analytics
 $router->group('/admin/analytics', function($router) {
     $router->get('/', function() { ControllerFactory::analytics('index'); });

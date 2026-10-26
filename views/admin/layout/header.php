@@ -157,6 +157,9 @@
                     <a href="<?= BASE_URL ?>/admin/components" class="<?= strpos($_SERVER['REQUEST_URI'], '/components') !== false ? 'active' : '' ?>">
                         <i data-feather="box"></i> Components
                     </a>
+                    <a href="<?= BASE_URL ?>/admin/audit-log" class="<?= strpos($_SERVER['REQUEST_URI'], '/audit-log') !== false ? 'active' : '' ?>">
+                        <i data-feather="clock"></i> Change Log
+                    </a>
                 </div>
                 
                 <div class="nav-section">

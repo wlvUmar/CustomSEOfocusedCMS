@@ -106,11 +106,14 @@ class Page {
         ]);
         
         $id = $this->db->lastInsertId();
-        
+
         if (!empty($data['parent_id'])) {
             $this->updateDepth($id);
         }
-        
+
+        $created = $this->getById($id);
+        AuditLog::logCreate('page', $id, $data['slug'], $created ?: $data);
+
         return $id;
     }
 
@@ -207,13 +210,18 @@ class Page {
         if ($oldParentId != $newParentId) {
             $this->updateDepth($id);
         }
-        
+
+        $fresh = $this->getById($id);
+        AuditLog::logUpdate('page', $id, $fresh['slug'] ?? $currentPage['slug'], $currentPage, $fresh, array_keys($data));
+
         return $result;
     }
 
     public function delete($id) {
-        $sql = "DELETE FROM pages WHERE id = ?";
-        return $this->db->query($sql, [$id]);
+        $row = $this->getById($id);
+        $result = $this->db->query("DELETE FROM pages WHERE id = ?", [$id]);
+        if ($row) AuditLog::logDelete('page', $id, $row['slug'], $row);
+        return $result;
     }
 
     /**

@@ -31,13 +31,25 @@ class LinkWidget {
                 ON DUPLICATE KEY UPDATE is_active = 1, position = ?";
         
         $this->db->query($sql, [$pageId, $linkToPageId, $position, $position]);
+        AuditLog::logUpdate('link_widget', $pageId, $this->auditLabel($pageId), ['link' => null], ['link' => $this->pageSlug($linkToPageId)], null, 'link_add');
         return $this->db->lastInsertId();
     }
 
     // Remove link
     public function removeLink($pageId, $linkToPageId) {
         $sql = "DELETE FROM page_link_widgets WHERE page_id = ? AND link_to_page_id = ?";
-        return $this->db->query($sql, [$pageId, $linkToPageId]);
+        $result = $this->db->query($sql, [$pageId, $linkToPageId]);
+        AuditLog::logUpdate('link_widget', $pageId, $this->auditLabel($pageId), ['link' => $this->pageSlug($linkToPageId)], ['link' => null], null, 'link_remove');
+        return $result;
+    }
+
+    private function pageSlug($pageId): ?string {
+        $row = $this->db->fetchOne("SELECT slug FROM pages WHERE id = ?", [$pageId]);
+        return $row['slug'] ?? null;
+    }
+
+    private function auditLabel($pageId): string {
+        return (string)($this->pageSlug($pageId) ?? ('page #' . $pageId));
     }
 
     // Reorder links
@@ -52,8 +64,13 @@ class LinkWidget {
 
     // Toggle widget visibility
     public function toggleWidget($pageId, $show) {
+        $before = $this->db->fetchOne("SELECT show_link_widget FROM pages WHERE id = ?", [$pageId]);
         $sql = "UPDATE pages SET show_link_widget = ? WHERE id = ?";
-        return $this->db->query($sql, [$show ? 1 : 0, $pageId]);
+        $result = $this->db->query($sql, [$show ? 1 : 0, $pageId]);
+        if ($before) {
+            AuditLog::logUpdate('page', $pageId, $this->auditLabel($pageId), $before, ['show_link_widget' => $show ? 1 : 0], ['show_link_widget']);
+        }
+        return $result;
     }
 
     // Get available pages to link to (excluding current page and already linked)

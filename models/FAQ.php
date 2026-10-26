@@ -47,7 +47,9 @@ class FAQ {
             $data['is_active'] ?? 1
         ]);
         
-        return $this->db->lastInsertId();
+        $id = $this->db->lastInsertId();
+        AuditLog::logCreate('faq', $id, $data['page_slug'] . ': ' . mb_substr((string)$data['question_ru'], 0, 80), $this->getById($id) ?: $data);
+        return $id;
     }
 
     public function update($id, $data) {
@@ -65,7 +67,8 @@ class FAQ {
                 answer_ru = ?, answer_uz = ?, sort_order = ?, is_active = ? 
                 WHERE id = ?";
         
-        return $this->db->query($sql, [
+        $before = $this->getById($id);
+        $result = $this->db->query($sql, [
             $data['page_slug'],
             $data['question_ru'],
             $data['question_uz'],
@@ -75,11 +78,18 @@ class FAQ {
             $data['is_active'] ?? 1,
             $id
         ]);
+        $after = $this->getById($id);
+        if ($before && $after) {
+            AuditLog::logUpdate('faq', $id, $after['page_slug'] . ': ' . mb_substr((string)$after['question_ru'], 0, 80), $before, $after);
+        }
+        return $result;
     }
 
     public function delete($id) {
-        $sql = "DELETE FROM faqs WHERE id = ?";
-        return $this->db->query($sql, [$id]);
+        $row = $this->getById($id);
+        $result = $this->db->query("DELETE FROM faqs WHERE id = ?", [$id]);
+        if ($row) AuditLog::logDelete('faq', $id, $row['page_slug'] . ': ' . mb_substr((string)$row['question_ru'], 0, 80), $row);
+        return $result;
     }
 
     public function getUniqueSlugs() {

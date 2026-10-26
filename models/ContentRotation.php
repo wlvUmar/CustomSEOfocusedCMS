@@ -67,15 +67,28 @@ class ContentRotation {
         }
         
         $sql = "UPDATE pages SET selected_rotation_id = ? WHERE id = ?";
-        return $this->db->query($sql, [$rotationId, $pageId]);
+        $result = $this->db->query($sql, [$rotationId, $pageId]);
+        if (!empty($pageRow)) {
+            $after = $pageRow;
+            $after['selected_rotation_id'] = $rotationId;
+            AuditLog::logUpdate('page', $pageId, $pageRow['slug'], $pageRow, $after, ['selected_rotation_id']);
+        }
+        return $result;
     }
 
     /**
      * Clear manual rotation (back to auto)
      */
     public function clearManualRotation($pageId) {
+        $before = $this->db->fetchOne("SELECT id, slug, selected_rotation_id FROM pages WHERE id = ?", [$pageId]);
         $sql = "UPDATE pages SET selected_rotation_id = NULL WHERE id = ?";
-        return $this->db->query($sql, [$pageId]);
+        $result = $this->db->query($sql, [$pageId]);
+        if ($before) {
+            $after = $before;
+            $after['selected_rotation_id'] = null;
+            AuditLog::logUpdate('page', $pageId, $before['slug'], $before, $after, ['selected_rotation_id']);
+        }
+        return $result;
     }
 
     public function createDefaultFromPage($pageId, $month) {
@@ -220,8 +233,15 @@ class ContentRotation {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $sql = "UPDATE content_rotations SET is_active = ? WHERE id IN ($placeholders)";
         
+        $rows = $this->db->fetchAll("SELECT * FROM content_rotations WHERE id IN ($placeholders)", $ids);
         $params = array_merge([$isActive], $ids);
-        return $this->db->query($sql, $params);
+        $result = $this->db->query($sql, $params);
+        foreach ($rows as $before) {
+            $after = $before;
+            $after['is_active'] = $isActive ? 1 : 0;
+            AuditLog::logUpdate('rotation', $before['id'], $this->auditLabel($before), $before, $after, ['is_active']);
+        }
+        return $result;
     }
 
     public function create($data) {
@@ -258,8 +278,15 @@ class ContentRotation {
             $data['jsonld_ru'] ?? null,
             $data['jsonld_uz'] ?? null
         ]);
-        
-        return $this->db->lastInsertId();
+
+        $id = $this->db->lastInsertId();
+        $created = $this->getById($id) ?: $data;
+        AuditLog::logCreate('rotation', $id, $this->auditLabel($created), $created);
+        return $id;
+    }
+
+    private function auditLabel(array $row): string {
+        return 'page #' . ($row['page_id'] ?? '?') . ' month ' . ($row['active_month'] ?? '?');
     }
 
     public function update($id, $data) {
@@ -276,7 +303,8 @@ class ContentRotation {
                 og_image = ?, jsonld_ru = ?, jsonld_uz = ?
                 WHERE id = ?";
         
-        return $this->db->query($sql, [
+        $before = $this->getById($id);
+        $result = $this->db->query($sql, [
             $data['title_ru'] ?? null,
             $data['title_uz'] ?? null,
             $data['content_ru'] ?? '',
@@ -301,19 +329,29 @@ class ContentRotation {
             $data['jsonld_uz'] ?? null,
             $id
         ]);
+        $after = $this->getById($id);
+        if ($before && $after) {
+            AuditLog::logUpdate('rotation', $id, $this->auditLabel($after), $before, $after);
+        }
+        return $result;
     }
 
     public function delete($id) {
-        $sql = "DELETE FROM content_rotations WHERE id = ?";
-        return $this->db->query($sql, [$id]);
+        $row = $this->getById($id);
+        $result = $this->db->query("DELETE FROM content_rotations WHERE id = ?", [$id]);
+        if ($row) AuditLog::logDelete('rotation', $id, $this->auditLabel($row), $row);
+        return $result;
     }
 
     public function bulkDelete($ids) {
         if (empty($ids)) return false;
-        
+
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $rows = $this->db->fetchAll("SELECT * FROM content_rotations WHERE id IN ($placeholders)", $ids);
         $sql = "DELETE FROM content_rotations WHERE id IN ($placeholders)";
-        return $this->db->query($sql, $ids);
+        $result = $this->db->query($sql, $ids);
+        foreach ($rows as $row) AuditLog::logDelete('rotation', $row['id'], $this->auditLabel($row), $row);
+        return $result;
     }
 
     public function getMonths() {

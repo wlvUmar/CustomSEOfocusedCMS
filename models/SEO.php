@@ -15,7 +15,8 @@ class SEO {
     }
 
     public function updateSettings($data) {
-        $sql = "UPDATE seo_settings SET 
+        $before = $this->getSettings();
+        $sql = "UPDATE seo_settings SET
                 site_name_ru = ?, site_name_uz = ?,
                 meta_keywords_ru = ?, meta_keywords_uz = ?,
                 meta_description_ru = ?, meta_description_uz = ?,
@@ -36,7 +37,7 @@ class SEO {
                 organization_schema = ?, website_schema = ?
                 WHERE id = 1";
         
-        return $this->db->query($sql, [
+        $result = $this->db->query($sql, [
             $data['site_name_ru'],
             $data['site_name_uz'],
             $data['meta_keywords_ru'],
@@ -75,5 +76,7 @@ class SEO {
             $data['organization_schema'] ?? '',
             $data['website_schema'] ?? ''
         ]);
+        AuditLog::logUpdate('seo_settings', 1, 'site settings', $before, $this->getSettings());
+        return $result;
     }
 }

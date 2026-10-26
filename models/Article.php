@@ -114,7 +114,9 @@ class Article {
         ];
         
         $this->db->query($sql, $params);
-        return $this->db->lastInsertId();
+        $id = $this->db->lastInsertId();
+        AuditLog::logCreate('article', $id, $data['slug'], $this->getById($id) ?: $data);
+        return $id;
     }
 
     /**
@@ -173,23 +175,30 @@ class Article {
             $id
         ];
         
-        return $this->db->query($sql, $params);
+        $result = $this->db->query($sql, $params);
+        $fresh = $this->getById($id);
+        AuditLog::logUpdate('article', $id, $fresh['slug'] ?? $existing['slug'], $existing, $fresh);
+        return $result;
     }
 
     /**
      * Delete article
      */
     public function delete($id) {
-        $sql = "DELETE FROM articles WHERE id = ?";
-        return $this->db->query($sql, [$id]);
+        $row = $this->getById($id);
+        $result = $this->db->query("DELETE FROM articles WHERE id = ?", [$id]);
+        if ($row) AuditLog::logDelete('article', $id, $row['slug'], $row);
+        return $result;
     }
 
     /**
      * Toggle publish status
      */
     public function togglePublish($id) {
-        $sql = "UPDATE articles SET is_published = NOT is_published WHERE id = ?";
-        return $this->db->query($sql, [$id]);
+        $before = $this->getById($id);
+        $result = $this->db->query("UPDATE articles SET is_published = NOT is_published WHERE id = ?", [$id]);
+        if ($before) AuditLog::logUpdate('article', $id, $before['slug'], $before, $this->getById($id));
+        return $result;
     }
 
     /**
