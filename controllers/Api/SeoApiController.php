@@ -172,6 +172,102 @@ class SeoApiController extends Controller {
         ]);
     }
 
+    // POST /api/seo/v1/page/{slug}/fields   (scope: write)
+    // Body: {"fields": {"meta_title_ru": "...", "meta_title_uz": "..."}, "expected_updated_at": "<page.updated_at>", "dry_run": true|false}
+    // Only SEO metadata is writable (never content/slug/publish/theme/jsonld — those stay in AI Studio / admin where
+    // approvals exist). Every write goes through Page::update(): snapshot to page_revisions + audit_log, labelled seo_api.
+    private const WRITABLE_PAIRS = [
+        'title' => 90, 'meta_title' => 90, 'meta_description' => 300, 'meta_keywords' => 300,
+        'og_title' => 90, 'og_description' => 300,
+    ];
+
+    public function pageFields(string $slug): void {
+        $this->authenticate('write');
+        $slug = rawurldecode($slug);
+        if ($slug === '' || strlen($slug) > 255 || preg_match('/[\/\s]/u', $slug)) {
+            $this->send(['error' => 'invalid_slug'], 400);
+        }
+        $raw = (string)file_get_contents('php://input', false, null, 0, 65537);
+        if (strlen($raw) > 65536) $this->send(['error' => 'payload_too_large'], 413);
+        $body = json_decode($raw, true);
+        $fields = is_array($body) ? ($body['fields'] ?? null) : null;
+        if (!is_array($fields) || !$fields) {
+            $this->send(['error' => 'invalid_body', 'hint' => '{"fields":{...},"expected_updated_at":"...","dry_run":false}'], 400);
+        }
+        $dryRun = ($body['dry_run'] ?? false) === true;
+
+        $pageModel = new Page();
+        $page = $pageModel->getBySlug($slug, false);
+        if (!$page) $this->send(['error' => 'not_found'], 404);
+
+        $limits = ['canonical_url' => 500];
+        foreach (self::WRITABLE_PAIRS as $base => $max) {
+            $limits["{$base}_ru"] = $max;
+            $limits["{$base}_uz"] = $max;
+        }
+
+        $errors = [];
+        $data = [];
+        foreach ($fields as $name => $value) {
+            if (!isset($limits[$name])) { $errors[$name] = 'field_not_writable'; continue; }
+            if (!is_string($value)) { $errors[$name] = 'must_be_string'; continue; }
+            $value = trim($value);
+            if ($value === '') { $errors[$name] = 'empty_not_allowed'; continue; }
+            if (preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F<>]/u', $value)) { $errors[$name] = 'control_chars_or_html_not_allowed'; continue; }
+            if (mb_strlen($value) > $limits[$name]) { $errors[$name] = 'too_long_max_' . $limits[$name]; continue; }
+            if (str_contains($name, 'description') && preg_match('/\s[—–-]\s*\.\s*$/u', $value)) {
+                $errors[$name] = 'dangling_dash_at_end'; continue;
+            }
+            if ($name === 'canonical_url' && !preg_match('#^https://kuplyu-tashkent\.uz(/\S*)?$#i', $value)) {
+                $errors[$name] = 'canonical_must_be_on_own_domain'; continue;
+            }
+            $data[$name] = $value;
+        }
+        // RU↔UZ parity (AGENTS.md): a language pair is always written together.
+        foreach (array_keys(self::WRITABLE_PAIRS) as $base) {
+            if (isset($fields["{$base}_ru"]) xor isset($fields["{$base}_uz"])) {
+                $errors[$base] = 'parity_send_both_ru_and_uz';
+            }
+        }
+        if ($errors) $this->send(['error' => 'validation_failed', 'details' => $errors], 422);
+
+        $changes = [];
+        foreach ($data as $name => $new) {
+            $old = (string)($page[$name] ?? '');
+            if ($old !== $new) $changes[] = ['field' => $name, 'before' => $old, 'after' => $new];
+        }
+        if (!$changes) {
+            $this->send(['ok' => true, 'changed' => [], 'note' => 'no_change', 'updated_at' => $page['updated_at']]);
+        }
+        if ($dryRun) {
+            $this->send(['ok' => true, 'dry_run' => true, 'would_change' => $changes, 'updated_at' => $page['updated_at']]);
+        }
+        // optimistic concurrency: agent must have read the page and not lost a race with an admin edit
+        $expected = (string)($body['expected_updated_at'] ?? '');
+        if ($expected === '' || $expected !== (string)$page['updated_at']) {
+            $this->send(['error' => 'stale_or_missing_expected_updated_at', 'current_updated_at' => $page['updated_at']], 409);
+        }
+
+        require_once BASE_PATH . '/models/PageRevision.php';
+        $GLOBALS['WRITE_ACTOR'] = ['source' => 'seo_api', 'name' => 'seo-api#' . ($this->token['id'] ?? '?') . ' ' . ($this->token['label'] ?? '')];
+        try {
+            $pageModel->update((int)$page['id'], array_column($changes, 'after', 'field'));
+        } catch (Throwable $e) {
+            error_log('[SeoApi] write failed: ' . $e->getMessage());
+            $this->send(['error' => 'write_failed'], 500);
+        }
+        $fresh = $pageModel->getById((int)$page['id']);
+        $rev = (new PageRevision())->getByPageId((int)$page['id'], 1);
+        $this->send([
+            'ok' => true,
+            'slug' => $slug,
+            'changed' => $changes,
+            'revision_id' => $rev[0]['id'] ?? null, // snapshot of the state BEFORE this write; restorable in admin
+            'updated_at' => $fresh['updated_at'] ?? null,
+            'generated_at' => gmdate('c'),
+        ]);
+    }
+
     // ── internals ────────────────────────────────────────────
 
     private function authenticate(string $scope): void {

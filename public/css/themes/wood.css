@@ -116,15 +116,20 @@ body.theme-wood .logo-mark{position:absolute;inset:0;background:linear-gradient(
     -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
 @media (min-width:480px){body.theme-wood .logo-wrap{width:52px;height:52px}}
 
-/* telegram bot popup */
-body.theme-wood .bot-modal{background:rgba(43,29,18,.62)}
-body.theme-wood .bot-modal__card{background:var(--surface-2);border-top:5px solid #b8854a;box-shadow:0 24px 60px rgba(60,35,15,.35)}
+/* telegram bot popup — own layout per theme */
+/* interior magazine: left-aligned editorial, hairlines, outlined serif numerals */
+body.theme-wood .bot-modal{background:rgba(43,29,18,.64)}
+body.theme-wood .bot-modal__card{max-width:420px;background:var(--surface-2);border-top:5px solid #b8854a;padding:28px 24px 18px;text-align:left;box-shadow:0 24px 60px rgba(60,35,15,.35)}
 body.theme-wood .bot-modal__close{background:var(--teal-light);color:var(--ink-soft)}
-body.theme-wood .bot-modal__icon{border-radius:3px;background:linear-gradient(180deg,#b8854a,#7b4a28)}
-body.theme-wood .bot-modal__title{font-weight:700;font-size:1.2rem}
-body.theme-wood .bot-modal__steps{background:var(--orange-light);border-color:#ecd3ab;border-radius:3px}
-body.theme-wood .bot-modal__step-num{background:#a65f1e;border-radius:3px}
-body.theme-wood .bot-modal__cta{background:#a65f1e;border-radius:3px;box-shadow:0 8px 20px rgba(166,95,30,.35)}
+body.theme-wood .bot-modal__icon{width:40px;height:40px;border-radius:2px;margin:0 0 16px;background:#7b4a28}
+body.theme-wood .bot-modal__title{font-size:1.5rem;font-weight:700;line-height:1.15;margin:0 0 12px;padding-right:34px}
+body.theme-wood .bot-modal__desc{color:var(--ink-soft);margin:0 0 6px;padding-bottom:16px;border-bottom:1px solid #cdb593}
+body.theme-wood .bot-modal__steps{background:none;border:0;border-radius:0;padding:0;margin:0 0 18px}
+body.theme-wood .bot-modal__step{margin:0;padding:8px 0;align-items:center;gap:14px;border-bottom:1px solid #e0cfb2;font-size:.92rem;color:var(--ink-soft)}
+body.theme-wood .bot-modal__step-num{width:46px;height:auto;background:none;border-radius:0;justify-content:flex-start;color:transparent;-webkit-text-stroke:1.4px #b8854a;font:700 2.3rem/1 var(--font-head)}
+body.theme-wood .bot-modal__cta{background:#a65f1e;border-radius:2px;justify-content:space-between;padding:14px 18px;box-shadow:0 8px 20px rgba(166,95,30,.35)}
+body.theme-wood .bot-modal__cta::after{content:"\2192";font-size:1.15rem}
 body.theme-wood .bot-modal__cta:hover{background:#874a12}
+body.theme-wood .bot-modal__dismiss{margin-left:0}
 @media (min-width:641px){body.theme-wood .bot-modal__card{border-radius:6px}}
 @media (max-width:640px){body.theme-wood .bot-modal__card{border-radius:6px 6px 0 0}}

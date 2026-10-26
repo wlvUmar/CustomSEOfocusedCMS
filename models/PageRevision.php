@@ -20,6 +20,12 @@ class PageRevision {
             $createdBy = $_SESSION['user_id'] ?? null;
             $createdByName = $_SESSION['username'] ?? null;
 
+            // Token-authenticated API writes (SeoApiController) have no session: label them explicitly.
+            if ($source === 'unknown' && !empty($GLOBALS['WRITE_ACTOR']['source'])) {
+                $source = substr((string)$GLOBALS['WRITE_ACTOR']['source'], 0, 20);
+                $createdByName = mb_substr((string)($GLOBALS['WRITE_ACTOR']['name'] ?? ''), 0, 100) ?: null;
+            }
+
             // Auto-detect source if caller passed 'unknown'
             if ($source === 'unknown') {
                 $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);

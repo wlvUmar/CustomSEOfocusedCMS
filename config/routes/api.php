@@ -76,6 +76,10 @@ $router->get('/api/seo/v1/gsc/summary', function() {
     ControllerFactory::seoApi('gscSummary');
 });
 
+$router->post('/api/seo/v1/page/{slug}/fields', function($slug) {
+    ControllerFactory::seoApi('pageFields', $slug);
+});
+
 $router->get('/api/seo/v1/gsc/queries', function() {
     ControllerFactory::seoApi('gscQueries');
 });

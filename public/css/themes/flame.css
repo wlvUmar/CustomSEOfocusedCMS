@@ -144,15 +144,22 @@ body.theme-flame .content-body [style*="color: #3"],body.theme-flame .content-bo
 body.theme-flame .content-body [style*="color: #4"],body.theme-flame .content-body [style*="color:#4"],
 body.theme-flame .content-body [style*="color: #5"],body.theme-flame .content-body [style*="color:#5"]{color:var(--ink-soft)!important}
 
-/* telegram bot popup */
-body.theme-flame .bot-modal{background:rgba(8,5,3,.8)}
-body.theme-flame .bot-modal__card{background:#1c1815;border:1px solid var(--border);border-top:3px solid var(--orange);box-shadow:0 0 40px rgba(214,58,20,.25),0 24px 60px rgba(0,0,0,.6)}
-body.theme-flame .bot-modal__close{background:#2a231e;color:var(--ink-soft)}
-body.theme-flame .bot-modal__icon{border-radius:3px;background:linear-gradient(135deg,#ff8a3d,#d63a14)}
-body.theme-flame .bot-modal__title{text-transform:uppercase;letter-spacing:.05em;font-weight:500}
-body.theme-flame .bot-modal__steps{background:#110e0c;border-radius:3px}
-body.theme-flame .bot-modal__step-num{border-radius:3px;background:var(--teal);color:#1a0f08}
-body.theme-flame .bot-modal__cta{background:var(--orange);border-radius:3px;text-transform:uppercase;letter-spacing:.06em}
+/* telegram bot popup — own layout per theme */
+/* control panel: hazard stripe, icon + title head, steps as spec-sheet rows */
+body.theme-flame .bot-modal{background:rgba(8,5,3,.82)}
+body.theme-flame .bot-modal__card{max-width:440px;background:#1c1815;border:1px solid var(--border);padding:30px 20px 16px;text-align:left;display:grid;grid-template-columns:52px 1fr;column-gap:14px;align-items:start;box-shadow:0 0 40px rgba(214,58,20,.25),0 24px 60px rgba(0,0,0,.6)}
+body.theme-flame .bot-modal__card::before{content:"";position:absolute;top:0;left:0;right:0;height:9px;background:repeating-linear-gradient(-45deg,#d63a14 0 9px,#1c1815 9px 18px)}
+body.theme-flame .bot-modal__close{top:18px;background:#2a231e;color:var(--ink-soft);border-radius:3px}
+body.theme-flame .bot-modal__icon{grid-column:1;grid-row:1/span 2;margin:0;width:52px;height:52px;border-radius:3px;background:linear-gradient(135deg,#ff8a3d,#d63a14)}
+body.theme-flame .bot-modal__title{grid-column:2;margin:0 34px 6px 0;text-transform:uppercase;letter-spacing:.05em;font-weight:500;font-size:.95rem}
+body.theme-flame .bot-modal__desc{grid-column:2;margin:0 0 16px}
+body.theme-flame .bot-modal__steps,body.theme-flame .bot-modal__cta,body.theme-flame .bot-modal__dismiss,body.theme-flame .bot-modal__note{grid-column:1/-1}
+body.theme-flame .bot-modal__steps{background:none;border:0;border-top:1px solid var(--border);border-radius:0;padding:0;margin:0 0 16px}
+body.theme-flame .bot-modal__step{margin:0;padding:11px 0;align-items:center;border-bottom:1px dashed #3a312a;text-transform:uppercase;letter-spacing:.04em;font-size:.76rem;color:var(--ink-soft)}
+body.theme-flame .bot-modal__step-num{border-radius:3px;width:24px;height:24px;background:var(--teal);color:#1a0f08}
+body.theme-flame .bot-modal__cta{background:var(--orange);border-radius:3px;border-left:10px solid #ff8a3d;text-transform:uppercase;letter-spacing:.06em}
 body.theme-flame .bot-modal__cta:hover{background:var(--orange-dark)}
+body.theme-flame .bot-modal__dismiss{justify-self:start}
+body.theme-flame .bot-modal__note{text-align:left}
 @media (min-width:641px){body.theme-flame .bot-modal__card{border-radius:4px}}
 @media (max-width:640px){body.theme-flame .bot-modal__card{border-radius:4px 4px 0 0}}

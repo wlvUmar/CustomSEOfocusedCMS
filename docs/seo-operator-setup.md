@@ -27,7 +27,19 @@ GET  /api/seo/v1/gsc/summary?days=28       (built; reads gsc_tokens via GscClien
 GET  /api/seo/v1/serp/cache?q=...          (NOT BUILT)
 ```
 
-Read-only. No write endpoints in v1.
+```
+GET  /api/seo/v1/gsc/queries?days=28&limit=50[&page=URL][&with_pages=1]   (built; scope gsc)
+POST /api/seo/v1/page/{slug}/fields                                      (built; scope write — SEO metadata only)
+```
+
+Reads are read-only. The single write endpoint is opt-in (token needs the `write` scope; `migrations/016_seo_api_write_scope.php`):
+
+- Body: `{"fields": {"meta_title_ru": "...", "meta_title_uz": "..."}, "expected_updated_at": "<page.updated_at>", "dry_run": false}`.
+- Writable: `title_*`, `meta_title_*`, `meta_description_*`, `meta_keywords_*`, `og_title_*`, `og_description_*` (RU and UZ must be sent together — parity), `canonical_url` (own domain only). Nothing else: no content, slug, publish, theme, JSON-LD (those stay in AI Studio/admin, where approvals exist).
+- Validation: strings only, no HTML/control chars, length caps, no dangling "— ." at the end of a description. Errors: 422 with per-field details.
+- `dry_run: true` returns the diff and writes nothing. A real write needs `expected_updated_at` equal to the page's current value (409 otherwise — someone edited in between).
+- Every write goes through `Page::update()`: snapshot to `page_revisions` (source `seo_api`, name `seo-api#<token id> <label>`) and a row in `audit_log`. The response carries `revision_id` (state before the write), restorable in admin.
+- Issue: `php scripts/issue-seo-token.php issue --label=... --scopes=pages,stats,gsc,write --days=7` — use short lifetimes for write tokens and revoke when done.
 
 ### 1.2 Token design
 

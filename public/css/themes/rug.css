@@ -127,15 +127,19 @@ body.theme-rug .logo-mark{position:absolute;inset:0;background:linear-gradient(1
     -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
 @media (min-width:480px){body.theme-rug .logo-wrap{width:52px;height:52px}}
 
-/* telegram bot popup */
-body.theme-rug .bot-modal{background:rgba(42,7,18,.68)}
-body.theme-rug .bot-modal__card{background:var(--surface-2);border:3px double #c9a45a;outline:1px solid rgba(138,31,61,.28);outline-offset:-9px;box-shadow:0 24px 60px rgba(63,11,27,.4)}
+/* telegram bot popup — own layout per theme */
+/* the carpet: centred, framed, diamond medallion, ornamental rules, diamond chain steps */
+body.theme-rug .bot-modal{background:rgba(42,7,18,.7)}
+body.theme-rug .bot-modal__card{max-width:400px;background:var(--surface-2);border:3px double #c9a45a;outline:1px solid rgba(138,31,61,.28);outline-offset:-9px;padding:36px 26px 26px;box-shadow:0 24px 60px rgba(63,11,27,.4)}
 body.theme-rug .bot-modal__close{background:var(--teal-light);color:var(--teal);border-radius:0}
-body.theme-rug .bot-modal__icon{border-radius:0;width:56px;height:56px;background:linear-gradient(135deg,#8a1f3d,#b02a50);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
-body.theme-rug .bot-modal__icon svg{width:22px;height:22px}
-body.theme-rug .bot-modal__title{font-weight:700}
-body.theme-rug .bot-modal__steps{background:rgba(217,165,43,.09);border:1px solid #d9bd8c;border-radius:0}
-body.theme-rug .bot-modal__step-num{border-radius:0;background:var(--teal);transform:rotate(45deg)}
+body.theme-rug .bot-modal__icon{width:44px;height:44px;border-radius:0;margin:12px auto 30px;transform:rotate(45deg);background:linear-gradient(135deg,#8a1f3d,#b02a50);box-shadow:0 0 0 5px var(--surface-2),0 0 0 7px #d9a52b,0 0 0 12px var(--surface-2),0 0 0 13px #8a1f3d}
+body.theme-rug .bot-modal__icon svg{transform:rotate(-45deg);width:20px;height:20px}
+body.theme-rug .bot-modal__title{display:flex;align-items:center;justify-content:center;gap:10px;font-size:1.05rem;font-weight:700}
+body.theme-rug .bot-modal__title::before,body.theme-rug .bot-modal__title::after{content:"";flex:1;min-width:14px;height:8px;background:linear-gradient(#d9a52b,#d9a52b) center/100% 2px no-repeat}
+body.theme-rug .bot-modal__steps{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:none;border:0;padding:0;margin:0 0 20px}
+body.theme-rug .bot-modal__step{position:relative;flex-direction:column;align-items:center;text-align:center;gap:8px;margin:0;font-size:.74rem;line-height:1.3}
+body.theme-rug .bot-modal__step-num{width:32px;height:32px;border-radius:0;background:var(--teal);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);font-size:.78rem}
+body.theme-rug .bot-modal__step:not(:last-child)::after{content:"";position:absolute;top:13px;left:calc(50% + 22px);width:calc(100% - 36px);height:6px;background:linear-gradient(45deg,#c9a45a 25%,transparent 25%) 0 0/8px 6px,linear-gradient(-45deg,#c9a45a 25%,transparent 25%) 0 0/8px 6px}
 body.theme-rug .bot-modal__cta{background:#8a1f3d;border-radius:0;text-transform:uppercase;letter-spacing:.06em;font-size:.82rem;box-shadow:0 8px 20px rgba(138,31,61,.35)}
 body.theme-rug .bot-modal__cta:hover{background:#6e1830}
 @media (min-width:641px){body.theme-rug .bot-modal__card{border-radius:0}}

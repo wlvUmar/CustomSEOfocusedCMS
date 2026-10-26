@@ -94,6 +94,8 @@ class AuditLog {
     }
 
     private static function detectSource(): string {
+        // set by SeoApiController for token-authenticated writes (no session user exists there)
+        if (!empty($GLOBALS['WRITE_ACTOR']['source'])) return substr((string)$GLOBALS['WRITE_ACTOR']['source'], 0, 20);
         if (PHP_SAPI === 'cli') return 'system';
         $aiClasses = ['PageTools', 'AiToolRegistry', 'AiStudioController', 'RotationTools', 'SiteTools', 'MemoryTools', 'AnalyticsTools', 'AnalyticsQueryTools', 'PageSectionEditor', 'PageRevisionTools'];
         foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 25) as $frame) {
@@ -124,7 +126,7 @@ class AuditLog {
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
                     $_SESSION['user_id'] ?? null,
-                    $_SESSION['username'] ?? null,
+                    $GLOBALS['WRITE_ACTOR']['name'] ?? $_SESSION['username'] ?? null,
                     self::detectSource(),
                     $action,
                     $entityType,

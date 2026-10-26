@@ -18,7 +18,8 @@ require BASE_PATH . '/models/SeoApiTokenStore.php';
 
 function usage(): void {
     fwrite(STDERR, "Usage:\n"
-        . "  php scripts/issue-seo-token.php issue --label=NAME [--scopes=pages,stats,gsc] [--days=30]\n"
+        . "  php scripts/issue-seo-token.php issue --label=NAME [--scopes=pages,stats,gsc[,write]] [--days=30]\n"
+        . "    (write is opt-in: add it explicitly; default scopes are read-only)\n"
         . "  php scripts/issue-seo-token.php list\n"
         . "  php scripts/issue-seo-token.php revoke --id=N\n");
     exit(2);

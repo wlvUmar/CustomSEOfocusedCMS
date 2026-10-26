@@ -116,14 +116,22 @@ body.theme-breeze .logo-mark{position:absolute;inset:0;background:linear-gradien
     -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
 @media (min-width:480px){body.theme-breeze .logo-wrap{width:52px;height:52px}}
 
-/* telegram bot popup */
-body.theme-breeze .bot-modal{background:rgba(11,53,88,.5)}
-body.theme-breeze .bot-modal__card{box-shadow:0 24px 60px rgba(27,120,194,.3)}
-body.theme-breeze .bot-modal__icon{border-radius:50%;background:linear-gradient(135deg,#1b78c2,#5ab4f0)}
-body.theme-breeze .bot-modal__title{font-weight:800}
-body.theme-breeze .bot-modal__steps{background:var(--teal-light);border-color:transparent;border-radius:18px}
-body.theme-breeze .bot-modal__step-num{background:var(--teal)}
-body.theme-breeze .bot-modal__cta{background:linear-gradient(135deg,#1b78c2,#0e4a80);border-radius:99px;box-shadow:0 10px 24px rgba(27,120,194,.35)}
-body.theme-breeze .bot-modal__cta:hover{background:linear-gradient(135deg,#2388d4,#115a9a)}
+/* telegram bot popup — own layout per theme */
+/* A/C: gradient airflow header band (icon + title), vertical timeline steps, pill button */
+body.theme-breeze .bot-modal{background:rgba(11,53,88,.52)}
+body.theme-breeze .bot-modal__card{max-width:400px;padding:0 0 18px;display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:14px;overflow:hidden;box-shadow:0 24px 60px rgba(27,120,194,.3)}
+body.theme-breeze .bot-modal__card::before{content:"";position:absolute;top:0;left:0;right:0;height:104px;background:radial-gradient(circle at 88% 15%,rgba(255,255,255,.4),transparent 42%),radial-gradient(circle at 10% 110%,rgba(255,255,255,.25),transparent 45%),linear-gradient(135deg,#1b78c2,#5ab4f0)}
+body.theme-breeze .bot-modal__close{background:rgba(255,255,255,.28);color:#fff;z-index:2}
+body.theme-breeze .bot-modal__icon{position:relative;z-index:1;grid-column:1;margin:26px 0 26px 22px;border-radius:50%;background:#fff;color:#1b78c2;box-shadow:0 8px 20px rgba(11,53,88,.25)}
+body.theme-breeze .bot-modal__title{position:relative;z-index:1;grid-column:2;margin:26px 52px 26px 0;text-align:left;color:#fff;font-size:1.05rem;font-weight:800}
+body.theme-breeze .bot-modal__desc,body.theme-breeze .bot-modal__steps,body.theme-breeze .bot-modal__cta,body.theme-breeze .bot-modal__dismiss,body.theme-breeze .bot-modal__note{grid-column:1/-1}
+body.theme-breeze .bot-modal__desc{margin:20px 22px 14px;text-align:left}
+body.theme-breeze .bot-modal__steps{background:none;border:0;padding:0;margin:0 22px 14px}
+body.theme-breeze .bot-modal__step{position:relative;margin:0;padding-bottom:16px;align-items:center;gap:14px;font-size:.88rem;color:var(--ink-soft)}
+body.theme-breeze .bot-modal__step:last-child{padding-bottom:0}
+body.theme-breeze .bot-modal__step:not(:last-child)::before{content:"";position:absolute;left:9px;top:22px;bottom:2px;width:2px;background:linear-gradient(var(--teal),var(--teal-light))}
+body.theme-breeze .bot-modal__step-num{position:relative;z-index:1;background:var(--teal);box-shadow:0 0 0 4px var(--teal-light)}
+body.theme-breeze .bot-modal__cta{width:auto;margin:0 22px;background:linear-gradient(135deg,#1b78c2,#0e4a80);border-radius:99px;box-shadow:0 10px 24px rgba(27,120,194,.35)}
+body.theme-breeze .bot-modal__dismiss{justify-self:center}
 @media (min-width:641px){body.theme-breeze .bot-modal__card{border-radius:28px}}
 @media (max-width:640px){body.theme-breeze .bot-modal__card{border-radius:28px 28px 0 0}}

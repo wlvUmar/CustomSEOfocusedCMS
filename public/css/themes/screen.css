@@ -159,15 +159,21 @@ body.theme-screen .content-body [style*="color: #3"],body.theme-screen .content-
 body.theme-screen .content-body [style*="color: #4"],body.theme-screen .content-body [style*="color:#4"],
 body.theme-screen .content-body [style*="color: #5"],body.theme-screen .content-body [style*="color:#5"]{color:var(--ink-soft)!important}
 
-/* telegram bot popup */
-body.theme-screen .bot-modal{background:rgba(4,6,16,.78)}
-body.theme-screen .bot-modal__card{background:#101830;border:1px solid var(--border);box-shadow:0 0 0 1px rgba(56,200,240,.12),0 24px 70px rgba(124,92,255,.35)}
-body.theme-screen .bot-modal__close{background:rgba(255,255,255,.07);color:var(--ink-soft)}
-body.theme-screen .bot-modal__icon{border-radius:50%;background:linear-gradient(135deg,#7c5cff,#38c8f0);box-shadow:0 0 28px rgba(124,92,255,.55)}
-body.theme-screen .bot-modal__title{font-size:.98rem;font-weight:600}
-body.theme-screen .bot-modal__steps{background:rgba(255,255,255,.04)}
-body.theme-screen .bot-modal__step-num{background:linear-gradient(135deg,#7c5cff,#5b8cff)}
+/* telegram bot popup — own layout per theme */
+/* cinema: letterboxed film frame, steps as three film-strip chapters */
+body.theme-screen .bot-modal{background:rgba(4,6,16,.82)}
+body.theme-screen .bot-modal__card{max-width:500px;background:#0b1126;border:1px solid var(--border);padding:58px 20px 46px;box-shadow:0 0 0 1px rgba(56,200,240,.12),0 24px 80px rgba(124,92,255,.4)}
+body.theme-screen .bot-modal__card::before,body.theme-screen .bot-modal__card::after{content:"";position:absolute;left:0;right:0;background:#000 repeating-linear-gradient(90deg,transparent 0 6px,rgba(255,255,255,.22) 6px 13px,transparent 13px 19px) 0 50%/auto 8px no-repeat}
+body.theme-screen .bot-modal__card::before{top:0;height:32px}
+body.theme-screen .bot-modal__card::after{bottom:0;height:28px}
+body.theme-screen .bot-modal__close{top:38px;right:10px;background:rgba(255,255,255,.08);color:var(--ink-soft)}
+body.theme-screen .bot-modal__icon{border-radius:50%;width:56px;height:56px;background:linear-gradient(135deg,#7c5cff,#38c8f0);box-shadow:0 0 30px rgba(124,92,255,.6)}
+body.theme-screen .bot-modal__title{font-size:.98rem;font-weight:600;letter-spacing:-.01em}
+body.theme-screen .bot-modal__steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:none;border:0;padding:0}
+body.theme-screen .bot-modal__step{flex-direction:column;align-items:center;text-align:center;gap:6px;margin:0;padding:12px 6px;font-size:.74rem;line-height:1.3;color:var(--ink-soft);background:linear-gradient(180deg,#0e1530,#0a1022);border:1px solid var(--border);border-top:3px solid #000;border-radius:0 0 8px 8px}
+body.theme-screen .bot-modal__step-num{width:auto;height:auto;background:none;color:var(--teal);font:600 1.15rem/1 var(--font-head)}
+body.theme-screen .bot-modal__step-num::before{content:"0"}
 body.theme-screen .bot-modal__cta{background:linear-gradient(135deg,#7c5cff,#5b8cff);border-radius:999px;box-shadow:0 8px 26px rgba(124,92,255,.5)}
-body.theme-screen .bot-modal__cta:hover{background:linear-gradient(135deg,#8d70ff,#6c9aff)}
-@media (min-width:641px){body.theme-screen .bot-modal__card{border-radius:16px}}
-@media (max-width:640px){body.theme-screen .bot-modal__card{border-radius:16px 16px 0 0}}
+body.theme-screen .bot-modal__note{color:var(--muted)}
+@media (min-width:641px){body.theme-screen .bot-modal__card{border-radius:14px}}
+@media (max-width:640px){body.theme-screen .bot-modal__card{border-radius:14px 14px 0 0}}

@@ -6,7 +6,8 @@
 require_once BASE_PATH . '/core/Database.php';
 
 class SeoApiTokenStore {
-    public const ALLOWED_SCOPES = ['pages', 'stats', 'gsc'];
+    // 'write' = may edit SEO metadata via POST /api/seo/v1/page/{slug}/fields. Never part of a default token.
+    public const ALLOWED_SCOPES = ['pages', 'stats', 'gsc', 'write'];
     public const DEFAULT_DAYS = 30;
     public const MAX_DAYS = 365;
 
