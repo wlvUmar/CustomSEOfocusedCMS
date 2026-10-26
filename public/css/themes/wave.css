@@ -141,3 +141,15 @@ body.theme-wave .logo-mark{position:absolute;inset:0;background:linear-gradient(
 body.theme-wave .hero:not(:has(.hero__art)) .hero__content{align-self:end}
 
 body.theme-wave .hero:not(:has(.hero__art)) .hero__content{padding-bottom:clamp(70px,9vw,100px)}
+
+/* telegram bot popup */
+body.theme-wave .bot-modal{background:rgba(3,45,60,.6)}
+body.theme-wave .bot-modal__card{box-shadow:0 24px 60px rgba(8,127,149,.3)}
+body.theme-wave .bot-modal__icon{border-radius:50%;background:linear-gradient(135deg,#27b0c8,#087f95)}
+body.theme-wave .bot-modal__title{font-weight:800}
+body.theme-wave .bot-modal__steps{background:var(--teal-light);border-color:transparent;border-radius:20px 20px 20px 6px}
+body.theme-wave .bot-modal__step-num{background:linear-gradient(135deg,#27b0c8,#087f95)}
+body.theme-wave .bot-modal__cta{background:linear-gradient(135deg,#27b0c8,#087f95);border-radius:99px;box-shadow:0 10px 24px rgba(8,127,149,.35)}
+body.theme-wave .bot-modal__cta:hover{background:linear-gradient(135deg,#34c1d9,#0a91a9)}
+@media (min-width:641px){body.theme-wave .bot-modal__card{border-radius:28px}}
+@media (max-width:640px){body.theme-wave .bot-modal__card{border-radius:28px 28px 0 0}}

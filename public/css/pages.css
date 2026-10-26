@@ -1051,7 +1051,7 @@ body:not(.theme-screen):not(.theme-flame) .content-body .c-btn--ghost:not(.c-cta
 }
 
 .bot-modal__card {
-    background: #fff;
+    background: var(--surface-2, #fff); /* was #fff — unreadable on dark themes */
     border-radius: 18px;
     padding: 24px 20px 18px;
     max-width: 360px;
@@ -1130,6 +1130,7 @@ body:not(.theme-screen):not(.theme-flame) .content-body .c-btn--ghost:not(.c-cta
 .bot-modal__icon svg { width: 28px; height: 28px; }
 
 .bot-modal__title {
+    font-family: var(--font-head, inherit);
     font-size: 1.05rem;
     font-weight: 800;
     margin: 0 0 8px;

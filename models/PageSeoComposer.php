@@ -373,12 +373,14 @@ class PageSeoComposer {
         $text = preg_replace('/\s{2,}/', ' ', $text);
 
         if ($lang === 'ru') {
-            if (preg_match('/(?:продать|скупка|выкуп)\\s+([а-яёa-z0-9\\s\\-]{2,60})/ui', $text, $m)) {
-                $appliance = trim($m[1]);
+            if (preg_match('/(продать|скупка|выкуп)\\s+([а-яёa-z0-9\\s\\-]{2,60})/ui', $text, $m)) {
+                // keep the original verb: "Скупка телевизоров" is grammatical, "Продать телевизоров" is not
+                $verb = mb_strtolower($m[1]);
+                $appliance = trim($m[2]);
                 $appliance = preg_replace('/\\s+(в\\s+ташкенте|в\\s+узбекистане|быстро|срочно|недорого|дорого).*$/ui', '', $appliance);
                 $appliance = preg_split('/\\s*[\\|\\-—:]+\\s*/u', $appliance)[0] ?? $appliance;
                 $appliance = trim($appliance);
-                if ($appliance !== '') return 'Продать ' . $appliance;
+                if ($appliance !== '') return mb_strtoupper(mb_substr($verb, 0, 1)) . mb_substr($verb, 1) . ' ' . $appliance;
             }
         }
 

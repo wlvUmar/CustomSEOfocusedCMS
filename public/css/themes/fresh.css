@@ -110,3 +110,15 @@ body.theme-fresh .logo-mark{position:absolute;inset:0;background:linear-gradient
 @media (min-width:480px){body.theme-fresh .logo-wrap{width:52px;height:52px}}
 /* hero photo (no illustration): keep text at the bottom */
 body.theme-fresh .hero:not(:has(.hero__art)) .hero__content{align-self:end}
+
+/* telegram bot popup */
+body.theme-fresh .bot-modal{background:rgba(8,32,86,.55)}
+body.theme-fresh .bot-modal__card{box-shadow:0 24px 60px rgba(15,58,145,.32)}
+body.theme-fresh .bot-modal__icon{border-radius:16px;background:linear-gradient(135deg,#1f5fd8,#0f3a91)}
+body.theme-fresh .bot-modal__title{font-weight:700}
+body.theme-fresh .bot-modal__steps{background:var(--teal-light);border-color:transparent;border-radius:16px}
+body.theme-fresh .bot-modal__step-num{background:var(--orange);border-radius:8px}
+body.theme-fresh .bot-modal__cta{background:linear-gradient(135deg,#1f5fd8,#0f3a91);border-radius:16px;box-shadow:0 10px 24px rgba(15,58,145,.3)}
+body.theme-fresh .bot-modal__cta:hover{background:linear-gradient(135deg,#2c6fec,#1546a8)}
+@media (min-width:641px){body.theme-fresh .bot-modal__card{border-radius:24px}}
+@media (max-width:640px){body.theme-fresh .bot-modal__card{border-radius:24px 24px 0 0}}

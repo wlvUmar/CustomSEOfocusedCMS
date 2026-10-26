@@ -126,3 +126,17 @@ body.theme-rug .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:0
 body.theme-rug .logo-mark{position:absolute;inset:0;background:linear-gradient(180deg,#f6d98a,#d9a52b);
     -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
 @media (min-width:480px){body.theme-rug .logo-wrap{width:52px;height:52px}}
+
+/* telegram bot popup */
+body.theme-rug .bot-modal{background:rgba(42,7,18,.68)}
+body.theme-rug .bot-modal__card{background:var(--surface-2);border:3px double #c9a45a;outline:1px solid rgba(138,31,61,.28);outline-offset:-9px;box-shadow:0 24px 60px rgba(63,11,27,.4)}
+body.theme-rug .bot-modal__close{background:var(--teal-light);color:var(--teal);border-radius:0}
+body.theme-rug .bot-modal__icon{border-radius:0;width:56px;height:56px;background:linear-gradient(135deg,#8a1f3d,#b02a50);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+body.theme-rug .bot-modal__icon svg{width:22px;height:22px}
+body.theme-rug .bot-modal__title{font-weight:700}
+body.theme-rug .bot-modal__steps{background:rgba(217,165,43,.09);border:1px solid #d9bd8c;border-radius:0}
+body.theme-rug .bot-modal__step-num{border-radius:0;background:var(--teal);transform:rotate(45deg)}
+body.theme-rug .bot-modal__cta{background:#8a1f3d;border-radius:0;text-transform:uppercase;letter-spacing:.06em;font-size:.82rem;box-shadow:0 8px 20px rgba(138,31,61,.35)}
+body.theme-rug .bot-modal__cta:hover{background:#6e1830}
+@media (min-width:641px){body.theme-rug .bot-modal__card{border-radius:0}}
+@media (max-width:640px){body.theme-rug .bot-modal__card{border-radius:0 0 0 0}}

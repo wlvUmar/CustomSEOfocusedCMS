@@ -115,3 +115,16 @@ body.theme-wood .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:
 body.theme-wood .logo-mark{position:absolute;inset:0;background:linear-gradient(180deg,#f0cf9a,#c58f4c);
     -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
 @media (min-width:480px){body.theme-wood .logo-wrap{width:52px;height:52px}}
+
+/* telegram bot popup */
+body.theme-wood .bot-modal{background:rgba(43,29,18,.62)}
+body.theme-wood .bot-modal__card{background:var(--surface-2);border-top:5px solid #b8854a;box-shadow:0 24px 60px rgba(60,35,15,.35)}
+body.theme-wood .bot-modal__close{background:var(--teal-light);color:var(--ink-soft)}
+body.theme-wood .bot-modal__icon{border-radius:3px;background:linear-gradient(180deg,#b8854a,#7b4a28)}
+body.theme-wood .bot-modal__title{font-weight:700;font-size:1.2rem}
+body.theme-wood .bot-modal__steps{background:var(--orange-light);border-color:#ecd3ab;border-radius:3px}
+body.theme-wood .bot-modal__step-num{background:#a65f1e;border-radius:3px}
+body.theme-wood .bot-modal__cta{background:#a65f1e;border-radius:3px;box-shadow:0 8px 20px rgba(166,95,30,.35)}
+body.theme-wood .bot-modal__cta:hover{background:#874a12}
+@media (min-width:641px){body.theme-wood .bot-modal__card{border-radius:6px}}
+@media (max-width:640px){body.theme-wood .bot-modal__card{border-radius:6px 6px 0 0}}

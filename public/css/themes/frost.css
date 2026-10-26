@@ -116,3 +116,16 @@ body.theme-frost .logo-mark{position:absolute;inset:0;background:linear-gradient
 @media (min-width:480px){body.theme-frost .logo-wrap{width:52px;height:52px}}
 /* hero photo (no illustration): keep text at the bottom */
 body.theme-frost .hero:not(:has(.hero__art)) .hero__content{align-self:end}
+
+/* telegram bot popup */
+body.theme-frost .bot-modal{background:rgba(6,24,43,.66)}
+body.theme-frost .bot-modal__card{background:linear-gradient(180deg,#fff,#e8f5fb);border:2px solid #b9d6e6;box-shadow:0 8px 0 -2px #cfe3ee,0 24px 50px rgba(11,37,64,.3);overflow:visible}
+body.theme-frost .bot-modal__card::before{content:"";position:absolute;top:-2px;left:50%;transform:translateX(-50%);width:84px;height:6px;border-radius:0 0 6px 6px;background:linear-gradient(180deg,#7fa9c2,#c5dce9)}
+body.theme-frost .bot-modal__icon{border-radius:4px;background:linear-gradient(145deg,#2a6a9e,#0b2540)}
+body.theme-frost .bot-modal__title{font-weight:700}
+body.theme-frost .bot-modal__steps{background:#fff;border:1px solid #b9d6e6;border-radius:4px}
+body.theme-frost .bot-modal__step-num{background:var(--orange);color:#04202f}
+body.theme-frost .bot-modal__cta{background:var(--teal-dark);border-radius:4px}
+body.theme-frost .bot-modal__cta:hover{background:var(--teal)}
+@media (min-width:641px){body.theme-frost .bot-modal__card{border-radius:8px}}
+@media (max-width:640px){body.theme-frost .bot-modal__card{border-radius:8px 8px 0 0}}

@@ -143,3 +143,16 @@ body.theme-flame .content-body [style*="color: #2"],body.theme-flame .content-bo
 body.theme-flame .content-body [style*="color: #3"],body.theme-flame .content-body [style*="color:#3"],
 body.theme-flame .content-body [style*="color: #4"],body.theme-flame .content-body [style*="color:#4"],
 body.theme-flame .content-body [style*="color: #5"],body.theme-flame .content-body [style*="color:#5"]{color:var(--ink-soft)!important}
+
+/* telegram bot popup */
+body.theme-flame .bot-modal{background:rgba(8,5,3,.8)}
+body.theme-flame .bot-modal__card{background:#1c1815;border:1px solid var(--border);border-top:3px solid var(--orange);box-shadow:0 0 40px rgba(214,58,20,.25),0 24px 60px rgba(0,0,0,.6)}
+body.theme-flame .bot-modal__close{background:#2a231e;color:var(--ink-soft)}
+body.theme-flame .bot-modal__icon{border-radius:3px;background:linear-gradient(135deg,#ff8a3d,#d63a14)}
+body.theme-flame .bot-modal__title{text-transform:uppercase;letter-spacing:.05em;font-weight:500}
+body.theme-flame .bot-modal__steps{background:#110e0c;border-radius:3px}
+body.theme-flame .bot-modal__step-num{border-radius:3px;background:var(--teal);color:#1a0f08}
+body.theme-flame .bot-modal__cta{background:var(--orange);border-radius:3px;text-transform:uppercase;letter-spacing:.06em}
+body.theme-flame .bot-modal__cta:hover{background:var(--orange-dark)}
+@media (min-width:641px){body.theme-flame .bot-modal__card{border-radius:4px}}
+@media (max-width:640px){body.theme-flame .bot-modal__card{border-radius:4px 4px 0 0}}

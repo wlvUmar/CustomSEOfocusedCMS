@@ -9,6 +9,11 @@ class ServiceBuilder {
     public static function buildFromPage($page, $lang, $baseUrl, $seo, $pageUrl, $parentService = null) {
         $title = $page["title_$lang"] ?? '';
         $description = $page["meta_description_$lang"] ?? '';
+        // resolve {{phone}} etc. like WebPage does — otherwise the Service description ends with "— ."
+        if (function_exists('replacePlaceholders')) {
+            $title = replacePlaceholders($title, $page, $seo);
+            $description = replacePlaceholders($description, $page, $seo);
+        }
 
         // Smarter serviceType logic
         $serviceType = $seo['service_type'] ?? 'Service';

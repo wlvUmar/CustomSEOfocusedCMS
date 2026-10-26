@@ -158,3 +158,16 @@ body.theme-screen .content-body [style*="color: #2"],body.theme-screen .content-
 body.theme-screen .content-body [style*="color: #3"],body.theme-screen .content-body [style*="color:#3"],
 body.theme-screen .content-body [style*="color: #4"],body.theme-screen .content-body [style*="color:#4"],
 body.theme-screen .content-body [style*="color: #5"],body.theme-screen .content-body [style*="color:#5"]{color:var(--ink-soft)!important}
+
+/* telegram bot popup */
+body.theme-screen .bot-modal{background:rgba(4,6,16,.78)}
+body.theme-screen .bot-modal__card{background:#101830;border:1px solid var(--border);box-shadow:0 0 0 1px rgba(56,200,240,.12),0 24px 70px rgba(124,92,255,.35)}
+body.theme-screen .bot-modal__close{background:rgba(255,255,255,.07);color:var(--ink-soft)}
+body.theme-screen .bot-modal__icon{border-radius:50%;background:linear-gradient(135deg,#7c5cff,#38c8f0);box-shadow:0 0 28px rgba(124,92,255,.55)}
+body.theme-screen .bot-modal__title{font-size:.98rem;font-weight:600}
+body.theme-screen .bot-modal__steps{background:rgba(255,255,255,.04)}
+body.theme-screen .bot-modal__step-num{background:linear-gradient(135deg,#7c5cff,#5b8cff)}
+body.theme-screen .bot-modal__cta{background:linear-gradient(135deg,#7c5cff,#5b8cff);border-radius:999px;box-shadow:0 8px 26px rgba(124,92,255,.5)}
+body.theme-screen .bot-modal__cta:hover{background:linear-gradient(135deg,#8d70ff,#6c9aff)}
+@media (min-width:641px){body.theme-screen .bot-modal__card{border-radius:16px}}
+@media (max-width:640px){body.theme-screen .bot-modal__card{border-radius:16px 16px 0 0}}
