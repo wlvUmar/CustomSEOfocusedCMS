@@ -98,10 +98,7 @@ body.theme-frost .faq-acc-item.is-open{border-color:var(--orange);box-shadow:0 8
 body.theme-frost .faq-acc-item__icon{border-radius:3px}
 
 /* links: frosted labels */
-body.theme-frost .links-carousel{padding:0;margin:0}
-body.theme-frost .links-nav{display:none!important}
-body.theme-frost .links-track{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));overflow:visible;gap:14px}
-body.theme-frost .links-tile{width:auto;height:170px;border-radius:4px;background:linear-gradient(145deg,#2a6a9e,#0b2540)}
+body.theme-frost .links-tile{height:170px;border-radius:4px;background:linear-gradient(145deg,#2a6a9e,#0b2540)}
 body.theme-frost .links-tile__scrim{display:none}
 body.theme-frost .links-tile__content{background:rgba(255,255,255,.2);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid rgba(255,255,255,.5);padding:12px 14px}
 body.theme-frost .links-tile__text{font-family:var(--font-head);font-weight:600;font-size:.98rem}

@@ -125,7 +125,8 @@ document.addEventListener('click', function(e) {
         entries.forEach(e => {
             if (e.isIntersecting) { e.target.classList.add('is-visible'); autoObs.unobserve(e.target); }
         });
-    }, { threshold: 0.12 });
+    // threshold 0 + bottom margin: a single very tall section (whole page body) can never reach a 12% ratio on phones
+    }, { threshold: 0, rootMargin: '0px 0px -8% 0px' });
     const scheduleAuto = (cb) => (window.requestIdleCallback ? requestIdleCallback(cb, {timeout: 300}) : requestAnimationFrame(() => setTimeout(cb, 0)));
     scheduleAuto(() => {
         autoItems.forEach((el, i) => {

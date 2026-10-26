@@ -101,10 +101,7 @@ body.theme-flame .faq-acc-item__icon{border-radius:3px;background:var(--teal-lig
 body.theme-flame .faq-acc-item.is-open .faq-acc-item__icon{background:var(--orange);color:#fff}
 
 /* links: bar rows */
-body.theme-flame .links-carousel{padding:0;margin:0}
-body.theme-flame .links-nav{display:none!important}
-body.theme-flame .links-track{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));overflow:visible;gap:10px}
-body.theme-flame .links-tile{width:auto;height:78px;border-radius:3px;background:linear-gradient(90deg,#3a1408,#1a0f08);border:1px solid var(--border);border-left:4px solid var(--orange)}
+body.theme-flame .links-tile{width:280px;height:96px;border-radius:3px;background:linear-gradient(90deg,#3a1408,#1a0f08);border:1px solid var(--border);border-left:4px solid var(--orange)}
 body.theme-flame .links-tile__img,body.theme-flame .links-tile__monogram,body.theme-flame .links-tile__scrim{display:none}
 body.theme-flame .links-tile__content{align-items:center;top:0;padding:0 18px}
 body.theme-flame .links-tile__text{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.06em;font-weight:500;font-size:1.05rem}

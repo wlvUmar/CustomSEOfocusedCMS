@@ -96,10 +96,7 @@ body.theme-wood .faq-acc-item__a-inner{border-top:0;padding:0 4px 24px}
 body.theme-wood .faq-acc-item.is-open{box-shadow:none}
 
 /* ── LINKS: catalogue cards ──────────────────────────────────────────────── */
-body.theme-wood .links-carousel{padding:0;margin:0}
-body.theme-wood .links-nav{display:none!important}
-body.theme-wood .links-track{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));overflow:visible;gap:26px 22px}
-body.theme-wood .links-tile{width:auto;height:auto;border-radius:3px;background:var(--surface-2);color:var(--ink);box-shadow:0 10px 26px rgba(60,35,15,.1);display:flex;flex-direction:column}
+body.theme-wood .links-tile{height:auto;border-radius:3px;background:var(--surface-2);color:var(--ink);box-shadow:0 10px 26px rgba(60,35,15,.1);display:flex;flex-direction:column}
 body.theme-wood .links-tile__img{position:relative;height:170px}
 body.theme-wood .links-tile--no-image .links-tile__monogram{position:relative;inset:auto;height:170px;font-family:var(--font-head);font-size:4rem;color:rgba(255,243,220,.35);background:linear-gradient(135deg,#8a5630,#4a2a16)}
 body.theme-wood .links-tile__scrim{display:none}

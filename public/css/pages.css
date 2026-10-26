@@ -563,16 +563,23 @@ main{
     line-height: 1.7;
 }
 
-.content-section a {
+.content-section a:not(.c-btn) {
     color: var(--teal);
     text-decoration: none;
     border-bottom: 1px solid rgba(15,95,111,.3);
     transition: border-color .2s, color .2s;
 }
 
-.content-section a:hover {
+.content-section a:not(.c-btn):hover {
     color: var(--teal-dark);
     border-color: var(--teal-dark);
+}
+
+/* .c-btn--ghost is white-on-translucent (made for dark blocks); on light themes outside a gradient CTA it vanishes */
+body:not(.theme-screen):not(.theme-flame) .content-body .c-btn--ghost:not(.c-cta-gradient .c-btn--ghost) {
+    background: transparent;
+    color: var(--teal);
+    border: 1.5px solid var(--teal);
 }
 
 
@@ -1873,14 +1880,14 @@ footer::before{
 }
 
 .footer-section p {
-    color: #9ca3af;
+    color: inherit; /* follows the footer's own (theme) colour — fixed grey was dim on coloured themes */
     font-size: .9rem;
     line-height: 1.65;
     margin-bottom: 10px;
 }
 
 footer a {
-    color: #9ca3af;
+    color: inherit;
     text-decoration: none;
     transition: color .2s;
 }
@@ -1892,7 +1899,7 @@ footer a:hover { color: #f9fafb; }
     align-items: flex-start;
     gap: 10px;
     margin-bottom: 12px;
-    color: #9ca3af;
+    color: inherit;
     font-size: .9rem;
 }
 
