@@ -45,6 +45,7 @@ class PageTools {
             case 'auto_sectionize':
             case 'set_custom_css':
             case 'set_page_theme':
+            case 'set_page_style':
             case 'batch_update':
                 return PageSectionEditor::handle($name, $args);
             case 'list_page_revisions':

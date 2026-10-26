@@ -238,6 +238,24 @@ class PageSectionEditor {
             [
                 'type' => 'function',
                 'function' => [
+                    'name' => 'set_page_style',
+                    'description' => 'Set the page\'s LAYOUT THEME (pages.theme) — a full redesign of hero, cards, steps, FAQ, links, fonts and colours, picked per product family. Different from set_page_theme (which only overrides colour tokens). Themes: default (current teal look), screen (TVs/electronics, dark cinema), frost (fridges/freezers), wave (washing machines), flame (gas stoves/ovens), breeze (air conditioners), rug (carpets), wood (furniture), fresh (other home appliances). Does not change any page text. Use list_pages/get_page first; do not guess the page. Changing it alters how the whole page looks, so only do it when the user asks.',
+                    'parameters' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'page_id' => ['type' => 'integer', 'description' => 'Numeric page id.'],
+                            'slug' => ['type' => 'string', 'description' => 'Page slug (alternative to page_id).'],
+                            'theme' => ['type' => 'string', 'enum' => PageTheme::keys(), 'description' => 'Layout theme key. default restores the standard look.'],
+                        ],
+                        'required' => ['theme'],
+                        'oneOf' => [['required'=>['page_id']],[ 'required'=>['slug']]],
+                    ],
+                ],
+            ],
+
+            [
+                'type' => 'function',
+                'function' => [
                     'name' => 'batch_update',
                     'description' => 'Apply up to 10 targeted edits to one page atomically in one turn (saves turns). Each op is patch_section/str_replace_field/set_field/update_section/set_section_style/wrap_section/add_section_marker. Each op with replace/html/value >800 chars individually requires approval before batch executes — keep ops small. Use set_field when target field is empty (str_replace_field requires non-empty find). Use GSC terms naturally once; no keyword stuffing. Prefer over sequential calls.',
                     'parameters' => [
@@ -302,6 +320,8 @@ class PageSectionEditor {
                 return self::setCustomCss($args);
             case 'set_page_theme':
                 return self::setPageTheme($args);
+            case 'set_page_style':
+                return self::setPageStyle($args);
             case 'batch_update':
                 return self::batchUpdate($args);
         }
@@ -1249,6 +1269,21 @@ class PageSectionEditor {
         $freshVal = (string)($fresh['custom_css'] ?? '');
         $expected = $css ?? '';
         return ['ok'=>true,'verified'=> $freshVal === ($expected ?? ''),'fresh_hash'=>substr(md5($freshVal),0,8),'page_id'=>$pageId,'slug'=>$fresh['slug'],'custom_css'=> $fresh['custom_css'] ?? null,'mode'=>$mode,'chars'=> mb_strlen($freshVal)];
+    }
+
+    private static function setPageStyle(array $args): array {
+        $pageId = self::resolveGeneralPageId($args);
+        $theme = strtolower(trim((string)($args['theme'] ?? '')));
+        if (!PageTheme::isValid($theme)) {
+            throw new InvalidArgumentException('Unknown theme "' . $theme . '" — allowed: ' . implode(', ', PageTheme::keys()));
+        }
+        $model = new Page();
+        $page = $model->getById($pageId);
+        if (!$page) throw new InvalidArgumentException("Page not found: ID $pageId");
+        $model->update($pageId, ['theme' => $theme]);
+        $fresh = $model->getById($pageId);
+        $freshVal = (string)($fresh['theme'] ?? '');
+        return ['ok'=>true,'verified'=> $freshVal === $theme,'fresh_hash'=>substr(md5($freshVal),0,8),'page_id'=>$pageId,'slug'=>$fresh['slug'] ?? ($page['slug'] ?? ''),'theme'=>$freshVal,'previous_theme'=>(string)($page['theme'] ?? 'default')];
     }
 
     private static function setPageTheme(array $args): array {

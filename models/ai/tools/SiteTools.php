@@ -216,7 +216,7 @@ class SiteTools {
 
         // Lean default: categories always (cheap ~220 tokens). Full 80 class list only on include_components=true
         $includeComponents = !empty($args['include_components']);
-        $perPageNote = 'Per-page: pages.custom_css (AFTER pages+components) as <style id="page-custom-css"> — empty=inherits defaults. Scope body.page-{slug} header/footer or :root vars. Tools: set_custom_css/set_page_theme.';
+        $perPageNote = 'Per-page: pages.custom_css (AFTER pages+components) as <style id="page-custom-css"> — empty=inherits defaults. Scope body.page-{slug} header/footer or :root vars. Tools: set_custom_css/set_page_theme (colour tokens only). Whole-page LAYOUT themes (pages.theme: default/screen/frost/wave/flame/breeze/rug/wood/fresh) are set with set_page_style — read_skill page-themes first.';
         $base = [
             'note' => 'Tokens from pages.css + 178 .c-* plugin library (components.css). Prefer var(--teal). ' . $perPageNote,
             'tokens' => $summary,

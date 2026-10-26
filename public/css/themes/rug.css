@@ -1,0 +1,121 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME: rug — carpets.  LAYOUT CONCEPT: "the carpet itself", symmetric & centred.
+   · hero  = a framed rug: border bands, nested-diamond medallion, centred title
+   · heads = every H2 centred between two ornamental rules
+   · cards = ONE woven ribbon: four joined panels with a big diamond each
+   · steps = a chain of diamonds along an ornamented band
+   · FAQ   = narrow centred column, roman numerals
+   · links = tall portrait swatches with fringe
+   Needs hero partial variant: hero-rug (adds .hero__art with <svg> medallion).
+   ═══════════════════════════════════════════════════════════════════════════ */
+body.theme-rug {
+    --ink:#2a1418; --ink-soft:#523239; --muted:#7a5a60;
+    --surface:#f9f1e4; --surface-2:#fffaf1; --border:#e6d3b5; --border-soft:#f0e3cc;
+    --teal:#8a1f3d; --teal-dark:#3f0b1b; --teal-light:#f8e6ea; --teal-glow:rgba(138,31,61,.2);
+    --orange:#b87a08; --orange-dark:#946106; --orange-light:#fbf0d4; --orange-glow:rgba(184,122,8,.22);
+    --font-head:"Playfair Display","Lora",Georgia,serif;
+    --font-body:"Onest",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    font-family:var(--font-body); background:var(--surface);
+}
+html:has(body.theme-rug){background:#f9f1e4}
+body.theme-rug::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.7;
+    background:repeating-linear-gradient(0deg,rgba(138,31,61,.035) 0 1px,transparent 1px 4px),repeating-linear-gradient(90deg,rgba(138,31,61,.03) 0 1px,transparent 1px 4px)}
+body.theme-rug .hero__title,body.theme-rug .content-section h2,body.theme-rug .links-section__title,
+body.theme-rug .faq-section__title,body.theme-rug .info-card h3,body.theme-rug .process-step h3,body.theme-rug .site-name{font-family:var(--font-head)}
+
+/* centred headings between ornamental rules */
+body.theme-rug .content-section h2,body.theme-rug .links-section__title,body.theme-rug .faq-section__title{text-align:center;font-weight:700;border:0;padding:0;display:flex;align-items:center;gap:18px;justify-content:center}
+body.theme-rug .content-section h2::before,body.theme-rug .content-section h2::after,
+body.theme-rug .links-section__title::before,body.theme-rug .links-section__title::after,
+body.theme-rug .faq-section__title::before,body.theme-rug .faq-section__title::after{content:"";position:static;flex:1;min-width:40px;height:10px;border-radius:0;
+    background:linear-gradient(var(--orange),var(--orange)) center/100% 2px no-repeat,linear-gradient(45deg,var(--orange) 25%,transparent 25%) 0 0/10px 10px,linear-gradient(-45deg,var(--orange) 25%,transparent 25%) 0 0/10px 10px;
+    -webkit-mask:linear-gradient(90deg,transparent,#000 30%);mask:linear-gradient(90deg,transparent,#000 30%)}
+body.theme-rug .content-section h2::after,body.theme-rug .links-section__title::after,body.theme-rug .faq-section__title::after{-webkit-mask:linear-gradient(270deg,transparent,#000 30%);mask:linear-gradient(270deg,transparent,#000 30%)}body.theme-rug .content-section>p,body.theme-rug .links-section__head,body.theme-rug .faq-section>.section-label{text-align:center}
+body.theme-rug .faq-section>.section-label{display:table;margin:0 auto 12px}
+body.theme-rug .links-section__head{display:flex;flex-direction:column;align-items:center}
+body.theme-rug .content-section>p{max-width:720px;margin:14px auto 0}
+
+body.theme-rug header{background:linear-gradient(180deg,#5a1226,#3f0b1b);border-bottom:3px solid #d9a52b;box-shadow:0 6px 22px rgba(63,11,27,.35)}
+body.theme-rug header::after{height:6px;bottom:-9px;opacity:.9;background:linear-gradient(45deg,#d9a52b 25%,transparent 25%) 0 0/12px 6px,linear-gradient(-45deg,#d9a52b 25%,transparent 25%) 0 0/12px 6px}
+body.theme-rug .nav-links a{color:#f1d9b8}
+body.theme-rug .nav-links a:hover{background:rgba(255,255,255,.1);color:#fff}
+body.theme-rug .lang-switch{background:rgba(0,0,0,.22);border-radius:2px}
+body.theme-rug .lang-switch a{border-radius:2px;color:#e3c79f}
+body.theme-rug .lang-switch a.active,body.theme-rug .lang-switch a:hover{background:#d9a52b;color:#3f0b1b!important}
+body.theme-rug .site-name{font-weight:700;color:#fbeed6}
+body.theme-rug .logo{border-radius:3px}
+
+/* ── HERO: the rug ───────────────────────────────────────────────────────── */
+body.theme-rug .hero{background:#4a0f20;align-items:center;justify-content:center;text-align:center;min-height:clamp(480px,62vw,620px);margin-bottom:clamp(30px,5vw,60px)}
+body.theme-rug .hero__bg--gradient{background:
+    repeating-linear-gradient(45deg,rgba(240,200,110,.18) 0 2px,transparent 2px 34px),repeating-linear-gradient(-45deg,rgba(240,200,110,.18) 0 2px,transparent 2px 34px),
+    radial-gradient(55% 80% at 50% 50%,rgba(217,165,43,.3),transparent 66%),linear-gradient(135deg,#7a1833 0%,#5a1226 55%,#3f0b1b 100%)}
+body.theme-rug .hero__bg--gradient::before{content:"";position:absolute;inset:14px;z-index:1;pointer-events:none;border:2px solid rgba(240,200,110,.8);outline:1px solid rgba(240,200,110,.45);outline-offset:-9px}
+body.theme-rug .hero__bg--gradient::after{content:"";position:absolute;inset:34px;z-index:1;pointer-events:none;border:6px double rgba(240,200,110,.3)}
+body.theme-rug .hero__art{position:absolute;inset:0;z-index:2;display:grid;place-items:center;pointer-events:none}
+body.theme-rug .hero__art svg{width:min(560px,80%);height:auto;opacity:.5}
+body.theme-rug .hero__title{text-shadow:0 2px 24px rgba(35,6,16,.9),0 0 8px rgba(35,6,16,.7)}
+body.theme-rug .hero__sub{text-shadow:0 1px 12px rgba(35,6,16,.9)}
+body.theme-rug .hero__overlay{background:radial-gradient(ellipse at center,rgba(35,6,16,.65) 0%,rgba(35,6,16,.2) 70%)}
+body.theme-rug .hero__content{max-width:760px;margin:0 auto;display:flex;flex-direction:column;align-items:center;padding:60px var(--px)}
+body.theme-rug .hero__title{font-weight:800;line-height:1.14;font-size:clamp(1.8rem,4.4vw,3rem)}
+body.theme-rug .hero__actions{justify-content:center}
+body.theme-rug .hero__cta{background:#e3ad32;color:#2a1418;border-radius:2px;box-shadow:0 8px 22px rgba(0,0,0,.4);text-transform:uppercase;letter-spacing:.06em;font-size:.82rem}
+body.theme-rug .hero__cta:hover{background:#f0be48}
+body.theme-rug .hero__cta--telegram{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(240,200,110,.6);box-shadow:none}
+body.theme-rug .section-label{background:transparent;color:var(--orange);padding:0;letter-spacing:.22em}
+
+/* ── CARDS: one woven ribbon ─────────────────────────────────────────────── */
+body.theme-rug .info-grid{display:grid;grid-template-columns:1fr;gap:0;border:3px double #c9a45a;background:var(--surface-2);box-shadow:0 14px 34px rgba(63,11,27,.1);margin-top:40px}
+@media (min-width:700px){body.theme-rug .info-grid{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1000px){body.theme-rug .info-grid{grid-template-columns:repeat(4,1fr)}}
+body.theme-rug .info-card{border:0;border-radius:0;background:none;text-align:center;padding:40px 22px 34px;outline:1px solid rgba(138,31,61,.28);outline-offset:-7px;box-shadow:none;overflow:visible}
+body.theme-rug .info-card:nth-child(even){background:rgba(217,165,43,.09)}
+body.theme-rug .info-card::before{display:none}
+body.theme-rug .info-card h3{display:block;font-weight:700;font-size:1.12rem}
+body.theme-rug .info-card h3::before{content:"";display:block;width:54px;height:54px;margin:0 auto 18px;border-radius:0;transform:rotate(45deg) scale(.72);-webkit-mask:none;mask:none;
+    background:linear-gradient(135deg,var(--teal),#b02a50);box-shadow:0 0 0 6px var(--surface-2),0 0 0 8px var(--orange),0 0 0 14px var(--surface-2),0 0 0 15px var(--teal)}
+body.theme-rug .info-card:nth-child(even) h3::before{background:linear-gradient(135deg,#2d2a6e,#4a46a3);box-shadow:0 0 0 6px #f6ecda,0 0 0 8px var(--orange),0 0 0 14px #f6ecda,0 0 0 15px #2d2a6e}
+body.theme-rug .info-card:hover{background:var(--orange-light);transform:none!important;box-shadow:none}
+
+/* ── STEPS: diamond chain ────────────────────────────────────────────────── */
+body.theme-rug .content-section:has(.process-step){display:grid;grid-template-columns:repeat(4,1fr);gap:0 14px;overflow:visible;position:relative;counter-reset:step}
+body.theme-rug .content-section:has(.process-step)>h2,body.theme-rug .content-section:has(.process-step)>p{grid-column:1/-1}
+body.theme-rug .content-section:has(.process-step)>.process-step{display:block;width:auto;padding:100px 10px 0;text-align:center;border:0;position:relative}
+body.theme-rug .process-step::before{all:unset;content:"";position:absolute;top:8px;left:50%;width:50px;height:50px;transform:translateX(-50%) rotate(45deg);display:block;box-sizing:border-box;
+    background:linear-gradient(135deg,var(--teal),#b02a50);border:3px solid #e3ad32;box-shadow:0 0 0 5px var(--surface),0 0 0 7px var(--orange);z-index:2}
+body.theme-rug .process-step::after{all:unset;content:counter(step);position:absolute;top:8px;left:50%;width:50px;height:50px;margin-left:-25px;display:grid;place-items:center;font-family:var(--font-head);font-weight:700;font-size:1.15rem;color:#fff;z-index:3}
+body.theme-rug .process-step h3::before{content:"";position:absolute;top:36px;left:calc(50% + 52px);width:calc(100% - 104px + 14px);height:6px;
+    background:linear-gradient(45deg,#c9a45a 25%,transparent 25%) 0 0/12px 6px,linear-gradient(-45deg,#c9a45a 25%,transparent 25%) 0 0/12px 6px}
+body.theme-rug .process-step:last-child h3::before{display:none}
+body.theme-rug .process-step h3{font-weight:700}
+@media (max-width:899px){body.theme-rug .content-section:has(.process-step){grid-template-columns:1fr 1fr;row-gap:36px}body.theme-rug .process-step h3::before{display:none}}
+@media (max-width:520px){body.theme-rug .content-section:has(.process-step){grid-template-columns:1fr}}
+
+
+body.theme-rug .brands-list{text-align:center}
+body.theme-rug .brands-chip{border-radius:2px;background:var(--surface-2);border:2px double #d9bd8c;font-family:var(--font-head);font-weight:700}
+body.theme-rug .brands-chip::before{border-radius:0;transform:rotate(45deg) scale(.8);background:linear-gradient(135deg,var(--teal),var(--orange));-webkit-mask:none;mask:none}
+
+/* ── FAQ: narrow centred, roman numerals ─────────────────────────────────── */
+body.theme-rug .faq-accordion{max-width:780px;margin:0 auto;counter-reset:q}
+body.theme-rug .faq-acc-item{border-radius:0;border:2px solid #d9bd8c;outline:1px solid rgba(138,31,61,.25);outline-offset:-6px;background:var(--surface-2);counter-increment:q}
+body.theme-rug .faq-acc-item__q-text::before{content:counter(q,upper-roman) ".  ";font-family:var(--font-head);color:var(--orange);font-weight:700}
+body.theme-rug .faq-acc-item__q-text{font-family:var(--font-head);font-weight:700}
+body.theme-rug .faq-acc-item__icon{border-radius:0;background:var(--orange-light);color:var(--orange);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);width:34px;height:34px}
+body.theme-rug .faq-acc-item.is-open{border-color:var(--teal)}
+body.theme-rug .faq-acc-item.is-open .faq-acc-item__icon{background:var(--teal);color:#fff}
+
+/* ── LINKS: portrait swatches with fringe ────────────────────────────────── */
+body.theme-rug .links-tile{width:190px;height:260px;border-radius:2px;background:linear-gradient(160deg,#7a1833,#3f0b1b);border:2px solid #d9a52b;margin-bottom:12px}
+body.theme-rug .links-tile::after{content:"";position:absolute;left:-2px;right:-2px;bottom:-14px;height:14px;background:repeating-linear-gradient(90deg,#d9a52b 0 2px,transparent 2px 6px)}
+body.theme-rug .links-tile__scrim{background:linear-gradient(to top,rgba(35,6,16,.9),rgba(35,6,16,.2) 60%,transparent)}
+body.theme-rug .links-tile__text{font-family:var(--font-head);font-weight:700;font-size:1rem}
+body.theme-rug .links-track{padding-bottom:26px}
+@media (min-width:720px){body.theme-rug .links-tile{width:210px;height:290px}}
+body.theme-rug .links-nav{border-radius:0}
+body.theme-rug .review-strip{background:var(--orange-light);border:2px double #c9a45a;border-radius:0;text-align:center;justify-content:center}
+body.theme-rug footer{background:linear-gradient(180deg,#4a0f20,#2a0712);border-top:4px double #d9a52b;color:#ecd5b4;text-align:center}
+body.theme-rug .footer-section h3{border-bottom-color:#d9a52b;font-family:var(--font-head)}
+body.theme-rug .contact-item{justify-content:center}
+body.theme-rug .floating-telegram{background:#d9a52b;color:#2a1418;box-shadow:0 6px 20px rgba(217,165,43,.5)}

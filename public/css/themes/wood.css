@@ -1,0 +1,113 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME: wood — furniture.  LAYOUT CONCEPT: "interior magazine".
+   · hero  = asymmetric: tall room scene left, a cream title card overlapping it
+   · cards = catalogue CONTENTS: two columns, big serif numerals, hairlines, no boxes
+   · steps = 2×2 with giant outlined serif numerals
+   · FAQ   = sticky heading left + serif Q&A list right
+   · links = catalogue cards: picture on top, caption beneath
+   Needs hero partial variant: hero-editorial (adds .hero__art with <svg> room).
+   ═══════════════════════════════════════════════════════════════════════════ */
+body.theme-wood {
+    --ink:#2b1d12; --ink-soft:#55402e; --muted:#765f4b;
+    --surface:#f8f1e5; --surface-2:#fffdf8; --border:#e7d9c3; --border-soft:#f0e5d2;
+    --teal:#7b4a28; --teal-dark:#3f2412; --teal-light:#f3e6d2; --teal-glow:rgba(123,74,40,.18);
+    --orange:#a65f1e; --orange-dark:#874a12; --orange-light:#fbf0df; --orange-glow:rgba(166,95,30,.2);
+    --font-head:"Lora",Georgia,"Times New Roman",serif;
+    --font-body:"Onest",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    font-family:var(--font-body); background:var(--surface);
+}
+html:has(body.theme-wood){background:#f8f1e5}
+body.theme-wood::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+    background-image:radial-gradient(rgba(123,74,40,.05) 1px,transparent 1px),radial-gradient(rgba(123,74,40,.035) 1px,transparent 1px);background-size:22px 22px,37px 37px;background-position:0 0,11px 17px}
+body.theme-wood .hero__title,body.theme-wood .content-section h2,body.theme-wood .links-section__title,
+body.theme-wood .faq-section__title,body.theme-wood .info-card h3,body.theme-wood .process-step h3,body.theme-wood .site-name,body.theme-wood .footer-section h3{font-family:var(--font-head)}
+body.theme-wood .content-section h2{font-weight:700;border:0;padding-bottom:18px;font-size:clamp(1.5rem,3.4vw,2.3rem)}
+body.theme-wood .content-section h2::after{bottom:0;width:64px;height:3px;border-radius:2px;background:linear-gradient(90deg,var(--orange) 0 70%,transparent 70% 78%,var(--orange) 78% 100%)}
+
+body.theme-wood header{background:linear-gradient(180deg,#4a2b17,#3a2112);border-bottom:2px solid #b8854a;box-shadow:0 6px 22px rgba(58,33,18,.28)}
+body.theme-wood .nav-links a{color:#ecd9bd}
+body.theme-wood .nav-links a:hover{background:rgba(255,255,255,.1);color:#fff}
+body.theme-wood .lang-switch{background:rgba(0,0,0,.22)}
+body.theme-wood .lang-switch a{color:#d9c3a2}
+body.theme-wood .lang-switch a.active,body.theme-wood .lang-switch a:hover{background:#b8854a;color:#2b1d12!important}
+body.theme-wood .site-name{font-size:1.05em;font-weight:700;color:#fbf3e6}
+
+/* ── HERO: room + overlapping title card ─────────────────────────────────── */
+body.theme-wood .hero{background:#f8f1e5;display:grid;grid-template-columns:1fr;min-height:0;margin-bottom:clamp(40px,6vw,70px);overflow:visible}
+body.theme-wood .hero__bg{position:relative;inset:auto;grid-column:1;grid-row:1;min-height:clamp(340px,52vw,560px);margin:0;border-radius:0 0 0 64px;overflow:hidden}
+body.theme-wood .hero__bg--gradient{background:radial-gradient(60% 90% at 88% 20%,rgba(255,214,150,.45),transparent 60%),repeating-linear-gradient(90deg,transparent 0 118px,rgba(0,0,0,.14) 118px 120px),repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 2px,transparent 2px 7px),linear-gradient(135deg,#7a4a28 0%,#4a2a16 60%,#36200f 100%)}
+body.theme-wood .hero__overlay{display:none}
+body.theme-wood .hero__art{position:relative;z-index:1;grid-column:1;grid-row:1;display:grid;place-items:end center;pointer-events:none;padding-bottom:66px}
+body.theme-wood .hero__art svg{width:min(560px,94%);height:auto;margin-bottom:-2px}
+body.theme-wood .hero__content{position:relative;grid-column:1;grid-row:2;margin:-56px var(--px) 0;background:var(--surface-2);color:var(--ink);padding:clamp(24px,4vw,44px);border-radius:6px;box-shadow:0 24px 60px rgba(60,35,15,.18);border-top:5px solid #b8854a;max-width:none}
+@media (min-width:900px){
+ body.theme-wood .hero{grid-template-columns:repeat(12,1fr)}
+ body.theme-wood .hero__bg{grid-column:1/9;grid-row:1;min-height:clamp(420px,46vw,580px)}
+ body.theme-wood .hero__art{position:absolute;inset:0 auto 0 0;width:66.66%;padding-bottom:0}
+ body.theme-wood .hero__content{grid-column:7/13;grid-row:1;align-self:center;margin:60px max(var(--px),calc((100vw - 1100px)/2)) 0 0;max-width:520px;justify-self:end}
+}
+body.theme-wood .hero__title{color:var(--ink);text-shadow:none;font-weight:700;font-size:clamp(1.6rem,3.4vw,2.5rem);line-height:1.14}
+body.theme-wood .hero__sub{color:var(--ink-soft);text-shadow:none}
+body.theme-wood .hero__cta{background:#a65f1e;color:#fff;border-radius:3px;box-shadow:0 8px 20px rgba(166,95,30,.35)}
+body.theme-wood .hero__cta:hover{background:#874a12}
+body.theme-wood .hero__cta--telegram{background:transparent;color:var(--teal);border:1.5px solid var(--teal);box-shadow:none}
+body.theme-wood .hero__cta--telegram:hover{background:var(--teal-light)}
+body.theme-wood .section-label{background:transparent;color:var(--orange);padding:0;letter-spacing:.18em;display:inline-flex;align-items:center;gap:10px}
+body.theme-wood .section-label::before{content:"";width:26px;height:2px;background:currentColor}
+
+/* ── CARDS: catalogue contents ───────────────────────────────────────────── */
+body.theme-wood .info-grid{display:grid;grid-template-columns:1fr;gap:0 clamp(30px,6vw,80px);counter-reset:cat;margin-top:30px}
+@media (min-width:800px){body.theme-wood .info-grid{grid-template-columns:1fr 1fr}}
+body.theme-wood .info-card{display:grid;grid-template-columns:clamp(64px,9vw,96px) 1fr;column-gap:20px;background:none;border:0;border-top:1px solid #cdb593;border-radius:0;padding:26px 0 30px;overflow:visible;box-shadow:none;counter-increment:cat}
+body.theme-wood .info-card::before{content:counter(cat,decimal-leading-zero);position:static;transform:none;height:auto;background:none;grid-row:1/span 2;font-family:var(--font-head);font-weight:700;font-size:clamp(2.4rem,5vw,3.6rem);line-height:1;color:#b8854a;width:auto}
+body.theme-wood .info-card h3{grid-column:2;display:block;font-size:1.3rem;font-weight:700;margin-bottom:6px}
+body.theme-wood .info-card h3::before{display:none}
+body.theme-wood .info-card p{grid-column:2;font-size:1rem}
+body.theme-wood .info-card:hover{transform:none!important;box-shadow:none;background:linear-gradient(90deg,rgba(184,133,74,.08),transparent)}
+
+/* ── STEPS: 2×2 giant numerals ───────────────────────────────────────────── */
+body.theme-wood .content-section:has(.process-step){display:grid;grid-template-columns:1fr;gap:0 clamp(30px,6vw,80px);overflow:visible;counter-reset:step}
+@media (min-width:800px){body.theme-wood .content-section:has(.process-step){grid-template-columns:1fr 1fr}}
+body.theme-wood .content-section:has(.process-step)>h2,body.theme-wood .content-section:has(.process-step)>p{grid-column:1/-1}
+body.theme-wood .content-section:has(.process-step)>.process-step{display:block;width:auto;padding:12px 0 30px 110px;border:0;border-bottom:1px solid #e0cfb2;position:relative;min-height:130px}
+body.theme-wood .process-step::before{all:unset;content:counter(step);position:absolute;left:0;top:-4px;width:96px;text-align:center;font-family:var(--font-head);font-weight:700;font-size:6rem;line-height:1;color:transparent;-webkit-text-stroke:1.6px #b8854a}
+body.theme-wood .process-step::after{display:none}
+body.theme-wood .process-step h3{font-size:1.25rem;font-weight:700}
+
+body.theme-wood .brands-chip{border-radius:2px;background:var(--surface-2);border:1px solid #cdb593;font-family:var(--font-head);font-weight:700;letter-spacing:.04em}
+body.theme-wood .brands-chip::before{display:none}
+body.theme-wood .brands-chip:hover{background:var(--orange-light);border-color:var(--orange)}
+
+/* ── FAQ: sticky heading + serif list ────────────────────────────────────── */
+@media (min-width:900px){
+ body.theme-wood .faq-section{display:grid;grid-template-columns:minmax(220px,300px) 1fr;column-gap:64px;align-items:start}
+ body.theme-wood .faq-section>.section-label{grid-column:1;justify-self:start}
+ body.theme-wood .faq-section>.faq-section__title{grid-column:1;margin:0;position:sticky;top:96px;font-size:2.2rem}
+ body.theme-wood .faq-section>.faq-accordion{grid-column:2;grid-row:1/span 6}
+}
+body.theme-wood .faq-accordion{gap:0}
+body.theme-wood .faq-acc-item{background:none;border:0;border-top:1px solid #cdb593;border-radius:0;box-shadow:none}
+body.theme-wood .faq-acc-item:last-child{border-bottom:1px solid #cdb593}
+body.theme-wood .faq-acc-item__q{padding:24px 4px}
+body.theme-wood .faq-acc-item__q-text{font-family:var(--font-head);font-weight:600;font-size:1.2rem}
+body.theme-wood .faq-acc-item__icon{background:none;border:1.5px solid var(--orange);color:var(--orange)}
+body.theme-wood .faq-acc-item.is-open .faq-acc-item__icon{background:var(--orange);color:#fff}
+body.theme-wood .faq-acc-item__a-inner{border-top:0;padding:0 4px 24px}
+body.theme-wood .faq-acc-item.is-open{box-shadow:none}
+
+/* ── LINKS: catalogue cards ──────────────────────────────────────────────── */
+body.theme-wood .links-carousel{padding:0;margin:0}
+body.theme-wood .links-nav{display:none!important}
+body.theme-wood .links-track{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));overflow:visible;gap:26px 22px}
+body.theme-wood .links-tile{width:auto;height:auto;border-radius:3px;background:var(--surface-2);color:var(--ink);box-shadow:0 10px 26px rgba(60,35,15,.1);display:flex;flex-direction:column}
+body.theme-wood .links-tile__img{position:relative;height:170px}
+body.theme-wood .links-tile--no-image .links-tile__monogram{position:relative;inset:auto;height:170px;font-family:var(--font-head);font-size:4rem;color:rgba(255,243,220,.35);background:linear-gradient(135deg,#8a5630,#4a2a16)}
+body.theme-wood .links-tile__scrim{display:none}
+body.theme-wood .links-tile__content{position:static;padding:16px 18px;border-top:3px solid #b8854a}
+body.theme-wood .links-tile__text{color:var(--ink);text-shadow:none;font-family:var(--font-head);font-size:1.05rem;font-weight:700}
+body.theme-wood .links-tile__arrow{background:var(--orange-light);border-color:transparent;color:var(--orange)}
+body.theme-wood .links-tile:hover .links-tile__arrow{background:var(--orange);color:#fff}
+body.theme-wood .review-strip{background:var(--orange-light);border:1px solid #ecd3ab;border-radius:3px}
+body.theme-wood footer{background:repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 2px,transparent 2px 11px),linear-gradient(180deg,#3a2112,#26150a);border-top:3px solid #b8854a;color:#e3d0b3}
+body.theme-wood .footer-section h3{border-bottom-color:#b8854a;color:#fbf3e6}
+body.theme-wood .floating-telegram{background:#b8854a;color:#2b1d12;box-shadow:0 4px 16px rgba(184,133,74,.5)}

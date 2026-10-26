@@ -1,0 +1,135 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME: screen — TVs & electronics.  LAYOUT CONCEPT: "cinema".
+   · hero  = letterboxed 21:9 title card, centred, ticker of brands under it
+   · cards = poster shelf (tall posters, horizontal scroll, ghost numbers)
+   · steps = film strip "chapters" with sprocket holes
+   · links = wide 16:9 grid · FAQ = sticky title left / list right
+   · review = cinema ticket stub
+   Needs hero partial variant: hero-cinema (adds .hero__ticker).
+   ═══════════════════════════════════════════════════════════════════════════ */
+body.theme-screen {
+    color-scheme: dark;
+    --ink:#eef1fb; --ink-soft:#c4cae3; --muted:#98a1c4;
+    --surface:#070b18; --surface-2:#101830; --border:rgba(148,163,255,.16); --border-soft:rgba(148,163,255,.09);
+    --teal:#38c8f0; --teal-dark:#0a1228; --teal-light:rgba(56,200,240,.12); --teal-glow:rgba(56,200,240,.22);
+    --orange:#7c5cff; --orange-dark:#6544f0; --orange-light:rgba(124,92,255,.14); --orange-glow:rgba(124,92,255,.3);
+    --font-head:"Unbounded","Manrope",Arial,sans-serif;
+    --font-body:"Manrope",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    font-family:var(--font-body); background:var(--surface);
+}
+html:has(body.theme-screen){background:#070b18}
+body.theme-screen::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(900px 500px at 12% -5%,rgba(124,92,255,.2),transparent 60%),radial-gradient(800px 500px at 100% 30%,rgba(56,200,240,.12),transparent 60%)}
+
+/* type */
+body.theme-screen .hero__title,body.theme-screen .content-section h2,body.theme-screen .links-section__title,
+body.theme-screen .faq-section__title{font-family:var(--font-head);font-weight:600;letter-spacing:-.02em}
+body.theme-screen .content-section h2,body.theme-screen .links-section__title,body.theme-screen .faq-section__title{font-size:clamp(1.15rem,2.5vw,1.6rem)}
+body.theme-screen .content-section h2{border-bottom:1px solid var(--border)}
+body.theme-screen .content-section h2::after{height:2px;width:72px;bottom:-1px;background:linear-gradient(90deg,var(--teal),var(--orange));box-shadow:0 0 14px var(--teal-glow)}
+body.theme-screen .content-section a{color:var(--teal)}
+
+/* header */
+body.theme-screen header{background:rgba(8,12,26,.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);box-shadow:none}
+body.theme-screen header::after{display:none}
+body.theme-screen .nav-links a{color:#aab3d6}
+body.theme-screen .nav-links a:hover{background:rgba(255,255,255,.07);color:#fff}
+body.theme-screen .lang-switch{background:rgba(255,255,255,.06);border:1px solid var(--border)}
+body.theme-screen .lang-switch a{color:#94a0c9}
+body.theme-screen .lang-switch a.active,body.theme-screen .lang-switch a:hover{background:linear-gradient(135deg,var(--orange),#5b8cff);color:#fff!important}
+
+/* ── HERO: letterbox title card ──────────────────────────────────────────── */
+body.theme-screen .hero{min-height:clamp(500px,76vh,700px);align-items:center;justify-content:center;text-align:center;background:#000;margin-bottom:0}
+body.theme-screen .hero::before,body.theme-screen .hero::after{content:"";position:absolute;left:0;right:0;height:clamp(26px,7vh,70px);background:#000;z-index:5}
+body.theme-screen .hero::before{top:0}
+body.theme-screen .hero::after{bottom:0}
+body.theme-screen .hero__bg--gradient{
+    background:
+      repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 1px,transparent 1px 3px),
+      radial-gradient(ellipse 55% 90% at 50% 0,rgba(124,92,255,.55),transparent 70%),
+      radial-gradient(ellipse 40% 50% at 50% 100%,rgba(56,200,240,.3),transparent 70%),
+      linear-gradient(180deg,#0b1230,#04060f)}
+body.theme-screen .hero__bg--gradient::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.75) 100%)}
+body.theme-screen .hero__overlay{background:rgba(0,0,0,.15)}
+body.theme-screen .hero__content{max-width:920px;margin:0 auto;padding:clamp(70px,12vh,120px) var(--px) clamp(110px,16vh,150px);display:flex;flex-direction:column;align-items:center}
+body.theme-screen .hero__content::before{content:"★  ВЫКУП ТЕХНИКИ ПРЕДСТАВЛЯЕТ  ★";font-size:.68rem;letter-spacing:.38em;color:var(--teal);margin-bottom:22px;text-shadow:0 0 14px var(--teal-glow)}
+body.theme-screen .hero__title{font-size:clamp(1.6rem,4.4vw,3.1rem);line-height:1.16;text-shadow:0 0 40px rgba(124,92,255,.7),0 2px 18px rgba(0,0,0,.6);margin-bottom:18px}
+body.theme-screen .hero__sub{text-transform:uppercase;letter-spacing:.2em;font-size:.72rem;color:#b5bfe6;max-width:640px}
+body.theme-screen .hero__actions{justify-content:center}
+body.theme-screen .hero__cta{background:linear-gradient(135deg,#7c5cff,#5b8cff);color:#fff;border-radius:999px;box-shadow:0 0 0 1px rgba(255,255,255,.18) inset,0 10px 34px rgba(124,92,255,.55)}
+body.theme-screen .hero__cta--telegram{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.3);box-shadow:none}
+body.theme-screen .hero__cta--telegram:hover{background:rgba(255,255,255,.15)}
+/* brand ticker under the title card */
+body.theme-screen .hero__ticker{position:absolute;left:0;right:0;bottom:clamp(26px,7vh,70px);z-index:4;overflow:hidden;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:rgba(0,0,0,.45);padding:9px 0}
+body.theme-screen .hero__ticker-track{display:flex;width:max-content;animation:scrTicker 28s linear infinite}
+body.theme-screen .hero__ticker span{flex:none;padding:0 28px;font-family:var(--font-head);font-size:.7rem;letter-spacing:.3em;color:#7f8ab5;text-transform:uppercase}
+body.theme-screen .hero__ticker span::after{content:"◆";margin-left:56px;color:var(--orange)}
+@keyframes scrTicker{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){body.theme-screen .hero__ticker-track{animation:none}}
+
+body.theme-screen .section-label{color:var(--teal);background:var(--teal-light);border:1px solid rgba(56,200,240,.3);border-radius:999px;padding:5px 14px;letter-spacing:.14em}
+
+/* ── CARDS: poster shelf ─────────────────────────────────────────────────── */
+body.theme-screen .info-grid{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:8px 2px 20px;margin:32px 0 0;counter-reset:poster;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+body.theme-screen .info-card{flex:1 0 220px;max-width:320px;min-height:370px;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:flex-end;padding:22px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(160deg,#3b2a9a,#0b1230);counter-increment:poster}
+body.theme-screen .info-card:nth-child(4n+2){background:linear-gradient(160deg,#0e7490,#0a1228)}
+body.theme-screen .info-card:nth-child(4n+3){background:linear-gradient(160deg,#86198f,#150a2e)}
+body.theme-screen .info-card:nth-child(4n+4){background:linear-gradient(160deg,#9f1239,#1a0a14)}
+body.theme-screen .info-card::before{display:none}
+body.theme-screen .info-card::after{content:"0" counter(poster);position:absolute;top:6px;left:14px;font-family:var(--font-head);font-weight:700;font-size:5rem;line-height:1;color:rgba(255,255,255,.12)}
+body.theme-screen .info-card h3{font-family:var(--font-head);font-size:.95rem;font-weight:600;line-height:1.3;position:relative}
+body.theme-screen .info-card h3::before{display:none}
+body.theme-screen .info-card p{color:rgba(255,255,255,.72);font-size:.86rem;position:relative}
+body.theme-screen .info-card:hover{transform:translateY(-8px)!important;border-color:rgba(56,200,240,.5);box-shadow:0 0 0 1px rgba(56,200,240,.25),0 24px 50px rgba(56,200,240,.16)}
+
+/* ── STEPS: film strip chapters ──────────────────────────────────────────── */
+body.theme-screen .content-section:has(.process-step){display:grid;grid-template-columns:repeat(4,1fr);gap:0 16px;overflow:visible;counter-reset:step}
+body.theme-screen .content-section:has(.process-step)>h2,body.theme-screen .content-section:has(.process-step)>p{grid-column:1/-1}
+body.theme-screen .content-section:has(.process-step)>.process-step{display:block;width:auto;padding:46px 18px 22px;margin-top:22px;background:linear-gradient(180deg,#0e1530,#0a1022);border:1px solid var(--border);border-radius:0 0 10px 10px;border-top:0;position:relative}
+body.theme-screen .process-step::before{all:unset;content:"КАДР " counter(step);position:absolute;top:22px;left:18px;font-family:var(--font-head);font-size:.62rem;letter-spacing:.24em;color:var(--teal);display:block}
+body.theme-screen .process-step::after{all:unset;content:"";display:block;position:absolute;top:0;left:0;right:0;height:14px;background:#000 repeating-linear-gradient(90deg,transparent 0 5px,rgba(255,255,255,.22) 5px 12px,transparent 12px 18px) 0 3px/auto 8px no-repeat}
+body.theme-screen .process-step:last-child::after{display:block}
+body.theme-screen .process-step h3{font-family:var(--font-head);font-size:.92rem;font-weight:600}
+@media (max-width:899px){body.theme-screen .content-section:has(.process-step){grid-template-columns:1fr 1fr}}
+@media (max-width:560px){body.theme-screen .content-section:has(.process-step){grid-template-columns:1fr}}
+
+/* brands as channel tiles */
+body.theme-screen .brands-chip{border-radius:8px;min-width:130px;justify-content:center;padding:16px 22px;background:rgba(255,255,255,.04);border-color:var(--border);color:var(--ink);font-family:var(--font-head);font-size:.74rem;letter-spacing:.18em;text-transform:uppercase}
+body.theme-screen .brands-chip::before{display:none}
+body.theme-screen .brands-chip:hover{background:var(--teal-light);border-color:rgba(56,200,240,.5);box-shadow:0 0 28px var(--teal-glow)}
+
+/* ── LINKS: 16:9 grid ────────────────────────────────────────────────────── */
+body.theme-screen .links-carousel{padding:0;margin:0}
+body.theme-screen .links-nav{display:none!important}
+body.theme-screen .links-track{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));overflow:visible;gap:16px}
+body.theme-screen .links-tile{width:auto;height:auto;aspect-ratio:16/9;border-radius:12px;background:linear-gradient(135deg,#2a1f7a,#0b1230);border:1px solid var(--border)}
+body.theme-screen .links-tile:hover{border-color:rgba(56,200,240,.55);box-shadow:0 0 40px rgba(56,200,240,.2)}
+body.theme-screen .links-tile__scrim{background:linear-gradient(to top,rgba(7,11,24,.92),rgba(7,11,24,.25) 60%,transparent)}
+body.theme-screen .links-tile__text{font-family:var(--font-head);font-size:.76rem;font-weight:500;letter-spacing:.04em}
+body.theme-screen .links-tile--no-image .links-tile__monogram{font-family:var(--font-head);font-size:4.5rem;color:rgba(255,255,255,.12)}
+
+/* ── FAQ: sticky title left, list right ──────────────────────────────────── */
+@media (min-width:900px){
+ body.theme-screen .faq-section{display:grid;grid-template-columns:minmax(220px,300px) 1fr;column-gap:56px;align-items:start}
+ body.theme-screen .faq-section>.section-label{grid-column:1;justify-self:start}
+ body.theme-screen .faq-section>.faq-section__title{grid-column:1;margin:0;position:sticky;top:96px}
+ body.theme-screen .faq-section>.faq-accordion{grid-column:2;grid-row:1/span 6}
+}
+body.theme-screen .faq-acc-item,body.theme-screen .faq-item{background:rgba(255,255,255,.035);border-radius:12px}
+body.theme-screen .faq-acc-item.is-open{border-color:rgba(56,200,240,.45);box-shadow:0 0 36px rgba(56,200,240,.12)}
+body.theme-screen .faq-acc-item__icon{background:var(--teal-light);color:var(--teal)}
+body.theme-screen .faq-acc-item.is-open .faq-acc-item__icon{background:var(--teal);color:#07101f}
+
+/* review = ticket stub */
+body.theme-screen .review-strip{background:linear-gradient(90deg,#161d3d 0 74%,#10163a 74%);border:1px solid var(--border);border-radius:10px;position:relative;
+    -webkit-mask:radial-gradient(circle 11px at 74% 0,transparent 98%,#000) top/100% 51% no-repeat,radial-gradient(circle 11px at 74% 100%,transparent 98%,#000) bottom/100% 51% no-repeat;
+    mask:radial-gradient(circle 11px at 74% 0,transparent 98%,#000) top/100% 51% no-repeat,radial-gradient(circle 11px at 74% 100%,transparent 98%,#000) bottom/100% 51% no-repeat}
+body.theme-screen .review-strip__text{color:var(--ink-soft)}
+
+/* footer */
+body.theme-screen footer{background:linear-gradient(180deg,#0a1022,#04070f);border-top:1px solid var(--border);overflow:hidden}
+body.theme-screen footer::after{content:"TV";position:absolute;right:-10px;bottom:-60px;font-family:var(--font-head);font-weight:700;font-size:16rem;line-height:1;color:rgba(124,92,255,.06);pointer-events:none}
+body.theme-screen .footer-section h3{border-bottom-color:var(--teal)}
+body.theme-screen .floating-telegram{background:linear-gradient(135deg,#7c5cff,#38c8f0);box-shadow:0 0 28px rgba(124,92,255,.55)}
+body.theme-screen .review-modal__dialog{background:#101830;color:var(--ink)}
+body.theme-screen .review-modal__btn--secondary{color:#fff}

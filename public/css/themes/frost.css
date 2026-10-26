@@ -1,0 +1,112 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME: frost — fridges & freezers.  LAYOUT CONCEPT: "inside the fridge".
+   · hero  = split: text left, a real fridge illustration right (digital −18°)
+   · cards = glass SHELVES: one full-width row per card on a lit interior panel
+   · steps = vertical THERMOMETER: +4° → 0° → −8° → −18° on a gradient rail
+   · FAQ   = pull-out DRAWERS with a handle bar
+   · links = frosted-label grid
+   Needs hero partial variant: hero-fridge (adds .hero__art with <svg>).
+   ═══════════════════════════════════════════════════════════════════════════ */
+body.theme-frost {
+    --ink:#08243a; --ink-soft:#2c4a60; --muted:#55708a;
+    --surface:#e9f3f9; --surface-2:#ffffff; --border:#cde3ef; --border-soft:#e1eff7;
+    --teal:#2a6a9e; --teal-dark:#0b2540; --teal-light:#e0f0fa; --teal-glow:rgba(42,106,158,.18);
+    --orange:#27a9d6; --orange-dark:#1688b3; --orange-light:#e0f6fc; --orange-glow:rgba(39,169,214,.22);
+    --font-head:"Jost","Manrope",Arial,sans-serif;
+    --font-body:"Manrope",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    font-family:var(--font-body); background:var(--surface);
+}
+html:has(body.theme-frost){background:#e9f3f9}
+body.theme-frost::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(700px 400px at 100% 0,rgba(255,255,255,.9),transparent 60%),radial-gradient(600px 400px at 0 60%,rgba(39,169,214,.10),transparent 60%)}
+body.theme-frost .hero__title,body.theme-frost .content-section h2,body.theme-frost .links-section__title,
+body.theme-frost .faq-section__title,body.theme-frost .info-card h3,body.theme-frost .process-step h3{font-family:var(--font-head)}
+body.theme-frost .content-section h2{font-weight:600;border-bottom:1px solid var(--border)}
+body.theme-frost .content-section h2::after{height:3px;width:64px;bottom:-2px;border-radius:0;background:linear-gradient(90deg,var(--orange),#bfeaf8)}
+
+body.theme-frost header{background:linear-gradient(180deg,#0e2d4d,#0b2540);border-bottom:1px solid rgba(190,230,250,.25);box-shadow:0 6px 24px rgba(11,37,64,.3)}
+body.theme-frost .nav-links a{color:#bcd6e8}
+body.theme-frost .nav-links a:hover{background:rgba(255,255,255,.08);color:#fff}
+body.theme-frost .lang-switch{background:rgba(255,255,255,.07);border-radius:3px}
+body.theme-frost .lang-switch a{border-radius:2px;color:#9fc0d6}
+body.theme-frost .lang-switch a.active,body.theme-frost .lang-switch a:hover{background:var(--orange);color:#04202f!important}
+body.theme-frost .logo{border-radius:4px}
+
+/* ── HERO: split with fridge ─────────────────────────────────────────────── */
+body.theme-frost .hero{background:#0b2540;display:grid;grid-template-columns:1fr;align-items:center;min-height:clamp(440px,60vw,600px);margin-bottom:0}
+body.theme-frost .hero__bg--gradient{background:
+    radial-gradient(2px 2px at 12% 22%,#fff,transparent 60%),radial-gradient(3px 3px at 28% 64%,rgba(255,255,255,.8),transparent 60%),
+    radial-gradient(2px 2px at 44% 18%,rgba(255,255,255,.85),transparent 60%),radial-gradient(3px 3px at 61% 78%,rgba(255,255,255,.7),transparent 60%),
+    radial-gradient(2px 2px at 73% 30%,#fff,transparent 60%),radial-gradient(2px 2px at 90% 58%,rgba(255,255,255,.8),transparent 60%),
+    radial-gradient(60% 90% at 85% 40%,rgba(160,225,250,.45),transparent 62%),linear-gradient(160deg,#0b2540 0%,#124a74 60%,#2a7fae 100%)}
+body.theme-frost .hero__overlay{background:linear-gradient(90deg,rgba(6,24,43,.75) 0%,rgba(6,24,43,.2) 60%,transparent 100%)}
+body.theme-frost .hero__content{grid-column:1;grid-row:1;align-self:center;padding:clamp(28px,6vw,64px) var(--px) 18px;max-width:620px}
+body.theme-frost .hero__title{font-weight:600;font-size:clamp(1.8rem,4.2vw,3rem);line-height:1.1}
+body.theme-frost .hero__art{position:relative;z-index:3;display:flex;grid-column:1;grid-row:2;justify-content:center;padding:0 0 22px}
+body.theme-frost .hero__art svg{width:128px;height:auto;filter:drop-shadow(0 18px 24px rgba(2,12,24,.55))}
+@media (min-width:900px){
+ body.theme-frost .hero{grid-template-columns:1.1fr .9fr;padding-left:max(var(--px),calc((100vw - 1100px)/2))}
+ body.theme-frost .hero__content{padding-left:0}
+ body.theme-frost .hero__art{display:flex;grid-column:2;grid-row:1;justify-content:center;align-items:flex-end;align-self:end;padding-top:30px}
+ body.theme-frost .hero__art svg{width:clamp(230px,25vw,310px);height:auto;filter:drop-shadow(0 30px 40px rgba(2,12,24,.55))}
+}
+body.theme-frost .hero__cta{background:#fff;color:#0b2540;border-radius:3px;box-shadow:0 10px 26px rgba(4,20,38,.4);text-transform:uppercase;letter-spacing:.06em;font-size:.82rem}
+body.theme-frost .hero__cta:hover{background:#dff3fb}
+body.theme-frost .hero__cta--telegram{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.5);box-shadow:none}
+body.theme-frost .hero__cta--telegram:hover{background:rgba(255,255,255,.2)}
+body.theme-frost .frost-led{animation:frostLed 3s ease-in-out infinite}
+@keyframes frostLed{50%{opacity:.65}}
+
+body.theme-frost .section-label{border-radius:2px;background:transparent;border:1px solid var(--orange);color:var(--teal);letter-spacing:.2em}
+
+/* ── CARDS: shelves inside a lit fridge ──────────────────────────────────── */
+body.theme-frost .info-grid{display:block;margin:34px 0 0;padding:26px clamp(14px,3vw,30px) 8px;border-radius:6px 6px 0 0;border:2px solid #b9d6e6;border-bottom:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.95),#e8f5fb);box-shadow:inset 0 14px 30px -10px rgba(39,169,214,.35);position:relative}
+body.theme-frost .info-grid::before{content:"";position:absolute;top:0;left:12%;right:12%;height:5px;border-radius:0 0 6px 6px;background:linear-gradient(90deg,transparent,#bff0ff,#fff,#bff0ff,transparent);box-shadow:0 6px 18px rgba(120,210,245,.8)}
+body.theme-frost .info-card{display:grid;grid-template-columns:60px 1fr;column-gap:18px;align-items:center;background:transparent;border:0;border-radius:0;box-shadow:none;padding:18px 6px 24px;position:relative;
+    border-bottom:6px solid transparent;border-image:linear-gradient(90deg,#9cc7dd,#fff 30%,#9cc7dd 60%,#cfe8f3) 1}
+body.theme-frost .info-card::before{display:none}
+body.theme-frost .info-card h3{grid-column:2;margin:0 0 4px;display:block;font-weight:600;font-size:1.15rem}
+body.theme-frost .info-card h3::before{content:"";position:absolute;left:6px;top:50%;transform:translateY(-50%);width:54px;height:54px;border-radius:10px;
+    background:linear-gradient(145deg,#fff,#cfe9f5);box-shadow:inset 0 0 0 2px #b9d6e6,0 6px 12px rgba(42,106,158,.18);-webkit-mask:none;mask:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232a6a9e' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9'/%3E%3C/svg%3E"),linear-gradient(145deg,#fff,#cfe9f5);background-size:56%,cover;background-position:center;background-repeat:no-repeat}
+body.theme-frost .info-card p{grid-column:2;margin:0}
+body.theme-frost .info-card:hover{transform:none!important;box-shadow:none;background:rgba(255,255,255,.55)}
+
+/* ── STEPS: thermometer ──────────────────────────────────────────────────── */
+body.theme-frost .content-section:has(.process-step){display:block;overflow:visible;position:relative}
+body.theme-frost .content-section:has(.process-step)>.process-step{display:block;width:auto;padding:6px 0 38px 112px;border:0;min-height:96px;position:relative}
+body.theme-frost .process-step::before{all:unset;position:absolute;left:0;top:0;width:78px;height:78px;border-radius:50%;display:grid;place-items:center;box-sizing:border-box;
+    font-family:var(--font-head);font-weight:600;font-size:1.25rem;color:#fff;background:linear-gradient(145deg,#6fd0f0,#2a6a9e);border:4px solid #fff;box-shadow:0 0 0 2px #9cc7dd,0 10px 22px rgba(42,106,158,.3);content:"+4°";z-index:2}
+body.theme-frost .process-step:nth-of-type(2)::before{content:"0°"}
+body.theme-frost .process-step:nth-of-type(3)::before{content:"−8°";background:linear-gradient(145deg,#4aa6e8,#1e4f8c)}
+body.theme-frost .process-step:nth-of-type(4)::before{content:"−18°";background:linear-gradient(145deg,#2a6fd0,#0b2540)}
+body.theme-frost .process-step::after{all:unset;content:"";position:absolute;left:33px;top:78px;bottom:-4px;width:12px;border-radius:6px;background:linear-gradient(180deg,#6fd0f0,#2a6fd0);box-shadow:inset 0 0 0 2px #fff,0 0 0 2px #9cc7dd}
+body.theme-frost .process-step:last-child::after{display:none}
+body.theme-frost .process-step h3{font-size:1.2rem;font-weight:600}
+
+body.theme-frost .brands-chip{border-radius:8px;background:linear-gradient(145deg,rgba(255,255,255,.95),rgba(207,233,245,.8));border:1px solid #b9d6e6;text-transform:uppercase;letter-spacing:.1em;font-size:.78rem;box-shadow:inset 0 1px 0 #fff,0 6px 14px rgba(42,106,158,.1)}
+body.theme-frost .brands-chip::before{border-radius:2px}
+
+/* ── FAQ: drawers ────────────────────────────────────────────────────────── */
+body.theme-frost .faq-accordion{gap:16px}
+body.theme-frost .faq-acc-item,body.theme-frost .faq-item{border-radius:6px;border:2px solid #b9d6e6;background:linear-gradient(180deg,#fff,#e8f5fb);position:relative;overflow:visible;box-shadow:0 8px 0 -2px #cfe3ee,0 10px 20px rgba(42,106,158,.1)}
+body.theme-frost .faq-acc-item::before{content:"";position:absolute;top:-2px;left:50%;transform:translateX(-50%);width:84px;height:6px;border-radius:0 0 6px 6px;background:linear-gradient(180deg,#7fa9c2,#c5dce9)}
+body.theme-frost .faq-acc-item__q{padding-top:26px}
+body.theme-frost .faq-acc-item__q-text{font-family:var(--font-head);font-weight:600;font-size:1.08rem}
+body.theme-frost .faq-acc-item.is-open{border-color:var(--orange);box-shadow:0 8px 0 -2px #bfe4f2,0 18px 34px rgba(39,169,214,.2)}
+body.theme-frost .faq-acc-item__icon{border-radius:3px}
+
+/* links: frosted labels */
+body.theme-frost .links-carousel{padding:0;margin:0}
+body.theme-frost .links-nav{display:none!important}
+body.theme-frost .links-track{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));overflow:visible;gap:14px}
+body.theme-frost .links-tile{width:auto;height:170px;border-radius:4px;background:linear-gradient(145deg,#2a6a9e,#0b2540)}
+body.theme-frost .links-tile__scrim{display:none}
+body.theme-frost .links-tile__content{background:rgba(255,255,255,.2);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid rgba(255,255,255,.5);padding:12px 14px}
+body.theme-frost .links-tile__text{font-family:var(--font-head);font-weight:600;font-size:.98rem}
+body.theme-frost .links-tile:hover .links-tile__arrow{background:var(--orange);border-color:var(--orange);color:#04202f}
+body.theme-frost .review-strip{background:#fff;border:2px solid #b9d6e6;border-radius:4px}
+body.theme-frost footer{background:linear-gradient(180deg,#0e2d4d,#06182b);border-top:3px solid var(--orange);color:#bcd6e8}
+body.theme-frost .footer-section h3{border-bottom-color:var(--orange)}
+body.theme-frost .floating-telegram{background:var(--orange);color:#04202f;box-shadow:0 6px 22px rgba(39,169,214,.5)}

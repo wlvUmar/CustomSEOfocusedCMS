@@ -103,7 +103,7 @@ class AuditLog {
     }
 
     private static function summarize(string $action, string $entityType, ?string $label, array $changes): string {
-        $name = $label !== null && $label !== '' ? "$entityType “$label”" : $entityType;
+        $name = $label !== null && $label !== '' ? ($entityType . ' “' . $label . '”') : $entityType;
         if ($action === 'create') return "Created $name";
         if ($action === 'delete') return "Deleted $name";
         if ($action === 'publish') return "Published $name";

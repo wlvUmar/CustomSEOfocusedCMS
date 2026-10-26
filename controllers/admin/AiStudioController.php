@@ -1192,7 +1192,7 @@ class AiStudioController extends Controller {
                 break;
             case 'update_section': case 'patch_section': case 'str_replace_field': case 'set_field':
             case 'insert_section': case 'wrap_section': case 'batch_update': case 'set_custom_css':
-            case 'set_page_theme': case 'set_section_style': case 'auto_sectionize':
+            case 'set_page_theme': case 'set_page_style': case 'set_section_style': case 'auto_sectionize':
                 if (!isset($r['ok']) || $r['ok'] !== true) break;
                 $page = (string)($r['slug'] ?? $args['slug'] ?? $args['page_id'] ?? '?');
                 $sec = (string)($r['section'] ?? '');

@@ -330,6 +330,19 @@ require BASE_PATH . '/views/admin/layout/header.php';
     </div>
 
     <div id="tab-design" class="tab-content">
+        <div class="form-group">
+            <label for="theme">Page theme (layout &amp; style)</label>
+            <select id="theme" name="theme" class="form-control">
+                <?php $currentTheme = PageTheme::normalize($page['theme'] ?? PageTheme::BASE); ?>
+                <?php foreach (PageTheme::all() as $themeKey => $themeLabel): ?>
+                <option value="<?= e($themeKey) ?>" <?= $currentTheme === $themeKey ? 'selected' : '' ?>><?= e($themeLabel) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <small class="help-subtext">
+                Changes the whole look of this page: hero, cards, steps, FAQ and links get a different layout, fonts and colours.
+                The page text is not touched. Custom CSS below still applies on top of the theme.
+            </small>
+        </div>
         <div class="help-text">
             <strong>Per-page Design:</strong> Override <code>pages.css</code> and <code>components.css</code> for this page only.<br>
             Empty = inherits global default. With CSS you get <strong>full control including header/footer</strong> — use <code>body.page-<?= e($page['slug'] ?? 'your-slug') ?> header { ... }</code> or <code>:root { --teal: #0a4f5c; --surface: #fdfcf8; }</code> token overrides.<br>

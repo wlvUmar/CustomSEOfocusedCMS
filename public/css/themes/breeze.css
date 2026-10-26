@@ -1,0 +1,116 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME: breeze — air conditioners.  LAYOUT CONCEPT: "airflow".
+   · hero  = CENTRED: a wall-mounted A/C unit across the top, air blowing down
+             onto the title; sky gradient
+   · cards = airy STAGGERED clouds, alternating left/right, lots of whitespace
+   · steps = TEMPERATURE scale 26° → 24° → 22° → 20° (warm to cool numerals)
+   · FAQ   = borderless typographic lines, big type
+   · links = a pill CLOUD (wrapping chips) instead of image tiles
+   Needs hero partial variant: hero-ac (adds .hero__art with <svg> unit + airflow).
+   ═══════════════════════════════════════════════════════════════════════════ */
+body.theme-breeze {
+    --ink:#0f2742; --ink-soft:#35506f; --muted:#5f7794;
+    --surface:#f3f9ff; --surface-2:#ffffff; --border:#d8e8f6; --border-soft:#e8f2fb;
+    --teal:#1b78c2; --teal-dark:#0e4a80; --teal-light:#e6f3fd; --teal-glow:rgba(27,120,194,.18);
+    --orange:#e8795a; --orange-dark:#cc5f40; --orange-light:#fdeee8; --orange-glow:rgba(232,121,90,.24);
+    --font-head:"Raleway","Onest",Arial,sans-serif;
+    --font-body:"Onest",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    font-family:var(--font-body); background:var(--surface);
+}
+html:has(body.theme-breeze){background:#f3f9ff}
+body.theme-breeze::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(500px 220px at 85% 8%,rgba(255,255,255,.95),transparent 70%),radial-gradient(520px 260px at 5% 55%,rgba(27,120,194,.07),transparent 70%),radial-gradient(420px 200px at 95% 85%,rgba(232,121,90,.07),transparent 70%)}
+body.theme-breeze .hero__title,body.theme-breeze .content-section h2,body.theme-breeze .links-section__title,
+body.theme-breeze .faq-section__title,body.theme-breeze .info-card h3,body.theme-breeze .process-step h3{font-family:var(--font-head);font-weight:700}
+body.theme-breeze .content-section h2{border-bottom:0;padding-bottom:16px}
+body.theme-breeze .content-section h2::after{bottom:0;width:72px;height:4px;border-radius:4px;background:linear-gradient(90deg,var(--teal),var(--orange))}
+body.theme-breeze .content-section{margin-top:clamp(70px,10vw,120px);margin-bottom:clamp(70px,10vw,120px)}
+
+body.theme-breeze header{background:rgba(255,255,255,.86);-webkit-backdrop-filter:saturate(160%) blur(12px);backdrop-filter:saturate(160%) blur(12px);border-bottom:1px solid var(--border);box-shadow:0 4px 24px rgba(27,120,194,.08)}
+body.theme-breeze header::after{display:none}
+body.theme-breeze .site-name{color:var(--ink);font-family:var(--font-head);font-weight:700}
+body.theme-breeze .nav-links a{color:var(--ink-soft)}
+body.theme-breeze .nav-links a:hover{background:var(--teal-light);color:var(--teal-dark)}
+body.theme-breeze .lang-switch{background:var(--teal-light);border-radius:99px}
+body.theme-breeze .lang-switch a{border-radius:99px;color:var(--muted)}
+body.theme-breeze .lang-switch a.active,body.theme-breeze .lang-switch a:hover{background:var(--teal);color:#fff!important}
+
+/* ── HERO: unit on the wall, air flowing down ────────────────────────────── */
+body.theme-breeze .hero{border-radius:0 0 48px 48px;background:#1b78c2;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;text-align:center;min-height:clamp(520px,64vw,660px)}
+body.theme-breeze .hero__bg--gradient{background:
+    radial-gradient(180px 70px at 18% 62%,rgba(255,255,255,.5),transparent 70%),radial-gradient(240px 90px at 30% 80%,rgba(255,255,255,.38),transparent 70%),
+    radial-gradient(260px 100px at 84% 66%,rgba(255,255,255,.45),transparent 70%),radial-gradient(60% 50% at 90% 0,rgba(255,236,200,.45),transparent 60%),
+    linear-gradient(180deg,#3a98e0 0%,#1b78c2 50%,#0e4a80 100%)}
+body.theme-breeze .hero__overlay{background:linear-gradient(to top,rgba(8,40,76,.7) 0%,transparent 60%)}
+body.theme-breeze .hero__art{position:relative;z-index:3;width:min(760px,92%);margin-top:clamp(18px,3vw,34px);order:-1}
+body.theme-breeze .hero__art svg{width:100%;height:auto;display:block;filter:drop-shadow(0 18px 24px rgba(5,30,60,.35))}
+body.theme-breeze .br-air{stroke-dasharray:6 14;animation:brAir 1.6s linear infinite}
+body.theme-breeze .br-air:nth-of-type(2){animation-delay:.3s}
+body.theme-breeze .br-air:nth-of-type(3){animation-delay:.7s}
+@keyframes brAir{to{stroke-dashoffset:-40}}
+@media (prefers-reduced-motion:reduce){body.theme-breeze .br-air{animation:none}}
+body.theme-breeze .hero__content{align-self:center;max-width:760px;margin:0 auto;padding:6px var(--px) clamp(34px,5vw,56px)}
+body.theme-breeze .hero__title{font-size:clamp(1.7rem,4vw,2.8rem);line-height:1.12}
+body.theme-breeze .hero__actions{justify-content:center}
+body.theme-breeze .hero__sub{margin-left:auto;margin-right:auto}
+body.theme-breeze .hero__cta{background:#fff;color:var(--teal-dark);border-radius:99px;box-shadow:0 10px 26px rgba(8,40,76,.35)}
+body.theme-breeze .hero__cta--telegram{background:var(--orange);color:#fff;box-shadow:0 10px 26px rgba(232,121,90,.45)}
+body.theme-breeze .section-label{border-radius:99px;padding:5px 14px}
+
+/* ── CARDS: staggered clouds ─────────────────────────────────────────────── */
+body.theme-breeze .info-grid{display:flex;flex-direction:column;gap:22px;margin-top:40px}
+body.theme-breeze .info-card{width:min(560px,100%);padding:28px 34px;background:#fff;border:0;border-radius:44px 44px 44px 10px;box-shadow:0 18px 44px rgba(27,120,194,.1);display:grid;grid-template-columns:64px 1fr;column-gap:20px;align-items:center}
+body.theme-breeze .info-card:nth-child(even){margin-left:auto;border-radius:44px 44px 10px 44px}
+@media (min-width:900px){body.theme-breeze .info-card:nth-child(odd){margin-left:6%}body.theme-breeze .info-card:nth-child(even){margin-right:6%}}
+body.theme-breeze .info-card::before{display:none}
+body.theme-breeze .info-card h3{display:contents}
+body.theme-breeze .info-card h3::before{content:"";position:static;grid-row:1/span 2;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#7cc2f6,var(--teal));-webkit-mask:none;mask:none;box-shadow:0 0 0 8px var(--teal-light)}
+body.theme-breeze .info-card:nth-child(even) h3::before{background:linear-gradient(135deg,#f6b49f,var(--orange));box-shadow:0 0 0 8px var(--orange-light)}
+body.theme-breeze .info-card h3{font-weight:700}
+body.theme-breeze .info-card p{grid-column:2}
+body.theme-breeze .info-card:hover{box-shadow:0 26px 56px rgba(27,120,194,.18)}
+
+/* ── STEPS: temperature scale ────────────────────────────────────────────── */
+body.theme-breeze .content-section:has(.process-step){display:grid;grid-template-columns:repeat(4,1fr);gap:0 18px;overflow:visible;position:relative}
+body.theme-breeze .content-section:has(.process-step)>h2,body.theme-breeze .content-section:has(.process-step)>p{grid-column:1/-1}
+body.theme-breeze .content-section:has(.process-step)>.process-step{display:block;width:auto;padding:84px 4px 0;border:0;text-align:center;position:relative}
+body.theme-breeze .process-step::before{all:unset;content:"26°";position:absolute;top:0;left:0;right:0;text-align:center;font-family:var(--font-head);font-weight:800;font-size:clamp(2.6rem,5vw,3.8rem);line-height:1;color:#e8795a;display:block}
+body.theme-breeze .process-step:nth-of-type(2)::before{content:"24°";color:#d9a35a}
+body.theme-breeze .process-step:nth-of-type(3)::before{content:"22°";color:#4aa8d8}
+body.theme-breeze .process-step:nth-of-type(4)::before{content:"20°";color:#1b78c2}
+body.theme-breeze .process-step::after{all:unset;content:"";position:absolute;top:66px;left:0;right:0;height:5px;border-radius:5px;background:linear-gradient(90deg,#e8795a,#d9a35a)}
+body.theme-breeze .process-step:nth-of-type(2)::after{background:linear-gradient(90deg,#d9a35a,#4aa8d8)}
+body.theme-breeze .process-step:nth-of-type(3)::after{background:linear-gradient(90deg,#4aa8d8,#2f8fd0)}
+body.theme-breeze .process-step:nth-of-type(4)::after{background:linear-gradient(90deg,#2f8fd0,#1b78c2)}
+body.theme-breeze .process-step:last-child::after{display:block}
+@media (max-width:899px){body.theme-breeze .content-section:has(.process-step){grid-template-columns:1fr 1fr;row-gap:36px}}
+@media (max-width:520px){body.theme-breeze .content-section:has(.process-step){grid-template-columns:1fr}}
+
+body.theme-breeze .brands-chip{background:#fff;border-radius:99px;font-family:var(--font-head);font-weight:700}
+body.theme-breeze .brands-chip::before{background:linear-gradient(135deg,#7cc2f6,var(--orange))}
+
+/* ── FAQ: typographic lines ──────────────────────────────────────────────── */
+body.theme-breeze .faq-accordion{gap:0}
+body.theme-breeze .faq-acc-item{background:none;border:0;border-bottom:1px solid var(--border);border-radius:0;box-shadow:none}
+body.theme-breeze .faq-acc-item__q{padding:26px 4px}
+body.theme-breeze .faq-acc-item__q-text{font-family:var(--font-head);font-weight:600;font-size:clamp(1.15rem,2.2vw,1.5rem);color:var(--ink)}
+body.theme-breeze .faq-acc-item__icon{background:none;border:1.5px solid var(--teal);color:var(--teal)}
+body.theme-breeze .faq-acc-item.is-open .faq-acc-item__icon{background:var(--orange);border-color:var(--orange);color:#fff}
+body.theme-breeze .faq-acc-item__a-inner{border-top:0;padding:0 4px 26px;max-width:720px}
+body.theme-breeze .faq-acc-item.is-open{box-shadow:none}
+
+/* links: pill cloud */
+body.theme-breeze .links-carousel{padding:0;margin:0}
+body.theme-breeze .links-nav{display:none!important}
+body.theme-breeze .links-track{display:flex;flex-wrap:wrap;overflow:visible;gap:12px}
+body.theme-breeze .links-tile{width:auto;height:auto;border-radius:99px;background:#fff;color:var(--ink);border:1px solid var(--border);box-shadow:0 6px 16px rgba(27,120,194,.08);scroll-snap-align:none}
+body.theme-breeze .links-tile__img,body.theme-breeze .links-tile__monogram,body.theme-breeze .links-tile__scrim{display:none}
+body.theme-breeze .links-tile__content{position:static;padding:14px 20px 14px 26px}
+body.theme-breeze .links-tile__text{color:var(--ink);text-shadow:none;font-family:var(--font-head);font-weight:700;font-size:1rem;-webkit-line-clamp:1}
+body.theme-breeze .links-tile__arrow{background:var(--teal-light);border-color:transparent;color:var(--teal)}
+body.theme-breeze .links-tile:hover{border-color:var(--teal);box-shadow:0 14px 30px rgba(27,120,194,.18)}
+body.theme-breeze .links-tile:hover .links-tile__arrow{background:var(--orange);color:#fff}
+body.theme-breeze .review-strip{background:#fff;border:1px solid var(--border);border-radius:44px;box-shadow:0 10px 26px rgba(27,120,194,.06);padding-left:clamp(22px,4vw,40px);padding-right:clamp(22px,4vw,40px)}
+body.theme-breeze footer{background:linear-gradient(180deg,#14588f,#0b3558);border-top:0;border-radius:48px 48px 0 0;color:#d2e6f7}
+body.theme-breeze .footer-section h3{border-bottom-color:var(--orange)}
+body.theme-breeze .floating-telegram{background:var(--orange);box-shadow:0 6px 22px rgba(232,121,90,.5)}

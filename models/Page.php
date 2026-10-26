@@ -1,6 +1,8 @@
 <?php
 // path: ./models/Page.php
- 
+
+require_once __DIR__ . '/../core/PageTheme.php';
+
 class Page {
     public const ROTATION_MANUAL = 'manual';
     public const ROTATION_AUTO = 'auto';
@@ -57,8 +59,8 @@ class Page {
                     meta_description_ru, meta_description_uz, 
                     og_title_ru, og_title_uz, og_description_ru, og_description_uz, og_image,
                     canonical_url, jsonld_ru, jsonld_uz, 
-                    is_published, enable_rotation, rotation_mode, selected_rotation_id, sort_order, parent_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    is_published, enable_rotation, rotation_mode, selected_rotation_id, sort_order, parent_id, theme
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         if (empty($data['slug'])) throw new InvalidArgumentException('Slug is required');
         $this->assertSlugUnique((string)$data['slug']);
@@ -102,7 +104,8 @@ class Page {
             $rotationMode,
             $data['selected_rotation_id'] ?? null,
             $data['sort_order'] ?? 0,
-            $data['parent_id'] ?? null
+            $data['parent_id'] ?? null,
+            PageTheme::normalize($data['theme'] ?? PageTheme::BASE)
         ]);
         
         $id = $this->db->lastInsertId();
@@ -171,7 +174,7 @@ class Page {
                     og_image = ?, canonical_url = ?,
                     jsonld_ru = ?, jsonld_uz = ?, 
                     is_published = ?, enable_rotation = ?, rotation_mode = ?, selected_rotation_id = ?, sort_order = ?,
-                    parent_id = ?, show_link_widget = ?, widget_title_ru = ?, widget_title_uz = ?
+                    parent_id = ?, show_link_widget = ?, widget_title_ru = ?, widget_title_uz = ?, theme = ?
                 WHERE id = ?";
         
         $result = $this->db->query($sql, [
@@ -204,6 +207,7 @@ class Page {
             array_key_exists('show_link_widget', $data) ? $data['show_link_widget'] : ($currentPage['show_link_widget'] ?? 0),
             array_key_exists('widget_title_ru', $data) ? $data['widget_title_ru'] : ($currentPage['widget_title_ru'] ?? null),
             array_key_exists('widget_title_uz', $data) ? $data['widget_title_uz'] : ($currentPage['widget_title_uz'] ?? null),
+            PageTheme::normalize(array_key_exists('theme', $data) ? $data['theme'] : ($currentPage['theme'] ?? PageTheme::BASE)),
             $id
         ]);
         

@@ -1,0 +1,133 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME: wave — washing machines.  LAYOUT CONCEPT: "wash cycle".
+   · hero  = text left + a washing-machine front with a spinning drum right
+   · cards = floating BUBBLES of different sizes (not a grid of rectangles)
+   · steps = wash PROGRAM track: stations on a wavy line, water fills across
+   · FAQ   = chat conversation (question bubbles right, answers left)
+   · links = round bubble tiles · section edges are waves
+   Needs hero partial variant: hero-washer (adds .hero__art with <svg>).
+   ═══════════════════════════════════════════════════════════════════════════ */
+body.theme-wave {
+    --ink:#06303b; --ink-soft:#2b4f5c; --muted:#58798a;
+    --surface:#eefafc; --surface-2:#ffffff; --border:#cdeaf0; --border-soft:#e2f4f8;
+    --teal:#087f95; --teal-dark:#06485e; --teal-light:#dff4f8; --teal-glow:rgba(8,127,149,.2);
+    --orange:#1d63d8; --orange-dark:#1550b4; --orange-light:#e5eefc; --orange-glow:rgba(29,99,216,.22);
+    --font-head:"Nunito","Onest",Arial,sans-serif;
+    --font-body:"Onest",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    font-family:var(--font-body); background:var(--surface);
+}
+html:has(body.theme-wave){background:#eefafc}
+body.theme-wave::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(circle at 8% 80%,rgba(8,127,149,.10) 0 38px,transparent 39px),radial-gradient(circle at 92% 22%,rgba(29,99,216,.08) 0 54px,transparent 55px),
+    radial-gradient(circle at 70% 92%,rgba(8,127,149,.08) 0 26px,transparent 27px),radial-gradient(circle at 20% 12%,rgba(29,99,216,.06) 0 70px,transparent 71px)}
+body.theme-wave .hero__title,body.theme-wave .content-section h2,body.theme-wave .links-section__title,
+body.theme-wave .faq-section__title,body.theme-wave .info-card h3,body.theme-wave .process-step h3{font-family:var(--font-head);font-weight:800}
+body.theme-wave .content-section h2{border-bottom:0;padding-bottom:20px}
+body.theme-wave .content-section h2::after{bottom:0;width:80px;height:8px;border-radius:99px;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 8'%3E%3Cpath d='M0 4Q5 0 10 4T20 4T30 4T40 4' fill='none' stroke='%23087f95' stroke-width='2.4'/%3E%3C/svg%3E") left center/40px 8px repeat-x}
+/* every content section starts with a little wave of its own */
+body.theme-wave .content-section{position:relative}
+
+body.theme-wave header{background:linear-gradient(135deg,#06485e,#087f95);border-bottom:0;box-shadow:0 6px 24px rgba(6,72,94,.3)}
+body.theme-wave .nav-links a{color:#d3f0f6}
+body.theme-wave .nav-links a:hover{background:rgba(255,255,255,.14);color:#fff}
+body.theme-wave .lang-switch{background:rgba(255,255,255,.14);border-radius:99px}
+body.theme-wave .lang-switch a{border-radius:99px;color:#cfeef4}
+body.theme-wave .lang-switch a.active,body.theme-wave .lang-switch a:hover{background:#fff;color:#06485e!important}
+body.theme-wave .site-name{font-family:var(--font-head);font-weight:800}
+body.theme-wave .logo{border-radius:50%}
+
+/* ── HERO: text + washer ─────────────────────────────────────────────────── */
+body.theme-wave .hero{background:#06485e;display:grid;grid-template-columns:1fr;align-items:center;min-height:clamp(460px,62vw,620px);margin-bottom:clamp(20px,4vw,40px)}
+body.theme-wave .hero__bg--gradient{background:
+    radial-gradient(circle at 14% 30%,rgba(255,255,255,.18) 0 14px,transparent 15px),radial-gradient(circle at 26% 62%,rgba(255,255,255,.14) 0 22px,transparent 23px),
+    radial-gradient(circle at 44% 24%,rgba(255,255,255,.12) 0 9px,transparent 10px),radial-gradient(60% 90% at 85% 40%,rgba(110,225,240,.5),transparent 62%),
+    linear-gradient(150deg,#087f95 0%,#06607a 50%,#06485e 100%)}
+body.theme-wave .hero::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:clamp(34px,6vw,64px);z-index:4;pointer-events:none;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 60' preserveAspectRatio='none'%3E%3Cpath d='M0 30Q150 0 300 30T600 30T900 30T1200 30V60H0Z' fill='%23eefafc'/%3E%3C/svg%3E") center bottom/100% 100% no-repeat}
+body.theme-wave .hero__overlay{background:linear-gradient(90deg,rgba(3,45,60,.6),transparent 70%)}
+body.theme-wave .hero__content{grid-column:1;grid-row:1;padding:clamp(28px,6vw,60px) var(--px) 22px;max-width:640px}
+body.theme-wave .hero__title{font-size:clamp(1.8rem,4.2vw,3rem);line-height:1.1}
+body.theme-wave .hero__art{display:flex;position:relative;z-index:3;grid-column:1;grid-row:2;justify-content:center;padding:0 0 64px}
+body.theme-wave .hero__art svg{width:176px;height:auto;filter:drop-shadow(0 20px 26px rgba(2,40,56,.5))}
+@media (min-width:900px){
+ body.theme-wave .hero{grid-template-columns:1.1fr .9fr;padding-left:max(var(--px),calc((100vw - 1100px)/2))}
+ body.theme-wave .hero__content{padding-left:0}
+ body.theme-wave .hero__art{display:flex;grid-column:2;grid-row:1;justify-content:center;padding-bottom:50px}
+ body.theme-wave .hero__art svg{height:min(430px,60vw);width:auto;filter:drop-shadow(0 30px 40px rgba(2,40,56,.5))}
+}
+body.theme-wave .wv-spin{transform-origin:150px 205px;animation:wvSpin 7s linear infinite}
+body.theme-wave .wv-slosh{animation:wvSlosh 2.4s ease-in-out infinite}
+@keyframes wvSpin{to{transform:rotate(360deg)}}
+@keyframes wvSlosh{50%{transform:translateY(5px)}}
+@media (prefers-reduced-motion:reduce){body.theme-wave .wv-spin,body.theme-wave .wv-slosh{animation:none}}
+body.theme-wave .hero__cta{background:#fff;color:#06485e;border-radius:99px;box-shadow:0 10px 26px rgba(2,40,56,.35)}
+body.theme-wave .hero__cta--telegram{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.55);box-shadow:none}
+body.theme-wave .section-label{border-radius:99px;padding:5px 14px}
+
+/* ── CARDS: floating bubbles ─────────────────────────────────────────────── */
+body.theme-wave .info-grid{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:16px;padding:20px 0 10px}
+body.theme-wave .info-card{flex:none;width:clamp(220px,22.5vw,244px);aspect-ratio:1;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;
+    padding:26px;border:0;background:radial-gradient(circle at 28% 22%,rgba(255,255,255,.95) 0 5%,rgba(255,255,255,0) 14%),radial-gradient(circle at 50% 50%,#e6f7fb 0 55%,#bfe8f1 100%);box-shadow:inset 0 -10px 30px rgba(8,127,149,.18),0 18px 36px rgba(8,127,149,.14)}
+body.theme-wave .info-card:nth-child(2){margin-top:46px;width:clamp(200px,20.5vw,222px)}
+body.theme-wave .info-card:nth-child(3){margin-top:12px;width:clamp(225px,23.5vw,252px)}
+body.theme-wave .info-card:nth-child(4){margin-top:58px;width:clamp(190px,19.5vw,210px)}
+body.theme-wave .info-card::before{display:none}
+body.theme-wave .info-card h3{display:block;font-size:1.02rem;margin-bottom:6px;line-height:1.2}
+body.theme-wave .info-card h3::before{display:none}
+body.theme-wave .info-card p{font-size:.8rem;line-height:1.4}
+body.theme-wave .info-card:hover{box-shadow:inset 0 -10px 30px rgba(8,127,149,.25),0 26px 50px rgba(8,127,149,.25)}
+
+/* ── STEPS: wash-program track ───────────────────────────────────────────── */
+body.theme-wave .content-section:has(.process-step){display:grid;grid-template-columns:repeat(4,1fr);gap:0 10px;overflow:visible;position:relative;counter-reset:step}
+body.theme-wave .content-section:has(.process-step)>h2,body.theme-wave .content-section:has(.process-step)>p{grid-column:1/-1}
+body.theme-wave .content-section:has(.process-step)>.process-step{display:block;width:auto;padding:104px 12px 0;text-align:center;border:0;position:relative}
+body.theme-wave .process-step::before{all:unset;content:counter(step);position:absolute;top:0;left:50%;transform:translateX(-50%);width:76px;height:76px;border-radius:50%;box-sizing:border-box;display:grid;place-items:center;
+    font-family:var(--font-head);font-weight:800;font-size:1.5rem;color:var(--teal-dark);background:radial-gradient(circle at 32% 28%,#fff 0 14%,#dff4f8 15%);border:6px solid var(--teal);box-shadow:0 0 0 8px var(--teal-light),0 12px 24px rgba(8,127,149,.25);z-index:2}
+body.theme-wave .process-step::after{all:unset;content:"";position:absolute;top:35px;left:calc(50% + 40px);width:calc(100% - 80px + 10px);height:8px;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 8'%3E%3Cpath d='M0 4Q5 0 10 4T20 4T30 4T40 4' fill='none' stroke='%2327b0c8' stroke-width='3'/%3E%3C/svg%3E") 0 0/40px 8px repeat-x}
+body.theme-wave .process-step:last-child::after{display:none}
+@media (max-width:899px){body.theme-wave .content-section:has(.process-step){grid-template-columns:1fr 1fr;row-gap:30px}body.theme-wave .process-step::after{display:none}}
+@media (max-width:520px){body.theme-wave .content-section:has(.process-step){grid-template-columns:1fr}}
+
+body.theme-wave .brands-chip{background:#fff;border-color:var(--border);font-family:var(--font-head);font-weight:800}
+body.theme-wave .brands-chip::before{background:radial-gradient(circle at 32% 28%,#fff 0 14%,transparent 15%),linear-gradient(135deg,#27b0c8,#087f95);-webkit-mask:none;mask:none}
+
+/* ── FAQ: chat ───────────────────────────────────────────────────────────── */
+body.theme-wave .faq-accordion{max-width:760px;gap:14px}
+body.theme-wave .faq-acc-item{background:none;border:0;box-shadow:none;overflow:visible;display:flex;flex-direction:column;gap:8px;border-radius:0}
+body.theme-wave .faq-acc-item__q{width:auto;max-width:82%;margin-left:auto;background:linear-gradient(135deg,#27b0c8,#087f95);color:#fff;border-radius:24px 24px 6px 24px;padding:14px 20px;box-shadow:0 8px 18px rgba(8,127,149,.25)}
+body.theme-wave .faq-acc-item__q-text{color:#fff;font-family:var(--font-head);font-weight:800}
+body.theme-wave .faq-acc-item__icon{background:rgba(255,255,255,.25);color:#fff}
+body.theme-wave .faq-acc-item.is-open .faq-acc-item__icon{background:#fff;color:var(--teal)}
+body.theme-wave .faq-acc-item__a{max-width:86%}
+body.theme-wave .faq-acc-item__a-inner{background:#fff;border:1px solid var(--border);border-radius:24px 24px 24px 6px;padding:16px 20px;box-shadow:0 8px 18px rgba(8,127,149,.08)}
+body.theme-wave .faq-acc-item.is-open{box-shadow:none}
+
+/* links: round bubbles */
+body.theme-wave .links-tile{width:200px;height:200px;border-radius:50%;background:radial-gradient(circle at 30% 26%,#5fd0e3,#087f95 60%,#06485e)}
+body.theme-wave .links-tile__scrim{background:radial-gradient(circle,transparent 40%,rgba(3,45,60,.7))}
+body.theme-wave .links-tile__content{justify-content:center;text-align:center;padding:0 22px 34px}
+body.theme-wave .links-tile__text{font-family:var(--font-head);font-weight:800}
+body.theme-wave .links-tile__arrow{display:none}
+body.theme-wave .links-nav{border-radius:50%}
+body.theme-wave .review-strip{background:#fff;border:1px solid var(--border);border-radius:99px;padding-left:clamp(22px,4vw,40px);padding-right:clamp(22px,4vw,40px)}
+body.theme-wave footer{background:linear-gradient(180deg,#06485e,#032d3c);border-top:0;color:#cfeaf0;margin-top:clamp(70px,10vw,110px)}
+body.theme-wave footer::before{top:-39px;height:40px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40' preserveAspectRatio='none'%3E%3Cpath d='M0 20Q150 0 300 20T600 20T900 20T1200 20V40H0Z' fill='%2306485e'/%3E%3C/svg%3E") center bottom/100% 100% no-repeat}
+body.theme-wave .footer-section h3{border-bottom-color:#27b0c8}
+body.theme-wave .floating-telegram{background:#fff;color:#087f95;box-shadow:0 6px 22px rgba(8,127,149,.45)}
+
+/* ── phones: compact bubbles, side-by-side steps ─────────────────────────── */
+@media (max-width:699px){
+ body.theme-wave .info-grid{gap:6px}
+ body.theme-wave .info-card,body.theme-wave .info-card:nth-child(n){margin-top:0;width:min(236px,72vw)}
+ body.theme-wave .info-card:nth-child(odd){margin-right:auto;margin-left:4%}
+ body.theme-wave .info-card:nth-child(even){margin-left:auto;margin-right:4%}
+}
+@media (max-width:899px){
+ body.theme-wave .content-section:has(.process-step){grid-template-columns:1fr;row-gap:0}
+ body.theme-wave .content-section:has(.process-step)>.process-step{padding:4px 0 30px 98px;text-align:left;min-height:84px}
+ body.theme-wave .process-step::before{left:0;top:0;transform:none}
+ body.theme-wave .process-step::after{display:block;top:80px;left:37px;bottom:2px;width:0;height:auto;background:none;border-left:3px dotted #9bd8e4}
+ body.theme-wave .process-step:last-child::after{display:none}
+}

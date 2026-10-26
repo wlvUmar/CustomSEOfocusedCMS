@@ -115,7 +115,7 @@ class ToolEnvelope {
     }
 
     private static function isMutationTool(string $name): bool {
-        return in_array($name, ['insert_section','set_section_style','wrap_section','set_custom_css','set_page_theme','set_rotation','create_faq','update_faq','delete_faq','restore_page_revision','str_replace_field','set_field','update_section','patch_section','add_section_marker','auto_sectionize','batch_update'], true);
+        return in_array($name, ['insert_section','set_section_style','wrap_section','set_custom_css','set_page_theme','set_page_style','set_rotation','create_faq','update_faq','delete_faq','restore_page_revision','str_replace_field','set_field','update_section','patch_section','add_section_marker','auto_sectionize','batch_update'], true);
     }
 
     public static function toToolContent(array $normalized): array {

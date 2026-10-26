@@ -141,7 +141,8 @@ class PageAdminController extends Controller {
             'rotation_mode' => $_POST['rotation_mode'] ?? 'auto',
             'selected_rotation_id' => !empty($_POST['selected_rotation_id']) ? intval($_POST['selected_rotation_id']) : null,
             'sort_order' => intval($_POST['sort_order'] ?? 0),
-            'parent_id' => $parentId
+            'parent_id' => $parentId,
+            'theme' => PageTheme::normalize($_POST['theme'] ?? PageTheme::BASE)
         ];
         
         if ($id) {

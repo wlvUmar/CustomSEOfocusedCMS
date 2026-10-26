@@ -148,6 +148,7 @@ class PageReader {
                 'title_ru' => $p['title_ru'] ?? '',
                 'title_uz' => $p['title_uz'] ?? '',
                 'is_published' => (int)($p['is_published'] ?? 1),
+                'theme' => $p['theme'] ?? 'default',
                 'updated_at' => $p['updated_at'] ?? '',
             ];
         }
@@ -182,7 +183,7 @@ class PageReader {
             'meta_title_ru', 'meta_title_uz', 'meta_description_ru', 'meta_description_uz',
             'og_title_ru', 'og_title_uz', 'og_description_ru', 'og_description_uz',
             'canonical_url', 'enable_rotation', 'rotation_mode', 'selected_rotation_id',
-            'is_published', 'show_link_widget', 'updated_at',
+            'is_published', 'show_link_widget', 'theme', 'updated_at',
         ];
         $result = [];
         foreach ($keep as $k) {

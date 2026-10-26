@@ -1,0 +1,117 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME: flame — gas stoves & cooktops.  LAYOUT CONCEPT: "kitchen line".
+   · hero  = full-bleed dark; a stove top with four glowing burners on the right
+   · cards = restaurant MENU BOARD: two columns, title ........ leader dots
+   · steps = HEAT LEVELS: giant outlined numerals + a heat bar that fills per step
+   · FAQ   = two-column grid of dark tiles with ember numbers
+   · links = long horizontal bar rows
+   Needs hero partial variant: hero-stove (adds .hero__art with <svg>).
+   ═══════════════════════════════════════════════════════════════════════════ */
+body.theme-flame {
+    color-scheme: dark;
+    --ink:#f6efe8; --ink-soft:#d8cdc2; --muted:#a99d90;
+    --surface:#110e0c; --surface-2:#1c1815; --border:#3a312a; --border-soft:#2a231e;
+    --teal:#ff8a3d; --teal-dark:#1a0f08; --teal-light:rgba(255,138,61,.13); --teal-glow:rgba(255,138,61,.25);
+    --orange:#d63a14; --orange-dark:#b52c0b; --orange-light:rgba(214,58,20,.14); --orange-glow:rgba(214,58,20,.35);
+    --font-head:"Oswald","Inter",Arial,sans-serif;
+    --font-body:"Inter",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    font-family:var(--font-body); background:var(--surface);
+}
+html:has(body.theme-flame){background:#110e0c}
+body.theme-flame::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(900px 420px at 50% 110%,rgba(214,58,20,.18),transparent 65%),radial-gradient(600px 400px at 0 0,rgba(255,138,61,.07),transparent 60%)}
+body.theme-flame .hero__title,body.theme-flame .content-section h2,body.theme-flame .links-section__title,
+body.theme-flame .faq-section__title,body.theme-flame .info-card h3,body.theme-flame .process-step h3{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.04em}
+body.theme-flame .content-section h2,body.theme-flame .links-section__title,body.theme-flame .faq-section__title{font-weight:600;font-size:clamp(1.4rem,3.2vw,2rem)}
+body.theme-flame .content-section h2{border-bottom:1px solid var(--border)}
+body.theme-flame .content-section h2::after{width:80px;height:3px;bottom:-2px;border-radius:0;background:linear-gradient(90deg,var(--orange),var(--teal));box-shadow:0 0 14px var(--orange-glow)}
+body.theme-flame .content-section a{color:var(--teal)}
+
+body.theme-flame header{background:#0b0908;border-bottom:1px solid var(--border);box-shadow:0 1px 0 rgba(255,138,61,.35),0 8px 30px rgba(0,0,0,.5)}
+body.theme-flame header::after{display:none}
+body.theme-flame .nav-links a{color:#b8ab9d}
+body.theme-flame .nav-links a:hover{background:rgba(255,255,255,.07);color:#fff}
+body.theme-flame .lang-switch{background:rgba(255,255,255,.06);border-radius:3px}
+body.theme-flame .lang-switch a{border-radius:2px;color:#a99d90}
+body.theme-flame .lang-switch a.active,body.theme-flame .lang-switch a:hover{background:var(--orange);color:#fff!important}
+body.theme-flame .site-name{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+body.theme-flame .logo{border-radius:4px}
+
+/* ── HERO: dark with stove top ───────────────────────────────────────────── */
+body.theme-flame .hero{background:#0b0908;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr;align-items:center;min-height:clamp(460px,60vw,600px);margin-bottom:0}
+body.theme-flame .hero__bg--gradient{background:radial-gradient(55% 80% at 80% 60%,rgba(214,58,20,.4),transparent 62%),radial-gradient(40% 60% at 100% 100%,rgba(255,138,61,.28),transparent 62%),linear-gradient(160deg,#1a1411 0%,#0b0908 70%)}
+body.theme-flame .hero__overlay{background:linear-gradient(90deg,rgba(11,9,8,.85) 0%,rgba(11,9,8,.3) 65%,transparent 100%)}
+body.theme-flame .hero__content{grid-column:1;grid-row:1;align-self:center;padding:clamp(28px,6vw,64px) var(--px) 22px;max-width:640px}
+body.theme-flame .hero__title{font-weight:700;line-height:1.05;font-size:clamp(2rem,5.2vw,3.4rem)}
+body.theme-flame .hero__art{display:flex;position:relative;z-index:3;grid-column:1;grid-row:2;justify-content:center;padding:0 var(--px) 28px}
+body.theme-flame .hero__art svg{width:min(300px,84%);height:auto;filter:drop-shadow(0 20px 30px rgba(0,0,0,.7))}
+@media (min-width:900px){
+ body.theme-flame .hero{grid-template-columns:1.05fr .95fr;padding-left:max(var(--px),calc((100vw - 1100px)/2))}
+ body.theme-flame .hero__content{padding-left:0}
+ body.theme-flame .hero__art{display:flex;grid-column:2;grid-row:1;justify-content:center;align-items:center}
+ body.theme-flame .hero__art svg{width:min(100%,470px);height:auto;filter:drop-shadow(0 30px 50px rgba(0,0,0,.7))}
+}
+body.theme-flame .fl-burn{animation:flBurn 1.8s ease-in-out infinite;transform-origin:center;transform-box:fill-box}
+body.theme-flame .fl-burn:nth-of-type(2n){animation-delay:.5s}
+body.theme-flame .fl-burn:nth-of-type(3n){animation-delay:1.1s}
+@keyframes flBurn{50%{opacity:.6;transform:scale(1.04)}}
+@media (prefers-reduced-motion:reduce){body.theme-flame .fl-burn{animation:none}}
+body.theme-flame .hero__cta{background:linear-gradient(135deg,#e8461b,#c2300c);color:#fff;border-radius:3px;text-transform:uppercase;letter-spacing:.07em;font-size:.84rem;box-shadow:0 0 0 1px rgba(255,255,255,.14) inset,0 10px 30px rgba(214,58,20,.5)}
+body.theme-flame .hero__cta:hover{box-shadow:0 14px 40px rgba(214,58,20,.7)}
+body.theme-flame .hero__cta--telegram{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.3);box-shadow:none}
+body.theme-flame .section-label{background:transparent;color:var(--teal);border:1px solid rgba(255,138,61,.5);border-radius:2px;letter-spacing:.2em}
+
+/* ── CARDS: menu board ───────────────────────────────────────────────────── */
+body.theme-flame .info-grid{display:grid;grid-template-columns:1fr;gap:0;column-gap:72px;margin:34px 0 0;padding:clamp(22px,4vw,44px);border:1px solid var(--border);border-radius:4px;background:linear-gradient(180deg,#1a1512,#120f0d);position:relative}
+body.theme-flame .info-grid::before{content:"МЕНЮ ВЫКУПА";position:absolute;top:-12px;left:50%;transform:translateX(-50%);padding:0 18px;background:var(--surface);font-family:var(--font-head);letter-spacing:.4em;font-size:.78rem;color:var(--teal)}
+@media (min-width:800px){body.theme-flame .info-grid{grid-template-columns:1fr 1fr}}
+body.theme-flame .info-card{background:none;border:0;border-bottom:1px solid var(--border-soft);border-radius:0;padding:18px 0 20px;overflow:visible}
+body.theme-flame .info-card::before{display:none}
+body.theme-flame .info-card h3{display:flex;align-items:baseline;font-size:1.15rem;font-weight:600;margin-bottom:4px;color:var(--ink)}
+body.theme-flame .info-card h3::before{display:none}
+body.theme-flame .info-card h3::after{content:"";flex:1;margin:0 12px;border-bottom:2px dotted rgba(255,138,61,.55);transform:translateY(-4px)}
+body.theme-flame .info-card:nth-child(1) h3::after{content:"";}
+body.theme-flame .info-card p{max-width:92%}
+body.theme-flame .info-card:hover{transform:none!important;box-shadow:none;border-color:var(--teal);background:rgba(255,138,61,.05)}
+
+/* ── STEPS: heat levels ──────────────────────────────────────────────────── */
+body.theme-flame .content-section:has(.process-step){display:block;overflow:visible;counter-reset:step}
+body.theme-flame .content-section:has(.process-step)>.process-step{display:grid;grid-template-columns:clamp(84px,14vw,150px) 1fr;align-items:center;column-gap:20px;width:auto;padding:22px 0;border:0;border-bottom:1px solid var(--border-soft);position:relative}
+body.theme-flame .process-step::before{all:unset;content:"0" counter(step);grid-row:1/span 2;font-family:var(--font-head);font-weight:700;font-size:clamp(3.2rem,8vw,5.6rem);line-height:1;color:transparent;-webkit-text-stroke:2px var(--teal);text-shadow:0 0 30px var(--teal-glow);text-align:center}
+body.theme-flame .process-step::after{all:unset;content:"";grid-column:2;grid-row:3;display:block;height:6px;margin-top:12px;border-radius:0;background:linear-gradient(90deg,#ffd23d,#ff8a3d,#d63a14) 0 0/var(--heat,25%) 100% no-repeat,rgba(255,255,255,.07);box-shadow:0 0 14px rgba(255,138,61,.4)}
+body.theme-flame .process-step:nth-of-type(1){--heat:25%}
+body.theme-flame .process-step:nth-of-type(2){--heat:50%}
+body.theme-flame .process-step:nth-of-type(3){--heat:75%}
+body.theme-flame .process-step:nth-of-type(4){--heat:100%}
+body.theme-flame .process-step:last-child::after{display:block}
+body.theme-flame .process-step h3{grid-column:2;font-size:1.2rem;font-weight:600;margin:0}
+body.theme-flame .process-step p{grid-column:2}
+
+body.theme-flame .brands-chip{border-radius:3px;background:#1c1815;border-color:var(--border);color:var(--ink);text-transform:uppercase;letter-spacing:.1em;font-size:.82rem;font-family:var(--font-head);font-weight:500}
+body.theme-flame .brands-chip::before{background:linear-gradient(135deg,var(--orange),var(--teal))}
+
+/* ── FAQ: two-column tiles ───────────────────────────────────────────────── */
+@media (min-width:800px){body.theme-flame .faq-accordion{display:grid;grid-template-columns:1fr 1fr;align-items:start}}
+body.theme-flame .faq-accordion{counter-reset:q}
+body.theme-flame .faq-acc-item{background:#1c1815;border-radius:3px;counter-increment:q;border:1px solid var(--border);border-top:3px solid var(--orange)}
+body.theme-flame .faq-acc-item__q-text::before{content:counter(q,decimal-leading-zero) " ";font-family:var(--font-head);color:var(--teal);margin-right:10px}
+body.theme-flame .faq-acc-item__q-text{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.03em;font-weight:500;font-size:1.02rem}
+body.theme-flame .faq-acc-item.is-open{border-color:var(--teal);box-shadow:0 0 34px rgba(214,58,20,.18)}
+body.theme-flame .faq-acc-item__icon{border-radius:3px;background:var(--teal-light);color:var(--teal)}
+body.theme-flame .faq-acc-item.is-open .faq-acc-item__icon{background:var(--orange);color:#fff}
+
+/* links: bar rows */
+body.theme-flame .links-carousel{padding:0;margin:0}
+body.theme-flame .links-nav{display:none!important}
+body.theme-flame .links-track{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));overflow:visible;gap:10px}
+body.theme-flame .links-tile{width:auto;height:78px;border-radius:3px;background:linear-gradient(90deg,#3a1408,#1a0f08);border:1px solid var(--border);border-left:4px solid var(--orange)}
+body.theme-flame .links-tile__img,body.theme-flame .links-tile__monogram,body.theme-flame .links-tile__scrim{display:none}
+body.theme-flame .links-tile__content{align-items:center;top:0;padding:0 18px}
+body.theme-flame .links-tile__text{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.06em;font-weight:500;font-size:1.05rem}
+body.theme-flame .links-tile:hover{border-color:var(--teal);box-shadow:0 0 30px rgba(214,58,20,.3)}
+body.theme-flame .review-strip{background:#1c1815;border-color:var(--border);border-radius:3px}
+body.theme-flame footer{background:#0b0908;border-top:2px solid var(--orange);color:#b8ab9d}
+body.theme-flame .footer-section h3{border-bottom-color:var(--orange);font-family:var(--font-head);text-transform:uppercase;letter-spacing:.08em;font-weight:500}
+body.theme-flame .floating-telegram{background:linear-gradient(135deg,#e8461b,#ff8a3d);box-shadow:0 0 28px rgba(214,58,20,.6)}
+body.theme-flame .review-modal__dialog{background:#1c1815;color:var(--ink)}
+body.theme-flame .review-modal__btn--secondary{color:#fff}

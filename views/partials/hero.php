@@ -76,4 +76,14 @@
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php
+        // Per-page theme art (views/partials/hero-art/{theme}.php). Illustrations only appear on pages
+        // without a hero photo; the 'screen' theme always shows its brand ticker.
+        $heroTheme = PageTheme::normalize($page['theme'] ?? PageTheme::BASE);
+        $heroArt = PageTheme::heroArtPartial($heroTheme);
+        if ($heroArt && (!$hasHero || $heroTheme === 'screen')) {
+            require $heroArt;
+        }
+        ?>
     </section>

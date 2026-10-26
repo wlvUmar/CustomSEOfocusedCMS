@@ -172,6 +172,19 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
        <link rel="stylesheet" href="<?= BASE_URL ?>/css/pages.min.css?v=<?= (is_file(PUBLIC_PATH . '/css/pages.min.css') ? filemtime(PUBLIC_PATH . '/css/pages.min.css') : (is_file(BASE_PATH . '/public/css/pages.min.css') ? filemtime(BASE_PATH . '/public/css/pages.min.css') : time())) ?>">
        <link rel="stylesheet" href="<?= BASE_URL ?>/css/components.min.css?v=<?= (is_file(PUBLIC_PATH . '/css/components.min.css') ? filemtime(PUBLIC_PATH . '/css/components.min.css') : (is_file(BASE_PATH . '/public/css/components.min.css') ? filemtime(BASE_PATH . '/public/css/components.min.css') : time())) ?>">
      <?php
+     // Per-page layout theme (pages.theme): its own stylesheet + font families.
+     // 'default' loads nothing extra. Loaded after pages/components CSS and before custom_css.
+     $pageTheme = PageTheme::normalize($page['theme'] ?? PageTheme::BASE);
+     if ($pageTheme !== PageTheme::BASE):
+         $themeFonts = PageTheme::fontsUrl($pageTheme);
+         if ($themeFonts !== ''): ?>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link rel="stylesheet" href="<?= e($themeFonts) ?>">
+     <?php endif; ?>
+     <link rel="stylesheet" href="<?= e(PageTheme::cssUrl($pageTheme)) ?>">
+     <?php endif; ?>
+     <?php
      // Per-page custom CSS: merges DB custom_css + any <style> extracted from content (see PageController)
      $pageCustomCss = $pageCustomCss ?? ($page['custom_css'] ?? '');
      // Also merge extracted CSS stashed by PageController/page.php via global
@@ -298,7 +311,7 @@ $isAdmin = isset($_SESSION['user_id']) && !isBot();
 <?php
 $pageSlugClass = getPageSlugClass($page['slug'] ?? '');
 $pageLangClass = 'lang-' . ($lang ?? 'ru');
-$bodyClasses = trim($pageSlugClass . ' ' . $pageLangClass . ($isAdmin ? ' admin-mode' : ''));
+$bodyClasses = trim($pageSlugClass . ' ' . $pageLangClass . ' ' . PageTheme::bodyClass($pageTheme ?? PageTheme::BASE) . ($isAdmin ? ' admin-mode' : ''));
 ?>
 <body class="<?= e($bodyClasses) ?>">
     <?php if (defined('GTM_ID')): ?>
