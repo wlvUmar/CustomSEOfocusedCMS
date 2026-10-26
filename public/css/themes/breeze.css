@@ -36,7 +36,7 @@ body.theme-breeze .lang-switch a{border-radius:99px;color:var(--muted)}
 body.theme-breeze .lang-switch a.active,body.theme-breeze .lang-switch a:hover{background:var(--teal);color:#fff!important}
 
 /* ── HERO: unit on the wall, air flowing down ────────────────────────────── */
-body.theme-breeze .hero{border-radius:0 0 48px 48px;background:#1b78c2;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;text-align:center;min-height:clamp(520px,64vw,660px)}
+body.theme-breeze .hero{border-radius:0 0 48px 48px;background:#1b78c2;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-align:center;min-height:clamp(440px,64vw,660px)}
 body.theme-breeze .hero__bg--gradient{background:
     radial-gradient(180px 70px at 18% 62%,rgba(255,255,255,.5),transparent 70%),radial-gradient(240px 90px at 30% 80%,rgba(255,255,255,.38),transparent 70%),
     radial-gradient(260px 100px at 84% 66%,rgba(255,255,255,.45),transparent 70%),radial-gradient(60% 50% at 90% 0,rgba(255,236,200,.45),transparent 60%),
@@ -114,3 +114,10 @@ body.theme-breeze .review-strip{background:#fff;border:1px solid var(--border);b
 body.theme-breeze footer{background:linear-gradient(180deg,#14588f,#0b3558);border-top:0;border-radius:48px 48px 0 0;color:#d2e6f7}
 body.theme-breeze .footer-section h3{border-bottom-color:var(--orange)}
 body.theme-breeze .floating-telegram{background:var(--orange);box-shadow:0 6px 22px rgba(232,121,90,.5)}
+
+/* logo recolour: the stamp is drawn as a mask in the theme's own colour (original image stays for SEO/alt) */
+body.theme-breeze .logo-wrap{position:relative;display:block;width:42px;height:42px;flex-shrink:0}
+body.theme-breeze .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:0}
+body.theme-breeze .logo-mark{position:absolute;inset:0;background:linear-gradient(135deg,#1b78c2,#e8795a);
+    -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
+@media (min-width:480px){body.theme-breeze .logo-wrap{width:52px;height:52px}}

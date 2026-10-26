@@ -6,6 +6,7 @@
         <div class="container">
             <nav>
                 <a href="<?= $baseUrl ?>/" class="logo-link">
+                    <span class="logo-wrap">
                     <picture>
                         <source
                             type="image/webp"
@@ -24,6 +25,8 @@
                             decoding="async"
                         >
                     </picture>
+                    <span class="logo-mark" aria-hidden="true"></span>
+                    </span>
                     <span class="site-name"><?= e($seo["site_name_$lang"]) ?></span>
                 </a>
 

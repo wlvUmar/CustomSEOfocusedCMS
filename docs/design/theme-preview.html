@@ -2281,6 +2281,12 @@ body.theme-wood footer{background:repeating-linear-gradient(90deg,rgba(255,255,2
 body.theme-wood .footer-section h3{border-bottom-color:#b8854a;color:#fbf3e6}
 body.theme-wood .floating-telegram{background:#b8854a;color:#2b1d12;box-shadow:0 4px 16px rgba(184,133,74,.5)}
 
+/* logo recolour: the stamp is drawn as a mask in the theme's own colour (original image stays for SEO/alt) */
+body.theme-wood .logo-wrap{position:relative;display:block;width:42px;height:42px;flex-shrink:0}
+body.theme-wood .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:0}
+body.theme-wood .logo-mark{position:absolute;inset:0;background:linear-gradient(180deg,#f0cf9a,#c58f4c);
+    -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
+@media (min-width:480px){body.theme-wood .logo-wrap{width:52px;height:52px}}
 /* ═══════════════════════════════════════════════════════════════════════════
    THEME: screen — TVs & electronics.  LAYOUT CONCEPT: "cinema".
    · hero  = letterboxed 21:9 title card, centred, ticker of brands under it
@@ -2417,6 +2423,12 @@ body.theme-screen .floating-telegram{background:linear-gradient(135deg,#7c5cff,#
 body.theme-screen .review-modal__dialog{background:#101830;color:var(--ink)}
 body.theme-screen .review-modal__btn--secondary{color:#fff}
 
+/* logo recolour: the stamp is drawn as a mask in the theme's own colour (original image stays for SEO/alt) */
+body.theme-screen .logo-wrap{position:relative;display:block;width:42px;height:42px;flex-shrink:0}
+body.theme-screen .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:0}
+body.theme-screen .logo-mark{position:absolute;inset:0;background:linear-gradient(135deg,#a58bff,#38c8f0);
+    -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
+@media (min-width:480px){body.theme-screen .logo-wrap{width:52px;height:52px}}
 /* ═══════════════════════════════════════════════════════════════════════════
    THEME: fresh — general home appliances (microwaves, dishwashers, small kit).
    LAYOUT CONCEPT: "app dashboard / bento".
@@ -2523,6 +2535,15 @@ body.theme-fresh .review-strip{background:#fff;border:1px solid var(--border);bo
 body.theme-fresh footer{background:linear-gradient(180deg,#0f3a91,#0a2a6e);border-top:0;border-radius:36px 36px 0 0;color:#cfdcf7}
 body.theme-fresh .footer-section h3{border-bottom-color:#5b9bff}
 body.theme-fresh .floating-telegram{background:var(--orange);box-shadow:0 6px 20px rgba(11,138,106,.45)}
+
+/* logo recolour: the stamp is drawn as a mask in the theme's own colour (original image stays for SEO/alt) */
+body.theme-fresh .logo-wrap{position:relative;display:block;width:42px;height:42px;flex-shrink:0}
+body.theme-fresh .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:0}
+body.theme-fresh .logo-mark{position:absolute;inset:0;background:linear-gradient(135deg,#1f5fd8,#0b8a6a);
+    -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
+@media (min-width:480px){body.theme-fresh .logo-wrap{width:52px;height:52px}}
+/* hero photo (no illustration): keep text at the bottom */
+body.theme-fresh .hero:not(:has(.hero__art)) .hero__content{align-self:end}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    THEME: frost — fridges & freezers.  LAYOUT CONCEPT: "inside the fridge".
@@ -2636,6 +2657,15 @@ body.theme-frost .review-strip{background:#fff;border:2px solid #b9d6e6;border-r
 body.theme-frost footer{background:linear-gradient(180deg,#0e2d4d,#06182b);border-top:3px solid var(--orange);color:#bcd6e8}
 body.theme-frost .footer-section h3{border-bottom-color:var(--orange)}
 body.theme-frost .floating-telegram{background:var(--orange);color:#04202f;box-shadow:0 6px 22px rgba(39,169,214,.5)}
+
+/* logo recolour: the stamp is drawn as a mask in the theme's own colour (original image stays for SEO/alt) */
+body.theme-frost .logo-wrap{position:relative;display:block;width:42px;height:42px;flex-shrink:0}
+body.theme-frost .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:0}
+body.theme-frost .logo-mark{position:absolute;inset:0;background:linear-gradient(180deg,#ffffff,#8fdcf5);
+    -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
+@media (min-width:480px){body.theme-frost .logo-wrap{width:52px;height:52px}}
+/* hero photo (no illustration): keep text at the bottom */
+body.theme-frost .hero:not(:has(.hero__art)) .hero__content{align-self:end}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    THEME: wave — washing machines.  LAYOUT CONCEPT: "wash cycle".
@@ -2770,6 +2800,17 @@ body.theme-wave .floating-telegram{background:#fff;color:#087f95;box-shadow:0 6p
  body.theme-wave .process-step::after{display:block;top:80px;left:37px;bottom:2px;width:0;height:auto;background:none;border-left:3px dotted #9bd8e4}
  body.theme-wave .process-step:last-child::after{display:none}
 }
+/* logo recolour: the stamp is drawn as a mask in the theme's own colour (original image stays for SEO/alt) */
+body.theme-wave .logo-wrap{position:relative;display:block;width:42px;height:42px;flex-shrink:0}
+body.theme-wave .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:0}
+body.theme-wave .logo-mark{position:absolute;inset:0;background:linear-gradient(180deg,#ffffff,#b8eef6);
+    -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
+@media (min-width:480px){body.theme-wave .logo-wrap{width:52px;height:52px}}
+/* hero photo (no illustration): keep text at the bottom */
+body.theme-wave .hero:not(:has(.hero__art)) .hero__content{align-self:end}
+
+body.theme-wave .hero:not(:has(.hero__art)) .hero__content{padding-bottom:clamp(70px,9vw,100px)}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    THEME: rug — carpets.  LAYOUT CONCEPT: "the carpet itself", symmetric & centred.
    · hero  = a framed rug: border bands, nested-diamond medallion, centred title
@@ -2892,6 +2933,12 @@ body.theme-rug .footer-section h3{border-bottom-color:#d9a52b;font-family:var(--
 body.theme-rug .contact-item{justify-content:center}
 body.theme-rug .floating-telegram{background:#d9a52b;color:#2a1418;box-shadow:0 6px 20px rgba(217,165,43,.5)}
 
+/* logo recolour: the stamp is drawn as a mask in the theme's own colour (original image stays for SEO/alt) */
+body.theme-rug .logo-wrap{position:relative;display:block;width:42px;height:42px;flex-shrink:0}
+body.theme-rug .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:0}
+body.theme-rug .logo-mark{position:absolute;inset:0;background:linear-gradient(180deg,#f6d98a,#d9a52b);
+    -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
+@media (min-width:480px){body.theme-rug .logo-wrap{width:52px;height:52px}}
 /* ═══════════════════════════════════════════════════════════════════════════
    THEME: flame — gas stoves & cooktops.  LAYOUT CONCEPT: "kitchen line".
    · hero  = full-bleed dark; a stove top with four glowing burners on the right
@@ -3010,6 +3057,15 @@ body.theme-flame .floating-telegram{background:linear-gradient(135deg,#e8461b,#f
 body.theme-flame .review-modal__dialog{background:#1c1815;color:var(--ink)}
 body.theme-flame .review-modal__btn--secondary{color:#fff}
 
+/* logo recolour: the stamp is drawn as a mask in the theme's own colour (original image stays for SEO/alt) */
+body.theme-flame .logo-wrap{position:relative;display:block;width:42px;height:42px;flex-shrink:0}
+body.theme-flame .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:0}
+body.theme-flame .logo-mark{position:absolute;inset:0;background:linear-gradient(180deg,#ffd23d,#ff6a1a);
+    -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
+@media (min-width:480px){body.theme-flame .logo-wrap{width:52px;height:52px}}
+/* hero photo (no illustration): keep text at the bottom */
+body.theme-flame .hero:not(:has(.hero__art)) .hero__content{align-self:end}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    THEME: breeze — air conditioners.  LAYOUT CONCEPT: "airflow".
    · hero  = CENTRED: a wall-mounted A/C unit across the top, air blowing down
@@ -3048,7 +3104,7 @@ body.theme-breeze .lang-switch a{border-radius:99px;color:var(--muted)}
 body.theme-breeze .lang-switch a.active,body.theme-breeze .lang-switch a:hover{background:var(--teal);color:#fff!important}
 
 /* ── HERO: unit on the wall, air flowing down ────────────────────────────── */
-body.theme-breeze .hero{border-radius:0 0 48px 48px;background:#1b78c2;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;text-align:center;min-height:clamp(520px,64vw,660px)}
+body.theme-breeze .hero{border-radius:0 0 48px 48px;background:#1b78c2;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-align:center;min-height:clamp(440px,64vw,660px)}
 body.theme-breeze .hero__bg--gradient{background:
     radial-gradient(180px 70px at 18% 62%,rgba(255,255,255,.5),transparent 70%),radial-gradient(240px 90px at 30% 80%,rgba(255,255,255,.38),transparent 70%),
     radial-gradient(260px 100px at 84% 66%,rgba(255,255,255,.45),transparent 70%),radial-gradient(60% 50% at 90% 0,rgba(255,236,200,.45),transparent 60%),
@@ -3127,6 +3183,12 @@ body.theme-breeze footer{background:linear-gradient(180deg,#14588f,#0b3558);bord
 body.theme-breeze .footer-section h3{border-bottom-color:var(--orange)}
 body.theme-breeze .floating-telegram{background:var(--orange);box-shadow:0 6px 22px rgba(232,121,90,.5)}
 
+/* logo recolour: the stamp is drawn as a mask in the theme's own colour (original image stays for SEO/alt) */
+body.theme-breeze .logo-wrap{position:relative;display:block;width:42px;height:42px;flex-shrink:0}
+body.theme-breeze .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:0}
+body.theme-breeze .logo-mark{position:absolute;inset:0;background:linear-gradient(135deg,#1b78c2,#e8795a);
+    -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
+@media (min-width:480px){body.theme-breeze .logo-wrap{width:52px;height:52px}}
 </style>
 <style>
 /* preview chrome only — not part of the site */

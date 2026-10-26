@@ -104,3 +104,12 @@ body.theme-fresh .review-strip{background:#fff;border:1px solid var(--border);bo
 body.theme-fresh footer{background:linear-gradient(180deg,#0f3a91,#0a2a6e);border-top:0;border-radius:36px 36px 0 0;color:#cfdcf7}
 body.theme-fresh .footer-section h3{border-bottom-color:#5b9bff}
 body.theme-fresh .floating-telegram{background:var(--orange);box-shadow:0 6px 20px rgba(11,138,106,.45)}
+
+/* logo recolour: the stamp is drawn as a mask in the theme's own colour (original image stays for SEO/alt) */
+body.theme-fresh .logo-wrap{position:relative;display:block;width:42px;height:42px;flex-shrink:0}
+body.theme-fresh .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radius:0}
+body.theme-fresh .logo-mark{position:absolute;inset:0;background:linear-gradient(135deg,#1f5fd8,#0b8a6a);
+    -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
+@media (min-width:480px){body.theme-fresh .logo-wrap{width:52px;height:52px}}
+/* hero photo (no illustration): keep text at the bottom */
+body.theme-fresh .hero:not(:has(.hero__art)) .hero__content{align-self:end}
