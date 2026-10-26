@@ -117,6 +117,61 @@ class SeoApiController extends Controller {
         ]);
     }
 
+    // GET /api/seo/v1/gsc/queries?days=28&limit=50[&page=https://host/slug][&with_pages=1]
+    // Query-level Search Console rows (intent signals). Read-only; same gsc scope + token store as gsc/summary.
+    public function gscQueries(): void {
+        $this->authenticate('gsc');
+        $days = $this->intParam('days', 28, 1, 90);
+        $limit = $this->intParam('limit', 50, 1, 250);
+        $pageUrl = trim((string)($_GET['page'] ?? ''));
+        $withPages = ($_GET['with_pages'] ?? '') === '1';
+        if ($pageUrl !== '' && !preg_match('#^https://kuplyu-tashkent\.uz(/[^\s]*)?$#i', $pageUrl)) {
+            $this->send(['error' => 'invalid_param', 'param' => 'page'], 400);
+        }
+        try {
+            $connected = GscClient::isConnected();
+        } catch (Throwable $e) {
+            error_log('[SeoApi] GSC token store unavailable: ' . $e->getMessage());
+            $this->send(['error' => 'gsc_unavailable'], 503);
+        }
+        if (!$connected) {
+            $this->send(['error' => 'gsc_not_connected'], 503);
+        }
+        $end = date('Y-m-d', strtotime('-' . self::GSC_LAG_DAYS . ' days'));
+        $start = date('Y-m-d', strtotime($end . ' -' . ($days - 1) . ' days'));
+        $filters = $pageUrl === '' ? [] : [[
+            'filters' => [['dimension' => 'page', 'operator' => 'equals', 'expression' => $pageUrl]],
+        ]];
+        try {
+            $rows = GscClient::searchAnalytics($start, $end, $withPages ? ['query', 'page'] : ['query'], $filters, $limit);
+            if ($rows === null) {
+                $this->send(['error' => 'gsc_auth_required'], 503);
+            }
+        } catch (Throwable $e) {
+            error_log('[SeoApi] GSC error: ' . $e->getMessage());
+            $this->send(['error' => 'gsc_api_error'], 502);
+        }
+        $data = array_map(static function ($r) use ($withPages) {
+            $row = ['query' => $r['keys'][0] ?? null];
+            if ($withPages) $row['page'] = $r['keys'][1] ?? null;
+            return $row + [
+                'clicks' => (int)($r['clicks'] ?? 0),
+                'impressions' => (int)($r['impressions'] ?? 0),
+                'ctr' => round((float)($r['ctr'] ?? 0), 4),
+                'position' => round((float)($r['position'] ?? 0), 2),
+            ];
+        }, $rows);
+        usort($data, static fn($a, $b) => $b['impressions'] <=> $a['impressions']);
+        $this->send([
+            'site' => GscClient::getSiteUrl(),
+            'period' => ['start' => $start, 'end' => $end, 'days' => $days],
+            'page_filter' => $pageUrl ?: null,
+            'count' => count($data),
+            'data' => $data,
+            'generated_at' => gmdate('c'),
+        ]);
+    }
+
     // ── internals ────────────────────────────────────────────
 
     private function authenticate(string $scope): void {

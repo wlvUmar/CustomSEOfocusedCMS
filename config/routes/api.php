@@ -75,3 +75,7 @@ $router->get('/api/seo/v1/stats/top-pages', function() {
 $router->get('/api/seo/v1/gsc/summary', function() {
     ControllerFactory::seoApi('gscSummary');
 });
+
+$router->get('/api/seo/v1/gsc/queries', function() {
+    ControllerFactory::seoApi('gscQueries');
+});

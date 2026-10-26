@@ -24,9 +24,12 @@ function usage(): void {
     exit(2);
 }
 
-$cmd = $argv[1] ?? '';
+$args = array_slice($argv, 1);
+// forgiving: `php issue-seo-token.php --label=x` (subcommand omitted) means `issue`
+if ($args && str_starts_with($args[0], '--')) array_unshift($args, 'issue');
+$cmd = $args[0] ?? '';
 $opts = [];
-foreach (array_slice($argv, 2) as $arg) {
+foreach (array_slice($args, 1) as $arg) {
     if (preg_match('/^--([a-z]+)=(.*)$/', $arg, $m)) $opts[$m[1]] = $m[2];
     else usage();
 }
