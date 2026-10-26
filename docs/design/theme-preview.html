@@ -2429,6 +2429,27 @@ body.theme-screen .logo-wrap .logo{opacity:0;width:100%;height:100%;border-radiu
 body.theme-screen .logo-mark{position:absolute;inset:0;background:linear-gradient(135deg,#a58bff,#38c8f0);
     -webkit-mask:url("../logo-mono-192.png") center/contain no-repeat;mask:url("../logo-mono-192.png") center/contain no-repeat}
 @media (min-width:480px){body.theme-screen .logo-wrap{width:52px;height:52px}}
+/* legacy CMS blocks that carry an inline light background (e.g. old CTA cards): keep them on-theme and readable */
+body.theme-screen .content-section[style*="background"]{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))!important;border:1px solid var(--border)}
+body.theme-screen .content-section[style*="background"] a[style*="background: var(--teal)"],
+body.theme-screen .content-section[style*="background"] a[style*="background:var(--teal)"]{color:#06101f!important}
+body.theme-screen .content-section[style*="background"] a[style*="background: #fff"],
+body.theme-screen .content-section[style*="background"] a[style*="background:#fff"]{background:transparent!important;color:var(--teal)!important}
+/* any legacy block with an inline LIGHT background (white / near-white): darken it and fix inline dark text */
+body.theme-screen .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="background: #f"],
+body.theme-screen .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="background:#f"],
+body.theme-screen .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="background-color: #f"],
+body.theme-screen .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="background-color:#f"],
+body.theme-screen .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="rgb(25"],
+body.theme-screen .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="rgb(24"],
+body.theme-screen .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="rgb(23"],
+body.theme-screen .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="white"]{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))!important;border-color:var(--border)!important}
+body.theme-screen .content-body [style*="color: #0"],body.theme-screen .content-body [style*="color:#0"],
+body.theme-screen .content-body [style*="color: #1"],body.theme-screen .content-body [style*="color:#1"],
+body.theme-screen .content-body [style*="color: #2"],body.theme-screen .content-body [style*="color:#2"],
+body.theme-screen .content-body [style*="color: #3"],body.theme-screen .content-body [style*="color:#3"],
+body.theme-screen .content-body [style*="color: #4"],body.theme-screen .content-body [style*="color:#4"],
+body.theme-screen .content-body [style*="color: #5"],body.theme-screen .content-body [style*="color:#5"]{color:var(--ink-soft)!important}
 /* ═══════════════════════════════════════════════════════════════════════════
    THEME: fresh — general home appliances (microwaves, dishwashers, small kit).
    LAYOUT CONCEPT: "app dashboard / bento".
@@ -3066,6 +3087,27 @@ body.theme-flame .logo-mark{position:absolute;inset:0;background:linear-gradient
 /* hero photo (no illustration): keep text at the bottom */
 body.theme-flame .hero:not(:has(.hero__art)) .hero__content{align-self:end}
 
+/* legacy CMS blocks that carry an inline light background (e.g. old CTA cards): keep them on-theme and readable */
+body.theme-flame .content-section[style*="background"]{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))!important;border:1px solid var(--border)}
+body.theme-flame .content-section[style*="background"] a[style*="background: var(--teal)"],
+body.theme-flame .content-section[style*="background"] a[style*="background:var(--teal)"]{color:#06101f!important}
+body.theme-flame .content-section[style*="background"] a[style*="background: #fff"],
+body.theme-flame .content-section[style*="background"] a[style*="background:#fff"]{background:transparent!important;color:var(--teal)!important}
+/* any legacy block with an inline LIGHT background (white / near-white): darken it and fix inline dark text */
+body.theme-flame .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="background: #f"],
+body.theme-flame .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="background:#f"],
+body.theme-flame .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="background-color: #f"],
+body.theme-flame .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="background-color:#f"],
+body.theme-flame .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="rgb(25"],
+body.theme-flame .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="rgb(24"],
+body.theme-flame .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="rgb(23"],
+body.theme-flame .content-body :is(div,section,article,aside,table,td,th,li,blockquote)[style*="white"]{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))!important;border-color:var(--border)!important}
+body.theme-flame .content-body [style*="color: #0"],body.theme-flame .content-body [style*="color:#0"],
+body.theme-flame .content-body [style*="color: #1"],body.theme-flame .content-body [style*="color:#1"],
+body.theme-flame .content-body [style*="color: #2"],body.theme-flame .content-body [style*="color:#2"],
+body.theme-flame .content-body [style*="color: #3"],body.theme-flame .content-body [style*="color:#3"],
+body.theme-flame .content-body [style*="color: #4"],body.theme-flame .content-body [style*="color:#4"],
+body.theme-flame .content-body [style*="color: #5"],body.theme-flame .content-body [style*="color:#5"]{color:var(--ink-soft)!important}
 /* ═══════════════════════════════════════════════════════════════════════════
    THEME: breeze — air conditioners.  LAYOUT CONCEPT: "airflow".
    · hero  = CENTRED: a wall-mounted A/C unit across the top, air blowing down
