@@ -270,6 +270,71 @@ class MediaController extends Controller {
         ]);
     }
 
+    // ── Quick add: many images → matched to pages → uploaded + attached with RU/UZ alt text in one go ──
+
+    // GET /admin/media/quick
+    public function quick() {
+        $this->requireAuth();
+        $pages = array_map(static fn($p) => [
+            'id' => (int)$p['id'],
+            'slug' => (string)$p['slug'],
+            'title_ru' => (string)($p['title_ru'] ?? ''),
+            'title_uz' => (string)($p['title_uz'] ?? ''),
+        ], (new Page())->getAll(true));
+        $this->view('admin/media/quick', [
+            'pageName' => 'media-quick',
+            'quickPages' => $pages,
+            'maxUploadMb' => round(MAX_UPLOAD_SIZE / 1048576, 1),
+        ]);
+    }
+
+    // POST /admin/media/quick-add  (one image per request; the page's JS sends them one by one)
+    public function quickAdd() {
+        $this->requireAuth();
+        if (!validateCSRFToken($this->getCsrfToken())) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+        }
+        if (!isset($_FILES['file'])) {
+            $this->json(['success' => false, 'message' => 'No file uploaded'], 400);
+        }
+        $pageId = (int)($_POST['page_id'] ?? 0);
+        $page = $pageId > 0 ? (new Page())->getById($pageId) : null;
+        if (!$page) {
+            $this->json(['success' => false, 'message' => 'Page not found'], 400);
+        }
+        $section = (string)($_POST['section'] ?? 'gallery');
+        if (!in_array($section, ['hero', 'banner', 'content', 'gallery'], true)) {
+            $this->json(['success' => false, 'message' => 'Invalid section'], 400);
+        }
+        $clean = static fn($v) => mb_substr(trim(strip_tags((string)$v)), 0, 255);
+
+        $result = $this->mediaService->uploadSingle($_FILES['file'], null, $section, 0);
+        if (empty($result['success'])) {
+            $this->json(['success' => false, 'message' => $result['error']], $result['error'] === 'Failed to save file' ? 500 : 400);
+        }
+        $position = count($this->pageMediaModel->getPageMedia($pageId, $section));
+        $this->mediaService->attach($pageId, $result['media_id'], [
+            'section' => $section,
+            'position' => $position,
+            'alt_text_ru' => $clean($_POST['alt_text_ru'] ?? ''),
+            'alt_text_uz' => $clean($_POST['alt_text_uz'] ?? ''),
+            'caption_ru' => '',
+            'caption_uz' => '',
+            'width' => null,
+            'alignment' => 'center',
+            'css_class' => '',
+            'lazy_load' => 1,
+        ]);
+        $this->json([
+            'success' => true,
+            'media_id' => $result['media_id'],
+            'url' => UPLOAD_URL . $result['filename'],
+            'page' => $page['slug'],
+            'section' => $section,
+            'position' => $position,
+        ]);
+    }
+
     public function delete() {
         $this->requireAuth();
         

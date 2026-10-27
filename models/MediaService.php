@@ -40,8 +40,26 @@ class MediaService {
         return null;
     }
 
-    public function buildFilename($originalName, $suffix = '') {
-        $ext = pathinfo($originalName, PATHINFO_EXTENSION);
+    /**
+     * Real image check on the uploaded bytes (the browser-supplied $file['type'] and file name are untrusted).
+     * @return array{0:string,1:string}|null [mime, extension] for jpeg/png/gif/webp, else null
+     */
+    public function detectImage($tmpPath) {
+        if (!is_string($tmpPath) || $tmpPath === '' || !is_file($tmpPath)) return null;
+        $info = @getimagesize($tmpPath);
+        $map = [
+            IMAGETYPE_JPEG => ['image/jpeg', 'jpg'],
+            IMAGETYPE_PNG  => ['image/png', 'png'],
+            IMAGETYPE_GIF  => ['image/gif', 'gif'],
+            IMAGETYPE_WEBP => ['image/webp', 'webp'],
+        ];
+        if (!$info || !isset($map[$info[2]])) return null;
+        return $map[$info[2]];
+    }
+
+    public function buildFilename($originalName, $suffix = '', $ext = null) {
+        // $ext (from detectImage) wins over the client-supplied name so a disguised file can't keep a .php extension
+        $ext = $ext ?: strtolower(preg_replace('/[^a-zA-Z0-9]/', '', pathinfo($originalName, PATHINFO_EXTENSION)));
         return uniqid() . '_' . time() . $suffix . '.' . $ext;
     }
 
@@ -60,7 +78,13 @@ class MediaService {
             error_log('Media upload: file too large size=' . ($file['size'] ?? 0));
             return ['success' => false, 'error' => 'File too large'];
         }
-        $filename = $this->buildFilename($file['name']);
+        $detected = $this->detectImage($file['tmp_name'] ?? '');
+        if ($detected === null) {
+            error_log('Media upload: content is not a jpeg/png/gif/webp image, name=' . ($file['name'] ?? ''));
+            return ['success' => false, 'error' => 'Invalid file type'];
+        }
+        $file['type'] = $detected[0];
+        $filename = $this->buildFilename($file['name'], '', $detected[1]);
         $filepath = UPLOAD_PATH . $filename;
         $this->ensureUploadDir();
         if (!move_uploaded_file($file['tmp_name'], $filepath)) {
@@ -106,7 +130,15 @@ class MediaService {
                 error_log('Media bulk upload: invalid type/size name=' . $file['name'] . ' type=' . ($file['type'] ?? '') . ' size=' . ($file['size'] ?? 0));
                 continue;
             }
-            $filename = $this->buildFilename($file['name'], '_' . $key);
+            $detected = $this->detectImage($tmpName);
+            if ($detected === null) {
+                $failed++;
+                $errors[] = $file['name'] . ': Not a valid image';
+                error_log('Media bulk upload: content is not a jpeg/png/gif/webp image, name=' . $file['name']);
+                continue;
+            }
+            $file['type'] = $detected[0];
+            $filename = $this->buildFilename($file['name'], '_' . $key, $detected[1]);
             $filepath = UPLOAD_PATH . $filename;
             $this->ensureUploadDir();
             if (move_uploaded_file($tmpName, $filepath)) {

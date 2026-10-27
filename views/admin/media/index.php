@@ -29,6 +29,9 @@ $mediaBoot = ['csrf' => $csrfRaw, 'filter' => $filter, 'attachPageId' => $attach
 <div class="page-header">
     <h1><i data-feather="image"></i> <?= $lang === 'uz' ? 'Media kutubxonasi' : 'Медиатека' ?></h1>
     <div class="page-actions">
+        <a href="<?= BASE_URL ?>/admin/media/quick" class="btn btn-primary">
+            <i data-feather="zap"></i> <?= $lang === 'uz' ? 'Tez qo\'shish' : 'Быстрое добавление' ?>
+        </a>
         <button data-action="open-upload" class="btn btn-primary">
             <i data-feather="upload"></i> <?= $lang === 'uz' ? 'Yuklash' : 'Загрузить' ?>
         </button>
