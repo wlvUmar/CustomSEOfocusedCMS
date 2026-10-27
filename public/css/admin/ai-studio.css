@@ -444,3 +444,6 @@ body:has(.ai-studio--app), .admin-main:has(.ai-studio--app), .admin-content:has(
   .ai-studio__rail #ai-preview-toggle{ flex-direction:row; height:28px; padding:0 10px; }
   .ai-studio__rail #ai-preview-toggle-label{ writing-mode:horizontal-tb; transform:none; }
 }
+
+/* X / History toggle must really hide the sidebar. The flex rule above has the same specificity and came later, so the hide rule needs one more class. */
+.ai-studio__layout.ai-studio__layout--no-sidebar .ai-studio__sidebar.ai-history-panel{ display:none; }
