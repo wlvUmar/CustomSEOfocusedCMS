@@ -67,6 +67,10 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     }
                     ?>
                 </select>
+                <button id="ai-mode-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="PLAN is read-only — switch to BUILD to apply edits. Approval still required for large (&gt;800 char) changes even in BUILD." aria-pressed="false" aria-label="Toggle Plan/Build mode">
+                        <i data-feather="layout"></i> <span id="ai-mode-label">Plan</span>
+                    </button>
+                    <button id="ai-history-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="Chat history"><i data-feather="clock"></i> History</button>
                 <button id="ai-new-session" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="rotate-ccw"></i> New session</button>
                 <button id="ai-preview-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" aria-pressed="true"><i data-feather="sidebar"></i> <span id="ai-preview-toggle-label">Hide preview</span></button>
             </div>
@@ -75,14 +79,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
     <div class="ai-studio__layout ai-studio__layout--full">
         <section class="ai-studio__chat">
-            <div class="ai-studio__chat-head">
-                <div class="ai-studio__chat-head__actions">
-                    <button id="ai-mode-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="PLAN is read-only — switch to BUILD to apply edits. Approval still required for large (&gt;800 char) changes even in BUILD." aria-pressed="false" aria-label="Toggle Plan/Build mode">
-                        <i data-feather="layout"></i> <span id="ai-mode-label">Plan</span>
-                    </button>
-                    <button id="ai-history-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="Chat history"><i data-feather="clock"></i> History</button>
-                </div>
-            </div>
 
             <div id="ai-history-panel" class="ai-history-panel" hidden>
                 <div class="ai-history-panel__head">
