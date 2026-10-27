@@ -406,3 +406,11 @@
 .ai-status--ok{ color:#34d399; } .ai-status--error{ color:#f87171; } .ai-status--wait{ color:#fbbf24; }
 .ai-usage{ color:#7c7c86; }
 @media (max-width:1024px){ .ai-studio__preview{ border-left:0; border-top:1px solid var(--ai-line); } }
+
+/* history = floating popover instead of a block that pushes the chat down; dark scrollbars everywhere */
+.ai-studio{ color-scheme:dark; }
+.ai-studio--app .ai-history-list, .ai-history-list{ max-height:min(56vh,460px); }
+.ai-history-panel{ position:absolute; top:6px; left:16px; z-index:20; width:min(400px,calc(100% - 32px)); margin:0; box-shadow:0 12px 32px rgba(0,0,0,.5); }
+.ai-history-item__title{ color:var(--ai-ink); }
+.ai-history-item__meta{ color:var(--ai-muted); }
+.ai-scroll-fab{ left:auto; right:22px; transform:none; bottom:12px; }
