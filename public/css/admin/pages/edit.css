@@ -1,4 +1,4 @@
-﻿/* Page edit form helpers. (The AI Assistant panel styles that used to live here were removed with the panel.) */
+/* Page edit form helpers. (The AI Assistant panel styles that used to live here were removed with the panel.) */
 .btn-sm {
     padding: 6px 12px;
     font-size: 13px;
@@ -6,4 +6,51 @@
 
 .hidden {
     display: none;
+}
+
+/* RU / UZ / RU + UZ switch (pages-lang.js). data-lang on the form decides which language's fields are visible. */
+.lang-toggle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin: 0 0 14px;
+}
+.lang-toggle__label {
+    margin-right: 4px;
+    font-size: 13px;
+    color: #6b7280;
+}
+.lang-toggle__btn {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+}
+.lang-toggle__btn.is-active {
+    background: var(--teal, #0e9f8a);
+    border-color: var(--teal, #0e9f8a);
+    color: #fff;
+}
+.lang-toggle__btn .lang-warn {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #b45309;
+    font-size: 11px;
+    font-weight: 700;
+}
+.admin-form[data-lang="ru"] .lang-field--uz,
+.admin-form[data-lang="uz"] .lang-field--ru {
+    display: none;
+}
+/* the remaining field of a side-by-side RU|UZ pair takes the full width */
+.admin-form[data-lang="ru"] .lang-row,
+.admin-form[data-lang="uz"] .lang-row {
+    display: block;
 }

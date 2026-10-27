@@ -10,7 +10,13 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <?php if ($page): ?>
     <input type="hidden" name="id" value="<?= $page['id'] ?>">
     <?php endif; ?>
-    
+
+    <div class="lang-toggle" id="lang-toggle" role="group" aria-label="Язык полей">
+        <span class="lang-toggle__label">Язык полей:</span>
+        <button type="button" class="lang-toggle__btn" data-lang="ru" aria-pressed="false">RU</button>
+        <button type="button" class="lang-toggle__btn" data-lang="uz" aria-pressed="false">UZ</button>
+    </div>
+
     <div class="tabs">
         <button type="button" class="tab-btn active" data-tab="general">General</button>
         <button type="button" class="tab-btn" data-tab="design">Design</button>
@@ -379,6 +385,7 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.7.0/tinymce.min.js"></script>
 <script src="<?= BASE_URL ?>/js/admin/image-tools.js?v=<?= assetVersion('/js/admin/image-tools.js') ?>"></script>
 <script src="<?= BASE_URL ?>/js/admin/pages-edit.js?v=<?= assetVersion('/js/admin/pages-edit.js') ?>"></script>
+<script src="<?= BASE_URL ?>/js/admin/pages-lang.js?v=<?= assetVersion('/js/admin/pages-lang.js') ?>"></script>
 
 <style>
 .c-slots-panel{margin-top:18px}
