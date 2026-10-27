@@ -31,6 +31,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </button>
             </div>
 
+            <div class="ai-dock">
             <div id="ai-activity" class="ai-activity" hidden>
                 <span class="ai-activity__spinner" aria-hidden="true"></span>
                 <span id="ai-activity-text" class="ai-activity__text">Working…</span>
@@ -111,6 +112,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <span id="ai-usage" class="ai-usage" title="">0 tok</span>
                 </div>
             </form>
+            </div>
         </section>
 
         <section class="ai-studio__preview">
