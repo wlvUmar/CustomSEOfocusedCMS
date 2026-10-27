@@ -138,8 +138,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
                             <option value="jpeg">JPEG</option>
                         </select>
                     </label>
-                    <label class="c-picker-check"><input type="checkbox" id="picker-crop-first"> Обрезать перед загрузкой</label>
-                    <small>Действует на «Upload &amp; attach» и на фото из интернета (✂ на фото = обрезать).</small>
+                    <label class="c-picker-crop-opt" id="picker-crop-opt"><input type="checkbox" id="picker-crop-first"> Обрезать перед загрузкой</label>
+                    <small>Размер и формат — для загрузки файлов и для фото из интернета. На фото из интернета обрезка — кнопка ✂ при наведении.</small>
                 </div>
                 <div class="c-picker-bar" id="media-picker-library-bar">
                     <div class="c-picker-filters">
@@ -413,9 +413,17 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
 .c-stock-credit-tag{position:absolute;inset:auto 0 0 0;background:linear-gradient(transparent,rgba(0,0,0,.72));padding:22px 8px 7px;color:#fff;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1}
 .c-stock-card-busy{opacity:.55;pointer-events:none}
 .c-picker-opts{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:8px 14px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280}
-.c-picker-opts label{display:flex;align-items:center;gap:6px}
-.c-picker-opts select{padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px}
+.c-picker-opts label{display:flex;align-items:center;gap:6px;white-space:nowrap;margin:0}
+.c-picker-opts select{padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;background:#fff;color:#374151}
 .c-picker-opts small{flex-basis:100%;color:#9ca3af}
+.c-picker-status-error{color:#b91c1c;font-weight:600;font-size:13px;background:#fef2f2}
+.media-picker-filter.active{background:var(--teal,#0e9f8a);border-color:var(--teal,#0e9f8a);color:#fff}
+.c-picker-crop-opt{cursor:pointer;color:#374151}
+.c-picker-crop-opt[hidden]{display:none}
+.c-picker-crop-opt input{width:15px;height:15px;margin:0;accent-color:var(--teal,#0e9f8a)}
+#media-picker-modal .btn-close{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:8px;background:transparent;color:#6b7280;font-size:24px;line-height:1;cursor:pointer}
+#media-picker-modal .btn-close:hover{background:#f3f4f6;color:#111827}
+#media-picker-modal .btn-close:focus-visible,.c-picker-tab:focus-visible{outline:2px solid var(--teal,#0e9f8a);outline-offset:2px}
 .c-stock-crop{position:absolute;top:7px;left:7px;z-index:3;border:0;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;line-height:1;padding:4px 7px;cursor:pointer;opacity:0;transition:opacity .16s}
 .c-picker-card:hover .c-stock-crop,.c-stock-crop:focus-visible{opacity:1}
 .c-stock-alt{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px 0;font-size:12px}

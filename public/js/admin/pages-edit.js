@@ -291,12 +291,14 @@ document.addEventListener('change', (e) => {
                 document.querySelectorAll('[data-picker-tab]').forEach(b=>b.classList.toggle('active', b.dataset.pickerTab===tab));
                 ['media-picker-library-bar','media-picker-grid','media-picker-status'].forEach(id=>{ const el=byId(id); if(el) el.hidden = stock; });
                 const sp = byId('stock-panel'); if(sp) sp.hidden = !stock;
+                const cropOpt = byId('picker-crop-opt'); if(cropOpt) cropOpt.hidden = stock;   // "crop before upload" is for file uploads only
                 if (stock) { if (!stockLoaded) stockLoad(true); }
                 else if (!skipLoad) pickerLoad();
             };
             async function stockLoad(reset){
                 const grid=byId('stock-grid'), status=byId('stock-status'), more=byId('stock-more');
                 if(!grid) return;
+                status.classList.remove('c-picker-status-error');
                 if(reset){ stockPage=1; grid.innerHTML='<div class="c-picker-loading">Загрузка…</div>'; more.hidden=true; }
                 status.textContent='';
                 try{
@@ -339,7 +341,8 @@ document.addEventListener('change', (e) => {
                     more.hidden = !j.has_more;
                 } catch(e){
                     if(reset) grid.innerHTML='';
-                    status.textContent = 'Ошибка: '+(e.message||e);
+                    status.textContent = 'Ошибка поиска: '+(e.message||e);
+                    status.classList.add('c-picker-status-error');
                 }
             }
             // picker toolbar: max width / format for uploads and stock photos, "crop before upload" for uploads
@@ -386,6 +389,7 @@ document.addEventListener('change', (e) => {
                 if(!pickerSlot) return;
                 const status=byId('stock-status');
                 card.classList.add('c-stock-card-busy');
+                status.classList.remove('c-picker-status-error');
                 status.textContent='Загружаю фото на сайт…';
                 const fd=new FormData();
                 fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('section', pickerSlot); fd.append('photo_id', p.id);
@@ -401,7 +405,8 @@ document.addEventListener('change', (e) => {
                     render();
                     closeMediaPicker();
                 } catch(e){
-                    status.textContent='Ошибка: '+(e.message||e);
+                    status.textContent='Не удалось добавить фото: '+(e.message||e);
+                    status.classList.add('c-picker-status-error');
                     card.classList.remove('c-stock-card-busy');
                 }
             }

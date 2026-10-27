@@ -194,36 +194,70 @@ class StockImages {
             ];
         }
 
+        $referer = $provider === 'pixabay' ? 'https://pixabay.com/' : 'https://www.pexels.com/';
+        $why = '';
         foreach ($sources as $src) {
-            $parts = parse_url($src);
-            if (!$parts || ($parts['scheme'] ?? '') !== 'https' || !preg_match($hostRe, strtolower($parts['host'] ?? ''))) continue;
+            $tmp = self::fetchToTemp($src, $maxBytes, $hostRe, $referer, $why);
+            if ($tmp !== null) return ['path' => $tmp] + $info;
+        }
+        throw new RuntimeException('Не удалось скачать фото' . ($why !== '' ? ' (' . $why . ')' : '') . '. Попробуйте другое фото.', 502);
+    }
 
+    /**
+     * Download one image URL to a temp file. Follows up to 3 redirects, but only to https URLs on the provider's own
+     * host (so a redirect can never send the server somewhere else). Returns the temp path, or null with $why set.
+     */
+    private static function fetchToTemp(string $src, int $maxBytes, string $hostRe, string $referer, string &$why): ?string {
+        for ($hop = 0; $hop < 4; $hop++) {
+            $parts = parse_url($src);
+            if (!$parts || ($parts['scheme'] ?? '') !== 'https' || !preg_match($hostRe, strtolower($parts['host'] ?? ''))) {
+                $why = 'адрес фото не разрешён';
+                return null;
+            }
             $tmp = tempnam(sys_get_temp_dir(), 'stk');
             $fh = fopen($tmp, 'wb');
             $written = 0;
+            $tooBig = false;
+            $location = '';
             $ch = curl_init($src);
             curl_setopt_array($ch, [
                 CURLOPT_FOLLOWLOCATION => false,
                 CURLOPT_CONNECTTIMEOUT => 10,
                 CURLOPT_TIMEOUT => 40,
                 CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; SiteAdminImageImport/1.0)', // some CDNs refuse requests without a UA
-                CURLOPT_WRITEFUNCTION => static function ($c, $chunk) use ($fh, &$written, $maxBytes) {
+                CURLOPT_REFERER => $referer,                                                // …or without a referer
+                CURLOPT_HTTPHEADER => ['Accept: image/*'],
+                CURLOPT_HEADERFUNCTION => static function ($c, $line) use (&$location) {
+                    if (stripos($line, 'location:') === 0) $location = trim(substr($line, 9));
+                    return strlen($line);
+                },
+                CURLOPT_WRITEFUNCTION => static function ($c, $chunk) use ($fh, &$written, &$tooBig, $maxBytes) {
                     $written += strlen($chunk);
-                    if ($written > $maxBytes) return 0; // abort: too large
+                    if ($written > $maxBytes) { $tooBig = true; return 0; } // abort: too large
                     return fwrite($fh, $chunk);
                 },
             ]);
             $ok = curl_exec($ch);
             $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err = curl_error($ch);
             curl_close($ch);
             fclose($fh);
 
-            if ($ok && $http === 200 && $written > 0) {
-                return ['path' => $tmp] + $info;
-            }
+            if ($ok && $http === 200 && $written > 0) return $tmp;
             @unlink($tmp);
+
+            if ($tooBig) { $why = 'файл больше лимита загрузки'; return null; }
+            if (in_array($http, [301, 302, 303, 307, 308], true) && $location !== '') {
+                if (stripos($location, 'http') === 0) $src = $location;
+                elseif ($location[0] === '/') $src = 'https://' . ($parts['host'] ?? '') . $location;
+                else { $why = 'неверный редирект'; return null; }
+                continue;
+            }
+            $why = $http > 0 ? 'ответ сервера фото: HTTP ' . $http : ('нет ответа' . ($err !== '' ? ': ' . $err : ''));
+            return null;
         }
-        throw new RuntimeException('Не удалось скачать фото (или оно больше лимита загрузки)', 502);
+        $why = 'слишком много редиректов';
+        return null;
     }
 
     // ── internals ────────────────────────────────────────────
