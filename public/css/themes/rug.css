@@ -145,12 +145,12 @@ body.theme-rug .bot-modal__cta:hover{background:#6e1830}
 @media (min-width:641px){body.theme-rug .bot-modal__card{border-radius:0}}
 @media (max-width:640px){body.theme-rug .bot-modal__card{border-radius:0 0 0 0}}
 
-/* CTA blocks (.c-cta): double gold frame, centred, square burgundy uppercase buttons */
-body.theme-rug .c-cta{background:var(--orange-light);border:2px double #c9a45a;border-radius:0;text-align:center;justify-content:center}
-body.theme-rug .c-cta--bot{border:2px double #8a1f3d}
-body.theme-rug .c-cta__actions{justify-content:center}
-body.theme-rug .c-cta__btn{background:#8a1f3d;border-color:#8a1f3d;color:#fff;border-radius:0;text-transform:uppercase;letter-spacing:.06em;font-size:.82rem;box-shadow:0 8px 20px rgba(138,31,61,.35)}
-body.theme-rug .c-cta__btn:hover{background:#6e1830;border-color:#6e1830}
-body.theme-rug .c-cta__btn--ghost{background:transparent;border:1.5px solid #8a1f3d;color:#8a1f3d;box-shadow:none}
-body.theme-rug .c-cta__btn--ghost:hover{background:var(--teal-light);border-color:#8a1f3d;color:#6e1830}
-body.theme-rug .c-cta__badge{background:#8a1f3d;border-radius:0;letter-spacing:.08em}
+/* CTA blocks (.cta-inline): double gold frame, centred, square burgundy uppercase buttons */
+body.theme-rug .cta-inline{background:var(--orange-light);border:2px double #c9a45a;border-radius:0;text-align:center;justify-content:center}
+body.theme-rug .cta-inline--bot{border:2px double #8a1f3d}
+body.theme-rug .cta-inline__actions{justify-content:center}
+body.theme-rug .cta-inline__btn{background:#8a1f3d;border-color:#8a1f3d;color:#fff;border-radius:0;text-transform:uppercase;letter-spacing:.06em;font-size:.82rem;box-shadow:0 8px 20px rgba(138,31,61,.35)}
+body.theme-rug .cta-inline__btn:hover{background:#6e1830;border-color:#6e1830}
+body.theme-rug .cta-inline__btn--ghost{background:transparent;border:1.5px solid #8a1f3d;color:#8a1f3d;box-shadow:none}
+body.theme-rug .cta-inline__btn--ghost:hover{background:var(--teal-light);border-color:#8a1f3d;color:#6e1830}
+body.theme-rug .cta-inline__badge{background:#8a1f3d;border-radius:0;letter-spacing:.08em}

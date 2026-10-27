@@ -135,11 +135,11 @@ body.theme-wood .bot-modal__dismiss{margin-left:0}
 @media (min-width:641px){body.theme-wood .bot-modal__card{border-radius:6px}}
 @media (max-width:640px){body.theme-wood .bot-modal__card{border-radius:6px 6px 0 0}}
 
-/* CTA blocks (.c-cta): warm panel, square brown buttons like the bot button */
-body.theme-wood .c-cta{background:var(--orange-light);border:1px solid #ecd3ab;border-radius:3px}
-body.theme-wood .c-cta--bot{border:1px dashed #a65f1e}
-body.theme-wood .c-cta__btn{background:#a65f1e;border-color:#a65f1e;color:#fff;border-radius:3px;box-shadow:0 8px 20px rgba(166,95,30,.35)}
-body.theme-wood .c-cta__btn:hover{background:#874a12;border-color:#874a12}
-body.theme-wood .c-cta__btn--ghost{background:transparent;border:1.5px solid var(--teal);color:var(--teal);box-shadow:none}
-body.theme-wood .c-cta__btn--ghost:hover{background:var(--teal-light);border-color:var(--teal);color:var(--teal-dark)}
-body.theme-wood .c-cta__badge{background:var(--teal);border-radius:2px}
+/* CTA blocks (.cta-inline): warm panel, square brown buttons like the bot button */
+body.theme-wood .cta-inline{background:var(--orange-light);border:1px solid #ecd3ab;border-radius:3px}
+body.theme-wood .cta-inline--bot{border:1px dashed #a65f1e}
+body.theme-wood .cta-inline__btn{background:#a65f1e;border-color:#a65f1e;color:#fff;border-radius:3px;box-shadow:0 8px 20px rgba(166,95,30,.35)}
+body.theme-wood .cta-inline__btn:hover{background:#874a12;border-color:#874a12}
+body.theme-wood .cta-inline__btn--ghost{background:transparent;border:1.5px solid var(--teal);color:var(--teal);box-shadow:none}
+body.theme-wood .cta-inline__btn--ghost:hover{background:var(--teal-light);border-color:var(--teal);color:var(--teal-dark)}
+body.theme-wood .cta-inline__badge{background:var(--teal);border-radius:2px}
