@@ -2239,3 +2239,11 @@ body.admin-mode { padding-top: 50px; }
 /* Adjacent .c-btn buttons in page content had no gap (stacked on mobile, touching side by side).
    Space only a button that is directly followed by another one, so lone buttons and flex groups with their own gap are unchanged. */
 .content-body .c-btn:has(+ .c-btn){margin:0 12px 12px 0}
+
+/* Main-section links: header (desktop only, truncated; full titles are in the footer list) and footer list */
+.nav-links__extra { display: none; }
+@media (min-width: 1100px) {
+    .nav-links__extra { display: inline-block; max-width: 18ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+.footer-links__title { margin: 18px 0 8px; color: #f9fafb; font-weight: 700; font-size: .9rem; }
+.footer-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .9rem; line-height: 1.5; }

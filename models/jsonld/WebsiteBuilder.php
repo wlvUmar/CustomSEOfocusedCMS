@@ -6,7 +6,15 @@ require_once BASE_PATH . '/models/JsonLdBase.php';
 
 class WebsiteBuilder {
 
+    /** Bare domain (no www) — used as alternateName so the brand name and the domain are tied together for site-name signals. */
+    public static function siteHost($baseUrl) {
+        $host = parse_url((string)$baseUrl, PHP_URL_HOST);
+        return $host ? preg_replace('/^www\./i', '', $host) : '';
+    }
+
     public static function build($seoSettings, $lang, $baseUrl) {
+        $host = self::siteHost($baseUrl);
+
         if (!empty($seoSettings['website_schema'])) {
             $siteSchema = json_decode($seoSettings['website_schema'], true);
             if (is_array($siteSchema)) {
@@ -14,12 +22,15 @@ class WebsiteBuilder {
                 $siteSchema['@id'] = $baseUrl . '#website';
                 $siteSchema['url'] = $baseUrl;
                 $siteSchema['publisher'] = array('@id' => $baseUrl . '#organization');
+                if (empty($siteSchema['alternateName']) && $host !== '') {
+                    $siteSchema['alternateName'] = $host;
+                }
                 unset($siteSchema['@context']);
                 return $siteSchema;
             }
         }
 
-        return array(
+        $schema = array(
             '@type' => 'WebSite',
             '@id' => $baseUrl . '#website',
             'url' => $baseUrl,
@@ -27,6 +38,10 @@ class WebsiteBuilder {
             'inLanguage' => JsonLdBase::inLanguage($lang),
             'publisher' => array('@id' => $baseUrl . '#organization')
         );
+        if ($host !== '') {
+            $schema['alternateName'] = $host;
+        }
+        return $schema;
     }
 
     public static function buildFromData($data) {

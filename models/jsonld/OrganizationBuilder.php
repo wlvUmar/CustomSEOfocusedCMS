@@ -39,6 +39,19 @@ class OrganizationBuilder {
         return !empty($lines) ? $lines : null;
     }
 
+    /** sameAs profile URLs from the SEO settings (social fields + comma-separated org_sameas_extra), http(s) only, de-duplicated. */
+    private static function sameAsFromSettings($seoSettings) {
+        $sameAs = array();
+        foreach (array('social_facebook', 'social_instagram', 'social_twitter', 'social_youtube') as $social) {
+            if (!empty($seoSettings[$social])) $sameAs[] = trim($seoSettings[$social]);
+        }
+        if (!empty($seoSettings['org_sameas_extra'])) {
+            $sameAs = array_merge($sameAs, array_map('trim', explode(',', $seoSettings['org_sameas_extra'])));
+        }
+        $sameAs = array_filter($sameAs, function ($u) { return preg_match('~^https?://~i', $u); });
+        return array_values(array_unique($sameAs));
+    }
+
     private static function areaServedNode($seoSettings) {
         $name = !empty($seoSettings['area_served']) ? $seoSettings['area_served'] : (isset($seoSettings['city']) ? $seoSettings['city'] : 'Tashkent');
         return array('@type' => 'City', 'name' => $name ? $name : 'Tashkent');
@@ -95,6 +108,16 @@ class OrganizationBuilder {
                 if (!empty($pageImage)) {
                     $orgSchema['image'] = $pageImage;
                 }
+                // Fill in what the stored JSON lacks, from the SEO settings (never overrides stored values).
+                if (empty($orgSchema['sameAs'])) {
+                    $sameAs = self::sameAsFromSettings($seoSettings);
+                    if (!empty($sameAs)) $orgSchema['sameAs'] = $sameAs;
+                }
+                if (empty($orgSchema['alternateName'])) {
+                    require_once BASE_PATH . '/models/jsonld/WebsiteBuilder.php';
+                    $host = WebsiteBuilder::siteHost($baseUrl);
+                    if ($host !== '') $orgSchema['alternateName'] = $host;
+                }
                 unset($orgSchema['@context']);
                 return $orgSchema;
             }
@@ -128,14 +151,7 @@ class OrganizationBuilder {
             }
         }
 
-        $sameAs = array();
-        foreach (array('social_facebook', 'social_instagram', 'social_twitter', 'social_youtube') as $social) {
-            if (!empty($seoSettings[$social])) $sameAs[] = $seoSettings[$social];
-        }
-        if (!empty($seoSettings['org_sameas_extra'])) {
-            $extras = array_map('trim', explode(',', $seoSettings['org_sameas_extra']));
-            $sameAs = array_merge($sameAs, $extras);
-        }
+        $sameAs = self::sameAsFromSettings($seoSettings);
         if (!empty($sameAs)) $schema['sameAs'] = $sameAs;
 
         $schema = self::attachCommon($schema, $seoSettings, $lang, $baseUrl);

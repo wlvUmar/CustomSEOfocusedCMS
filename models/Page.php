@@ -275,6 +275,21 @@ class Page {
     }
 
     /**
+     * Top-level published pages for header/footer navigation (home excluded), in admin sort_order.
+     * Cached per request: the header and footer both ask for it.
+     */
+    public function getNavPages(): array {
+        static $cache = null;
+        if ($cache === null) {
+            $cache = array_values(array_filter(
+                $this->getRootPages(true),
+                fn($p) => !in_array($p['slug'] ?? '', ['main', ''], true)
+            ));
+        }
+        return $cache;
+    }
+
+    /**
      * Get breadcrumb trail for a page
      * Returns array from root to current page
      */

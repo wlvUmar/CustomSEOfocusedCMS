@@ -46,7 +46,19 @@
                     <?php
                         endif;
                     endforeach;
+
+                    // Main sections as crawlable links (desktop only; the footer lists them on every screen).
+                    $navExtraShown = 0;
+                    foreach ($pageModel->getNavPages() as $navPage):
+                        if (in_array($navPage['slug'], ['about', 'o-nas'], true)) continue;
+                        if ($navExtraShown >= 4) break;
+                        $navExtraShown++;
+                        $navTitle = $navPage["title_$lang"] ?: ($navPage['title_ru'] ?? $navPage['slug']);
                     ?>
+                    <a class="nav-links__extra" href="<?= BASE_URL ?>/<?= e($navPage['slug']) ?><?= $lang !== DEFAULT_LANGUAGE ? '/' . $lang : '' ?>" title="<?= e($navTitle) ?>">
+                        <?= e($navTitle) ?>
+                    </a>
+                    <?php endforeach; ?>
 
                     <div class="lang-switch">
                         <a href="<?= $navLangRu ?>" <?= $lang === 'ru' ? 'class="active"' : '' ?>>RU</a>

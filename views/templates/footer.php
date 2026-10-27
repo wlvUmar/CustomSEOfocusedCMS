@@ -5,6 +5,20 @@
                 <div class="footer-section">
                     <h3><?= e($seo["site_name_$lang"]) ?></h3>
                     <p><?= $lang === 'ru' ? 'Покупаем бытовую технику, новую и б/у. Быстрая оценка, честная цена, моментальная оплата.' : 'Maishiy texnikani, yangi va ishlatilganni sotib olamiz. Tez baholash, adolatli narx, oniy to\'lov.' ?></p>
+                    <?php
+                    require_once BASE_PATH . '/models/Page.php';
+                    $footerNavPages = array_slice((new Page())->getNavPages(), 0, 10);
+                    if ($footerNavPages):
+                    ?>
+                    <nav aria-label="<?= $lang === 'ru' ? 'Разделы сайта' : 'Sayt bo\'limlari' ?>">
+                        <p class="footer-links__title"><?= $lang === 'ru' ? 'Разделы' : 'Bo\'limlar' ?></p>
+                        <ul class="footer-links">
+                            <?php foreach ($footerNavPages as $fp): ?>
+                            <li><a href="<?= BASE_URL ?>/<?= e($fp['slug']) ?><?= $lang !== DEFAULT_LANGUAGE ? '/' . $lang : '' ?>"><?= e($fp["title_$lang"] ?: ($fp['title_ru'] ?? $fp['slug'])) ?></a></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </nav>
+                    <?php endif; ?>
                 </div>
                 
                 <div class="footer-section">
