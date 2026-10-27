@@ -75,6 +75,14 @@ function validateCSRFToken($token, ?string $action = null) {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], (string)$token);
 }
 
+/** Cache-busting version for a file under public/ (e.g. '/js/admin/x.js'); looks in the web root first (production: public_html). */
+function assetVersion(string $rel): int {
+    foreach ([defined('PUBLIC_PATH') ? PUBLIC_PATH : null, BASE_PATH . '/public'] as $root) {
+        if ($root && is_file($root . $rel)) return (int)filemtime($root . $rel);
+    }
+    return 1;
+}
+
 function csrfField(?string $action = null) {
     $token = generateCSRFToken($action);
     return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($token) . '">';

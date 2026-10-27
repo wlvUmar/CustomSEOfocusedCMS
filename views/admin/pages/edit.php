@@ -21,7 +21,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <div id="tab-general" class="tab-content active">
         <div class="help-text">
             <strong>Template Variables:</strong> Use {{variable}} syntax. Available: {{page.title}}, {{global.phone}}, {{global.email}}, {{global.address}}, {{global.working_hours}}, {{global.site_name}}, {{date.year}}, {{date.month}}
-            <br><strong>Media Slots:</strong> Drop <code>{{media.hero_card}}</code>, <code>{{media.card_fridges}}</code> etc. anywhere in content — attach images in the “Media slots on this page” panel below. Empty slots render nothing (invisible, no layout shift). Attach 1 image → single <code>&lt;img&gt;</code>, 2+ → auto <code>c-gallery-grid</code>. Reserved: <code>hero</code>/<code>banner</code> still use the Hero/Banner uploader — no placeholder needed for them.
+            <br><strong>Media Slots:</strong> Drop <code>{{media.hero_card}}</code>, <code>{{media.card_fridges}}</code> etc. anywhere in content â€” attach images in the â€œMedia slots on this pageâ€ panel below. Empty slots render nothing (invisible, no layout shift). Attach 1 image â†’ single <code>&lt;img&gt;</code>, 2+ â†’ auto <code>c-gallery-grid</code>. Reserved: <code>hero</code>/<code>banner</code> still use the Hero/Banner uploader â€” no placeholder needed for them.
             <br><strong>Loops:</strong> {% for item in items %}...{% endfor %}
             <br><strong>Conditionals:</strong> {% if variable %}...{% else %}...{% endif %}
         </div>
@@ -54,7 +54,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         <div class="form-group">
             <label>Parent Page (Optional - for hierarchy)</label>
             <select name="parent_id" class="form-control" data-current-parent="<?= $currentParentBoot ?>" id="parent_id_select">
-                <option value="">— Root Level (No Parent) —</option>
+                <option value="">â€” Root Level (No Parent) â€”</option>
             </select>
             <script id="pages-parent-boot" type="application/json"><?= json_encode(['currentPageId' => $pagesEditBoot['currentPageId'], 'currentParentId' => $pagesEditBoot['currentParentId'], 'allPages' => $pagesEditBoot['allPages']], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
             <small class="help-subtext">Create a page hierarchy. URLs remain flat, but breadcrumbs will show the path.</small>
@@ -110,29 +110,29 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <button type="button" data-picker="close" class="btn-close">&times;</button>
                 </div>
                 <div class="c-picker-tabs" role="tablist">
-                    <button type="button" class="c-picker-tab active" data-picker-tab="library" role="tab">Моя медиатека</button>
-                    <button type="button" class="c-picker-tab" data-picker-tab="stock" role="tab">Фото из интернета</button>
+                    <button type="button" class="c-picker-tab active" data-picker-tab="library" role="tab">ÐœÐ¾Ñ Ð¼ÐµÐ´Ð¸Ð°Ñ‚ÐµÐºÐ°</button>
+                    <button type="button" class="c-picker-tab" data-picker-tab="stock" role="tab">Ð¤Ð¾Ñ‚Ð¾ Ð¸Ð· Ð¸Ð½Ñ‚ÐµÑ€Ð½ÐµÑ‚Ð°</button>
                 </div>
                 <div class="c-picker-opts">
-                    <label>Макс. ширина
-                        <select id="picker-maxw" title="Уменьшает слишком большие фото при загрузке / добавлении">
-                            <option value="0">Как есть</option>
+                    <label>ÐœÐ°ÐºÑ. ÑˆÐ¸Ñ€Ð¸Ð½Ð°
+                        <select id="picker-maxw" title="Ð£Ð¼ÐµÐ½ÑŒÑˆÐ°ÐµÑ‚ ÑÐ»Ð¸ÑˆÐºÐ¾Ð¼ Ð±Ð¾Ð»ÑŒÑˆÐ¸Ðµ Ñ„Ð¾Ñ‚Ð¾ Ð¿Ñ€Ð¸ Ð·Ð°Ð³Ñ€ÑƒÐ·ÐºÐµ / Ð´Ð¾Ð±Ð°Ð²Ð»ÐµÐ½Ð¸Ð¸">
+                            <option value="0">ÐšÐ°Ðº ÐµÑÑ‚ÑŒ</option>
                             <option value="2000">2000 px</option>
                             <option value="1600">1600 px</option>
-                            <option value="1366" selected>1366 px (рекомендуется)</option>
+                            <option value="1366" selected>1366 px (Ñ€ÐµÐºÐ¾Ð¼ÐµÐ½Ð´ÑƒÐµÑ‚ÑÑ)</option>
                             <option value="1200">1200 px</option>
                             <option value="800">800 px</option>
                         </select>
                     </label>
-                    <label>Формат
+                    <label>Ð¤Ð¾Ñ€Ð¼Ð°Ñ‚
                         <select id="picker-format">
-                            <option value="">Как есть</option>
-                            <option value="webp" selected>WebP (легче, рекомендуется)</option>
+                            <option value="">ÐšÐ°Ðº ÐµÑÑ‚ÑŒ</option>
+                            <option value="webp" selected>WebP (Ð»ÐµÐ³Ñ‡Ðµ, Ñ€ÐµÐºÐ¾Ð¼ÐµÐ½Ð´ÑƒÐµÑ‚ÑÑ)</option>
                             <option value="jpeg">JPEG</option>
                         </select>
                     </label>
-                    <label class="c-picker-crop-opt" id="picker-crop-opt"><input type="checkbox" id="picker-crop-first"> Обрезать перед загрузкой</label>
-                    <small>Размер и формат — для загрузки файлов и для фото из интернета. На фото из интернета обрезка — кнопка ✂ при наведении.</small>
+                    <label class="c-picker-crop-opt" id="picker-crop-opt"><input type="checkbox" id="picker-crop-first"> ÐžÐ±Ñ€ÐµÐ·Ð°Ñ‚ÑŒ Ð¿ÐµÑ€ÐµÐ´ Ð·Ð°Ð³Ñ€ÑƒÐ·ÐºÐ¾Ð¹</label>
+                    <small>Ð Ð°Ð·Ð¼ÐµÑ€ Ð¸ Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚ â€” Ð´Ð»Ñ Ð·Ð°Ð³Ñ€ÑƒÐ·ÐºÐ¸ Ñ„Ð°Ð¹Ð»Ð¾Ð² Ð¸ Ð´Ð»Ñ Ñ„Ð¾Ñ‚Ð¾ Ð¸Ð· Ð¸Ð½Ñ‚ÐµÑ€Ð½ÐµÑ‚Ð°. ÐÐ° Ñ„Ð¾Ñ‚Ð¾ Ð¸Ð· Ð¸Ð½Ñ‚ÐµÑ€Ð½ÐµÑ‚Ð° Ð¾Ð±Ñ€ÐµÐ·ÐºÐ° â€” ÐºÐ½Ð¾Ð¿ÐºÐ° âœ‚ Ð¿Ñ€Ð¸ Ð½Ð°Ð²ÐµÐ´ÐµÐ½Ð¸Ð¸.</small>
                 </div>
                 <div class="c-picker-bar" id="media-picker-library-bar">
                     <div class="c-picker-filters">
@@ -148,19 +148,19 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <div id="media-picker-status" class="c-picker-status"></div>
                 <div id="stock-panel" class="c-stock" hidden>
                     <div class="c-picker-bar">
-                        <input type="text" id="stock-search" placeholder="Поиск фото (лучше по-английски), напр. refrigerator kitchen" class="c-picker-search" autocomplete="off">
-                        <button type="button" class="btn btn-sm btn-primary" id="stock-search-btn">Искать</button>
+                        <input type="text" id="stock-search" placeholder="ÐŸÐ¾Ð¸ÑÐº Ñ„Ð¾Ñ‚Ð¾ (Ð»ÑƒÑ‡ÑˆÐµ Ð¿Ð¾-Ð°Ð½Ð³Ð»Ð¸Ð¹ÑÐºÐ¸), Ð½Ð°Ð¿Ñ€. refrigerator kitchen" class="c-picker-search" autocomplete="off">
+                        <button type="button" class="btn btn-sm btn-primary" id="stock-search-btn">Ð˜ÑÐºÐ°Ñ‚ÑŒ</button>
                     </div>
                     <div id="stock-alt" class="c-stock-alt" hidden></div>
                     <div id="stock-grid" class="c-picker-grid"></div>
                     <div id="stock-status" class="c-picker-status"></div>
                     <div class="c-stock-foot">
-                        <button type="button" class="btn btn-sm" id="stock-more" hidden>Показать ещё</button>
-                        <span id="stock-credit">Бесплатные фото, указывать автора не обязательно. Фото общие, не конкретная модель.</span>
+                        <button type="button" class="btn btn-sm" id="stock-more" hidden>ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚ÑŒ ÐµÑ‰Ñ‘</button>
+                        <span id="stock-credit">Ð‘ÐµÑÐ¿Ð»Ð°Ñ‚Ð½Ñ‹Ðµ Ñ„Ð¾Ñ‚Ð¾, ÑƒÐºÐ°Ð·Ñ‹Ð²Ð°Ñ‚ÑŒ Ð°Ð²Ñ‚Ð¾Ñ€Ð° Ð½Ðµ Ð¾Ð±ÑÐ·Ð°Ñ‚ÐµÐ»ÑŒÐ½Ð¾. Ð¤Ð¾Ñ‚Ð¾ Ð¾Ð±Ñ‰Ð¸Ðµ, Ð½Ðµ ÐºÐ¾Ð½ÐºÑ€ÐµÑ‚Ð½Ð°Ñ Ð¼Ð¾Ð´ÐµÐ»ÑŒ.</span>
                     </div>
                 </div>
                 <div class="modal-footer c-picker-footer">
-                    <a id="media-picker-open-library" href="#" target="_blank" class="btn btn-sm">Open full library →</a>
+                    <a id="media-picker-open-library" href="#" target="_blank" class="btn btn-sm">Open full library â†’</a>
                     <button type="button" data-picker="close" class="btn">Close</button>
                 </div>
             </div>
@@ -210,7 +210,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
             if (!empty($availableRotations)): 
             ?>
                 <select id="selected_rotation_id" name="selected_rotation_id" class="form-control">
-                    <option value="">— No rotation selected —</option>
+                    <option value="">â€” No rotation selected â€”</option>
                     <?php foreach ($availableRotations as $rotation): ?>
                     <option value="<?= $rotation['id'] ?>" 
                         <?= ($page['selected_rotation_id'] ?? null) == $rotation['id'] ? 'selected' : '' ?>>
@@ -261,7 +261,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
         </div>
         <div class="help-text">
             <strong>Per-page Design:</strong> Override <code>pages.css</code> and <code>components.css</code> for this page only.<br>
-            Empty = inherits global default. With CSS you get <strong>full control including header/footer</strong> — use <code>body.page-<?= e($page['slug'] ?? 'your-slug') ?> header { ... }</code> or <code>:root { --teal: #0a4f5c; --surface: #fdfcf8; }</code> token overrides.<br>
+            Empty = inherits global default. With CSS you get <strong>full control including header/footer</strong> â€” use <code>body.page-<?= e($page['slug'] ?? 'your-slug') ?> header { ... }</code> or <code>:root { --teal: #0a4f5c; --surface: #fdfcf8; }</code> token overrides.<br>
             Supports <code>&lt;style&gt;</code> content wrappers extracted to head automatically, so inline <code>&lt;style&gt;</code> in <code>content_ru/uz</code> also moves to head.
             <br><small>Tip: target <code>body.<?= 'page-' . preg_replace('/[^a-z0-9-]/','-', strtolower($page['slug'] ?? 'slug')) ?> header</code> for page-scoped header. Or use <code>:root</code> variable overrides to re-theme all components at once. CSS is sanitized (blocks @import, javascript:, expression).</small>
         </div>
@@ -377,8 +377,8 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
 </form>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.7.0/tinymce.min.js"></script>
-<script src="<?= BASE_URL ?>/js/admin/image-tools.js?v=<?= @filemtime(BASE_PATH . '/public/js/admin/image-tools.js') ?: 1 ?>"></script>
-<script src="<?= BASE_URL ?>/js/admin/pages-edit.js?v=<?= @filemtime(BASE_PATH . '/public/js/admin/pages-edit.js') ?: 1 ?>"></script>
+<script src="<?= BASE_URL ?>/js/admin/image-tools.js?v=<?= assetVersion('/js/admin/image-tools.js') ?>"></script>
+<script src="<?= BASE_URL ?>/js/admin/pages-edit.js?v=<?= assetVersion('/js/admin/pages-edit.js') ?>"></script>
 
 <style>
 .c-slots-panel{margin-top:18px}
