@@ -455,7 +455,7 @@
     function setBusy(value) {
         busy = value;
         els.send.disabled = value;
-        els.input.disabled = value;
+        // the input stays editable while the agent works; Enter waits until the turn ends (see the submit guard)
         els.model.disabled = value;
         els.newSession.disabled = value;
         if (els.modeToggle) els.modeToggle.disabled = value;

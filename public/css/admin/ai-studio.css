@@ -668,3 +668,6 @@ body:has(.ai-studio--app[data-theme="light"]), .admin-main:has(.ai-studio--app[d
 /* Input: grows with pasted text up to about half the window, then scrolls (no visible scrollbar). */
 #ai-input{ max-height:min(55vh, 560px); scrollbar-width:none; }
 #ai-input::-webkit-scrollbar{ display:none; }
+
+/* The input is a flex item in a column; flex:1 from the old composer rules made it ignore the height set by the auto-grow script. */
+.ai-composer__field #ai-input, #ai-input{ flex:none; width:100%; }
