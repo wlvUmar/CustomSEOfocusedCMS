@@ -664,3 +664,7 @@ body:has(.ai-studio--app[data-theme="light"]), .admin-main:has(.ai-studio--app[d
 .ai-msg__body.md strong{ font-weight:600; }
 .ai-msg__body.md hr{ margin:1.1em 0; }
 .ai-msg__body.md .ai-md-table-wrap{ margin:.9em 0; }
+
+/* Input: grows with pasted text up to about half the window, then scrolls (no visible scrollbar). */
+#ai-input{ max-height:min(55vh, 560px); scrollbar-width:none; }
+#ai-input::-webkit-scrollbar{ display:none; }

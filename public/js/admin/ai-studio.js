@@ -1113,10 +1113,19 @@
         }
     });
 
+    // The input grows with its content up to the CSS max-height (see #ai-input), then scrolls.
     els.input.addEventListener('input', () => {
         els.input.style.height = 'auto';
-        els.input.style.height = Math.min(els.input.scrollHeight, 200) + 'px';
+        els.input.style.height = els.input.scrollHeight + 'px';
     });
+
+    // The composer floats over the chat, so the last message needs room above it as the input grows.
+    (function keepLastMessageClear() {
+        const dock = document.querySelector('.ai-dock');
+        const transcript = document.getElementById('ai-transcript');
+        if (!dock || !transcript || !window.ResizeObserver) return;
+        new ResizeObserver(() => { transcript.style.paddingBottom = (dock.offsetHeight + 24) + 'px'; }).observe(dock);
+    })();
 
     if (els.suggestions) {
         els.suggestions.addEventListener('click', (e) => {
