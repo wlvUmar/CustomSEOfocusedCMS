@@ -9,6 +9,8 @@ require_once BASE_PATH . '/models/SeoApiTokenStore.php';
 require_once BASE_PATH . '/models/Page.php';
 require_once BASE_PATH . '/models/Analytics.php';
 require_once BASE_PATH . '/models/GscClient.php';
+require_once BASE_PATH . '/models/seo/GscReports.php';
+require_once BASE_PATH . '/models/seo/PageAudit.php';
 
 class SeoApiController extends Controller {
     private const RATE_LIMIT_PER_MIN = 120;
@@ -268,6 +270,153 @@ class SeoApiController extends Controller {
         ]);
     }
 
+    // ── extended read-only SEO endpoints ─────────────────────
+    // Logic lives in models/seo/GscReports.php and PageAudit.php; this class only authenticates, validates
+    // request shape and maps errors. All of them are GET and read-only.
+
+    // GET /api/seo/v1/help — endpoint catalogue for agents (any valid token, no specific scope)
+    public function help(): void {
+        $this->authenticate('');
+        $period = 'start=YYYY-MM-DD&end=YYYY-MM-DD, or days=N (default 28, ends 3 days ago; max 480)';
+        $this->send([
+            'version' => 'v1',
+            'auth' => 'Authorization: Bearer <token>; HTTPS only; 120 req/min per token. Scope per endpoint in brackets.',
+            'conventions' => [
+                'errors' => '{"error": "<code>", ...} with 400 invalid_param(param) | 401 | 403 insufficient_scope | 429 | 502/503 gsc_*',
+                'gsc_data' => 'Search Console data lags ~3 days and is cached for 1h. Numbers are Google\'s, never estimated.',
+                'position' => 'average position — lower is better; deltas < 0 mean improved',
+            ],
+            'endpoints' => [
+                ['endpoint' => 'GET /api/seo/v1/gsc/query', 'scope' => 'gsc', 'desc' => 'Generic Search Analytics query (any dimension mix, filters, paging, sort)',
+                    'params' => ['dimensions' => 'comma list of query,page,country,device,date,searchAppearance (max 4; default query)', 'period' => $period,
+                        'filters' => 'query_contains|query_equals|query_not_contains|query_regex|page_contains|page_equals|page_not_contains|country (ISO alpha-3, e.g. uzb)|device (DESKTOP|MOBILE|TABLET), or filters=[{"dimension","operator","expression"}]',
+                        'paging/sort' => 'limit<=5000, start_row, sort=clicks|impressions|ctr|position, order, min_impressions, min_clicks, search_type=web|image|video|news|discover|googleNews']],
+                ['endpoint' => 'GET /api/seo/v1/gsc/compare', 'scope' => 'gsc', 'desc' => 'This period vs the previous equal period per page or query (traffic decay / gains)',
+                    'params' => ['dimension' => 'page|query (default page)', 'days' => '1-240 (default 28)', 'direction' => 'any|up|down', 'min_impressions' => 'default 20', 'limit' => '<=500', 'filters' => 'same shortcuts as gsc/query']],
+                ['endpoint' => 'GET /api/seo/v1/gsc/opportunities', 'scope' => 'gsc', 'desc' => 'Striking-distance (pos 5-20), low-CTR (vs the site\'s own CTR per position) and zero-click queries with their pages',
+                    'params' => ['period' => $period . ' (max 120 days)', 'min_impressions' => 'default 50', 'limit' => '<=100', 'filters' => 'same shortcuts']],
+                ['endpoint' => 'GET /api/seo/v1/gsc/inspect', 'scope' => 'gsc', 'desc' => 'URL Inspection: indexed?, Google canonical vs declared, last crawl, mobile usability, rich results', 'params' => ['url' => 'https://kuplyu-tashkent.uz/... (own domain only)']],
+                ['endpoint' => 'GET /api/seo/v1/gsc/sitemaps', 'scope' => 'gsc', 'desc' => 'Sitemaps Search Console knows: submitted/indexed counts, errors, warnings, last download', 'params' => []],
+                ['endpoint' => 'GET /api/seo/v1/gsc/summary', 'scope' => 'gsc', 'desc' => 'Site totals + top 20 pages', 'params' => ['days' => '1-90']],
+                ['endpoint' => 'GET /api/seo/v1/gsc/queries', 'scope' => 'gsc', 'desc' => 'Top queries (older, simpler form of gsc/query)', 'params' => ['days', 'limit<=250', 'page', 'with_pages=1']],
+                ['endpoint' => 'GET /api/seo/v1/audit/pages', 'scope' => 'pages', 'desc' => 'On-page audit of published pages: RU/UZ parity, meta lengths, duplicates, thin content, H1/alt/inline-style, off-domain canonical, orphan-ish pages',
+                    'params' => ['lang' => 'ru|uz|both', 'severity' => 'info|warn|error (minimum)', 'only_issues' => '1|0 (default 1)', 'slug' => 'one page', 'limit' => '<=500', 'offset' => '']],
+                ['endpoint' => 'GET /api/seo/v1/stats/cta', 'scope' => 'stats', 'desc' => 'Per-button views/clicks/CTR (first-party analytics, unique visitors per day)', 'params' => ['days' => '1-365', 'slug' => 'optional page']],
+                ['endpoint' => 'GET /api/seo/v1/stats/top-pages', 'scope' => 'stats', 'desc' => 'First-party visits/clicks/calls per page', 'params' => ['days', 'limit']],
+                ['endpoint' => 'GET /api/seo/v1/pages', 'scope' => 'pages', 'desc' => 'Published pages with SEO fields', 'params' => ['limit<=500']],
+                ['endpoint' => 'GET /api/seo/v1/page/{slug}', 'scope' => 'pages', 'desc' => 'One page, all fields', 'params' => []],
+                ['endpoint' => 'POST /api/seo/v1/page/{slug}/fields', 'scope' => 'write', 'desc' => 'Write SEO metadata (RU+UZ together, dry_run, optimistic lock) — see docs/seo-operator-setup.md', 'params' => []],
+            ],
+            'generated_at' => gmdate('c'),
+        ]);
+    }
+
+    // GET /api/seo/v1/gsc/query
+    public function gscQuery(): void {
+        $this->gscRun(static fn() => GscReports::query($_GET));
+    }
+
+    // GET /api/seo/v1/gsc/compare
+    public function gscCompare(): void {
+        $this->gscRun(static fn() => GscReports::compare($_GET));
+    }
+
+    // GET /api/seo/v1/gsc/opportunities
+    public function gscOpportunities(): void {
+        $this->gscRun(static fn() => GscReports::opportunities($_GET));
+    }
+
+    // GET /api/seo/v1/gsc/inspect?url=https://kuplyu-tashkent.uz/...
+    public function gscInspect(): void {
+        $this->gscRun(static fn() => GscReports::inspect((string)($_GET['url'] ?? '')));
+    }
+
+    // GET /api/seo/v1/gsc/sitemaps
+    public function gscSitemaps(): void {
+        $this->gscRun(static fn() => GscReports::sitemaps());
+    }
+
+    // GET /api/seo/v1/audit/pages
+    public function auditPages(): void {
+        $this->authenticate('pages');
+        $lang = (string)($_GET['lang'] ?? 'both');
+        if (!in_array($lang, ['ru', 'uz', 'both'], true)) $this->send(['error' => 'invalid_param', 'param' => 'lang'], 400);
+        $severity = (string)($_GET['severity'] ?? 'info');
+        if (!in_array($severity, ['info', 'warn', 'error'], true)) $this->send(['error' => 'invalid_param', 'param' => 'severity'], 400);
+        $slug = trim((string)($_GET['slug'] ?? ''));
+        if ($slug !== '' && (strlen($slug) > 255 || preg_match('/[\/\s]/u', $slug))) $this->send(['error' => 'invalid_param', 'param' => 'slug'], 400);
+        $limit = $this->intParam('limit', 200, 1, 500);
+        $offset = $this->intParam('offset', 0, 0, 100000);
+        $host = strtolower((string)parse_url((string)BASE_URL, PHP_URL_HOST));
+        $host = preg_replace('/^www\./', '', $host) ?: 'kuplyu-tashkent.uz';
+
+        $result = PageAudit::run((new Page())->getAll(false), $host, [
+            'lang' => $lang,
+            'min_severity' => $severity,
+            'only_issues' => ($_GET['only_issues'] ?? '1') !== '0',
+            'slug' => $slug,
+        ]);
+        $total = count($result['pages']);
+        $result['pages'] = array_slice($result['pages'], $offset, $limit);
+        $result['paging'] = ['total_pages_returned' => $total, 'offset' => $offset, 'limit' => $limit, 'has_more' => $offset + $limit < $total];
+        $result['source'] = 'pages table (published)';
+        $result['generated_at'] = gmdate('c');
+        $this->send($result);
+    }
+
+    // GET /api/seo/v1/stats/cta?days=28&slug=
+    public function ctaStats(): void {
+        $this->authenticate('stats');
+        $days = $this->intParam('days', 28, 1, 365);
+        $slug = trim((string)($_GET['slug'] ?? ''));
+        if ($slug !== '' && !preg_match('/^[a-z0-9_\-]{1,100}$/i', $slug)) $this->send(['error' => 'invalid_param', 'param' => 'slug'], 400);
+        $end = date('Y-m-d');
+        $start = date('Y-m-d', strtotime('-' . ($days - 1) . ' days'));
+        $stats = (new Analytics())->getCtaStats($start, $end, $slug, '');
+        $this->send([
+            'period' => ['start' => $start, 'end' => $end, 'days' => $days],
+            'slug' => $slug ?: null,
+            'source' => 'analytics_cta (unique visitors per page/day; view = half of the button visible)',
+            'collected_since' => $stats['since'],
+            'data' => $stats['rows'],
+            'generated_at' => gmdate('c'),
+        ]);
+    }
+
+    /** Auth + "GSC connected" preflight, run the report, map its exceptions to HTTP errors. Exits via send(). */
+    private function gscRun(callable $report): void {
+        $this->authenticate('gsc');
+        try {
+            $connected = GscClient::isConnected();
+        } catch (Throwable $e) {
+            error_log('[SeoApi] GSC token store unavailable: ' . $e->getMessage());
+            $this->send(['error' => 'gsc_unavailable'], 503);
+        }
+        if (!$connected) {
+            $this->send(['error' => 'gsc_not_connected'], 503);
+        }
+        try {
+            $result = $report();
+        } catch (InvalidArgumentException $e) {
+            $this->send(['error' => 'invalid_param', 'param' => $e->getMessage()], 400);
+        } catch (GscAuthRequired $e) {
+            $this->send(['error' => 'gsc_auth_required'], 503);
+        } catch (Throwable $e) {
+            error_log('[SeoApi] GSC error: ' . $e->getMessage());
+            $code = (int)$e->getCode();
+            if ($code === 429) {
+                header('Retry-After: 60');
+                $this->send(['error' => 'gsc_quota_exceeded'], 429);
+            }
+            if ($code === 403) {
+                $this->send(['error' => 'gsc_forbidden', 'hint' => 'the connected Google account lacks access or scope for this call'], 403);
+            }
+            $this->send(['error' => 'gsc_api_error'], 502);
+        }
+        $result['generated_at'] = gmdate('c');
+        $this->send($result);
+    }
+
     // ── internals ────────────────────────────────────────────
 
     private function authenticate(string $scope): void {
@@ -286,7 +435,7 @@ class SeoApiController extends Controller {
             $this->send(['error' => 'unauthorized'], 401);
         }
         $this->token = $row;
-        if (!in_array($scope, explode(',', $row['scopes']), true)) {
+        if ($scope !== '' && !in_array($scope, explode(',', $row['scopes']), true)) { // '' = any valid token (help)
             $this->send(['error' => 'insufficient_scope', 'required' => $scope], 403);
         }
         if (!SeoApiTokenStore::rateLimitOk($row['id'], self::RATE_LIMIT_PER_MIN)) {

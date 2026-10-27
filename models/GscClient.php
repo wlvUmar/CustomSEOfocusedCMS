@@ -89,8 +89,16 @@ class GscClient {
      * @param int $rowLimit max 25000 (we default 1000-5000)
      * @return array|null rows or null on auth failure
      */
-    public static function searchAnalytics(string $startDate, string $endDate, array $dimensions = [], array $dimensionFilterGroups = [], int $rowLimit = 1000, string $aggregationType = 'auto', ?string $siteUrlOverride = null): ?array {
-        return GscSearchApi::searchAnalytics($startDate, $endDate, $dimensions, $dimensionFilterGroups, $rowLimit, $aggregationType, $siteUrlOverride);
+    public static function searchAnalytics(string $startDate, string $endDate, array $dimensions = [], array $dimensionFilterGroups = [], int $rowLimit = 1000, string $aggregationType = 'auto', ?string $siteUrlOverride = null, array $options = []): ?array {
+        return GscSearchApi::searchAnalytics($startDate, $endDate, $dimensions, $dimensionFilterGroups, $rowLimit, $aggregationType, $siteUrlOverride, $options);
+    }
+
+    public static function sitemaps(?string $siteUrlOverride = null): ?array {
+        return GscSearchApi::sitemaps($siteUrlOverride);
+    }
+
+    public static function inspectUrl(string $inspectionUrl, ?string $siteUrlOverride = null, string $languageCode = 'ru'): ?array {
+        return GscSearchApi::inspectUrl($inspectionUrl, $siteUrlOverride, $languageCode);
     }
 
     public static function listSites(): ?array {

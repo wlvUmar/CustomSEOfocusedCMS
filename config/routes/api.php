@@ -83,3 +83,29 @@ $router->post('/api/seo/v1/page/{slug}/fields', function($slug) {
 $router->get('/api/seo/v1/gsc/queries', function() {
     ControllerFactory::seoApi('gscQueries');
 });
+
+// Extended read-only endpoints (see GET /api/seo/v1/help for the self-describing catalogue)
+$router->get('/api/seo/v1/help', function() {
+    ControllerFactory::seoApi('help');
+});
+$router->get('/api/seo/v1/gsc/query', function() {
+    ControllerFactory::seoApi('gscQuery');
+});
+$router->get('/api/seo/v1/gsc/compare', function() {
+    ControllerFactory::seoApi('gscCompare');
+});
+$router->get('/api/seo/v1/gsc/opportunities', function() {
+    ControllerFactory::seoApi('gscOpportunities');
+});
+$router->get('/api/seo/v1/gsc/inspect', function() {
+    ControllerFactory::seoApi('gscInspect');
+});
+$router->get('/api/seo/v1/gsc/sitemaps', function() {
+    ControllerFactory::seoApi('gscSitemaps');
+});
+$router->get('/api/seo/v1/audit/pages', function() {
+    ControllerFactory::seoApi('auditPages');
+});
+$router->get('/api/seo/v1/stats/cta', function() {
+    ControllerFactory::seoApi('ctaStats');
+});

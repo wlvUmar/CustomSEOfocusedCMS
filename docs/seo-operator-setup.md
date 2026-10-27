@@ -41,6 +41,22 @@ Reads are read-only. The single write endpoint is opt-in (token needs the `write
 - Every write goes through `Page::update()`: snapshot to `page_revisions` (source `seo_api`, name `seo-api#<token id> <label>`) and a row in `audit_log`. The response carries `revision_id` (state before the write), restorable in admin.
 - Issue: `php scripts/issue-seo-token.php issue --label=... --scopes=pages,stats,gsc,write --days=7` — use short lifetimes for write tokens and revoke when done.
 
+### 1.1b Extended read-only endpoints (built; no new scopes, no migration)
+
+`GET /api/seo/v1/help` returns the live catalogue (any valid token) — agents should read it first. Logic: `models/seo/GscReports.php`, `models/seo/PageAudit.php`; routes in `config/routes/api.php`.
+
+| Endpoint | Scope | What it gives |
+|---|---|---|
+| `gsc/query` | gsc | Generic Search Analytics: `dimensions` (query,page,country,device,date,searchAppearance), `start/end` or `days` (≤480), filters (`query_contains`, `query_regex`, `page_contains`, `country=uzb`, `device=MOBILE`, or JSON `filters`), `limit`≤5000 + `start_row`, `sort`/`order`, `min_impressions`/`min_clicks`, `search_type` |
+| `gsc/compare` | gsc | This period vs previous equal period per `page` or `query`: clicks/impressions/CTR/position deltas, `new`/`lost` status, `direction=up|down` |
+| `gsc/opportunities` | gsc | Striking distance (pos 5-20), low CTR vs the site's own CTR per position bucket, zero-click queries — each with its page. Heuristics are labelled in the response |
+| `gsc/inspect?url=` | gsc | URL Inspection: indexed?, Google vs declared canonical, last crawl, robots/fetch state, mobile usability, rich-result issues. Own domain only; Google quota ~2000/day |
+| `gsc/sitemaps` | gsc | Sitemaps known to Search Console: submitted/indexed, errors, warnings |
+| `audit/pages` | pages | On-page audit of published pages: RU/UZ parity, meta length, duplicate meta, thin content, H1-in-content, missing alt, inline styles, off-domain canonical, pages with no inbound body links |
+| `stats/cta` | stats | Per-button views/clicks/CTR (first-party `analytics_cta`) |
+
+Notes: Search Console data lags ~3 days and is cached 1h; rare queries are anonymised by Google so row sums are below site totals. `gsc/inspect` uses the OAuth scope the site already has (`webmasters.readonly`); if Google rejects it the API answers `403 gsc_forbidden` — reconnect GSC in admin. Not covered by any API (web UI only): Core Web Vitals, Links report, manual actions, page-indexing reasons list.
+
 ### 1.2 Token design
 
 - Random 32 bytes (`random_bytes`), shown **once**; store only `sha256(token)` in a new table `seo_api_tokens`:

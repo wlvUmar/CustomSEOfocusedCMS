@@ -42,7 +42,7 @@ class GscSearchApi {
      * @param int $rowLimit max 25000 (we default 1000-5000)
      * @return array|null rows or null on auth failure
      */
-    public static function searchAnalytics(string $startDate, string $endDate, array $dimensions = [], array $dimensionFilterGroups = [], int $rowLimit = 1000, string $aggregationType = 'auto', ?string $siteUrlOverride = null): ?array {
+    public static function searchAnalytics(string $startDate, string $endDate, array $dimensions = [], array $dimensionFilterGroups = [], int $rowLimit = 1000, string $aggregationType = 'auto', ?string $siteUrlOverride = null, array $options = []): ?array {
         $siteUrl = GscTokenStore::getSiteUrlFor($siteUrlOverride);
         $payload = [
             'startDate' => $startDate,
@@ -52,6 +52,14 @@ class GscSearchApi {
             'aggregationType' => $aggregationType,
             'rowLimit' => min(25000, max(1, $rowLimit)),
         ];
+        // Optional API fields (default calls are byte-identical to before): paging, search type, data freshness.
+        if (!empty($options['startRow'])) $payload['startRow'] = max(0, (int)$options['startRow']);
+        if (!empty($options['type']) && in_array($options['type'], ['web', 'image', 'video', 'news', 'discover', 'googleNews'], true)) {
+            $payload['type'] = $options['type'];
+        }
+        if (!empty($options['dataState']) && in_array($options['dataState'], ['final', 'all'], true)) {
+            $payload['dataState'] = $options['dataState'];
+        }
         // Remove empty filters for cleaner cache key.
         if (empty($dimensionFilterGroups)) unset($payload['dimensionFilterGroups']);
 
@@ -93,6 +101,44 @@ class GscSearchApi {
         if ($r['code'] < 200 || $r['code'] >= 300) return null;
         $data = json_decode($r['resp'], true);
         return $data['siteEntry'] ?? [];
+    }
+
+    /**
+     * Sitemaps known to Search Console for the property (read-only).
+     * @return array|null entries, or null when not authorised
+     * @throws RuntimeException (code = HTTP status) on API errors
+     */
+    public static function sitemaps(?string $siteUrlOverride = null): ?array {
+        $token = GscTokenStore::getAccessToken();
+        if ($token === null) return null;
+        $siteUrl = GscTokenStore::getSiteUrlFor($siteUrlOverride);
+        $r = self::request('GET', self::API_BASE . '/sites/' . rawurlencode($siteUrl) . '/sitemaps', $token, null, 20);
+        if ($r['err'] !== '' || $r['code'] < 200 || $r['code'] >= 300) {
+            throw new RuntimeException('GSC sitemaps error HTTP ' . $r['code'] . ': ' . mb_substr($r['err'] !== '' ? $r['err'] : $r['resp'], 0, 300), (int)$r['code']);
+        }
+        $data = json_decode($r['resp'], true);
+        return is_array($data) ? ($data['sitemap'] ?? []) : [];
+    }
+
+    /**
+     * URL Inspection API (index status of one URL as Google sees it). Quota: ~2000/day, 600/min per property.
+     * @return array|null the raw inspectionResult, or null when not authorised
+     * @throws RuntimeException (code = HTTP status) on API errors
+     */
+    public static function inspectUrl(string $inspectionUrl, ?string $siteUrlOverride = null, string $languageCode = 'ru'): ?array {
+        $token = GscTokenStore::getAccessToken();
+        if ($token === null) return null;
+        $body = json_encode([
+            'inspectionUrl' => $inspectionUrl,
+            'siteUrl' => GscTokenStore::getSiteUrlFor($siteUrlOverride),
+            'languageCode' => $languageCode,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $r = self::request('POST', 'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect', $token, $body, 30);
+        if ($r['err'] !== '' || $r['code'] < 200 || $r['code'] >= 300) {
+            throw new RuntimeException('GSC inspect error HTTP ' . $r['code'] . ': ' . mb_substr($r['err'] !== '' ? $r['err'] : $r['resp'], 0, 300), (int)$r['code']);
+        }
+        $data = json_decode($r['resp'], true);
+        return is_array($data) ? ($data['inspectionResult'] ?? []) : [];
     }
 
     public static function slugFromPage(string $pageUrl): string {
