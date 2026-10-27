@@ -5,7 +5,11 @@ function switchTab(tab, event) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-    const clickedBtn = event?.currentTarget || document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+    // currentTarget is `document` when called from a delegated listener, so only trust it if it's a tab button
+    let clickedBtn = event && event.currentTarget;
+    if (!clickedBtn || !clickedBtn.classList || !clickedBtn.classList.contains('tab-btn')) {
+        clickedBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+    }
     if (clickedBtn) clickedBtn.classList.add('active');
 
     const content = document.getElementById('tab-' + tab);
