@@ -377,10 +377,12 @@ $ctaSince = $ctaStats['since'] ?? null;
 <div class="chart-box" id="ctaStatsContainer">
     <h2><i data-feather="target"></i> Эффективность CTA по местам размещения</h2>
     <div class="c-sub c-sub-top c-sub-mb" id="ctaStatsNote">
-        <?php if ($ctaSince): ?>
+        <?php if (($ctaStats['ready'] ?? true) === false): ?>
+            <strong>Таблицы analytics_cta нет в базе — миграция 018 не применена.</strong> Запустите <code>php migrate.php</code> (или проверьте deploy.log). Пока этого не сделано, клики по местам не сохраняются.
+        <?php elseif ($ctaSince): ?>
             Данные по местам собираются с <?= e(date('d.m.Y', strtotime($ctaSince))) ?>. Считаются уникальные посетители за день; показ засчитывается, когда видна половина кнопки.
         <?php else: ?>
-            Данных пока нет — сбор начнётся после выкладки обновления.
+            Данных пока нет. Тестовые клики не считаются, если вы вошли в админку (cookie ADMINSESSID), стоит cookie no_track или ваш IP в списке исключений — проверяйте в приватном окне или с телефона без входа в админку.
         <?php endif; ?>
         Общие «Клики» и «Звонки» выше считаются как раньше.
     </div>
