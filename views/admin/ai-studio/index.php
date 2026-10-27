@@ -76,13 +76,11 @@ require BASE_PATH . '/views/admin/layout/header.php';
     <div class="ai-studio__layout ai-studio__layout--full">
         <section class="ai-studio__chat">
             <div class="ai-studio__chat-head">
-                <span class="ai-studio__chat-head__title"><i data-feather="message-square"></i> Conversation</span>
                 <div class="ai-studio__chat-head__actions">
                     <button id="ai-mode-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="PLAN is read-only — switch to BUILD to apply edits. Approval still required for large (&gt;800 char) changes even in BUILD." aria-pressed="false" aria-label="Toggle Plan/Build mode">
                         <i data-feather="layout"></i> <span id="ai-mode-label">Plan</span>
                     </button>
                     <button id="ai-history-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="Chat history"><i data-feather="clock"></i> History</button>
-                    <span class="ai-studio__chat-head__hint">Shift+Enter for a new line</span>
                 </div>
             </div>
 
@@ -127,17 +125,15 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
             <form id="ai-form" class="ai-composer" autocomplete="off">
                 <div class="ai-composer__field">
-                    <textarea id="ai-input" rows="3" placeholder="e.g. Find the weakest pages by traffic and propose an improved intro section for the worst one…"></textarea>
-                </div>
-                <div class="ai-composer__footer">
-                    <div class="ai-composer__meta">
-                        <span id="ai-status" class="ai-status">Ready</span>
-                        <span id="ai-usage" class="ai-usage" title="">0 tok</span>
-                    </div>
+                    <textarea id="ai-input" rows="1" placeholder="Message AI Studio…  (Shift+Enter for a new line)"></textarea>
                     <div class="ai-composer__actions">
                         <button id="ai-stop" type="button" class="ai-btn ai-btn--danger" hidden><i data-feather="square"></i> Stop</button>
-                        <button id="ai-send" type="submit" class="ai-btn ai-btn--primary"><i data-feather="send"></i> Send</button>
+                        <button id="ai-send" type="submit" class="ai-btn ai-btn--primary ai-btn--send" aria-label="Send" title="Send"><i data-feather="arrow-up"></i></button>
                     </div>
+                </div>
+                <div class="ai-composer__meta">
+                    <span id="ai-status" class="ai-status">Ready</span>
+                    <span id="ai-usage" class="ai-usage" title="">0 tok</span>
                 </div>
             </form>
         </section>

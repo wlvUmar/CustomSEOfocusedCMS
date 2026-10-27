@@ -263,3 +263,52 @@
 @media (prefers-reduced-motion:reduce){ .ai-msg,.ai-tool-event,.ai-thinking__spinner,.ai-approval,.ai-activity,.ai-typing span,.ai-status--busy::before,#ai-preview-frame{ animation:none !important; transition:none !important; } }
 @media (max-width:1024px){ .ai-studio{ height:auto; min-height:0; overflow:visible; } .ai-studio--app{ height:auto; overflow:visible; } .ai-studio--app .ai-studio__layout,.ai-studio--app .ai-studio__chat,.ai-studio--app .ai-transcript-wrap{ overflow:visible; min-height:auto; } .ai-studio__layout{ grid-template-columns:1fr; } .ai-studio__chat{ min-height:420px; } .ai-studio__preview{ min-height:400px; } .ai-studio__topbar{ flex-direction:column; } }
 @media (max-width:560px){ .ai-msg{ max-width:96%; } .ai-tool-event{ margin-left:0; } .ai-thinking{ margin-left:0; } .ai-typing{ margin-left:0; } .ai-welcome{ padding:16px 10px; } }
+
+/* ================= LLM-chat layout (ChatGPT / Claude style) =================
+   Centered reading column, assistant text without a bubble/avatar, light user bubble,
+   floating rounded composer. Overrides the messenger-style rules above. */
+.ai-studio__topbar{ border:0; background:transparent; padding:0 4px 10px; margin-bottom:0; align-items:center; }
+.ai-studio__subtitle{ display:none; }
+.ai-studio__chat{ border:0; box-shadow:none; background:transparent; overflow:hidden; }
+.ai-studio__chat-head{ border:0; background:transparent; padding:0 12px 4px; justify-content:flex-end; }
+.ai-studio__chat-head__title, .ai-studio__chat-head__hint{ display:none; }
+.ai-studio--app .ai-studio__layout{ gap:18px; }
+
+.ai-transcript{ background:transparent; padding:20px 16px 8px; gap:20px; }
+.ai-transcript > *{ width:100%; max-width:760px; margin-left:auto; margin-right:auto; box-sizing:border-box; }
+
+/* assistant: plain text on the page, no bubble, no avatar */
+.ai-msg{ display:block; max-width:760px; align-self:center; }
+.ai-msg::before{ display:none; }
+.ai-msg--agent .ai-msg__body{ background:transparent; border:0; padding:0; font-size:.95rem; line-height:1.7; border-radius:0; }
+.ai-msg__col{ max-width:100%; }
+
+/* user: right-aligned soft bubble */
+.ai-msg--user{ display:flex; justify-content:flex-end; flex-direction:row; align-self:center; }
+.ai-msg--user::before{ display:none; }
+.ai-msg--user .ai-msg__col{ max-width:85%; align-items:flex-end; }
+.ai-msg--user .ai-msg__body{ background:var(--ai-line-soft); border:0; color:var(--ai-ink); border-radius:18px; padding:10px 16px; font-size:.93rem; }
+
+/* tool/“thinking” rows align with the text column */
+.ai-tool-event, .ai-thinking{ margin-left:auto; margin-right:auto; }
+.ai-typing{ margin-left:auto; margin-right:auto; width:100%; max-width:760px; background:transparent; border:0; padding:4px 0; box-sizing:border-box; }
+
+/* status bars follow the column */
+.ai-activity, .ai-approval{ width:calc(100% - 32px); max-width:728px; margin:8px auto 0; box-sizing:border-box; }
+
+/* composer: floating rounded input, send button inside */
+.ai-composer{ border:0; background:transparent; padding:6px 16px 14px; width:100%; max-width:792px; margin:0 auto; box-sizing:border-box; }
+.ai-composer__field{ position:relative; display:flex; align-items:flex-end; gap:8px; border:1px solid var(--ai-line); border-radius:24px; background:#fff; box-shadow:var(--ai-shadow-md); padding:6px 8px 6px 6px; }
+.ai-composer__field:focus-within{ border-color:#cbd5e1; box-shadow:0 0 0 3px #e2e8f0, var(--ai-shadow-md); }
+#ai-input{ flex:1; min-height:44px; max-height:200px; padding:11px 8px 11px 14px; font-size:.95rem; }
+.ai-composer__actions{ display:flex; align-items:center; gap:6px; padding-bottom:3px; }
+.ai-btn--send{ width:36px; height:36px; padding:0; border-radius:50%; justify-content:center; }
+.ai-btn--send .feather-icon, .ai-btn--send svg{ width:18px; height:18px; }
+#ai-stop{ border-radius:999px; }
+.ai-composer__meta{ display:flex; justify-content:center; align-items:center; gap:10px; margin-top:6px; }
+.ai-usage{ border-left:0; padding-left:0; }
+
+.ai-welcome{ align-self:center; margin:auto; max-width:520px; }
+.ai-welcome__title{ font-size:1.4rem; letter-spacing:-.02em; }
+.ai-welcome__text{ font-size:.92rem; }
+@media (max-width:560px){ .ai-msg--user .ai-msg__col{ max-width:92%; } .ai-composer{ padding:6px 10px 10px; } }
