@@ -173,9 +173,10 @@ class SiteTools {
                 '{{date.month_name}}' => 'Current month name.',
                 '{{date.day}}' => 'Current day of month.',
                 '{% for faq in faqs %}...{% endfor %}' => 'The page FAQs, for body loops that reference them.',
+                '{{media.<slot_key>}}' => 'An IMAGE SLOT you may place (e.g. {{media.card_fridges}}). The owner attaches photos to it later in the page editor ("Media slots on this page"); an empty slot renders nothing. 1 image → <img>, 2+ → gallery; a key ending in _scroll → horizontal carousel. See list_media_slots.',
             ],
             'rules' => [
-                'Preserve every {{...}} variable exactly as-is in content you write; never invent new ones.',
+                'Preserve every {{...}} variable exactly as-is in content you write; never invent new ones — the ONLY exception is media slots {{media.<slot_key>}}, which you may place (rules in list_media_slots).',
                 'You may use {% for faq in faqs %}...{% endfor %} and {% if ... %} conditionals — the template engine supports them.',
                 'content_ru/content_uz is the page body only — hero, FAQ accordion, link widgets, review strip, header/footer render automatically outside it, so never author those parts into content.',
             ],

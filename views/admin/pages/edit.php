@@ -5,128 +5,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
 
 <h1><?= $page ? 'Edit Page' : 'Create Page' ?></h1>
 
-<?php if ($page): ?>
-<div class="ai-panel">
-    <button type="button" class="ai-panel__toggle" data-ai="toggle">
-        <span class="ai-panel__toggle-title">
-            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2l1.6 4.9L18.5 8.5l-4.9 1.6L12 15l-1.6-4.9L5.5 8.5l4.9-1.6zM18 14l.8 2.4 2.4.8-2.4.8L18 20.4l-.8-2.4-2.4-.8 2.4-.8zM5 16l.6 1.9 1.9.6-1.9.6L5 21l-.6-1.9-1.9-.6 1.9-.6z"/>
-            </svg>
-            AI Assistant
-        </span>
-        <span class="ai-panel__badge">Opencode</span>
-        <svg class="ai-panel__chevron" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-        </svg>
-    </button>
-
-    <div class="ai-panel__body">
-        <div class="ai-panel__row">
-            <div class="ai-panel__group ai-panel__group--field">
-                <label for="ai-field">Target field</label>
-                <select id="ai-field">
-                    <option value="content_ru">Content (RU)</option>
-                    <option value="content_uz">Content (UZ)</option>
-                    <option value="title_ru">Title (RU)</option>
-                    <option value="title_uz">Title (UZ)</option>
-                    <option value="meta_title_ru">Meta title (RU)</option>
-                    <option value="meta_title_uz">Meta title (UZ)</option>
-                    <option value="meta_description_ru">Meta description (RU)</option>
-                    <option value="meta_description_uz">Meta description (UZ)</option>
-                </select>
-            </div>
-            <div class="ai-panel__group ai-panel__group--mode">
-                <label for="ai-mode">Edit mode</label>
-                <select id="ai-mode">
-                    <option value="edits" selected>Chat — targeted line edits</option>
-                    <option value="full">Replace entire field</option>
-                </select>
-            </div>
-            <div class="ai-panel__group ai-panel__group--model">
-                <label for="ai-model">Model</label>
-                <select id="ai-model">
-                    <option value="opencode-go/muse-spark-1.2-contributor" selected>Muse Spark 1.2 (default)</option>
-                    <option value="opencode-go/grok-4.6">Grok 4.6</option>
-                    <option value="opencode-go/gpt-5.6-luna">GPT-5.6 Luna</option>
-                    <option value="opencode-go/glm-5.3-flash">GLM 5.3 Flash</option>
-                    <option value="opencode-go/kimi-k2.6">Kimi K2.6</option>
-                    <option value="opencode-go/kimi-k3">Kimi K3</option>
-                    <option value="opencode-go/deepseek-v4-flash">DeepSeek V4 Flash</option>
-                    <option value="opencode-go/deepseek-v4-pro">DeepSeek V4 Pro</option>
-                    <option value="opencode-go/qwen3.6-plus">Qwen 3.6 Plus</option>
-                </select>
-            </div>
-        </div>
-
-        <div id="ai-chat-wrap">
-            <div id="ai-chat" class="ai-chat">
-                <div class="ai-chat__empty">Tell the AI what to change, e.g. "replace the phone number in the hero with +998 90 123 45 67". It will locate the exact text and change only that.</div>
-            </div>
-
-            <div class="ai-chat__input">
-                <textarea id="ai-chat-prompt" rows="2" placeholder="e.g. Change the second paragraph to say we also pay for broken fridges..."></textarea>
-                <button type="button" id="ai-chat-send" class="btn btn-primary" data-ai="send">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
-                    </svg>
-                    Send
-                </button>
-            </div>
-            <span id="ai-chat-status" class="ai-panel__status"></span>
-
-            <div class="ai-chat__controls">
-                <label class="ai-chat__autoapply">
-                    <input type="checkbox" id="ai-autoapply" checked>
-                    Auto-apply changes to field
-                </label>
-                <button type="button" class="btn btn-primary btn-sm" data-ai="apply">Apply all changes to field</button>
-                <button type="button" class="btn btn-secondary btn-sm" data-ai="undo">Undo last</button>
-                <button type="button" class="btn btn-sm" data-ai="reset">Reset</button>
-            </div>
-        </div>
-
-        <div id="ai-full-wrap" class="hidden">
-            <div class="ai-panel__chips">
-                <button type="button" class="ai-chip" data-prompt="Rewrite this content to be clearer, more engaging and persuasive. Keep the same meaning and structure.">✍️ Rewrite</button>
-                <button type="button" class="ai-chip" data-prompt="Improve this content for SEO: strengthen keywords, readability and user intent. Do not change the factual claims.">🎯 Improve SEO</button>
-                <button type="button" class="ai-chip" data-prompt="Fix all grammar, spelling and punctuation mistakes. Keep the rest exactly the same.">✅ Fix grammar</button>
-                <button type="button" class="ai-chip" data-prompt="Shorten this content by about 30% while keeping the key points.">✂️ Shorten</button>
-                <button type="button" class="ai-chip" data-prompt="Expand this content with more useful details and examples. Keep the same style.">🚀 Expand</button>
-                <button type="button" class="ai-chip" data-prompt="Translate this content into the target language naturally, keeping all template variables and formatting.">🔄 Translate</button>
-            </div>
-
-            <div class="ai-panel__group">
-                <label for="ai-prompt">What should the AI do?</label>
-                <textarea id="ai-prompt" rows="3" placeholder="e.g. Rewrite the intro to highlight that we pay the best prices in Tashkent, add a short paragraph about free pickup..."></textarea>
-            </div>
-
-            <div class="ai-panel__actions">
-                <button type="button" id="ai-generate" class="btn btn-primary" data-ai-full="generate">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                    </svg>
-                    Generate
-                </button>
-                <span id="ai-status" class="ai-panel__status"></span>
-            </div>
-
-            <div id="ai-result" class="ai-panel__result hidden">
-                <div class="ai-panel__result-head">
-                    <span>Generated result</span>
-                    <span id="ai-result-meta" class="ai-panel__result-meta"></span>
-                </div>
-                <div id="ai-result-content" class="ai-panel__result-content"></div>
-                <div class="ai-panel__result-actions">
-                    <button type="button" class="btn btn-primary btn-sm" data-ai-full="apply">Apply to field</button>
-                    <button type="button" class="btn btn-secondary btn-sm" data-ai-full="regenerate">Regenerate</button>
-                    <button type="button" class="btn btn-sm" data-ai-full="discard">Discard</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
-
 <form method="POST" action="<?= BASE_URL ?>/admin/pages/save" class="admin-form">
     <?= csrfField() ?>
     <?php if ($page): ?>
@@ -519,7 +397,6 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
         'meta_description_uz' => ['type' => 'input', 'selector' => '[name="meta_description_uz"]', 'label' => 'Meta description (UZ)'],
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
-<script src="<?= BASE_URL ?>/js/admin/pages-ai.js"></script>
 <?php endif; ?>
 
 <style>

@@ -15,6 +15,7 @@ require_once BASE_PATH . '/models/ai/tools/FaqTools.php';
 require_once BASE_PATH . '/models/ai/tools/GscTools.php';
 require_once BASE_PATH . '/models/ai/tools/SerpTools.php';
 require_once BASE_PATH . '/models/ai/tools/SeoAuditTools.php';
+require_once BASE_PATH . '/models/ai/tools/MediaSlotTools.php';
 require_once BASE_PATH . '/models/ai/tools/MemoryTools.php';
 require_once BASE_PATH . '/models/ai/tools/SkillTools.php';
 require_once BASE_PATH . '/models/ai/ToolEnvelope.php';
@@ -32,6 +33,7 @@ class AiToolRegistry {
         GscTools::class,
         SerpTools::class,
         SeoAuditTools::class,
+        MediaSlotTools::class,
         MemoryTools::class,
         SkillTools::class,
     ];
@@ -68,6 +70,8 @@ class AiToolRegistry {
         'serp_search', 'serp_niche_overview',
         // SEO findings read (on-page audit from the pages table + GSC opportunity lists)
         'get_seo_audit', 'get_seo_opportunities',
+        // Image slots read ({{media.*}} placeholders and whether photos are attached)
+        'list_media_slots',
         // Memory + debug read-only (get_tool_logs is BUILD-only due to secret leakage risk — 01-security #9)
         'list_context', 'get_context',
         // Skills (read-only playbooks)
