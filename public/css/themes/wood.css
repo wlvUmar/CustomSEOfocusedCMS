@@ -66,10 +66,10 @@ body.theme-wood .info-card p{grid-column:2;font-size:1rem}
 body.theme-wood .info-card:hover{transform:none!important;box-shadow:none;background:linear-gradient(90deg,rgba(184,133,74,.08),transparent)}
 
 /* ── STEPS: 2×2 giant numerals ───────────────────────────────────────────── */
-body.theme-wood .content-section:has(.process-step){display:grid;grid-template-columns:1fr;gap:0 clamp(30px,6vw,80px);overflow:visible;counter-reset:step}
-@media (min-width:800px){body.theme-wood .content-section:has(.process-step){grid-template-columns:1fr 1fr}}
-body.theme-wood .content-section:has(.process-step)>h2,body.theme-wood .content-section:has(.process-step)>p{grid-column:1/-1}
-body.theme-wood .content-section:has(.process-step)>.process-step{display:block;width:auto;padding:12px 0 30px 110px;border:0;border-bottom:1px solid #e0cfb2;position:relative;min-height:130px}
+body.theme-wood .content-section:has(>.process-step){display:grid;grid-template-columns:1fr;gap:0 clamp(30px,6vw,80px);overflow:visible;counter-reset:step}
+@media (min-width:800px){body.theme-wood .content-section:has(>.process-step){grid-template-columns:1fr 1fr}}
+body.theme-wood .content-section:has(>.process-step)>h2,body.theme-wood .content-section:has(>.process-step)>p{grid-column:1/-1}
+body.theme-wood .content-section:has(>.process-step)>.process-step{display:block;width:auto;padding:12px 0 30px 110px;border:0;border-bottom:1px solid #e0cfb2;position:relative;min-height:130px}
 body.theme-wood .process-step::before{all:unset;content:counter(step);position:absolute;left:0;top:-4px;width:96px;text-align:center;font-family:var(--font-head);font-weight:700;font-size:6rem;line-height:1;color:transparent;-webkit-text-stroke:1.6px #b8854a}
 body.theme-wood .process-step::after{display:none}
 body.theme-wood .process-step h3{font-size:1.25rem;font-weight:700}
@@ -97,8 +97,9 @@ body.theme-wood .faq-acc-item.is-open{box-shadow:none}
 
 /* ── LINKS: catalogue cards ──────────────────────────────────────────────── */
 body.theme-wood .links-tile{height:auto;border-radius:3px;background:var(--surface-2);color:var(--ink);box-shadow:0 10px 26px rgba(60,35,15,.1);display:flex;flex-direction:column}
-body.theme-wood .links-tile__img{position:relative;height:170px}
-body.theme-wood .links-tile--no-image .links-tile__monogram{position:relative;inset:auto;height:170px;font-family:var(--font-head);font-size:4rem;color:rgba(255,243,220,.35);background:linear-gradient(135deg,#8a5630,#4a2a16)}
+body.theme-wood .links-tile__img,body.theme-wood .links-tile__bg{position:relative;inset:auto;height:170px;overflow:hidden}
+body.theme-wood .links-tile--no-image .links-tile__monogram{position:relative;inset:auto;height:170px;color:rgba(255,243,220,.4);background:linear-gradient(135deg,#8a5630,#4a2a16)}
+body.theme-wood .links-tile--no-image::before{display:none}
 body.theme-wood .links-tile__scrim{display:none}
 body.theme-wood .links-tile__content{position:static;padding:16px 18px;border-top:3px solid #b8854a}
 body.theme-wood .links-tile__text{color:var(--ink);text-shadow:none;font-family:var(--font-head);font-size:1.05rem;font-weight:700}

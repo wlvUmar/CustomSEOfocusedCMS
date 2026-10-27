@@ -71,9 +71,9 @@ body.theme-breeze .info-card p{grid-column:2}
 body.theme-breeze .info-card:hover{box-shadow:0 26px 56px rgba(27,120,194,.18)}
 
 /* ── STEPS: temperature scale ────────────────────────────────────────────── */
-body.theme-breeze .content-section:has(.process-step){display:grid;grid-template-columns:repeat(4,1fr);gap:0 18px;overflow:visible;position:relative}
-body.theme-breeze .content-section:has(.process-step)>h2,body.theme-breeze .content-section:has(.process-step)>p{grid-column:1/-1}
-body.theme-breeze .content-section:has(.process-step)>.process-step{display:block;width:auto;padding:84px 4px 0;border:0;text-align:center;position:relative}
+body.theme-breeze .content-section:has(>.process-step){display:grid;grid-template-columns:repeat(4,1fr);gap:0 18px;overflow:visible;position:relative}
+body.theme-breeze .content-section:has(>.process-step)>h2,body.theme-breeze .content-section:has(>.process-step)>p{grid-column:1/-1}
+body.theme-breeze .content-section:has(>.process-step)>.process-step{display:block;width:auto;padding:84px 4px 0;border:0;text-align:center;position:relative}
 body.theme-breeze .process-step::before{all:unset;content:"26°";position:absolute;top:0;left:0;right:0;text-align:center;font-family:var(--font-head);font-weight:800;font-size:clamp(2.6rem,5vw,3.8rem);line-height:1;color:#e8795a;display:block}
 body.theme-breeze .process-step:nth-of-type(2)::before{content:"24°";color:#d9a35a}
 body.theme-breeze .process-step:nth-of-type(3)::before{content:"22°";color:#4aa8d8}
@@ -83,8 +83,8 @@ body.theme-breeze .process-step:nth-of-type(2)::after{background:linear-gradient
 body.theme-breeze .process-step:nth-of-type(3)::after{background:linear-gradient(90deg,#4aa8d8,#2f8fd0)}
 body.theme-breeze .process-step:nth-of-type(4)::after{background:linear-gradient(90deg,#2f8fd0,#1b78c2)}
 body.theme-breeze .process-step:last-child::after{display:block}
-@media (max-width:899px){body.theme-breeze .content-section:has(.process-step){grid-template-columns:1fr 1fr;row-gap:36px}}
-@media (max-width:520px){body.theme-breeze .content-section:has(.process-step){grid-template-columns:1fr}}
+@media (max-width:899px){body.theme-breeze .content-section:has(>.process-step){grid-template-columns:1fr 1fr;row-gap:36px}}
+@media (max-width:520px){body.theme-breeze .content-section:has(>.process-step){grid-template-columns:1fr}}
 
 body.theme-breeze .brands-chip{background:#fff;border-radius:99px;font-family:var(--font-head);font-weight:700}
 body.theme-breeze .brands-chip::before{background:linear-gradient(135deg,#7cc2f6,var(--orange))}

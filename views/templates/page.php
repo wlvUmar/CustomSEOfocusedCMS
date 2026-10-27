@@ -133,7 +133,11 @@ document.addEventListener('click', function(e) {
             // Batch style writes before observe to reduce recalc
             el.style.transitionDelay = (i % 6) * 70 + 'ms';
         });
-        autoItems.forEach(el => autoObs.observe(el));
+        autoItems.forEach(el => {
+            // a wrapper taller than ~1.5 screens must never wait for a reveal (text would stay at opacity 0)
+            if (el.offsetHeight > window.innerHeight * 1.5) el.classList.add('is-visible');
+            else autoObs.observe(el);
+        });
     });
 
     // Stagger info-cards within a grid

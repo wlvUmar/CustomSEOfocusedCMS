@@ -79,9 +79,9 @@ body.theme-rug .info-card:nth-child(even) h3::before{background:linear-gradient(
 body.theme-rug .info-card:hover{background:var(--orange-light);transform:none!important;box-shadow:none}
 
 /* ── STEPS: diamond chain ────────────────────────────────────────────────── */
-body.theme-rug .content-section:has(.process-step){display:grid;grid-template-columns:repeat(4,1fr);gap:0 14px;overflow:visible;position:relative;counter-reset:step}
-body.theme-rug .content-section:has(.process-step)>h2,body.theme-rug .content-section:has(.process-step)>p{grid-column:1/-1}
-body.theme-rug .content-section:has(.process-step)>.process-step{display:block;width:auto;padding:100px 10px 0;text-align:center;border:0;position:relative}
+body.theme-rug .content-section:has(>.process-step){display:grid;grid-template-columns:repeat(4,1fr);gap:0 14px;overflow:visible;position:relative;counter-reset:step}
+body.theme-rug .content-section:has(>.process-step)>h2,body.theme-rug .content-section:has(>.process-step)>p{grid-column:1/-1}
+body.theme-rug .content-section:has(>.process-step)>.process-step{display:block;width:auto;padding:100px 10px 0;text-align:center;border:0;position:relative}
 body.theme-rug .process-step::before{all:unset;content:"";position:absolute;top:8px;left:50%;width:50px;height:50px;transform:translateX(-50%) rotate(45deg);display:block;box-sizing:border-box;
     background:linear-gradient(135deg,var(--teal),#b02a50);border:3px solid #e3ad32;box-shadow:0 0 0 5px var(--surface),0 0 0 7px var(--orange);z-index:2}
 body.theme-rug .process-step::after{all:unset;content:counter(step);position:absolute;top:8px;left:50%;width:50px;height:50px;margin-left:-25px;display:grid;place-items:center;font-family:var(--font-head);font-weight:700;font-size:1.15rem;color:#fff;z-index:3}
@@ -89,8 +89,8 @@ body.theme-rug .process-step h3::before{content:"";position:absolute;top:36px;le
     background:linear-gradient(45deg,#c9a45a 25%,transparent 25%) 0 0/12px 6px,linear-gradient(-45deg,#c9a45a 25%,transparent 25%) 0 0/12px 6px}
 body.theme-rug .process-step:last-child h3::before{display:none}
 body.theme-rug .process-step h3{font-weight:700}
-@media (max-width:899px){body.theme-rug .content-section:has(.process-step){grid-template-columns:1fr 1fr;row-gap:36px}body.theme-rug .process-step h3::before{display:none}}
-@media (max-width:520px){body.theme-rug .content-section:has(.process-step){grid-template-columns:1fr}}
+@media (max-width:899px){body.theme-rug .content-section:has(>.process-step){grid-template-columns:1fr 1fr;row-gap:36px}body.theme-rug .process-step h3::before{display:none}}
+@media (max-width:520px){body.theme-rug .content-section:has(>.process-step){grid-template-columns:1fr}}
 
 
 body.theme-rug .brands-list{text-align:center}

@@ -75,8 +75,8 @@ body.theme-flame .info-card p{max-width:92%}
 body.theme-flame .info-card:hover{transform:none!important;box-shadow:none;border-color:var(--teal);background:rgba(255,138,61,.05)}
 
 /* ── STEPS: heat levels ──────────────────────────────────────────────────── */
-body.theme-flame .content-section:has(.process-step){display:block;overflow:visible;counter-reset:step}
-body.theme-flame .content-section:has(.process-step)>.process-step{display:grid;grid-template-columns:clamp(84px,14vw,150px) 1fr;align-items:center;column-gap:20px;width:auto;padding:22px 0;border:0;border-bottom:1px solid var(--border-soft);position:relative}
+body.theme-flame .content-section:has(>.process-step){display:block;overflow:visible;counter-reset:step}
+body.theme-flame .content-section:has(>.process-step)>.process-step{display:grid;grid-template-columns:clamp(84px,14vw,150px) 1fr;align-items:center;column-gap:20px;width:auto;padding:22px 0;border:0;border-bottom:1px solid var(--border-soft);position:relative}
 body.theme-flame .process-step::before{all:unset;content:"0" counter(step);grid-row:1/span 2;font-family:var(--font-head);font-weight:700;font-size:clamp(3.2rem,8vw,5.6rem);line-height:1;color:transparent;-webkit-text-stroke:2px var(--teal);text-shadow:0 0 30px var(--teal-glow);text-align:center}
 body.theme-flame .process-step::after{all:unset;content:"";grid-column:2;grid-row:3;display:block;height:6px;margin-top:12px;border-radius:0;background:linear-gradient(90deg,#ffd23d,#ff8a3d,#d63a14) 0 0/var(--heat,25%) 100% no-repeat,rgba(255,255,255,.07);box-shadow:0 0 14px rgba(255,138,61,.4)}
 body.theme-flame .process-step:nth-of-type(1){--heat:25%}
@@ -102,7 +102,7 @@ body.theme-flame .faq-acc-item.is-open .faq-acc-item__icon{background:var(--oran
 
 /* links: bar rows */
 body.theme-flame .links-tile{width:280px;height:96px;border-radius:3px;background:linear-gradient(90deg,#3a1408,#1a0f08);border:1px solid var(--border);border-left:4px solid var(--orange)}
-body.theme-flame .links-tile__img,body.theme-flame .links-tile__monogram,body.theme-flame .links-tile__scrim{display:none}
+body.theme-flame .links-tile__img,body.theme-flame .links-tile__bg,body.theme-flame .links-tile__monogram,body.theme-flame .links-tile--no-image::before,body.theme-flame .links-tile__scrim{display:none}
 body.theme-flame .links-tile__content{align-items:center;top:0;padding:0 18px}
 body.theme-flame .links-tile__text{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.06em;font-weight:500;font-size:1.05rem}
 body.theme-flame .links-tile:hover{border-color:var(--teal);box-shadow:0 0 30px rgba(214,58,20,.3)}

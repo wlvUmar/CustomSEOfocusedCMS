@@ -60,6 +60,44 @@
             $linkCovers[$targetId] = $cover;
             $linkHires[$targetId] = $hires;
         }
+
+        // Tiles whose page has no hero/banner (typically depth > 2 model pages) borrow the cover of the nearest
+        // ancestor that has one (walks parent_id upwards, max 6 hops, cached per ancestor). Kept separate from
+        // $linkCovers on purpose: it is decorative only — no data-cover, so the hold-morph transition (which
+        // expects the tile image to BE the target's hero) ignores it.
+        require_once BASE_PATH . '/models/Page.php';
+        $pageTreeModel = new Page();
+        $ancestorCoverCache = [];
+        $resolveAncestorCover = function ($pid) use ($pageMediaModel, $baseUrl) {
+            $m = $pageMediaModel->getPageMedia($pid, 'hero');
+            if (empty($m)) $m = $pageMediaModel->getPageMedia($pid, 'banner');
+            $fname = $m[0]['filename'] ?? '';
+            if ($fname === '') return null;
+            $name = pathinfo($fname, PATHINFO_FILENAME);
+            foreach (['webp', 'jpg'] as $ext) { // small derived size: the tile is ~260px wide
+                if (file_exists(BASE_PATH . '/public/uploads/derived/' . $name . '_w640.' . $ext)) {
+                    return absoluteUrl('/uploads/derived/' . $name . '_w640.' . $ext, $baseUrl);
+                }
+            }
+            return absoluteUrl('/uploads/' . $fname, $baseUrl);
+        };
+        $linkInherited = [];
+        foreach ($pageLinks as $link) {
+            $tid = $link['link_to_page_id'] ?? null;
+            if (!$tid || !empty($linkCovers[$tid])) continue;
+            $walkId = (int)$tid;
+            $found = null;
+            for ($hop = 0; $hop < 6 && !$found; $hop++) {
+                $parent = $pageTreeModel->getParent($walkId);
+                if (!$parent) break;
+                $walkId = (int)$parent['id'];
+                if (!array_key_exists($walkId, $ancestorCoverCache)) {
+                    $ancestorCoverCache[$walkId] = $resolveAncestorCover($walkId);
+                }
+                $found = $ancestorCoverCache[$walkId];
+            }
+            $linkInherited[$tid] = $found;
+        }
     ?>
     <section class="links-section" data-animate="stagger">
         <link rel="stylesheet" href="<?= BASE_URL ?>/css/hold-morph.css?v=<?= (is_file(PUBLIC_PATH . '/css/hold-morph.css') ? filemtime(PUBLIC_PATH . '/css/hold-morph.css') : (is_file(BASE_PATH . '/public/css/hold-morph.css') ? filemtime(BASE_PATH . '/public/css/hold-morph.css') : time())) ?>">
@@ -85,9 +123,9 @@
                 <?php foreach ($pageLinks as $i => $link):
                     $targetId = $link['link_to_page_id'] ?? null;
                     $cover = $linkCovers[$targetId] ?? null;
-                    $tileClass = 'links-tile' . ($cover ? '' : ' links-tile--no-image');
+                    $inherited = $cover ? null : ($linkInherited[$targetId] ?? null);
+                    $tileClass = 'links-tile' . ($cover ? '' : ($inherited ? ' links-tile--inherited' : ' links-tile--no-image'));
                     $titleText = $link["title_$lang"] ?? '';
-                    $initial = $titleText !== '' ? mb_strtoupper(mb_substr($titleText, 0, 1)) : '';
                     $hiresForTile = $linkHires[$targetId] ?? null;
                 ?>
                 <a href="<?= BASE_URL ?>/<?= e($link['slug']) ?><?= $lang !== DEFAULT_LANGUAGE ? '/' . $lang : '' ?>"
@@ -99,8 +137,10 @@
                    <?= $hiresForTile ? 'data-cover-hires="' . e($hiresForTile) . '"' : '' ?>>
                     <?php if ($cover): ?>
                     <img class="links-tile__img" src="<?= e($cover) ?>" alt="" loading="lazy" decoding="async">
+                    <?php elseif ($inherited): ?>
+                    <img class="links-tile__bg links-tile__bg--v<?= $i % 4 ?>" src="<?= e($inherited) ?>" alt="" loading="lazy" decoding="async">
                     <?php else: ?>
-                    <span class="links-tile__monogram" aria-hidden="true"><?= e($initial) ?></span>
+                    <span class="links-tile__monogram" aria-hidden="true"></span>
                     <?php endif; ?>
                     <span class="links-tile__scrim" aria-hidden="true"></span>
                     <span class="links-tile__content">

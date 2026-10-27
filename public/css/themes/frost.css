@@ -74,8 +74,8 @@ body.theme-frost .info-card p{grid-column:2;margin:0}
 body.theme-frost .info-card:hover{transform:none!important;box-shadow:none;background:rgba(255,255,255,.55)}
 
 /* ── STEPS: thermometer ──────────────────────────────────────────────────── */
-body.theme-frost .content-section:has(.process-step){display:block;overflow:visible;position:relative}
-body.theme-frost .content-section:has(.process-step)>.process-step{display:block;width:auto;padding:6px 0 38px 112px;border:0;min-height:96px;position:relative}
+body.theme-frost .content-section:has(>.process-step){display:block;overflow:visible;position:relative}
+body.theme-frost .content-section:has(>.process-step)>.process-step{display:block;width:auto;padding:6px 0 38px 112px;border:0;min-height:96px;position:relative}
 body.theme-frost .process-step::before{all:unset;position:absolute;left:0;top:0;width:78px;height:78px;border-radius:50%;display:grid;place-items:center;box-sizing:border-box;
     font-family:var(--font-head);font-weight:600;font-size:1.25rem;color:#fff;background:linear-gradient(145deg,#6fd0f0,#2a6a9e);border:4px solid #fff;box-shadow:0 0 0 2px #9cc7dd,0 10px 22px rgba(42,106,158,.3);content:"+4°";z-index:2}
 body.theme-frost .process-step:nth-of-type(2)::before{content:"0°"}
