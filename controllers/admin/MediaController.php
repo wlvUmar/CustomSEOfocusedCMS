@@ -281,10 +281,76 @@ class MediaController extends Controller {
             'title_ru' => (string)($p['title_ru'] ?? ''),
             'title_uz' => (string)($p['title_uz'] ?? ''),
         ], (new Page())->getAll(true));
+        require_once BASE_PATH . '/models/ImageGenerator.php';
+        $genReady = true;
+        $genUsed = 0;
+        try {
+            $genUsed = ImageGenerator::usedToday();
+        } catch (Throwable $e) {
+            $genReady = false; // image_generations table missing: migration 019 not applied yet
+        }
         $this->view('admin/media/quick', [
             'pageName' => 'media-quick',
             'quickPages' => $pages,
             'maxUploadMb' => round(MAX_UPLOAD_SIZE / 1048576, 1),
+            'gen' => [
+                'configured' => ImageGenerator::isConfigured(),
+                'ready' => $genReady,
+                'models' => ImageGenerator::MODELS,
+                'aspects' => ImageGenerator::ASPECTS,
+                'limit' => ImageGenerator::dailyLimit(),
+                'used' => $genUsed,
+            ],
+        ]);
+    }
+
+    // POST /admin/media/generate — ONE AI image per request. Returns base64; nothing is saved until the admin
+    // reviews it in the Quick add list and uploads it (then it goes through quick-add like any other photo).
+    public function generate() {
+        $this->requireAuth();
+        if (!validateCSRFToken($this->getCsrfToken())) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+        }
+        require_once BASE_PATH . '/models/ImageGenerator.php';
+
+        $pageId = (int)($_POST['page_id'] ?? 0);
+        if ($pageId <= 0 || !(new Page())->getById($pageId)) {
+            $this->json(['success' => false, 'message' => 'Страница не найдена'], 400);
+        }
+        $model = (string)($_POST['model'] ?? array_key_first(ImageGenerator::MODELS));
+        $aspect = (string)($_POST['aspect_ratio'] ?? '4:3');
+        $prompt = (string)($_POST['prompt'] ?? '');
+
+        // Generation can take a while: release the session lock and raise the time limit (ignored by hosts that forbid it).
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+        @set_time_limit(180);
+
+        try {
+            $r = ImageGenerator::generate($model, $prompt, $aspect, $pageId);
+        } catch (InvalidArgumentException $e) {
+            $this->json(['success' => false, 'message' => 'Неверный параметр: ' . $e->getMessage()], 400);
+        } catch (Throwable $e) {
+            $code = (int)$e->getCode();
+            $detail = mb_substr(trim(strip_tags($e->getMessage())), 0, 200);
+            if ($code === 402) $msg = 'Недостаточно средств на балансе OpenRouter.';
+            elseif ($code === 429) $msg = $detail !== '' ? $detail : 'Слишком много запросов — подождите минуту.';
+            elseif ($code === 400) $msg = 'Модель отклонила запрос: ' . $detail;
+            elseif ($code === 500) $msg = $detail;
+            else $msg = 'Не удалось создать изображение' . ($detail !== '' ? ': ' . $detail : '.');
+            error_log('[ImageGenerator] ' . $code . ' ' . $detail);
+            $this->json(['success' => false, 'message' => $msg], $code >= 400 && $code < 600 ? $code : 502);
+        }
+
+        $used = 0;
+        try { $used = ImageGenerator::usedToday(); } catch (Throwable $e) {}
+        $this->json([
+            'success' => true,
+            'image' => $r['b64'],
+            'media_type' => $r['media_type'],
+            'cost' => $r['cost'],
+            'model' => $r['model'],
+            'used_today' => $used,
+            'limit' => ImageGenerator::dailyLimit(),
         ]);
     }
 

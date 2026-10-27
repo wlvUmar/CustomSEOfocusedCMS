@@ -100,6 +100,7 @@ $router->group('/admin/media', function($router) {
     $router->get('/list', function() { ControllerFactory::media('listJson'); });
     $router->get('/quick', function() { ControllerFactory::media('quick'); });
     $router->post('/quick-add', function() { ControllerFactory::media('quickAdd'); });
+    $router->post('/generate', function() { ControllerFactory::media('generate'); });
     $router->post('/upload', function() { ControllerFactory::media('upload'); });
     $router->post('/delete', function() { ControllerFactory::media('delete'); });
     $router->post('/bulk-upload', function() { ControllerFactory::media('bulkUpload'); });

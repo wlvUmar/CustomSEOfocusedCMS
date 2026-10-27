@@ -71,17 +71,19 @@
     }
 
     // ── rows ─────────────────────────────────────────────────
-    function addFiles(fileList) {
+    // opts (optional, for AI-generated images): { page, section, generated } — skips the filename matching.
+    function addFiles(fileList, opts) {
+        opts = opts || {};
         var added = 0;
         Array.prototype.forEach.call(fileList, function (file) {
             if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) return;
             if (rows.length >= MAX_FILES) return;
             var dup = rows.some(function (r) { return r.file.name === file.name && r.file.size === file.size && r.file.lastModified === file.lastModified; });
             if (dup) return;
-            var parsed = parseName(file.name);
+            var parsed = opts.page ? { page: opts.page, section: opts.section } : parseName(file.name);
             var row = {
                 id: nextId++, file: file, url: URL.createObjectURL(file),
-                page: parsed.page, section: parsed.section || 'gallery',
+                page: parsed.page, section: parsed.section || 'gallery', generated: !!opts.generated,
                 altRu: '', altUz: '', altRuTouched: false, altUzTouched: false,
                 state: 'idle', message: ''
             };
@@ -121,6 +123,7 @@
             '<label>Alt RU<input type="text" data-f="altRu" value="' + esc(row.altRu) + '" maxlength="255"' + locked + '></label>' +
             '<label>Alt UZ<input type="text" data-f="altUz" value="' + esc(row.altUz) + '" maxlength="255"' + locked + '></label>' +
             '<div class="mq-meta"><span class="mq-status ' + st[0] + '" data-status>' + esc(st[1]) + '</span>' +
+            (row.generated ? '<span class="mq-ai" title="Создано ИИ">ИИ</span>' : '') +
             '<span>' + esc(row.file.name) + ' · ' + sizeLabel(row.file.size) + '</span>' +
             (row.state === 'done' || row.state === 'uploading' ? '' : '<button type="button" class="mq-remove" data-remove>Убрать</button>') +
             '</div></div></div>';
@@ -286,8 +289,95 @@
     });
 
     window.addEventListener('beforeunload', function (e) {
-        if (uploading) { e.preventDefault(); e.returnValue = ''; }
+        if (uploading || generating) { e.preventDefault(); e.returnValue = ''; }
     });
+
+    // ── AI generation (panel exists only when OPENROUTER_API_KEY + migration 019 are in place) ──
+    var generating = false;
+    var genBtn = $('#mqGenBtn');
+
+    function cleanTitle(t) {
+        return String(t || '').replace(/^\s*(скупка|куплю|выкуп)\s+/i, '').replace(/\s+в\s+ташкент\S*\s*$/i, '').trim();
+    }
+    function defaultPrompt(page) {
+        return 'Realistic photo of a used ' + cleanTitle(page.title_ru || page.slug) +
+            ', front view, clean modern home interior, soft natural light, sharp focus, no text, no watermark, no brand logos';
+    }
+    function b64ToFile(b64, type, name) {
+        var bin = atob(b64);
+        var bytes = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return new File([bytes], name, { type: type, lastModified: Date.now() });
+    }
+
+    if (genBtn) {
+        var genPage = $('#mqGenPage');
+        var genPrompt = $('#mqGenPrompt');
+        var genStatus = $('#mqGenStatus');
+        var promptTouched = false;
+
+        function setGenStatus(text, isError) {
+            genStatus.textContent = text;
+            genStatus.className = 'mq-gen-status' + (isError ? ' is-error' : '');
+        }
+
+        genPrompt.addEventListener('input', function () { promptTouched = true; });
+        genPage.addEventListener('input', function () {
+            var p = bySlug[genPage.value.trim()];
+            if (p && (!promptTouched || !genPrompt.value.trim())) { genPrompt.value = defaultPrompt(p); promptTouched = false; }
+        });
+
+        function generateOne(page, n, total, cost) {
+            setGenStatus('Создаю ' + n + ' из ' + total + '… (до минуты)', false);
+            var fd = new FormData();
+            fd.append('page_id', page.id);
+            fd.append('prompt', genPrompt.value.trim());
+            fd.append('model', $('#mqGenModel').value);
+            fd.append('aspect_ratio', $('#mqGenAspect').value);
+            return fetch(BASE + '/admin/media/generate', {
+                method: 'POST', body: fd, credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-CSRF-Token': csrf(), 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(function (r) {
+                return r.json().catch(function () { return { success: false, message: 'Неверный ответ сервера (HTTP ' + r.status + ')' }; });
+            }).catch(function () {
+                return { success: false, message: 'Сетевая ошибка' };
+            }).then(function (res) {
+                if (!res.success) throw new Error(res.message || 'не удалось создать');
+                var ext = /png/.test(res.media_type) ? 'png' : (/webp/.test(res.media_type) ? 'webp' : 'jpg');
+                var file = b64ToFile(res.image, res.media_type || 'image/png', page.slug + '-ai-' + Date.now() + '.' + ext);
+                addFiles([file], { page: page, section: $('#mqGenSection').value, generated: true });
+                $('#mqGenQuota').textContent = 'Сегодня создано: ' + res.used_today + ' из ' + res.limit;
+                return cost + (res.cost || 0);
+            });
+        }
+
+        genBtn.addEventListener('click', function () {
+            if (generating) return;
+            var page = bySlug[genPage.value.trim()];
+            if (!page) { setGenStatus('Выберите страницу из списка.', true); genPage.focus(); return; }
+            if (genPrompt.value.trim().length < 3) { setGenStatus('Введите описание.', true); genPrompt.focus(); return; }
+            var total = parseInt($('#mqGenCount').value, 10) || 1;
+            generating = true;
+            genBtn.disabled = true;
+            var chain = Promise.resolve(0);
+            var made = 0;
+            for (var i = 1; i <= total; i++) {
+                (function (n) {
+                    chain = chain.then(function (cost) {
+                        return generateOne(page, n, total, cost).then(function (c) { made++; return c; });
+                    });
+                })(i);
+            }
+            chain.then(function (cost) {
+                setGenStatus('Готово: ' + made + ' шт.' + (cost ? ' · списано ≈ $' + cost.toFixed(3) : '') + '. Проверьте результаты в списке ниже.', false);
+            }).catch(function (err) {
+                setGenStatus((made ? 'Создано ' + made + ', затем ошибка: ' : 'Ошибка: ') + err.message, true);
+            }).then(function () {
+                generating = false;
+                genBtn.disabled = false;
+            });
+        });
+    }
 
     summary();
 })();

@@ -2,6 +2,20 @@
 .mq { max-width: 1100px; }
 .mq-hint { margin: 0 0 14px; color: #64748b; font-size: 13px; line-height: 1.5; }
 
+.mq-gen { margin: 0 0 16px; padding: 16px 18px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.mq-gen h2 { margin: 0 0 12px; font-size: 16px; color: #1e293b; }
+.mq-gen-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.mq-gen-grid label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .03em; min-width: 0; }
+.mq-gen-grid input, .mq-gen-grid select, .mq-gen-grid textarea { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-weight: 400; color: #1e293b; text-transform: none; letter-spacing: 0; font-family: inherit; min-width: 0; }
+.mq-gen-wide { grid-column: 1 / -1; }
+.mq-gen-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 12px; }
+.mq-gen-status { font-size: 13px; color: #475569; }
+.mq-gen-status.is-error { color: #b91c1c; }
+.mq-gen-quota { margin-left: auto; font-size: 12px; color: #94a3b8; }
+.mq-note { margin: 10px 0 0; font-size: 12px; color: #64748b; line-height: 1.5; }
+.mq-warn { padding: 10px 12px; border-radius: 8px; background: #fffbeb; color: #92400e; font-size: 13px; }
+.mq-ai { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: #ede9fe; color: #6d28d9; }
+
 .mq-drop { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 34px 16px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #475569; text-align: center; cursor: pointer; }
 .mq-drop strong { font-size: 16px; color: #1e293b; }
 .mq-drop span { font-size: 13px; }
@@ -31,6 +45,7 @@
 .mq-summary { margin: 14px 0; font-size: 14px; color: #1e293b; }
 
 @media (max-width: 640px) {
+    .mq-gen-grid { grid-template-columns: 1fr 1fr; }
     .mq-row { grid-template-columns: 1fr; }
     .mq-thumb { width: 100%; height: 160px; }
     .mq-fields { grid-template-columns: 1fr; }
