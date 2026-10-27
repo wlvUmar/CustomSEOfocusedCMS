@@ -3,7 +3,8 @@
 require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
-<div class="ai-studio ai-studio--app">
+<div class="ai-studio ai-studio--app" data-theme="dark">
+    <script>try { if (localStorage.getItem('aiStudioTheme') === 'light') document.currentScript.parentElement.setAttribute('data-theme', 'light'); } catch (e) {}</script>
     <div class="ai-studio__layout ai-studio__layout--full">
         <aside id="ai-history-panel" class="ai-studio__sidebar ai-history-panel" aria-label="Chats">
             <div class="ai-studio__sidebar-top">
@@ -14,6 +15,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <div class="ai-studio__sidebar-body">
                 <div id="ai-history-list" class="ai-history-list"></div>
             </div>
+            <button id="ai-theme-toggle" type="button" class="ai-side-btn ai-side-btn--theme" aria-pressed="false" title="Switch to light theme"><i data-feather="moon" class="ai-theme-ico ai-theme-ico--dark"></i><i data-feather="sun" class="ai-theme-ico ai-theme-ico--light"></i><span>Light theme</span></button>
         </aside>
 
         <section class="ai-studio__chat">
@@ -145,5 +147,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
 </script>
 <script src="<?= BASE_URL ?>/js/admin/ai-studio.js?v=<?= (is_file(PUBLIC_PATH . '/js/admin/ai-studio.js') ? filemtime(PUBLIC_PATH . '/js/admin/ai-studio.js') : (is_file(BASE_PATH . '/public/js/admin/ai-studio.js') ? filemtime(BASE_PATH . '/public/js/admin/ai-studio.js') : time())) ?>"></script>
 <script src="<?= BASE_URL ?>/js/admin/ai-model-picker.js?v=<?= assetVersion('/js/admin/ai-model-picker.js') ?>"></script>
+<script src="<?= BASE_URL ?>/js/admin/ai-theme.js?v=<?= assetVersion('/js/admin/ai-theme.js') ?>"></script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
