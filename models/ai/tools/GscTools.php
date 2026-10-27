@@ -96,7 +96,7 @@ class GscTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'query_gsc',
-                    'description' => 'FLEXIBLE GSC query — use ONLY when sugar tools (get_gsc_overview/get_page_gsc/get_gsc_queries/get_gsc_pages/search_gsc_queries) lack the dimensions/filters you need. Build any combination of dimensions (query, page, country, device, searchAppearance, date), filters, and ordering. Отвечайте на языке пользователя (RU/UZ). / Foydalanuvchi tilida javob bering (RU/UZ). Cached 2-3 day lag, not live after edits — call once per request and reuse. Returns {keys, impressions, clicks, ctr_percent, position}. Queries are intent signals: use naturally once, no stuffing.',
+                    'description' => 'FLEXIBLE GSC query — use ONLY when sugar tools (get_gsc_overview/get_page_gsc/get_gsc_queries/get_gsc_pages/search_gsc_queries) lack the dimensions/filters you need. Build any combination of dimensions (query, page, country, device, searchAppearance, date), filters, and ordering. Reply in the user's language. Cached 2-3 day lag, not live after edits — call once per request and reuse. Returns {keys, impressions, clicks, ctr_percent, position}. Queries are intent signals: use naturally once, no stuffing.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
