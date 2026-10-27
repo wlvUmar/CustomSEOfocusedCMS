@@ -2,7 +2,7 @@
 // path: ./models/seo/PageAudit.php
 // Read-only on-page SEO audit over the published pages table (no GSC, no HTTP). Pure functions: array in, array out.
 // Thresholds are common heuristics, not rules Google publishes — each finding carries the measured value so the
-// caller can judge. Mirrors the AGENTS.md doctrine (RU/UZ parity, one H1, no inline style, alt text).
+// caller can judge. Mirrors the AGENTS.md doctrine (RU/UZ parity, no inline style, alt text).
 
 class PageAudit {
     public const TITLE_MAX = 60;
@@ -24,6 +24,7 @@ class PageAudit {
         $minRank = self::SEVERITY_RANK[$opts['min_severity'] ?? 'info'] ?? 1;
         $onlyIssues = $opts['only_issues'] ?? true;
         $slugFilter = (string)($opts['slug'] ?? '');
+        $widgetCounts = isset($opts['widget_inbound']) && is_array($opts['widget_inbound']) ? $opts['widget_inbound'] : null; // page id => link-widget inbound count
 
         $dupTitle = $dupDesc = [];
         foreach ($pages as $p) {
@@ -91,18 +92,26 @@ class PageAudit {
                 if ($html === '') continue;
                 $words = self::wordCount($html);
                 $metrics["words_$l"] = $words;
-                if ($words < self::THIN_WORDS) $issues[] = self::issue('thin_content', 'warn', $l, "$words words (< " . self::THIN_WORDS . ')');
-                if (preg_match('/<h1[\s>]/i', $html)) $issues[] = self::issue('h1_in_content', 'warn', $l, 'the hero already renders the page H1');
+                // Info only: short model/spec pages are normal for this site; usefulness and uniqueness matter more than length.
+                if ($words < self::THIN_WORDS) $issues[] = self::issue('thin_content', 'info', $l, "$words words (< " . self::THIN_WORDS . ')');
+                // No H1 rule: SeoEnhancer::enhanceContentSEO turns every <h1> in content into <h2> at render time
+                // (the template/hero owns the single H1), so a stored <h1> is not a live duplicate-H1 problem.
                 $inline = preg_match_all('/\sstyle\s*=/i', $html);
                 if ($inline) $issues[] = self::issue('inline_styles', 'info', $l, "$inline element(s) with style=\"\" (use .c-* classes)");
                 $noAlt = self::imagesWithoutAlt($html);
                 if ($noAlt) $issues[] = self::issue('images_missing_alt', 'warn', $l, "$noAlt <img> without alt");
             }
 
-            $inboundCount = $inbound[$slug] ?? 0;
-            $metrics['inbound_content_links'] = $inboundCount;
-            if ($inboundCount === 0 && $slug !== 'main') {
-                $issues[] = self::issue('no_inbound_content_links', 'info', null, 'no other page links here from its body content (link widgets / navigation are not counted)');
+            // Inbound links = other pages' body links + link widgets. Header/footer navigation is not counted, so
+            // top-level pages (which the nav/footer list) are skipped. Without widget data the rule is skipped
+            // entirely rather than guessing (it would flag pages that are linked via widgets).
+            $bodyInbound = $inbound[$slug] ?? 0;
+            $widgetInbound = $widgetCounts !== null ? ($widgetCounts[(int)($p['id'] ?? 0)] ?? 0) : null;
+            $metrics['inbound_content_links'] = $bodyInbound;
+            if ($widgetInbound !== null) $metrics['inbound_widget_links'] = $widgetInbound;
+            $isRoot = empty($p['parent_id']);
+            if ($widgetInbound !== null && !$isRoot && $slug !== 'main' && $bodyInbound + $widgetInbound === 0) {
+                $issues[] = self::issue('no_inbound_links', 'info', null, 'no other page links here from its body content or a link widget');
             }
 
             $issues = array_values(array_filter($issues, static fn($i) => self::SEVERITY_RANK[$i['severity']] >= $minRank));
@@ -133,7 +142,7 @@ class PageAudit {
             'thresholds' => [
                 'meta_title' => [self::TITLE_MIN, self::TITLE_MAX], 'meta_description' => [self::DESC_MIN, self::DESC_MAX],
                 'thin_content_words' => self::THIN_WORDS,
-                'note' => 'Heuristic thresholds, not Google rules. Inbound counts use links in page bodies only.',
+                'note' => 'Heuristic thresholds, not Google rules. Inbound links = page-body links + link widgets (header/footer navigation not counted; top-level pages are skipped).',
             ],
         ];
     }

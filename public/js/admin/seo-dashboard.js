@@ -202,7 +202,7 @@
         });
         el.innerHTML = summary + (rows.length ? table(['Страница', 'Проблем', 'Что найдено (наведите — подробности)'], rows, 1)
             : '<div class="sd-empty">Проблем для выбранной серьёзности не найдено.</div>') +
-            '<div class="sd-note">Пороги эвристические (title ≤ ' + d.thresholds.meta_title[1] + ', description ≤ ' + d.thresholds.meta_description[1] + ' знаков), это не правила Google. «no_inbound_content_links» не учитывает виджеты ссылок и меню.</div>';
+            '<div class="sd-note">Пороги эвристические (title ≤ ' + d.thresholds.meta_title[1] + ', description ≤ ' + d.thresholds.meta_description[1] + ' знаков), это не правила Google. «no_inbound_links» считает ссылки из текста страниц и виджеты ссылок; меню и футер не учитываются (корневые страницы пропускаются). Короткий текст у карточек моделей — норма, поэтому thin_content только «замечание».</div>';
     }
 
     // ── indexing ─────────────────────────────────────────────

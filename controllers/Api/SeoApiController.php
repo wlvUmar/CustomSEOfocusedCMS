@@ -362,11 +362,13 @@ class SeoApiController extends Controller {
         $host = strtolower((string)parse_url((string)BASE_URL, PHP_URL_HOST));
         $host = preg_replace('/^www\./', '', $host) ?: 'kuplyu-tashkent.uz';
 
+        require_once BASE_PATH . '/models/LinkWidget.php';
         $result = PageAudit::run((new Page())->getAll(false), $host, [
             'lang' => $lang,
             'min_severity' => $severity,
             'only_issues' => ($_GET['only_issues'] ?? '1') !== '0',
             'slug' => $slug,
+            'widget_inbound' => (new LinkWidget())->getInboundCounts(),
         ]);
         $total = count($result['pages']);
         $result['pages'] = array_slice($result['pages'], $offset, $limit);

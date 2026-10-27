@@ -95,10 +95,12 @@ class SeoDashboardController extends Controller {
         $host = strtolower((string)parse_url((string)BASE_URL, PHP_URL_HOST));
         $host = preg_replace('/^www\./', '', $host) ?: 'kuplyu-tashkent.uz';
 
+        require_once BASE_PATH . '/models/LinkWidget.php';
         $result = PageAudit::run((new Page())->getAll(false), $host, [
             'lang' => 'both',
             'min_severity' => $severity,
             'only_issues' => true,
+            'widget_inbound' => (new LinkWidget())->getInboundCounts(),
         ]);
         $result['pages'] = array_slice($result['pages'], 0, 100);
         $result['generated_at'] = gmdate('c');

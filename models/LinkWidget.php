@@ -17,6 +17,29 @@ class LinkWidget {
         return $this->db->fetchAll($sql, [$pageId]);
     }
 
+    /**
+     * Inbound link-widget counts for the SEO audit: page id => number of OTHER published pages whose
+     * active link widget points at it. Returns [] when the table is unavailable.
+     */
+    public function getInboundCounts(): array {
+        try {
+            $rows = $this->db->fetchAll(
+                "SELECT lw.link_to_page_id AS pid, COUNT(DISTINCT lw.page_id) AS n
+                 FROM page_link_widgets lw
+                 JOIN pages src ON src.id = lw.page_id AND src.is_published = 1
+                 JOIN pages dst ON dst.id = lw.link_to_page_id AND dst.is_published = 1
+                 WHERE lw.is_active = 1 AND lw.page_id <> lw.link_to_page_id
+                 GROUP BY lw.link_to_page_id"
+            );
+        } catch (Throwable $e) {
+            error_log('LinkWidget::getInboundCounts: ' . $e->getMessage());
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $r) $out[(int)$r['pid']] = (int)$r['n'];
+        return $out;
+    }
+
     // Add link to page
     public function addLink($pageId, $linkToPageId) {
         // Get next position
