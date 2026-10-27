@@ -233,7 +233,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </div>
                 <div class="c-picker-tabs" role="tablist">
                     <button type="button" class="c-picker-tab active" data-picker-tab="library" role="tab">Моя медиатека</button>
-                    <button type="button" class="c-picker-tab" data-picker-tab="stock" role="tab">Фото из интернета (Pexels)</button>
+                    <button type="button" class="c-picker-tab" data-picker-tab="stock" role="tab">Фото из интернета</button>
                 </div>
                 <div class="c-picker-opts">
                     <label>Макс. ширина
@@ -277,7 +277,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <div id="stock-status" class="c-picker-status"></div>
                     <div class="c-stock-foot">
                         <button type="button" class="btn btn-sm" id="stock-more" hidden>Показать ещё</button>
-                        <span>Фото: <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer">Pexels</a> — бесплатно, указывать автора не обязательно. Фото общие, не конкретная модель.</span>
+                        <span id="stock-credit">Бесплатные фото, указывать автора не обязательно. Фото общие, не конкретная модель.</span>
                     </div>
                 </div>
                 <div class="modal-footer c-picker-footer">

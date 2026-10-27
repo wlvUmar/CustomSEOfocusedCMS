@@ -1,23 +1,47 @@
 <?php
 // path: ./models/StockImages.php
-// Pexels stock-photo search + import for the admin media picker (key: PEXELS_API_KEY in .env, free at pexels.com/api).
-// Pexels licence: free to use, attribution not required; API terms: show a link to Pexels next to results (the picker does).
-// Safety: the client never supplies a download URL — import() asks the Pexels API for the photo and only downloads
-// from the Pexels CDN host over https, with a size cap. Search results are file-cached for 30 min to save quota
-// (200 requests/hour, 20,000/month by default).
+// Stock-photo search + import for the admin media picker / Quick add. Two interchangeable providers, both free:
+//   Pexels   — PEXELS_API_KEY   (pexels.com/api; licence: free, no attribution; 200 req/h)
+//   Pixabay  — PIXABAY_API_KEY  (pixabay.com/api/docs; Content License: free, no attribution; 100 req/min;
+//              API rules: cache results 24 h, never hotlink — images are downloaded to our server on import;
+//              largeImageURL is max 1280 px without special approval)
+// Provider: STOCK_PROVIDER=pexels|pixabay in .env, else whichever key is present (Pexels first).
+// Safety: the client never supplies a download URL — import() asks the provider API for the photo and only
+// downloads from that provider's CDN host over https, with a size cap.
 // Errors: RuntimeException, code = HTTP status (401 bad key, 404 no such photo, 429 rate limit, 502 other).
 
 class StockImages {
-    private const API = 'https://api.pexels.com/v1';
-    private const CDN_HOST = 'images.pexels.com';
-    private const CACHE_TTL = 1800;
+    private const PEXELS_API = 'https://api.pexels.com/v1';
+    private const PIXABAY_API = 'https://pixabay.com/api/';
+    private const CACHE_TTL = ['pexels' => 1800, 'pixabay' => 86400]; // Pixabay's API terms require 24 h caching
+
+    /** 'pexels' | 'pixabay' — STOCK_PROVIDER if set, else the first provider that has a key. */
+    public static function provider(): string {
+        $forced = strtolower(trim((string)(getenv('STOCK_PROVIDER') ?: '')));
+        if (in_array($forced, ['pexels', 'pixabay'], true)) return $forced;
+        if (self::keyFor('pexels') !== '') return 'pexels';
+        if (self::keyFor('pixabay') !== '') return 'pixabay';
+        return 'pexels';
+    }
+
+    private static function keyFor(string $provider): string {
+        $name = $provider === 'pixabay' ? 'PIXABAY_API_KEY' : 'PEXELS_API_KEY';
+        return trim((string)(getenv($name) ?: ''), " \t\n\r\0\x0B\"'");
+    }
 
     public static function apiKey(): string {
-        return trim((string)(getenv('PEXELS_API_KEY') ?: ''), " \t\n\r\0\x0B\"'");
+        return self::keyFor(self::provider());
     }
 
     public static function isConfigured(): bool {
         return self::apiKey() !== '';
+    }
+
+    /** @return array{name:string,url:string} where to credit/link the results ("show users where images are from"). */
+    public static function attribution(): array {
+        return self::provider() === 'pixabay'
+            ? ['name' => 'Pixabay', 'url' => 'https://pixabay.com']
+            : ['name' => 'Pexels', 'url' => 'https://www.pexels.com'];
     }
 
     /** config/stock_queries.php (editable slug → search-words map); empty array if the file is missing. */
@@ -71,16 +95,41 @@ class StockImages {
     public static function search(string $query, int $page = 1, int $perPage = 24): array {
         $query = mb_substr(trim($query), 0, 100);
         $page = max(1, min(50, $page));
-        $perPage = max(1, min(40, $perPage));
-        $url = self::API . '/search?' . http_build_query(['query' => $query, 'page' => $page, 'per_page' => $perPage]);
+        $perPage = max(3, min(40, $perPage));
+        $provider = self::provider();
+        $url = $provider === 'pixabay'
+            ? self::PIXABAY_API . '?' . http_build_query(['key' => self::apiKey(), 'q' => $query, 'image_type' => 'photo', 'safesearch' => 'true', 'page' => $page, 'per_page' => $perPage])
+            : self::PEXELS_API . '/search?' . http_build_query(['query' => $query, 'page' => $page, 'per_page' => $perPage]);
 
-        $data = self::cached($url);
+        $data = self::cached($url, $provider);
         if ($data === null) {
-            [$code, $body] = self::get($url);
-            if ($code < 200 || $code >= 300) self::fail($code);
+            [$code, $body] = self::get($url, $provider);
+            if ($code < 200 || $code >= 300) self::fail($code, $provider);
             $data = json_decode($body, true);
-            if (!is_array($data)) throw new RuntimeException('Bad response from Pexels', 502);
+            if (!is_array($data)) throw new RuntimeException('Bad response from ' . self::attribution()['name'], 502);
             self::cacheSet($url, $data);
+        }
+
+        if ($provider === 'pixabay') {
+            $results = [];
+            foreach (($data['hits'] ?? []) as $p) {
+                $results[] = [
+                    'id' => (int)$p['id'],
+                    'thumb' => (string)($p['webformatURL'] ?? $p['previewURL'] ?? ''),   // temporary display of results is allowed
+                    'width' => (int)($p['webformatWidth'] ?? 0),
+                    'height' => (int)($p['webformatHeight'] ?? 0),
+                    'alt' => (string)($p['tags'] ?? ''),
+                    'photographer' => (string)($p['user'] ?? ''),
+                    'photographer_url' => !empty($p['user']) ? 'https://pixabay.com/users/' . rawurlencode((string)$p['user']) . '-' . (int)($p['user_id'] ?? 0) . '/' : '',
+                    'url' => (string)($p['pageURL'] ?? ''),
+                ];
+            }
+            return [
+                'results' => $results,
+                'page' => $page,
+                'has_more' => $page * $perPage < (int)($data['totalHits'] ?? 0),
+                'total' => (int)($data['totalHits'] ?? count($results)),
+            ];
         }
 
         $results = [];
@@ -111,15 +160,39 @@ class StockImages {
      */
     public static function download(int $photoId, int $maxBytes): array {
         if ($photoId <= 0) throw new RuntimeException('Invalid photo id', 400);
-        [$code, $body] = self::get(self::API . '/photos/' . $photoId);
-        if ($code < 200 || $code >= 300) self::fail($code);
-        $meta = json_decode($body, true);
-        if (!is_array($meta) || empty($meta['src'])) throw new RuntimeException('Bad response from Pexels', 502);
+        $provider = self::provider();
 
-        foreach (['large2x', 'large'] as $size) {
-            $src = (string)($meta['src'][$size] ?? '');
+        if ($provider === 'pixabay') {
+            [$code, $body] = self::get(self::PIXABAY_API . '?' . http_build_query(['key' => self::apiKey(), 'id' => $photoId]), $provider);
+            if ($code < 200 || $code >= 300) self::fail($code, $provider);
+            $meta = json_decode($body, true);
+            $hit = is_array($meta) ? ($meta['hits'][0] ?? null) : null;
+            if (!is_array($hit)) throw new RuntimeException('Фото не найдено', 404);
+            // largeImageURL (<= 1280 px) is the biggest size without special API approval; webformatURL (640 px) as a fallback
+            $sources = [(string)($hit['largeImageURL'] ?? ''), (string)($hit['webformatURL'] ?? '')];
+            $hostRe = '/^(cdn\.)?pixabay\.com$/';
+            $info = [
+                'photographer' => (string)($hit['user'] ?? ''),
+                'photographer_url' => !empty($hit['user']) ? 'https://pixabay.com/users/' . rawurlencode((string)$hit['user']) . '-' . (int)($hit['user_id'] ?? 0) . '/' : '',
+                'url' => (string)($hit['pageURL'] ?? ''),
+            ];
+        } else {
+            [$code, $body] = self::get(self::PEXELS_API . '/photos/' . $photoId, $provider);
+            if ($code < 200 || $code >= 300) self::fail($code, $provider);
+            $meta = json_decode($body, true);
+            if (!is_array($meta) || empty($meta['src'])) throw new RuntimeException('Bad response from Pexels', 502);
+            $sources = [(string)($meta['src']['large2x'] ?? ''), (string)($meta['src']['large'] ?? '')];
+            $hostRe = '/^images\.pexels\.com$/';
+            $info = [
+                'photographer' => (string)($meta['photographer'] ?? ''),
+                'photographer_url' => (string)($meta['photographer_url'] ?? ''),
+                'url' => (string)($meta['url'] ?? ''),
+            ];
+        }
+
+        foreach ($sources as $src) {
             $parts = parse_url($src);
-            if (!$parts || ($parts['scheme'] ?? '') !== 'https' || strtolower($parts['host'] ?? '') !== self::CDN_HOST) continue;
+            if (!$parts || ($parts['scheme'] ?? '') !== 'https' || !preg_match($hostRe, strtolower($parts['host'] ?? ''))) continue;
 
             $tmp = tempnam(sys_get_temp_dir(), 'stk');
             $fh = fopen($tmp, 'wb');
@@ -129,6 +202,7 @@ class StockImages {
                 CURLOPT_FOLLOWLOCATION => false,
                 CURLOPT_CONNECTTIMEOUT => 10,
                 CURLOPT_TIMEOUT => 40,
+                CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; SiteAdminImageImport/1.0)', // some CDNs refuse requests without a UA
                 CURLOPT_WRITEFUNCTION => static function ($c, $chunk) use ($fh, &$written, $maxBytes) {
                     $written += strlen($chunk);
                     if ($written > $maxBytes) return 0; // abort: too large
@@ -141,12 +215,7 @@ class StockImages {
             fclose($fh);
 
             if ($ok && $http === 200 && $written > 0) {
-                return [
-                    'path' => $tmp,
-                    'photographer' => (string)($meta['photographer'] ?? ''),
-                    'photographer_url' => (string)($meta['photographer_url'] ?? ''),
-                    'url' => (string)($meta['url'] ?? ''),
-                ];
+                return ['path' => $tmp] + $info;
             }
             @unlink($tmp);
         }
@@ -156,36 +225,41 @@ class StockImages {
     // ── internals ────────────────────────────────────────────
 
     /** @return array{0:int,1:string} [http code, body] */
-    private static function get(string $url): array {
+    private static function get(string $url, string $provider): array {
         $ch = curl_init($url);
-        curl_setopt_array($ch, [
+        $opts = [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => ['Authorization: ' . self::apiKey()],
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT => 25,
-        ]);
+        ];
+        // Pexels takes the key in a header; Pixabay takes it as the "key" query parameter (already in $url)
+        if ($provider === 'pexels') $opts[CURLOPT_HTTPHEADER] = ['Authorization: ' . self::apiKey()];
+        curl_setopt_array($ch, $opts);
         $body = curl_exec($ch);
         $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $err = curl_error($ch);
         curl_close($ch);
-        if ($body === false) throw new RuntimeException('Нет ответа от Pexels: ' . $err, 502);
+        if ($body === false) throw new RuntimeException('Нет ответа от ' . self::attribution()['name'] . ': ' . $err, 502);
         return [$code, (string)$body];
     }
 
-    private static function fail(int $code): void {
-        if ($code === 401 || $code === 403) throw new RuntimeException('Неверный PEXELS_API_KEY', 401);
+    private static function fail(int $code, string $provider): void {
+        $name = $provider === 'pixabay' ? 'Pixabay' : 'Pexels';
+        $env = $provider === 'pixabay' ? 'PIXABAY_API_KEY' : 'PEXELS_API_KEY';
+        if ($code === 400 && $provider === 'pixabay') throw new RuntimeException('Pixabay отклонил запрос (проверьте ' . $env . ')', 400);
+        if ($code === 401 || $code === 403) throw new RuntimeException('Неверный ' . $env, 401);
         if ($code === 404) throw new RuntimeException('Фото не найдено', 404);
-        if ($code === 429) throw new RuntimeException('Лимит запросов Pexels (200 в час) — подождите', 429);
-        throw new RuntimeException('Ошибка Pexels (HTTP ' . $code . ')', 502);
+        if ($code === 429) throw new RuntimeException('Лимит запросов ' . $name . ' — подождите минуту', 429);
+        throw new RuntimeException('Ошибка ' . $name . ' (HTTP ' . $code . ')', 502);
     }
 
     private static function cacheFile(string $url): string {
         return BASE_PATH . '/storage/stock_cache/' . sha1($url) . '.json';
     }
 
-    private static function cached(string $url): ?array {
+    private static function cached(string $url, string $provider): ?array {
         $f = self::cacheFile($url);
-        if (!is_file($f) || (time() - (int)@filemtime($f)) > self::CACHE_TTL) return null;
+        if (!is_file($f) || (time() - (int)@filemtime($f)) > (self::CACHE_TTL[$provider] ?? 1800)) return null;
         $d = json_decode((string)@file_get_contents($f), true);
         return is_array($d) ? $d : null;
     }

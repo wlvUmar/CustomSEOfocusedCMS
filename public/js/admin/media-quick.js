@@ -124,7 +124,7 @@
             '<label>Alt UZ<input type="text" data-f="altUz" value="' + esc(row.altUz) + '" maxlength="255"' + locked + '></label>' +
             '<div class="mq-meta"><span class="mq-status ' + st[0] + '" data-status>' + esc(st[1]) + '</span>' +
             (row.generated ? '<span class="mq-ai" title="Создано ИИ">ИИ</span>' : '') +
-            (row.stock ? '<span class="mq-pexels" title="Фото с Pexels">Pexels</span>' : '') +
+            (row.stock ? '<span class="mq-pexels" title="Фото из интернета">' + esc(row.stockName || 'сток') + '</span>' : '') +
             '<span>' + esc(row.file.name) + (row.file.size ? ' · ' + sizeLabel(row.file.size) : '') + '</span>' +
             (row.state === 'done' || row.state === 'uploading' || row.stock || typeof Cropper === 'undefined' ? '' : '<button type="button" class="mq-crop-btn" data-crop>Обрезать</button>') +
             (row.cropped ? '<span class="mq-status" title="Обрезано вручную">обрезано</span>' : '') +
@@ -517,6 +517,7 @@
         var stockSel = {};       // photo id -> photo (kept across "show more")
         var stockPageNo = 1;
         var stockBusy = false;
+        var stockSource = 'сток';  // provider name from the server (Pexels / Pixabay)
 
         function setStockStatus(text, isError) {
             stockStatus.textContent = text;
@@ -536,7 +537,7 @@
             card.className = 'mq-stock-card' + (stockSel[p.id] ? ' is-selected' : '');
             card.setAttribute('data-id', p.id);
             card.innerHTML = '<img src="' + esc(p.thumb) + '" alt="' + esc(p.alt || '') + '" loading="lazy" decoding="async">' +
-                '<div class="mq-stock-credit">' + esc(p.photographer) + ' · Pexels</div>';
+                '<div class="mq-stock-credit">' + esc(p.photographer) + ' · ' + esc(stockSource) + '</div>';
             card.addEventListener('click', function () {
                 if (stockBusy) return;
                 if (stockSel[p.id]) { delete stockSel[p.id]; card.classList.remove('is-selected'); }
@@ -555,6 +556,11 @@
             fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }).then(stockJson).then(function (res) {
                 if (!res.success) throw new Error(res.message || 'не удалось загрузить');
                 stockQueryIn.value = res.query;           // keyword derived from the page when the box was empty
+                if (res.attribution) {                    // "show where the photos come from" (providers' API terms)
+                    stockSource = res.attribution.name;
+                    $('#mqStockCredit').innerHTML = 'Источник: <a href="' + esc(res.attribution.url) + '" target="_blank" rel="noopener noreferrer">' +
+                        esc(res.attribution.name) + '</a> — бесплатно, указывать автора не обязательно.';
+                }
                 var altBox = $('#mqStockAlt');            // alternatives from config/stock_queries.php as chips
                 var alts = res.alternatives || [];
                 altBox.hidden = alts.length < 2;
@@ -607,7 +613,7 @@
                 if (card) card.classList.remove('is-selected');
                 rows.push({
                     id: nextId++, file: { name: res.original_name, size: 0 }, url: photo.thumb,
-                    page: page, section: section, stock: true,
+                    page: page, section: section, stock: true, stockName: stockSource,
                     altRu: res.alt_text_ru || '', altUz: res.alt_text_uz || '', altRuTouched: true, altUzTouched: true,
                     state: 'done', message: ''
                 });

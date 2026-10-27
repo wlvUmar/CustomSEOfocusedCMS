@@ -15,9 +15,9 @@
     </p>
 
     <section class="mq-gen" id="mqStock" aria-labelledby="mqStockTitle">
-        <h2 id="mqStockTitle">Найти фото в интернете (Pexels)</h2>
+        <h2 id="mqStockTitle">Найти фото в интернете</h2>
         <?php if (empty($stockReady)): ?>
-            <div class="mq-warn">Не задан <code>PEXELS_API_KEY</code> в <code>.env</code>. Бесплатный ключ: <a href="https://www.pexels.com/api/" target="_blank" rel="noopener noreferrer">pexels.com/api</a>.</div>
+            <div class="mq-warn">Не задан ключ в <code>.env</code>: добавьте <code>PIXABAY_API_KEY</code> (бесплатно: <a href="https://pixabay.com/api/docs/" target="_blank" rel="noopener noreferrer">pixabay.com/api/docs</a>) или <code>PEXELS_API_KEY</code>.</div>
         <?php else: ?>
         <div class="mq-gen-grid">
             <label>Страница
@@ -43,7 +43,7 @@
         <div class="mq-gen-actions">
             <button type="button" class="btn btn-secondary" id="mqStockMore" hidden>Показать ещё</button>
         </div>
-        <p class="mq-note">Отметьте фото кликом и нажмите «Добавить выбранные» — они сразу загрузятся на сайт и прикрепятся к странице. Фото общие (например, «холодильник»), а не конкретная модель. Источник: <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer">Pexels</a> — бесплатно, указывать автора не обязательно.</p>
+        <p class="mq-note">Отметьте фото кликом и нажмите «Добавить выбранные» — они сразу загрузятся на сайт и прикрепятся к странице. Фото общие (например, «холодильник»), а не конкретная модель. <span id="mqStockCredit">Фото бесплатные, указывать автора не обязательно.</span></p>
         <?php endif; ?>
     </section>
 

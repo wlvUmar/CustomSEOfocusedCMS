@@ -278,7 +278,7 @@ class MediaController extends Controller {
         require_once BASE_PATH . '/models/StockImages.php';
         if (!StockImages::isConfigured()) {
             $this->json(['success' => false, 'code' => 'not_configured',
-                'message' => 'Не задан PEXELS_API_KEY в .env. Бесплатный ключ: pexels.com/api'], 400);
+                'message' => 'Не задан ключ для поиска фото. Добавьте в .env PIXABAY_API_KEY (pixabay.com/api/docs) или PEXELS_API_KEY.'], 400);
         }
         $pageModel = new Page();
         $pageId = (int)($_GET['page_id'] ?? 0);
@@ -297,7 +297,7 @@ class MediaController extends Controller {
             $this->json(['success' => false, 'message' => $e->getMessage()], $code >= 400 && $code < 600 ? $code : 502);
         }
         $this->json(['success' => true, 'query' => $q, 'alternatives' => array_slice($suggested, 0, 4)] + $res + [
-            'attribution' => ['text' => 'Фото: Pexels', 'url' => 'https://www.pexels.com'],
+            'attribution' => StockImages::attribution(),   // {name, url}: shown next to the results (required by the providers' API terms)
         ]);
     }
 
@@ -315,7 +315,7 @@ class MediaController extends Controller {
         if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $section)) $this->json(['success' => false, 'message' => 'Invalid section'], 400);
         $photoId = (int)($_POST['photo_id'] ?? 0);
         if ($photoId <= 0) $this->json(['success' => false, 'message' => 'Invalid photo'], 400);
-        if (!StockImages::isConfigured()) $this->json(['success' => false, 'message' => 'Не задан PEXELS_API_KEY'], 400);
+        if (!StockImages::isConfigured()) $this->json(['success' => false, 'message' => 'Не задан PIXABAY_API_KEY / PEXELS_API_KEY в .env'], 400);
 
         if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
         @set_time_limit(90);
@@ -324,7 +324,7 @@ class MediaController extends Controller {
             $dl = StockImages::download($photoId, (int)MAX_UPLOAD_SIZE);
             $tmp = $dl['path'];
             $credit = preg_replace('/[^a-z0-9]+/', '-', strtolower(iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $dl['photographer']) ?: 'photographer'));
-            $original = 'pexels-' . $photoId . '-' . trim(mb_substr($credit, 0, 40), '-') . '.jpg';
+            $original = StockImages::provider() . '-' . $photoId . '-' . trim(mb_substr($credit, 0, 40), '-') . '.jpg';
 
             // Optional crop / resize / format from the picker (the browser only has a thumbnail, so it sends the crop
             // area as fractions of the image and the server applies it to the full-size download).

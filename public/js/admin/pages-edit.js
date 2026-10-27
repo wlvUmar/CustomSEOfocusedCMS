@@ -283,6 +283,7 @@ document.addEventListener('change', (e) => {
             // ── Stock photos (Pexels) tab: search derived from the page, click a photo to import + attach ──
             const byId = (id)=>document.getElementById(id);
             let stockQuery = '';
+            let stockSource = 'сток';
             let stockPage = 1;
             let stockLoaded = false;
             window.pickerSetTab = function(tab, skipLoad){
@@ -306,6 +307,12 @@ document.addEventListener('change', (e) => {
                     stockLoaded = true;
                     stockQuery = j.query;                 // keyword derived by the server when the box was empty
                     byId('stock-search').value = j.query;
+                    const srcName = (j.attribution && j.attribution.name) || 'сток';
+                    stockSource = srcName;
+                    const credit = byId('stock-credit');
+                    if(credit && j.attribution){
+                        credit.innerHTML = 'Фото: <a href="'+escHtml(j.attribution.url)+'" target="_blank" rel="noopener noreferrer">'+escHtml(j.attribution.name)+'</a> — бесплатно, указывать автора не обязательно. Фото общие, не конкретная модель.';
+                    }
                     // alternative queries from config/stock_queries.php as one-click chips
                     const alt = byId('stock-alt');
                     if(alt){
@@ -321,7 +328,7 @@ document.addEventListener('change', (e) => {
                         card.innerHTML = `<img src="${escHtml(p.thumb)}" alt="${escHtml(p.alt||'')}" class="c-picker-img" loading="lazy" decoding="async">
                             <button type="button" class="c-stock-crop" title="Обрезать перед добавлением">✂</button>
                             <div class="c-picker-hover picker-hover"><span>Выбрать</span></div>
-                            <div class="c-stock-credit-tag">${escHtml(p.photographer)} · Pexels</div>`;
+                            <div class="c-stock-credit-tag">${escHtml(p.photographer)} · ${escHtml(stockSource)}</div>`;
                         card.addEventListener('mouseenter', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='1'; h.firstElementChild.style.transform='translateY(0)'; }});
                         card.addEventListener('mouseleave', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='0'; h.firstElementChild.style.transform='translateY(2px)'; }});
                         card.addEventListener('click', ()=> stockImport(p, card));
