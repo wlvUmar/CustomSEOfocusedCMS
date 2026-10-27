@@ -144,6 +144,9 @@
                 
                 <div class="nav-section">
                     <div class="nav-section-title">SEO & Indexing</div>
+                    <a href="<?= BASE_URL ?>/admin/search-console" class="<?= strpos($_SERVER['REQUEST_URI'], '/search-console') !== false ? 'active' : '' ?>">
+                        <i data-feather="target"></i> SEO Dashboard
+                    </a>
                     <a href="<?= BASE_URL ?>/admin/seo" class="<?= strpos($_SERVER['REQUEST_URI'], '/seo') !== false && strpos($_SERVER['REQUEST_URI'], '/sitemap') === false ? 'active' : '' ?>">
                         <i data-feather="search"></i> SEO Settings
                     </a>

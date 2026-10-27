@@ -307,6 +307,124 @@ class GscReports {
         ];
     }
 
+    // ── 3b. overview (daily series + totals vs previous period) ──
+
+    private static function sumRows(array $rows): array {
+        $clicks = $impr = 0;
+        $posWeighted = 0.0;
+        foreach ($rows as $r) {
+            $clicks += (int)($r['clicks'] ?? 0);
+            $i = (int)($r['impressions'] ?? 0);
+            $impr += $i;
+            $posWeighted += (float)($r['position'] ?? 0) * $i;
+        }
+        return [
+            'clicks' => $clicks,
+            'impressions' => $impr,
+            'ctr' => $impr > 0 ? round($clicks / $impr, 4) : 0.0,
+            'position' => $impr > 0 ? round($posWeighted / $impr, 2) : 0.0,
+        ];
+    }
+
+    private static function pct(float $cur, float $prev): ?float {
+        return $prev > 0 ? round((($cur - $prev) / $prev) * 100, 1) : null;
+    }
+
+    public static function overview(array $q): array {
+        $days = self::intParam($q, 'days', 28, 1, 240);
+        $curEnd = date('Y-m-d', strtotime('-' . self::LAG_DAYS . ' days'));
+        $curStart = date('Y-m-d', strtotime($curEnd . ' -' . ($days - 1) . ' days'));
+        $prevEnd = date('Y-m-d', strtotime($curStart . ' -1 day'));
+        $prevStart = date('Y-m-d', strtotime($prevEnd . ' -' . ($days - 1) . ' days'));
+
+        $cur = self::fetch($curStart, $curEnd, ['date'], [], 500);
+        $prev = self::fetch($prevStart, $prevEnd, ['date'], [], 500);
+
+        $series = array_map(static fn($r) => ['date' => $r['keys'][0] ?? null] + self::metrics($r), $cur);
+        usort($series, static fn($a, $b) => strcmp((string)$a['date'], (string)$b['date']));
+
+        $c = self::sumRows($cur);
+        $p = self::sumRows($prev);
+        return [
+            'site' => GscClient::getSiteUrl(),
+            'period' => ['start' => $curStart, 'end' => $curEnd, 'days' => $days],
+            'previous_period' => ['start' => $prevStart, 'end' => $prevEnd],
+            'totals' => $c,
+            'previous_totals' => $p,
+            'change_pct' => [
+                'clicks' => self::pct($c['clicks'], $p['clicks']),
+                'impressions' => self::pct($c['impressions'], $p['impressions']),
+                'ctr' => self::pct($c['ctr'], $p['ctr']),
+                // position: negative = improved (moved up)
+                'position_delta' => ($c['impressions'] > 0 && $p['impressions'] > 0) ? round($c['position'] - $p['position'], 2) : null,
+            ],
+            'series' => $series,
+        ];
+    }
+
+    // ── 3c. brand query report ───────────────────────────────
+
+    /**
+     * Everything matching a brand term: per query (clicks, impressions, CTR, impression-weighted position,
+     * pages it lands on) plus a summary. Answers "do we own our brand query, and with which page?".
+     */
+    public static function brand(array $q): array {
+        $term = mb_strtolower(trim((string)($q['q'] ?? '')));
+        if ($term === '' || mb_strlen($term) > 100) throw new InvalidArgumentException('q');
+        [$start, $end] = self::period($q, 90, 240);
+        $filters = self::filters(['query_contains' => $term]);
+
+        $byQuery = [];
+        $all = [];
+        foreach (self::fetch($start, $end, ['query', 'page'], $filters, 5000) as $r) {
+            $query = (string)($r['keys'][0] ?? '');
+            $page = (string)($r['keys'][1] ?? '');
+            $m = self::metrics($r);
+            $all[] = $r;
+            $byQuery[$query]['rows'][] = $r;
+            $byQuery[$query]['pages'][$page] = ($byQuery[$query]['pages'][$page] ?? 0) + $m['impressions'];
+        }
+
+        $queries = [];
+        foreach ($byQuery as $query => $d) {
+            $sum = self::sumRows($d['rows']);
+            arsort($d['pages']);
+            $queries[] = ['query' => $query] + $sum + [
+                'pages' => array_map(
+                    static fn($url, $impr) => ['page' => $url, 'slug' => GscClient::slugFromPage($url), 'impressions' => $impr],
+                    array_slice(array_keys($d['pages']), 0, 3), array_slice(array_values($d['pages']), 0, 3)
+                ),
+            ];
+        }
+        usort($queries, static fn($a, $b) => $b['impressions'] <=> $a['impressions']);
+
+        $pageImpr = [];
+        foreach ($all as $r) {
+            $url = (string)($r['keys'][1] ?? '');
+            $pageImpr[$url] = ($pageImpr[$url] ?? 0) + (int)($r['impressions'] ?? 0);
+        }
+        arsort($pageImpr);
+        $topPage = $pageImpr ? array_key_first($pageImpr) : null;
+        $totalImpr = array_sum($pageImpr);
+        $homeImpr = 0;
+        foreach ($pageImpr as $url => $i) if (GscClient::slugFromPage($url) === 'main') $homeImpr += $i;
+
+        return [
+            'site' => GscClient::getSiteUrl(),
+            'term' => $term,
+            'period' => ['start' => $start, 'end' => $end],
+            'summary' => self::sumRows($all) + [
+                'matching_queries' => count($queries),
+                'top_page' => $topPage,
+                'top_page_slug' => $topPage ? GscClient::slugFromPage($topPage) : null,
+                'homepage_impression_share' => $totalImpr > 0 ? round($homeImpr / $totalImpr, 3) : null,
+            ],
+            'queries' => array_slice($queries, 0, 25),
+            'note' => 'Position is impression-weighted across pages. Average position 1.0-1.5 means you are effectively #1. '
+                . 'No rows = Google shows no impressions for queries containing this term in the period.',
+        ];
+    }
+
     // ── 4. URL inspection ────────────────────────────────────
 
     public static function inspect(string $url): array {

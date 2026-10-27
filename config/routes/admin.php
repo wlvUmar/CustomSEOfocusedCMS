@@ -134,6 +134,10 @@ $router->post('/admin/ai-studio/gsc-disconnect', function() { ControllerFactory:
 $router->get('/admin/audit-log', function() { ControllerFactory::admin('AuditLogController', 'index'); });
 
 // Admin Analytics
+// SEO Dashboard (Search Console + on-page audit). Not under /admin/seo: that path is SEO Settings.
+$router->get('/admin/search-console', function() { ControllerFactory::admin('SeoDashboardController', 'index'); });
+$router->get('/admin/search-console/data', function() { ControllerFactory::admin('SeoDashboardController', 'data'); });
+
 $router->group('/admin/analytics', function($router) {
     $router->get('/', function() { ControllerFactory::analytics('index'); });
     $router->get('/rotation', function() { ControllerFactory::analytics('rotationAnalytics'); });

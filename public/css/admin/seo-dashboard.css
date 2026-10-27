@@ -1,0 +1,67 @@
+/* Admin SEO Dashboard (/admin/search-console). Loaded by views/admin/layout/header.php via pageName=seo-dashboard. */
+.sd { max-width: 1200px; }
+.sd-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+.sd-pill { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.sd-pill--ok { background: #d1fae5; color: #047857; }
+.sd-pill--bad { background: #fee2e2; color: #b91c1c; }
+.sd-hint { margin: 0 0 16px; color: #64748b; font-size: 13px; }
+.sd-sub { margin: -6px 0 14px; color: #64748b; font-size: 13px; }
+
+.sd-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+.sd-card--warn { background: #fffbeb; border-color: #fde68a; color: #92400e; font-size: 14px; }
+.sd-card h2 { margin: 0 0 14px; font-size: 17px; color: #1e293b; }
+.sd-card h3 { margin: 18px 0 8px; font-size: 14px; color: #334155; }
+.sd-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.sd-head h2 { margin: 0; }
+
+.sd-loading, .sd-empty { padding: 18px 4px; color: #94a3b8; font-size: 14px; }
+.sd-error { padding: 12px 14px; border-radius: 8px; background: #fef2f2; color: #b91c1c; font-size: 14px; }
+
+.sd-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.sd-kpi { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; }
+.sd-kpi__label { font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+.sd-kpi__value { font-size: 24px; font-weight: 700; color: #1e293b; margin: 2px 0; }
+.sd-delta { font-size: 12px; font-weight: 600; }
+.sd-delta--up { color: #059669; }
+.sd-delta--down { color: #dc2626; }
+.sd-delta--flat { color: #94a3b8; }
+.sd-chart { position: relative; height: 260px; }
+
+.sd-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.sd-form input { flex: 1 1 260px; min-width: 0; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+
+.sd-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.sd-tab { border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.sd-tab.is-active { background: #0e9f8a; border-color: #0e9f8a; color: #fff; }
+
+.sd-scroll { overflow-x: auto; }
+.sd-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sd-table th { text-align: left; padding: 8px 10px; color: #64748b; font-weight: 600; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+.sd-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; color: #1e293b; }
+.sd-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sd-table a { color: #0e7490; text-decoration: none; }
+.sd-table a:hover { text-decoration: underline; }
+.sd-cut { display: inline-block; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+
+.sd-two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.sd-note { margin-top: 10px; color: #64748b; font-size: 12px; }
+.sd-def { margin: 0 0 10px; color: #64748b; font-size: 13px; }
+
+.sd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sd-chip { display: inline-block; padding: 2px 9px; border-radius: 6px; font-size: 12px; font-weight: 600; background: #f1f5f9; color: #475569; }
+.sd-sev-error { background: #fee2e2; color: #b91c1c; }
+.sd-sev-warn { background: #fef3c7; color: #b45309; }
+.sd-sev-info { background: #e0f2fe; color: #0369a1; }
+.sd-chip--ok { background: #d1fae5; color: #047857; }
+.sd-chip--bad { background: #fee2e2; color: #b91c1c; }
+
+.sd-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 13px; margin: 0; }
+.sd-facts dt { color: #64748b; }
+.sd-facts dd { margin: 0; color: #1e293b; word-break: break-word; }
+
+@media (max-width: 800px) {
+    .sd-kpis { grid-template-columns: repeat(2, 1fr); }
+    .sd-two { grid-template-columns: 1fr; }
+    .sd-actions { justify-content: flex-start; }
+}
+.sd-chips--mb { margin-bottom: 12px; }

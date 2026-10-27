@@ -295,6 +295,8 @@ class SeoApiController extends Controller {
                     'params' => ['dimension' => 'page|query (default page)', 'days' => '1-240 (default 28)', 'direction' => 'any|up|down', 'min_impressions' => 'default 20', 'limit' => '<=500', 'filters' => 'same shortcuts as gsc/query']],
                 ['endpoint' => 'GET /api/seo/v1/gsc/opportunities', 'scope' => 'gsc', 'desc' => 'Striking-distance (pos 5-20), low-CTR (vs the site\'s own CTR per position) and zero-click queries with their pages',
                     'params' => ['period' => $period . ' (max 120 days)', 'min_impressions' => 'default 50', 'limit' => '<=100', 'filters' => 'same shortcuts']],
+                ['endpoint' => 'GET /api/seo/v1/gsc/overview', 'scope' => 'gsc', 'desc' => 'Daily clicks/impressions series + totals vs the previous equal period', 'params' => ['days' => '1-240 (default 28)']],
+                ['endpoint' => 'GET /api/seo/v1/gsc/brand', 'scope' => 'gsc', 'desc' => 'Brand-query report: every query containing the term, impression-weighted position, landing pages, homepage share', 'params' => ['q' => 'brand term (required)', 'days' => '1-240 (default 90)']],
                 ['endpoint' => 'GET /api/seo/v1/gsc/inspect', 'scope' => 'gsc', 'desc' => 'URL Inspection: indexed?, Google canonical vs declared, last crawl, mobile usability, rich results', 'params' => ['url' => 'https://kuplyu-tashkent.uz/... (own domain only)']],
                 ['endpoint' => 'GET /api/seo/v1/gsc/sitemaps', 'scope' => 'gsc', 'desc' => 'Sitemaps Search Console knows: submitted/indexed counts, errors, warnings, last download', 'params' => []],
                 ['endpoint' => 'GET /api/seo/v1/gsc/summary', 'scope' => 'gsc', 'desc' => 'Site totals + top 20 pages', 'params' => ['days' => '1-90']],
@@ -324,6 +326,16 @@ class SeoApiController extends Controller {
     // GET /api/seo/v1/gsc/opportunities
     public function gscOpportunities(): void {
         $this->gscRun(static fn() => GscReports::opportunities($_GET));
+    }
+
+    // GET /api/seo/v1/gsc/overview?days=28
+    public function gscOverview(): void {
+        $this->gscRun(static fn() => GscReports::overview($_GET));
+    }
+
+    // GET /api/seo/v1/gsc/brand?q=<brand term>&days=90
+    public function gscBrand(): void {
+        $this->gscRun(static fn() => GscReports::brand($_GET));
     }
 
     // GET /api/seo/v1/gsc/inspect?url=https://kuplyu-tashkent.uz/...

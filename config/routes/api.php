@@ -97,6 +97,12 @@ $router->get('/api/seo/v1/gsc/compare', function() {
 $router->get('/api/seo/v1/gsc/opportunities', function() {
     ControllerFactory::seoApi('gscOpportunities');
 });
+$router->get('/api/seo/v1/gsc/overview', function() {
+    ControllerFactory::seoApi('gscOverview');
+});
+$router->get('/api/seo/v1/gsc/brand', function() {
+    ControllerFactory::seoApi('gscBrand');
+});
 $router->get('/api/seo/v1/gsc/inspect', function() {
     ControllerFactory::seoApi('gscInspect');
 });
