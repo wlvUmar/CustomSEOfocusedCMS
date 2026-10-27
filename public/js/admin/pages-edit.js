@@ -71,40 +71,40 @@ document.addEventListener('input', (e) => {
 });
 document.addEventListener('change', (e) => {
     if (e.target && e.target.id === 'media-picker-upload' && typeof window.pickerUpload === 'function') window.pickerUpload(e.target);
-});
-
-// (2) media slots + picker
+});
+
+// (2) media slots + picker
         (function(){
             const boot = getPagesEditBoot();
-            const pageId = boot.pageId;
-            const csrf = boot.csrf || '';
-            const csrfMeta = document.querySelector('meta[name="csrf-token"]')?.content || csrf;
-            const getCsrf = ()=> document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken || csrfMeta || csrf;
-            const baseUrl = window.baseUrl || boot.baseUrl || '';
-            const thumbBase = baseUrl + '/uploads/';
-            let slotsData = boot.slotsData || {};
-            if (!pageId) return;
-            const RESERVED = new Set(['hero','banner']);
-            let pickerSlot = null;
-            let pickerFilter = 'all';
-            let pickerQuery = '';
-            function getEditorContent(id){
-                try{ const ed = tinymce.get(id); if(ed) return ed.getContent(); }catch(e){}
-                const el=document.getElementById(id); return el?el.value:'';
-            }
-            function scanSlots(){
-                const raw = (getEditorContent('content_ru')||'') + '\n' + (getEditorContent('content_uz')||'');
-                const re = /\{\{media\.([a-zA-Z0-9_-]+)\}\}/g;
-                const found=new Set(); let m;
-                while((m=re.exec(raw))){ const k=m[1]; if(!RESERVED.has(k)) found.add(k); }
-                return Array.from(found).sort();
-            }
-            function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-            function render(){
-                const slots = scanSlots();
-                const list=document.getElementById('media-slots-list');
-                const countEl=document.getElementById('media-slots-count');
-                if(!list) return;
+            const pageId = boot.pageId;
+            const csrf = boot.csrf || '';
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]')?.content || csrf;
+            const getCsrf = ()=> document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken || csrfMeta || csrf;
+            const baseUrl = window.baseUrl || boot.baseUrl || '';
+            const thumbBase = baseUrl + '/uploads/';
+            let slotsData = boot.slotsData || {};
+            if (!pageId) return;
+            const RESERVED = new Set(['hero','banner']);
+            let pickerSlot = null;
+            let pickerFilter = 'all';
+            let pickerQuery = '';
+            function getEditorContent(id){
+                try{ const ed = tinymce.get(id); if(ed) return ed.getContent(); }catch(e){}
+                const el=document.getElementById(id); return el?el.value:'';
+            }
+            function scanSlots(){
+                const raw = (getEditorContent('content_ru')||'') + '\n' + (getEditorContent('content_uz')||'');
+                const re = /\{\{media\.([a-zA-Z0-9_-]+)\}\}/g;
+                const found=new Set(); let m;
+                while((m=re.exec(raw))){ const k=m[1]; if(!RESERVED.has(k)) found.add(k); }
+                return Array.from(found).sort();
+            }
+            function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+            function render(){
+                const slots = scanSlots();
+                const list=document.getElementById('media-slots-list');
+                const countEl=document.getElementById('media-slots-count');
+                if(!list) return;
                 countEl.textContent = slots.length ? `(${slots.length} slot${slots.length>1?'s':''})` : '(no slots detected — add {{media.your_key}} to content)';
                 if(!slots.length){ list.innerHTML='<div class="c-empty-slots">No {{media.*}} tokens found in content. Example: <code>{{media.card_fridges}}</code> then save and attach.</div>'; return; }
                 list.innerHTML='';
@@ -139,7 +139,7 @@ document.addEventListener('change', (e) => {
                             ${items.length ? `<button type="button" class="btn btn-sm c-slot-detach" data-detach-slot="${escHtml(slot)}">Detach all</button>` : ''}
                         </div>`;
                     list.appendChild(row);
-                });
+                });
                 // hover red X
                 list.querySelectorAll('.slot-thumb').forEach(el=>{
                     el.addEventListener('mouseenter', ()=>{ const b=el.querySelector('.slot-thumb-x'); if(b){b.style.opacity='1'; b.style.transform='scale(1)';}});
@@ -157,22 +157,22 @@ document.addEventListener('change', (e) => {
                         const all = e.target.closest('[data-detach-slot]');
                         if(all) window.detachSlot(all.getAttribute('data-detach-slot'));
                     });
-                }
-            }
-            window.detachSingle = async function(slot, mediaId, btnEl){
-                if(!mediaId) return;
-                // find filename for confirm
-                const item = (slotsData[slot]||[]).find(x=> String(x.media_id||x.id)===String(mediaId));
-                const name = item ? (item.original_name||item.filename||mediaId) : mediaId;
-                if(!confirm(`Detach "${name}" from {{media.${slot}}}?`)) return;
-                if(btnEl) { btnEl.disabled=true; btnEl.textContent='…'; }
-                try{
-                    const fd=new FormData(); fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('media_id', mediaId); fd.append('section', slot);
-                    const r=await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
-                    const j=await r.json().catch(()=>({}));
-                    if(!r.ok || j.success===false) throw new Error(j.message||('HTTP '+r.status));
-                    // update local state without reload
-                    if(slotsData[slot]) slotsData[slot] = slotsData[slot].filter(x=> String(x.media_id||x.id)!==String(mediaId));
+                }
+            }
+            window.detachSingle = async function(slot, mediaId, btnEl){
+                if(!mediaId) return;
+                // find filename for confirm
+                const item = (slotsData[slot]||[]).find(x=> String(x.media_id||x.id)===String(mediaId));
+                const name = item ? (item.original_name||item.filename||mediaId) : mediaId;
+                if(!confirm(`Detach "${name}" from {{media.${slot}}}?`)) return;
+                if(btnEl) { btnEl.disabled=true; btnEl.textContent='…'; }
+                try{
+                    const fd=new FormData(); fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('media_id', mediaId); fd.append('section', slot);
+                    const r=await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
+                    const j=await r.json().catch(()=>({}));
+                    if(!r.ok || j.success===false) throw new Error(j.message||('HTTP '+r.status));
+                    // update local state without reload
+                    if(slotsData[slot]) slotsData[slot] = slotsData[slot].filter(x=> String(x.media_id||x.id)!==String(mediaId));
                     render();
                     if(pickerSlot && document.getElementById('media-picker-modal')?.classList.contains('active')) pickerLoad();
                     // tiny toast
@@ -182,37 +182,38 @@ document.addEventListener('change', (e) => {
                         t.textContent='Detached ✓';
                         t.className='c-toast';
                         document.body.appendChild(t); requestAnimationFrame(()=>t.style.opacity='1'); setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),250);}, 1600);
-                    }
-                } catch(e){
-                    alert('Detach failed: '+(e.message||e));
-                    if(btnEl){ btnEl.disabled=false; btnEl.textContent='×'; }
-                }
-            };
-            window.detachSlot = async function(slot){
-                if(!confirm(`Detach all ${((slotsData[slot]||[]).length)} image(s) from {{media.${slot}}}?`)) return;
-                const items = [...(slotsData[slot]||[])];
-                for(const it of items){
-                    const fd=new FormData(); fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('media_id', it.media_id); fd.append('section', slot);
-                    const r=await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
-                    const j=await r.json().catch(()=>({}));
-                    if(!r.ok || j.success===false){ alert('Detach failed for '+it.filename+': '+(j.message||r.status)); return; }
-                }
+                    }
+                } catch(e){
+                    alert('Detach failed: '+(e.message||e));
+                    if(btnEl){ btnEl.disabled=false; btnEl.textContent='×'; }
+                }
+            };
+            window.detachSlot = async function(slot){
+                if(!confirm(`Detach all ${((slotsData[slot]||[]).length)} image(s) from {{media.${slot}}}?`)) return;
+                const items = [...(slotsData[slot]||[])];
+                for(const it of items){
+                    const fd=new FormData(); fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('media_id', it.media_id); fd.append('section', slot);
+                    const r=await fetch(baseUrl+'/admin/media/detach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
+                    const j=await r.json().catch(()=>({}));
+                    if(!r.ok || j.success===false){ alert('Detach failed for '+it.filename+': '+(j.message||r.status)); return; }
+                }
                 slotsData[slot]=[];
                 render();
-                if(pickerSlot && document.getElementById('media-picker-modal')?.classList.contains('active')) pickerLoad();
-            };
-            // Picker functions
+                if(pickerSlot && document.getElementById('media-picker-modal')?.classList.contains('active')) pickerLoad();
+            };
+            // Picker functions
             window.openMediaPicker = async function(slot){
                 pickerSlot = slot;
                 document.getElementById('media-picker-title').textContent = 'Choose image for {{media.'+slot+'}}';
                 document.getElementById('media-picker-open-library').href = baseUrl + '/admin/media?attach_slot='+encodeURIComponent(slot)+'&page_id='+pageId;
                 document.getElementById('media-picker-modal').classList.add('active');
                 pickerFilter = 'all';
-                document.querySelectorAll('.media-picker-filter').forEach(b=>b.classList.toggle('active', b.dataset.pickerFilter===pickerFilter));
-                document.getElementById('media-picker-search').value='';
-                pickerQuery='';
-                await pickerLoad();
-            };
+                document.querySelectorAll('.media-picker-filter').forEach(b=>b.classList.toggle('active', b.dataset.pickerFilter===pickerFilter));
+                document.getElementById('media-picker-search').value='';
+                if (typeof window.pickerSetTab === 'function') window.pickerSetTab('library', true);
+                pickerQuery='';
+                await pickerLoad();
+            };
             window.closeMediaPicker = function(){
                 document.getElementById('media-picker-modal').classList.remove('active');
                 pickerSlot=null;
@@ -221,39 +222,39 @@ document.addEventListener('change', (e) => {
                 pickerFilter=f;
                 document.querySelectorAll('.media-picker-filter').forEach(b=>b.classList.toggle('active', b.dataset.pickerFilter===f));
                 pickerLoad();
-            };
-            window.pickerSearch = function(){
-                pickerQuery = document.getElementById('media-picker-search').value.trim().toLowerCase();
-                pickerLoad();
-            };
-            async function pickerLoad(){
-                const grid=document.getElementById('media-picker-grid');
-                const status=document.getElementById('media-picker-status');
-                grid.innerHTML='<div class="c-picker-loading">Loading…</div>';
-                status.textContent='';
-                try {
-                    const url = baseUrl + '/admin/media/list?filter='+encodeURIComponent(pickerFilter)+'&page_id='+pageId+'&q='+encodeURIComponent(pickerQuery)+'&limit=100';
-                    const r = await fetch(url, {headers:{'Accept':'application/json'}});
-                    const j = await r.json();
-                    if (!j.success) throw new Error(j.message||'load failed');
-                    let items = j.media || [];
-                    // client-side search fallback (filename/original_name) if server didn't filter
-                    if (pickerQuery) {
-                        const q = pickerQuery;
-                        items = items.filter(it => (it.original_name||'').toLowerCase().includes(q) || (it.filename||'').toLowerCase().includes(q));
-                    }
-                    status.textContent = items.length + ' image(s) — filter: '+pickerFilter+' (including unused & used)';
+            };
+            window.pickerSearch = function(){
+                pickerQuery = document.getElementById('media-picker-search').value.trim().toLowerCase();
+                pickerLoad();
+            };
+            async function pickerLoad(){
+                const grid=document.getElementById('media-picker-grid');
+                const status=document.getElementById('media-picker-status');
+                grid.innerHTML='<div class="c-picker-loading">Loading…</div>';
+                status.textContent='';
+                try {
+                    const url = baseUrl + '/admin/media/list?filter='+encodeURIComponent(pickerFilter)+'&page_id='+pageId+'&q='+encodeURIComponent(pickerQuery)+'&limit=100';
+                    const r = await fetch(url, {headers:{'Accept':'application/json'}});
+                    const j = await r.json();
+                    if (!j.success) throw new Error(j.message||'load failed');
+                    let items = j.media || [];
+                    // client-side search fallback (filename/original_name) if server didn't filter
+                    if (pickerQuery) {
+                        const q = pickerQuery;
+                        items = items.filter(it => (it.original_name||'').toLowerCase().includes(q) || (it.filename||'').toLowerCase().includes(q));
+                    }
+                    status.textContent = items.length + ' image(s) — filter: '+pickerFilter+' (including unused & used)';
                     if (!items.length) { grid.innerHTML='<div class="c-picker-empty">No images match filter/search. Try “All” or upload.</div>'; return; }
                     grid.innerHTML='';
                     items.forEach(it=>{
                         const attached = it.is_attached_to_page;
                         const card=document.createElement('div');
                         card.className='c-picker-card'+(attached?' c-picker-card-attached':'');
-                        let imgUrl = it.thumb_url || (thumbBase + it.filename);
-                        // thumb_url from server may be absolute (BASE_URL + /uploads/...) or root /uploads/... — ensure it resolves
-                        if(imgUrl && imgUrl.startsWith('/uploads/') && baseUrl) imgUrl = baseUrl + imgUrl;
-                        const safeName = escHtml(it.original_name||it.filename||'');
-                        const kb = Math.round((it.file_size||0)/1024);
+                        let imgUrl = it.thumb_url || (thumbBase + it.filename);
+                        // thumb_url from server may be absolute (BASE_URL + /uploads/...) or root /uploads/... — ensure it resolves
+                        if(imgUrl && imgUrl.startsWith('/uploads/') && baseUrl) imgUrl = baseUrl + imgUrl;
+                        const safeName = escHtml(it.original_name||it.filename||'');
+                        const kb = Math.round((it.file_size||0)/1024);
                         card.innerHTML=`
                             <img src="${imgUrl}" alt="${safeName.replace(/"/g,'&quot;')}" class="c-picker-img" loading="lazy" decoding="async" onerror="this.classList.add('c-picker-img-broken');this.nextElementSibling.classList.add('c-picker-fallback-show')">
                             <div class="c-picker-fallback">${safeName}</div>
@@ -265,148 +266,220 @@ document.addEventListener('change', (e) => {
                             </div>
                             <div class="c-picker-hover picker-hover">
                                 <span>${attached ? 'Re-attach' : 'Attach to '+escHtml(pickerSlot)}</span>
-                            </div>`;
-                        card.addEventListener('mouseenter', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='1'; h.firstElementChild.style.transform='translateY(0)'; }});
-                        card.addEventListener('mouseleave', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='0'; h.firstElementChild.style.transform='translateY(2px)'; }});
-                        card.addEventListener('click', ()=> pickerAttach(it.id, card));
-                        // also handle touch: first tap shows hover, second attaches? For now single tap attaches directly (as before)
-                        const _btn = card; // for pickerAttach btn param compatibility
-                        // store for fallback
-                        card._pickerId = it.id;
-                        grid.appendChild(card);
-                    });
+                            </div>`;
+                        card.addEventListener('mouseenter', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='1'; h.firstElementChild.style.transform='translateY(0)'; }});
+                        card.addEventListener('mouseleave', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='0'; h.firstElementChild.style.transform='translateY(2px)'; }});
+                        card.addEventListener('click', ()=> pickerAttach(it.id, card));
+                        // also handle touch: first tap shows hover, second attaches? For now single tap attaches directly (as before)
+                        const _btn = card; // for pickerAttach btn param compatibility
+                        // store for fallback
+                        card._pickerId = it.id;
+                        grid.appendChild(card);
+                    });
                 } catch(e){
                     grid.innerHTML='<div class="c-picker-error">Load failed: '+(e.message||e)+'</div>';
-                }
-            }
-            window.pickerAttach = async function(mediaId, btn){
-                if (!pickerSlot) return;
-                const isBtn = btn && btn.tagName === 'BUTTON';
-                if(isBtn){ btn.disabled=true; const old=btn.textContent; btn.textContent='…'; btn._old=old; }
-                else if(btn && btn.classList && btn.classList.contains('picker-hover')){ /* card overlay, ignore */ }
-                const fd=new FormData();
-                fd.append('csrf_token', getCsrf());
-                fd.append('page_id', pageId);
-                fd.append('media_id', mediaId);
-                fd.append('section', pickerSlot);
-                try{
-                    const r=await fetch(baseUrl+'/admin/media/attach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
-                    const j=await r.json().catch(()=>({}));
-                    if(!r.ok || j.success===false) throw new Error(j.message||('HTTP '+r.status));
-                    // update local slotsData without reload — fetch attached row for thumb
-                    try{
-                        const infoR = await fetch(baseUrl+'/admin/media/info?id='+encodeURIComponent(mediaId), {headers:{'Accept':'application/json'}});
-                        const infoJ = await infoR.json().catch(()=>null);
-                        const mediaRow = infoJ && infoJ.media ? infoJ.media : {id:mediaId, filename:''};
-                        // try to get filename from picker grid data if info missing
-                        if(!mediaRow.filename){
-                            const url = baseUrl + '/admin/media/list?filter=all&page_id='+pageId+'&limit=200';
-                            // fallback: find in current grid
-                        }
-                        // push to slotsData
-                        if(!slotsData[pickerSlot]) slotsData[pickerSlot]=[];
-                        const exists = slotsData[pickerSlot].some(x=> String(x.media_id||x.id)===String(mediaId));
-                        if(!exists){
-                            // construct minimal row matching getPageMedia shape
-                            slotsData[pickerSlot].push({media_id: mediaId, id: mediaId, filename: mediaRow.filename || '', original_name: mediaRow.original_name || mediaRow.filename || ('#'+mediaId), section: pickerSlot});
-                            // if filename empty, fetch again via list
-                            if(!mediaRow.filename){
-                                const lr = await fetch(baseUrl+'/admin/media/list?filter=all&page_id='+pageId+'&limit=200', {headers:{'Accept':'application/json'}});
-                                const lj = await lr.json().catch(()=>({}));
-                                const found = (lj.media||[]).find(x=> String(x.id)===String(mediaId));
-                                if(found){ const last = slotsData[pickerSlot][slotsData[pickerSlot].length-1]; last.filename = found.filename; last.original_name = found.original_name; }
-                            }
-                        }
-                    }catch(_){ /* ignore, still render with id only */ }
-                    render();
-                    pickerLoad(); // refresh picker attached badges
-                    closeMediaPicker();
+                }
+            }
+            // ── Stock photos (Pexels) tab: search derived from the page, click a photo to import + attach ──
+            const byId = (id)=>document.getElementById(id);
+            let stockQuery = '';
+            let stockPage = 1;
+            let stockLoaded = false;
+            window.pickerSetTab = function(tab, skipLoad){
+                const stock = tab === 'stock';
+                document.querySelectorAll('[data-picker-tab]').forEach(b=>b.classList.toggle('active', b.dataset.pickerTab===tab));
+                ['media-picker-library-bar','media-picker-grid','media-picker-status'].forEach(id=>{ const el=byId(id); if(el) el.hidden = stock; });
+                const sp = byId('stock-panel'); if(sp) sp.hidden = !stock;
+                if (stock) { if (!stockLoaded) stockLoad(true); }
+                else if (!skipLoad) pickerLoad();
+            };
+            async function stockLoad(reset){
+                const grid=byId('stock-grid'), status=byId('stock-status'), more=byId('stock-more');
+                if(!grid) return;
+                if(reset){ stockPage=1; grid.innerHTML='<div class="c-picker-loading">Загрузка…</div>'; more.hidden=true; }
+                status.textContent='';
+                try{
+                    const url = baseUrl+'/admin/media/stock-search?page_id='+encodeURIComponent(pageId)+'&q='+encodeURIComponent(stockQuery)+'&p='+stockPage;
+                    const r = await fetch(url, {headers:{'Accept':'application/json'}});
+                    const j = await r.json().catch(()=>({success:false,message:'HTTP '+r.status}));
+                    if(!j.success) throw new Error(j.message||'не удалось загрузить');
+                    stockLoaded = true;
+                    stockQuery = j.query;                 // keyword derived by the server when the box was empty
+                    byId('stock-search').value = j.query;
+                    if(reset) grid.innerHTML='';
+                    if(reset && !j.results.length){ grid.innerHTML='<div class="c-picker-empty">Ничего не найдено. Попробуйте другой запрос (лучше по-английски).</div>'; }
+                    j.results.forEach(p=>{
+                        const card=document.createElement('div');
+                        card.className='c-picker-card';
+                        card.innerHTML = `<img src="${escHtml(p.thumb)}" alt="${escHtml(p.alt||'')}" class="c-picker-img" loading="lazy" decoding="async">
+                            <div class="c-picker-hover picker-hover"><span>Выбрать</span></div>
+                            <div class="c-stock-credit-tag">${escHtml(p.photographer)} · Pexels</div>`;
+                        card.addEventListener('mouseenter', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='1'; h.firstElementChild.style.transform='translateY(0)'; }});
+                        card.addEventListener('mouseleave', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='0'; h.firstElementChild.style.transform='translateY(2px)'; }});
+                        card.addEventListener('click', ()=> stockImport(p, card));
+                        grid.appendChild(card);
+                    });
+                    status.textContent = '«'+j.query+'» — найдено '+j.total;
+                    more.hidden = !j.has_more;
+                } catch(e){
+                    if(reset) grid.innerHTML='';
+                    status.textContent = 'Ошибка: '+(e.message||e);
+                }
+            }
+            async function stockImport(p, card){
+                if(!pickerSlot) return;
+                const status=byId('stock-status');
+                card.classList.add('c-stock-card-busy');
+                status.textContent='Загружаю фото на сайт…';
+                const fd=new FormData();
+                fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('section', pickerSlot); fd.append('photo_id', p.id);
+                try{
+                    const r = await fetch(baseUrl+'/admin/media/stock-import', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
+                    const j = await r.json().catch(()=>({}));
+                    if(!r.ok || j.success===false) throw new Error(j.message||('HTTP '+r.status));
+                    if(!slotsData[pickerSlot]) slotsData[pickerSlot]=[];
+                    slotsData[pickerSlot].push({media_id:j.media_id, id:j.media_id, filename:j.filename, original_name:j.original_name, section:pickerSlot});
+                    render();
+                    closeMediaPicker();
+                } catch(e){
+                    status.textContent='Ошибка: '+(e.message||e);
+                    card.classList.remove('c-stock-card-busy');
+                }
+            }
+            document.querySelectorAll('[data-picker-tab]').forEach(b=>b.addEventListener('click', ()=>window.pickerSetTab(b.dataset.pickerTab)));
+            const stockInput = byId('stock-search');
+            if(byId('stock-search-btn')) byId('stock-search-btn').addEventListener('click', ()=>{ stockQuery=stockInput.value.trim(); stockLoad(true); });
+            if(stockInput) stockInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); stockQuery=stockInput.value.trim(); stockLoad(true); }});
+            if(byId('stock-more')) byId('stock-more').addEventListener('click', ()=>{ stockPage++; stockLoad(false); });
+
+            window.pickerAttach = async function(mediaId, btn){
+                if (!pickerSlot) return;
+                const isBtn = btn && btn.tagName === 'BUTTON';
+                if(isBtn){ btn.disabled=true; const old=btn.textContent; btn.textContent='…'; btn._old=old; }
+                else if(btn && btn.classList && btn.classList.contains('picker-hover')){ /* card overlay, ignore */ }
+                const fd=new FormData();
+                fd.append('csrf_token', getCsrf());
+                fd.append('page_id', pageId);
+                fd.append('media_id', mediaId);
+                fd.append('section', pickerSlot);
+                try{
+                    const r=await fetch(baseUrl+'/admin/media/attach', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
+                    const j=await r.json().catch(()=>({}));
+                    if(!r.ok || j.success===false) throw new Error(j.message||('HTTP '+r.status));
+                    // update local slotsData without reload — fetch attached row for thumb
+                    try{
+                        const infoR = await fetch(baseUrl+'/admin/media/info?id='+encodeURIComponent(mediaId), {headers:{'Accept':'application/json'}});
+                        const infoJ = await infoR.json().catch(()=>null);
+                        const mediaRow = infoJ && infoJ.media ? infoJ.media : {id:mediaId, filename:''};
+                        // try to get filename from picker grid data if info missing
+                        if(!mediaRow.filename){
+                            const url = baseUrl + '/admin/media/list?filter=all&page_id='+pageId+'&limit=200';
+                            // fallback: find in current grid
+                        }
+                        // push to slotsData
+                        if(!slotsData[pickerSlot]) slotsData[pickerSlot]=[];
+                        const exists = slotsData[pickerSlot].some(x=> String(x.media_id||x.id)===String(mediaId));
+                        if(!exists){
+                            // construct minimal row matching getPageMedia shape
+                            slotsData[pickerSlot].push({media_id: mediaId, id: mediaId, filename: mediaRow.filename || '', original_name: mediaRow.original_name || mediaRow.filename || ('#'+mediaId), section: pickerSlot});
+                            // if filename empty, fetch again via list
+                            if(!mediaRow.filename){
+                                const lr = await fetch(baseUrl+'/admin/media/list?filter=all&page_id='+pageId+'&limit=200', {headers:{'Accept':'application/json'}});
+                                const lj = await lr.json().catch(()=>({}));
+                                const found = (lj.media||[]).find(x=> String(x.id)===String(mediaId));
+                                if(found){ const last = slotsData[pickerSlot][slotsData[pickerSlot].length-1]; last.filename = found.filename; last.original_name = found.original_name; }
+                            }
+                        }
+                    }catch(_){ /* ignore, still render with id only */ }
+                    render();
+                    pickerLoad(); // refresh picker attached badges
+                    closeMediaPicker();
                     const t=document.createElement('div');
                     t.textContent='✅ Attached to {{media.'+pickerSlot+'}}';
-                    t.className='c-toast c-toast-ok';
-                    document.body.appendChild(t); requestAnimationFrame(()=>t.style.opacity='1'); setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),240);}, 1700);
-                }catch(e){
-                    alert('Attach failed: '+(e.message||e));
-                    if(isBtn && btn){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
-                } finally {
-                    if(isBtn && btn && btn.disabled && btn.textContent==='…'){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
-                }
-            };
-            window.pickerUpload = async function(input){
-                const files=input.files;
-                if(!files||!files.length) return;
-                if(!pickerSlot){ alert('Pick a slot first'); return; }
-                const fd=new FormData();
-                Array.from(files).forEach(f=>fd.append('files[]', f));
-                fd.append('csrf_token', getCsrf());
-                fd.append('page_id', pageId);
-                fd.append('section', pickerSlot);
-                const status=document.getElementById('media-picker-status');
-                status.textContent='Uploading '+files.length+' file(s)…';
-                try{
-                    const r=await fetch(baseUrl+'/admin/media/bulk-upload', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
-                    const ct=r.headers.get('content-type')||'';
-                    const txt=await r.text();
-                    if(!r.ok) throw new Error('HTTP '+r.status+': '+txt.slice(0,200));
-                    if(!ct.includes('application/json')) throw new Error('Expected JSON got '+ct);
-                    const j=JSON.parse(txt);
-                    if(!j.success && !j.uploaded) throw new Error(j.message||'upload failed');
-                    status.textContent='Uploaded '+j.uploaded+' file(s) and attached to {{media.'+pickerSlot+'}}';
-                    input.value='';
-                    // update slots panel without reload: refetch attached for this slot
-                    try{
-                        const ar = await fetch(baseUrl+'/admin/media/list?filter=attached&page_id='+pageId, {headers:{'Accept':'application/json'}});
-                        const aj = await ar.json().catch(()=>({}));
-                        if(aj.success && Array.isArray(aj.media)){
-                            const forSlot = aj.media.filter(x=> String(x.section||'')===String(pickerSlot));
-                            // map to slotsData shape expected by render()
-                            slotsData[pickerSlot] = forSlot.map(x=>({media_id: x.media_id||x.id, id: x.media_id||x.id, filename: x.filename, original_name: x.original_name, section: x.section}));
-                            render();
-                        }
-                    }catch(_){}
-                    await pickerLoad();
-                }catch(e){
-                    status.textContent='Upload failed: '+e.message;
-                    alert('Upload failed: '+e.message);
-                    input.value='';
-                }
-            };
-            // close on overlay click / ESC
-            document.getElementById('media-picker-modal').addEventListener('click', (e)=>{ if(e.target.id==='media-picker-modal') closeMediaPicker(); });
-            document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeMediaPicker(); });
-            let t=null;
-            function schedule(){ clearTimeout(t); t=setTimeout(render, 600); }
-            document.addEventListener('DOMContentLoaded', render);
-            setInterval(()=>{ const cur=scanSlots().join(','); if(window._lastSlots!==cur){window._lastSlots=cur; render();}}, 1500);
-            setTimeout(()=>{ try{ tinymce.on('AddEditor', e=>{ e.editor.on('change keyup', schedule); }); ['content_ru','content_uz'].forEach(id=>{ const ed=tinymce.get(id); if(ed) ed.on('change keyup', schedule); }); }catch(e){}}, 1200);
-            // listen for cross-tab attach from library (if user used Library ↗)
-            window.addEventListener('message', (e)=>{ if(e.data && e.data.type==='media-attached' && String(e.data.pageId)===String(pageId)){ setTimeout(()=>location.reload(), 300); }});
-        })();
-
-// (3) editor boot
-if (window.tinymce) tinymce.init({
-    selector: '.tinymce',
-    height: 400,
-    menubar: false,
-    plugins: 'fullscreen code',
-    toolbar: 'fullscreen code',
-     content_css: [
-        (window.baseUrl || '') + '/css/pages.min.css',
-        (window.baseUrl || '') + '/css/components.min.css'
-    ],
-    content_style: '.hero__content,.content-section,.info-card,.process-step,.brands-list,.faq-item,.condition-item,.review-strip,.links-tile,.faq-section{opacity:1!important;transform:none!important}',
-});
-
-// Handle rotation mode toggle
-document.addEventListener('DOMContentLoaded', function() {
-    const rotationModeSelect = document.getElementById('rotation_mode');
-    const rotationSelectionGroup = document.getElementById('rotation_selection_group');
-    
+                    t.className='c-toast c-toast-ok';
+                    document.body.appendChild(t); requestAnimationFrame(()=>t.style.opacity='1'); setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),240);}, 1700);
+                }catch(e){
+                    alert('Attach failed: '+(e.message||e));
+                    if(isBtn && btn){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
+                } finally {
+                    if(isBtn && btn && btn.disabled && btn.textContent==='…'){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
+                }
+            };
+            window.pickerUpload = async function(input){
+                const files=input.files;
+                if(!files||!files.length) return;
+                if(!pickerSlot){ alert('Pick a slot first'); return; }
+                const fd=new FormData();
+                Array.from(files).forEach(f=>fd.append('files[]', f));
+                fd.append('csrf_token', getCsrf());
+                fd.append('page_id', pageId);
+                fd.append('section', pickerSlot);
+                const status=document.getElementById('media-picker-status');
+                status.textContent='Uploading '+files.length+' file(s)…';
+                try{
+                    const r=await fetch(baseUrl+'/admin/media/bulk-upload', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
+                    const ct=r.headers.get('content-type')||'';
+                    const txt=await r.text();
+                    if(!r.ok) throw new Error('HTTP '+r.status+': '+txt.slice(0,200));
+                    if(!ct.includes('application/json')) throw new Error('Expected JSON got '+ct);
+                    const j=JSON.parse(txt);
+                    if(!j.success && !j.uploaded) throw new Error(j.message||'upload failed');
+                    status.textContent='Uploaded '+j.uploaded+' file(s) and attached to {{media.'+pickerSlot+'}}';
+                    input.value='';
+                    // update slots panel without reload: refetch attached for this slot
+                    try{
+                        const ar = await fetch(baseUrl+'/admin/media/list?filter=attached&page_id='+pageId, {headers:{'Accept':'application/json'}});
+                        const aj = await ar.json().catch(()=>({}));
+                        if(aj.success && Array.isArray(aj.media)){
+                            const forSlot = aj.media.filter(x=> String(x.section||'')===String(pickerSlot));
+                            // map to slotsData shape expected by render()
+                            slotsData[pickerSlot] = forSlot.map(x=>({media_id: x.media_id||x.id, id: x.media_id||x.id, filename: x.filename, original_name: x.original_name, section: x.section}));
+                            render();
+                        }
+                    }catch(_){}
+                    await pickerLoad();
+                }catch(e){
+                    status.textContent='Upload failed: '+e.message;
+                    alert('Upload failed: '+e.message);
+                    input.value='';
+                }
+            };
+            // close on overlay click / ESC
+            document.getElementById('media-picker-modal').addEventListener('click', (e)=>{ if(e.target.id==='media-picker-modal') closeMediaPicker(); });
+            document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeMediaPicker(); });
+            let t=null;
+            function schedule(){ clearTimeout(t); t=setTimeout(render, 600); }
+            document.addEventListener('DOMContentLoaded', render);
+            setInterval(()=>{ const cur=scanSlots().join(','); if(window._lastSlots!==cur){window._lastSlots=cur; render();}}, 1500);
+            setTimeout(()=>{ try{ tinymce.on('AddEditor', e=>{ e.editor.on('change keyup', schedule); }); ['content_ru','content_uz'].forEach(id=>{ const ed=tinymce.get(id); if(ed) ed.on('change keyup', schedule); }); }catch(e){}}, 1200);
+            // listen for cross-tab attach from library (if user used Library ↗)
+            window.addEventListener('message', (e)=>{ if(e.data && e.data.type==='media-attached' && String(e.data.pageId)===String(pageId)){ setTimeout(()=>location.reload(), 300); }});
+        })();
+
+// (3) editor boot
+if (window.tinymce) tinymce.init({
+    selector: '.tinymce',
+    height: 400,
+    menubar: false,
+    plugins: 'fullscreen code',
+    toolbar: 'fullscreen code',
+     content_css: [
+        (window.baseUrl || '') + '/css/pages.min.css',
+        (window.baseUrl || '') + '/css/components.min.css'
+    ],
+    content_style: '.hero__content,.content-section,.info-card,.process-step,.brands-list,.faq-item,.condition-item,.review-strip,.links-tile,.faq-section{opacity:1!important;transform:none!important}',
+});
+
+// Handle rotation mode toggle
+document.addEventListener('DOMContentLoaded', function() {
+    const rotationModeSelect = document.getElementById('rotation_mode');
+    const rotationSelectionGroup = document.getElementById('rotation_selection_group');
+    
     if (rotationModeSelect) {
         rotationModeSelect.addEventListener('change', function() {
             if (rotationSelectionGroup) {
                 rotationSelectionGroup.classList.toggle('hidden', this.value !== 'manual');
             }
         });
-    }
-});
+    }
+});

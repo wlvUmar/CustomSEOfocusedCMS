@@ -101,6 +101,8 @@ $router->group('/admin/media', function($router) {
     $router->get('/quick', function() { ControllerFactory::media('quick'); });
     $router->post('/quick-add', function() { ControllerFactory::media('quickAdd'); });
     $router->post('/generate', function() { ControllerFactory::media('generate'); });
+    $router->get('/stock-search', function() { ControllerFactory::media('stockSearch'); });
+    $router->post('/stock-import', function() { ControllerFactory::media('stockImport'); });
     $router->post('/upload', function() { ControllerFactory::media('upload'); });
     $router->post('/delete', function() { ControllerFactory::media('delete'); });
     $router->post('/bulk-upload', function() { ControllerFactory::media('bulkUpload'); });

@@ -231,7 +231,11 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <h3 id="media-picker-title">Choose image</h3>
                     <button type="button" data-picker="close" class="btn-close">&times;</button>
                 </div>
-                <div class="c-picker-bar">
+                <div class="c-picker-tabs" role="tablist">
+                    <button type="button" class="c-picker-tab active" data-picker-tab="library" role="tab">Моя медиатека</button>
+                    <button type="button" class="c-picker-tab" data-picker-tab="stock" role="tab">Фото из интернета (Pexels)</button>
+                </div>
+                <div class="c-picker-bar" id="media-picker-library-bar">
                     <div class="c-picker-filters">
                         <button type="button" class="btn btn-sm media-picker-filter active" data-picker-filter="all">All</button>
                         <button type="button" class="btn btn-sm media-picker-filter" data-picker-filter="unused">Unused</button>
@@ -243,6 +247,18 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </div>
                 <div id="media-picker-grid" class="c-picker-grid"></div>
                 <div id="media-picker-status" class="c-picker-status"></div>
+                <div id="stock-panel" class="c-stock" hidden>
+                    <div class="c-picker-bar">
+                        <input type="text" id="stock-search" placeholder="Поиск фото (лучше по-английски), напр. refrigerator kitchen" class="c-picker-search" autocomplete="off">
+                        <button type="button" class="btn btn-sm btn-primary" id="stock-search-btn">Искать</button>
+                    </div>
+                    <div id="stock-grid" class="c-picker-grid"></div>
+                    <div id="stock-status" class="c-picker-status"></div>
+                    <div class="c-stock-foot">
+                        <button type="button" class="btn btn-sm" id="stock-more" hidden>Показать ещё</button>
+                        <span>Фото: <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer">Pexels</a> — бесплатно, указывать автора не обязательно. Фото общие, не конкретная модель.</span>
+                    </div>
+                </div>
                 <div class="modal-footer c-picker-footer">
                     <a id="media-picker-open-library" href="#" target="_blank" class="btn btn-sm">Open full library →</a>
                     <button type="button" data-picker="close" class="btn">Close</button>
@@ -497,6 +513,16 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
 .c-picker-grid{overflow:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));grid-auto-rows:160px;gap:12px;align-content:start;flex:1;background:#f9fafb;isolation:isolate}
 .c-picker-status{padding:8px 14px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280}
 .c-picker-footer{display:flex;justify-content:space-between;align-items:center}
+.c-picker-tabs{display:flex;gap:6px;padding:8px 14px 0;border-bottom:1px solid #e5e7eb}
+.c-picker-tab{border:0;background:none;padding:8px 14px;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent}
+.c-picker-tab.active{color:var(--teal);border-bottom-color:var(--teal)}
+.c-stock{display:flex;flex-direction:column;flex:1;min-height:0}
+.c-stock[hidden],.c-picker-bar[hidden],#media-picker-grid[hidden],#media-picker-status[hidden],#stock-more[hidden]{display:none}
+.c-stock .c-picker-grid{flex:1}
+.c-stock-foot{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:8px 14px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280}
+.c-stock-foot a{color:var(--teal)}
+.c-stock-credit-tag{position:absolute;inset:auto 0 0 0;background:linear-gradient(transparent,rgba(0,0,0,.72));padding:22px 8px 7px;color:#fff;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1}
+.c-stock-card-busy{opacity:.55;pointer-events:none}
 .c-code{font-family:monospace;font-size:13px}
 .c-slot-row{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--teal);border-radius:10px;background:#f9fafb}
 .c-slot-thumbs{display:flex;gap:6px;flex-wrap:wrap;min-width:64px;align-items:center}

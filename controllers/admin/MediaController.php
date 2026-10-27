@@ -270,6 +270,98 @@ class MediaController extends Controller {
         ]);
     }
 
+    // ── Stock photos (Pexels) inside the page editor's image picker ──
+
+    // GET /admin/media/stock-search?page_id=&q=&p=  — empty q = keyword derived from the page (slug/title/parent)
+    public function stockSearch() {
+        $this->requireAuth();
+        require_once BASE_PATH . '/models/StockImages.php';
+        if (!StockImages::isConfigured()) {
+            $this->json(['success' => false, 'code' => 'not_configured',
+                'message' => 'Не задан PEXELS_API_KEY в .env. Бесплатный ключ: pexels.com/api'], 400);
+        }
+        $pageModel = new Page();
+        $pageId = (int)($_GET['page_id'] ?? 0);
+        $page = $pageId > 0 ? $pageModel->getById($pageId) : null;
+        $q = trim((string)($_GET['q'] ?? ''));
+        if ($q === '') {
+            $parent = ($page && !empty($page['parent_id'])) ? $pageModel->getById((int)$page['parent_id']) : null;
+            $q = StockImages::suggestQuery($page ?: [], $parent ?: null);
+        }
+        $pg = max(1, min(50, (int)($_GET['p'] ?? 1)));
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+        try {
+            $res = StockImages::search($q, $pg, 24);
+        } catch (Throwable $e) {
+            $code = (int)$e->getCode();
+            error_log('[StockImages] search ' . $code . ' ' . $e->getMessage());
+            $this->json(['success' => false, 'message' => $e->getMessage()], $code >= 400 && $code < 600 ? $code : 502);
+        }
+        $this->json(['success' => true, 'query' => $q] + $res + [
+            'attribution' => ['text' => 'Фото: Pexels', 'url' => 'https://www.pexels.com'],
+        ]);
+    }
+
+    // POST /admin/media/stock-import  { page_id, section (slot key), photo_id } — downloads, stores and attaches
+    public function stockImport() {
+        $this->requireAuth();
+        if (!validateCSRFToken($this->getCsrfToken())) {
+            $this->json(['success' => false, 'message' => 'Invalid CSRF token'], 403);
+        }
+        require_once BASE_PATH . '/models/StockImages.php';
+        $pageId = (int)($_POST['page_id'] ?? 0);
+        $page = $pageId > 0 ? (new Page())->getById($pageId) : null;
+        if (!$page) $this->json(['success' => false, 'message' => 'Страница не найдена'], 400);
+        $section = (string)($_POST['section'] ?? '');
+        if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $section)) $this->json(['success' => false, 'message' => 'Invalid section'], 400);
+        $photoId = (int)($_POST['photo_id'] ?? 0);
+        if ($photoId <= 0) $this->json(['success' => false, 'message' => 'Invalid photo'], 400);
+        if (!StockImages::isConfigured()) $this->json(['success' => false, 'message' => 'Не задан PEXELS_API_KEY'], 400);
+
+        if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+        @set_time_limit(90);
+        $tmp = null;
+        try {
+            $dl = StockImages::download($photoId, (int)MAX_UPLOAD_SIZE);
+            $tmp = $dl['path'];
+            $credit = preg_replace('/[^a-z0-9]+/', '-', strtolower(iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $dl['photographer']) ?: 'photographer'));
+            $original = 'pexels-' . $photoId . '-' . trim(mb_substr($credit, 0, 40), '-') . '.jpg';
+            $stored = $this->mediaService->storeLocalFile($tmp, $original);
+        } catch (Throwable $e) {
+            if ($tmp && is_file($tmp)) @unlink($tmp); // json() exits, which would skip a finally block
+            $code = (int)$e->getCode();
+            error_log('[StockImages] import ' . $code . ' ' . $e->getMessage());
+            $this->json(['success' => false, 'message' => $e->getMessage()], $code >= 400 && $code < 600 ? $code : 502);
+        }
+        if ($tmp && is_file($tmp)) @unlink($tmp);
+        if (empty($stored['success'])) {
+            $this->json(['success' => false, 'message' => $stored['error']], $stored['error'] === 'Failed to save file' ? 500 : 400);
+        }
+
+        $n = count($this->pageMediaModel->getPageMedia($pageId, $section));
+        $titleRu = trim((string)($page['title_ru'] ?? '')) ?: (string)$page['slug'];
+        $titleUz = trim((string)($page['title_uz'] ?? '')) ?: $titleRu;
+        $this->mediaService->attach($pageId, $stored['media_id'], [
+            'section' => $section,
+            'position' => $n,
+            'alt_text_ru' => mb_substr($titleRu . ' — фото' . ($n ? ' ' . ($n + 1) : ''), 0, 255),
+            'alt_text_uz' => mb_substr($titleUz . ' — rasm' . ($n ? ' ' . ($n + 1) : ''), 0, 255),
+            'caption_ru' => '',
+            'caption_uz' => '',
+            'width' => null,
+            'alignment' => 'center',
+            'css_class' => '',
+            'lazy_load' => 1,
+        ]);
+        $this->json([
+            'success' => true,
+            'media_id' => $stored['media_id'],
+            'filename' => $stored['filename'],
+            'original_name' => $original,
+            'photographer' => $dl['photographer'],
+        ]);
+    }
+
     // ── Quick add: many images → matched to pages → uploaded + attached with RU/UZ alt text in one go ──
 
     // GET /admin/media/quick

@@ -107,6 +107,31 @@ class MediaService {
         return ['success' => true, 'media_id' => $mediaId, 'filename' => $filename];
     }
 
+    /**
+     * Store a file that already sits on the server (e.g. a downloaded stock photo) as a media item.
+     * Not for $_FILES uploads (those use uploadSingle). Verifies the real image bytes and the size limit.
+     */
+    public function storeLocalFile($tmpPath, $originalName) {
+        $detected = $this->detectImage($tmpPath);
+        if ($detected === null) return ['success' => false, 'error' => 'Invalid file type'];
+        $size = (int)@filesize($tmpPath);
+        if ($size <= 0 || $size > MAX_UPLOAD_SIZE) return ['success' => false, 'error' => 'File too large'];
+        $filename = $this->buildFilename($originalName, '', $detected[1]);
+        $this->ensureUploadDir();
+        if (!@copy($tmpPath, UPLOAD_PATH . $filename)) {
+            error_log('Media storeLocalFile: copy failed to ' . UPLOAD_PATH . $filename);
+            return ['success' => false, 'error' => 'Failed to save file'];
+        }
+        $mediaId = $this->media->create([
+            'filename' => $filename,
+            'original_name' => $originalName,
+            'file_size' => $size,
+            'mime_type' => $detected[0],
+        ]);
+        generateResponsiveImageVariants($filename, getResponsiveImageWidths());
+        return ['success' => true, 'media_id' => $mediaId, 'filename' => $filename];
+    }
+
     public function uploadBulk($files, $pageId = null, $section = 'content') {
         $uploaded = 0;
         $failed = 0;
