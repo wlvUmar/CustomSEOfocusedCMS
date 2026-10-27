@@ -392,6 +392,7 @@ class MediaController extends Controller {
         ], (new Page())->getAll(true));
         require_once BASE_PATH . '/models/ImageGenerator.php';
         require_once BASE_PATH . '/models/StockImages.php';
+        require_once BASE_PATH . '/services/ImageVariants.php';
         $genReady = true;
         $genUsed = 0;
         try {
@@ -404,6 +405,8 @@ class MediaController extends Controller {
             'quickPages' => $pages,
             'maxUploadMb' => round(MAX_UPLOAD_SIZE / 1048576, 1),
             'stockReady' => StockImages::isConfigured(),
+            'usageMb' => round(ImageVariants::uploadsUsageBytes() / 1048576, 1),
+            'quotaMb' => (float)(getenv('UPLOAD_QUOTA_MB') ?: 0),
             'gen' => [
                 'configured' => ImageGenerator::isConfigured(),
                 'ready' => $genReady,

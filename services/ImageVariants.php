@@ -10,6 +10,52 @@ class ImageVariants {
         return [480, 640, 768, 1024, 1366];
     }
 
+    /** Widths generated in lean mode (the original itself serves any width above these). */
+    private const LEAN_WIDTHS = [480, 768, 1366];
+
+    /**
+     * IMAGE_VARIANTS=lean (default) → WebP only, widths 480/768/1366: roughly a third of the disk of 'full'
+     * (JPG + WebP at 5 widths = 10 files per image). The page still gets the original as the plain <img src>, so
+     * browsers without WebP are fine. Set IMAGE_VARIANTS=full in .env to restore the old behaviour.
+     * Falls back to full when GD cannot write WebP (otherwise there would be no variants at all).
+     */
+    public static function leanMode() {
+        if (strtolower(trim((string)(getenv('IMAGE_VARIANTS') ?: 'lean'))) === 'full') return false;
+        return function_exists('imagewebp');
+    }
+
+    public static function leanWidths() {
+        return self::LEAN_WIDTHS;
+    }
+
+    /** Delete the derived copies of one original (called when a media item is deleted). */
+    public static function deleteDerivedFor($filename) {
+        $name = pathinfo((string)$filename, PATHINFO_FILENAME);
+        if ($name === '' || strpbrk($name, '/\\') !== false) return 0;
+        $dir = self::getUploadsDir() . '/derived';
+        if (!is_dir($dir)) return 0;
+        $n = 0;
+        foreach (glob($dir . '/' . $name . '_w*.*') ?: [] as $f) {
+            if (is_file($f) && preg_match('/_w\d+\.(jpg|webp)$/i', $f) && @unlink($f)) $n++;
+        }
+        return $n;
+    }
+
+    /** Total bytes under the uploads folder (originals + derived). Cached for the request. */
+    public static function uploadsUsageBytes() {
+        static $cached = null;
+        if ($cached !== null) return $cached;
+        $dir = self::getUploadsDir();
+        $total = 0;
+        if (is_dir($dir)) {
+            $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
+            foreach ($it as $f) {
+                if ($f->isFile()) $total += $f->getSize();
+            }
+        }
+        return $cached = $total;
+    }
+
     public static function getUploadsDir() {
         if (defined('UPLOAD_PATH') && UPLOAD_PATH) {
             return rtrim(UPLOAD_PATH, '/\\');
@@ -68,14 +114,15 @@ class ImageVariants {
         $info = @getimagesize($path);
         if (!$info) return null;
         $originalWidth = (int)$info[0];
-        $usableWidths = array_values(array_filter($widths, function($w) use ($originalWidth) {
-            return $w > 0 && $w <= $originalWidth;
+        $lean = self::leanMode();
+        $usableWidths = array_values(array_filter($widths, function($w) use ($originalWidth, $lean) {
+            return $w > 0 && $w <= $originalWidth && (!$lean || in_array((int)$w, self::LEAN_WIDTHS, true));
         }));
         if (empty($usableWidths)) return null;
         $fallbackSrcset = [];
         $webpSrcset = [];
         foreach ($usableWidths as $width) {
-            $fallback = self::ensureDerivedImage($filename, $width, 'jpg');
+            $fallback = $lean ? null : self::ensureDerivedImage($filename, $width, 'jpg');
             if ($fallback) {
                 $fallbackSrcset[] = $fallback . ' ' . $width . 'w';
             }
@@ -186,9 +233,12 @@ class ImageVariants {
         if (empty($widths)) {
             $widths = self::getResponsiveImageWidths();
         }
+        $lean = self::leanMode();
         foreach ($widths as $width) {
-            self::ensureDerivedImage($filename, (int)$width, 'jpg');
-            self::ensureDerivedImage($filename, (int)$width, 'webp');
+            $width = (int)$width;
+            if ($lean && !in_array($width, self::LEAN_WIDTHS, true)) continue;
+            if (!$lean) self::ensureDerivedImage($filename, $width, 'jpg');
+            self::ensureDerivedImage($filename, $width, 'webp');
         }
     }
 

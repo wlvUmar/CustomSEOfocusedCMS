@@ -7,6 +7,7 @@ class MediaService {
 
     private $media;
     private $pageMedia;
+    private $addedBytes = 0; // estimated bytes added by this request (usage is cached per request)
 
     public function __construct($media = null, $pageMedia = null) {
         $this->media = $media ?: new Media();
@@ -37,6 +38,26 @@ class MediaService {
         if (($file['size'] ?? 0) > MAX_UPLOAD_SIZE) {
             return 'File too large';
         }
+        return null;
+    }
+
+    /**
+     * UPLOAD_QUOTA_MB in .env (unset/0 = no limit): refuse a new image when the uploads folder (originals + derived
+     * copies) would pass it. Protects a small hosting plan from filling up — a full disk breaks MySQL and logging too.
+     * @return string|null error message, or null when the upload fits
+     */
+    public function quotaError($incomingBytes) {
+        $quotaMb = (float)(getenv('UPLOAD_QUOTA_MB') ?: 0);
+        if ($quotaMb <= 0) return null;
+        if (!class_exists('ImageVariants', false)) require_once BASE_PATH . '/services/ImageVariants.php';
+        // a new image also creates derived copies: roughly +60% of the original in lean mode, +150% in full mode
+        $est = (int)($incomingBytes * (ImageVariants::leanMode() ? 1.6 : 2.5));
+        $used = ImageVariants::uploadsUsageBytes() + $this->addedBytes;
+        if ($used + $est > $quotaMb * 1048576) {
+            return 'Недостаточно места для фото: занято ' . round($used / 1048576, 1) . ' из ' . $quotaMb
+                . ' МБ (UPLOAD_QUOTA_MB). Удалите ненужные фото или запустите scripts/cleanup-media.php';
+        }
+        $this->addedBytes += $est;
         return null;
     }
 
@@ -84,6 +105,9 @@ class MediaService {
             return ['success' => false, 'error' => 'Invalid file type'];
         }
         $file['type'] = $detected[0];
+        if (($quota = $this->quotaError($file['size'] ?? 0)) !== null) {
+            return ['success' => false, 'error' => $quota];
+        }
         $filename = $this->buildFilename($file['name'], '', $detected[1]);
         $filepath = UPLOAD_PATH . $filename;
         $this->ensureUploadDir();
@@ -194,6 +218,7 @@ class MediaService {
         if ($detected === null) return ['success' => false, 'error' => 'Invalid file type'];
         $size = (int)@filesize($tmpPath);
         if ($size <= 0 || $size > MAX_UPLOAD_SIZE) return ['success' => false, 'error' => 'File too large'];
+        if (($quota = $this->quotaError($size)) !== null) return ['success' => false, 'error' => $quota];
         $filename = $this->buildFilename($originalName, '', $detected[1]);
         $this->ensureUploadDir();
         if (!@copy($tmpPath, UPLOAD_PATH . $filename)) {
@@ -241,6 +266,11 @@ class MediaService {
                 continue;
             }
             $file['type'] = $detected[0];
+            if (($quota = $this->quotaError($file['size'] ?? 0)) !== null) {
+                $failed++;
+                $errors[] = $file['name'] . ': ' . $quota;
+                continue;
+            }
             $filename = $this->buildFilename($file['name'], '_' . $key, $detected[1]);
             $filepath = UPLOAD_PATH . $filename;
             $this->ensureUploadDir();

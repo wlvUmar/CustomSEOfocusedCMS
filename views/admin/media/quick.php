@@ -14,6 +14,11 @@
         это шаблон, а не описание картинки, поправьте при необходимости. Макс. размер файла: <?= e($maxUploadMb) ?> МБ.
     </p>
 
+    <p class="mq-hint mq-usage">
+        Место под фото: занято <strong><?= e($usageMb) ?> МБ</strong><?= !empty($quotaMb) ? ' из ' . e($quotaMb) . ' МБ (лимит UPLOAD_QUOTA_MB)' : ' (лимит не задан — добавьте <code>UPLOAD_QUOTA_MB</code> в .env)' ?>.
+        Хостинг маленький: ставьте макс. ширину 1366 и формат WebP.
+    </p>
+
     <section class="mq-gen" id="mqStock" aria-labelledby="mqStockTitle">
         <h2 id="mqStockTitle">Найти фото в интернете</h2>
         <?php if (empty($stockReady)): ?>
@@ -116,7 +121,8 @@
             <select id="mqMaxWidth" title="Уменьшает слишком большие фото перед загрузкой (быстрее загрузка и страница)">
                 <option value="0">Как есть</option>
                 <option value="2000">2000 px</option>
-                <option value="1600" selected>1600 px</option>
+                <option value="1600">1600 px</option>
+                <option value="1366" selected>1366 px (рекомендуется)</option>
                 <option value="1200">1200 px</option>
                 <option value="800">800 px</option>
             </select>
@@ -124,7 +130,7 @@
         <label>Формат:
             <select id="mqFormat">
                 <option value="">Как есть</option>
-                <option value="webp">WebP (легче)</option>
+                <option value="webp" selected>WebP (легче, рекомендуется)</option>
                 <option value="jpeg">JPEG</option>
             </select>
         </label>

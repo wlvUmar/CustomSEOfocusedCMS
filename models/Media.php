@@ -61,6 +61,10 @@ class Media {
                 }
             }
             
+            // Also remove the derived responsive copies (uploads/derived/<name>_w*.jpg|webp) — they were left behind before
+            if (!class_exists('ImageVariants', false)) require_once BASE_PATH . '/services/ImageVariants.php';
+            ImageVariants::deleteDerivedFor($filename);
+
             // Delete database record
             $sql = "DELETE FROM media WHERE id = ?";
             return $this->db->query($sql, [$id]);

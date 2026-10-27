@@ -240,7 +240,8 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         <select id="picker-maxw" title="Уменьшает слишком большие фото при загрузке / добавлении">
                             <option value="0">Как есть</option>
                             <option value="2000">2000 px</option>
-                            <option value="1600" selected>1600 px</option>
+                            <option value="1600">1600 px</option>
+                            <option value="1366" selected>1366 px (рекомендуется)</option>
                             <option value="1200">1200 px</option>
                             <option value="800">800 px</option>
                         </select>
@@ -248,7 +249,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <label>Формат
                         <select id="picker-format">
                             <option value="">Как есть</option>
-                            <option value="webp">WebP (легче)</option>
+                            <option value="webp" selected>WebP (легче, рекомендуется)</option>
                             <option value="jpeg">JPEG</option>
                         </select>
                     </label>

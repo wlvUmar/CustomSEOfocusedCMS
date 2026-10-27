@@ -101,15 +101,19 @@ class StockImages {
             ? self::PIXABAY_API . '?' . http_build_query(['key' => self::apiKey(), 'q' => $query, 'image_type' => 'photo', 'safesearch' => 'true', 'page' => $page, 'per_page' => $perPage])
             : self::PEXELS_API . '/search?' . http_build_query(['query' => $query, 'page' => $page, 'per_page' => $perPage]);
 
-        $data = self::cached($url, $provider);
-        if ($data === null) {
-            [$code, $body] = self::get($url, $provider);
-            if ($code < 200 || $code >= 300) self::fail($code, $provider);
-            $data = json_decode($body, true);
-            if (!is_array($data)) throw new RuntimeException('Bad response from ' . self::attribution()['name'], 502);
-            self::cacheSet($url, $data);
-        }
+        // Cache the compact, already-normalised result (a few KB), not the raw API response (tens of KB): small hosting plan.
+        $cachedOut = self::cached($url, $provider);
+        if (is_array($cachedOut) && isset($cachedOut['results'])) return $cachedOut;
+        [$code, $body] = self::get($url, $provider);
+        if ($code < 200 || $code >= 300) self::fail($code, $provider);
+        $data = json_decode($body, true);
+        if (!is_array($data)) throw new RuntimeException('Bad response from ' . self::attribution()['name'], 502);
+        $out = self::normalizeSearch($provider, $data, $page, $perPage);
+        self::cacheSet($url, $out);
+        return $out;
+    }
 
+    private static function normalizeSearch(string $provider, array $data, int $page, int $perPage): array {
         if ($provider === 'pixabay') {
             $results = [];
             foreach (($data['hits'] ?? []) as $p) {
@@ -267,11 +271,14 @@ class StockImages {
     private static function cacheSet(string $url, array $data): void {
         $dir = dirname(self::cacheFile($url));
         if (!is_dir($dir)) @mkdir($dir, 0750, true);
-        // bounded: drop the oldest files past 300
+        // bounded (small hosting plan): drop expired files, then the oldest past 60 files
         $files = glob($dir . '/*.json') ?: [];
-        if (count($files) > 300) {
+        foreach ($files as $i => $f) {
+            if (time() - (int)@filemtime($f) > max(self::CACHE_TTL)) { @unlink($f); unset($files[$i]); }
+        }
+        if (count($files) > 60) {
             usort($files, static fn($a, $b) => filemtime($a) <=> filemtime($b));
-            foreach (array_slice($files, 0, count($files) - 250) as $old) @unlink($old);
+            foreach (array_slice($files, 0, count($files) - 50) as $old) @unlink($old);
         }
         @file_put_contents(self::cacheFile($url), json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
     }

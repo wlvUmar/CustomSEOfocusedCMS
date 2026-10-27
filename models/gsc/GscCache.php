@@ -32,8 +32,24 @@ class GscCache {
         $dir = BASE_PATH . '/storage/gsc_cache';
         if (!is_dir($dir)) @mkdir($dir, 0750, true);
         $file = $dir . '/' . $key . '.json';
-        // Bounded cache: cap at 200 files, GC oldest if over
+        // Bounded cache (small hosting plan): drop expired files, then cap total size (~3 MB) as well as the file count.
+        // GSC responses with 5000 rows are ~0.5 MB each, so a file-count cap alone could still fill the account.
         $files = glob($dir . '/*.json') ?: [];
+        $total = 0;
+        foreach ($files as $i => $f) {
+            if (time() - (int)@filemtime($f) > self::CACHE_TTL) { if (!is_link($f)) @unlink($f); unset($files[$i]); continue; }
+            $total += (int)@filesize($f);
+        }
+        if ($total > 3 * 1048576) {
+            usort($files, fn($a, $b) => filemtime($a) <=> filemtime($b));
+            foreach ($files as $i => $old) {
+                if ($total <= 2 * 1048576) break;
+                if (is_link($old)) continue;
+                $total -= (int)@filesize($old);
+                @unlink($old);
+                unset($files[$i]);
+            }
+        }
         if (count($files) > 200) {
             usort($files, fn($a,$b) => filemtime($a) <=> filemtime($b));
             foreach (array_slice($files, 0, count($files) - 180) as $old) {
