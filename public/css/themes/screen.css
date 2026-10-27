@@ -188,3 +188,12 @@ body.theme-screen .bot-modal__cta{background:linear-gradient(135deg,#7c5cff,#5b8
 body.theme-screen .bot-modal__note{color:var(--muted)}
 @media (min-width:641px){body.theme-screen .bot-modal__card{border-radius:14px}}
 @media (max-width:640px){body.theme-screen .bot-modal__card{border-radius:14px 14px 0 0}}
+
+/* CTA blocks (.c-cta): the neon-cyan --teal is too bright as a button fill; use the theme's violet like the hero buttons */
+body.theme-screen .c-cta{background:var(--surface-2);border-color:var(--border);border-radius:14px}
+body.theme-screen .c-cta__btn{background:linear-gradient(135deg,#7c5cff,#5b8cff);border-color:transparent;color:#fff;border-radius:999px;box-shadow:0 8px 24px rgba(124,92,255,.4)}
+body.theme-screen .c-cta__btn:hover{background:linear-gradient(135deg,#8a6cff,#6a98ff);border-color:transparent}
+body.theme-screen .c-cta__btn--ghost{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.3);color:var(--ink);box-shadow:none}
+body.theme-screen .c-cta__btn--ghost:hover{background:rgba(255,255,255,.15);color:var(--ink)}
+body.theme-screen .c-cta--bot{background:var(--orange-light);border:1px dashed rgba(124,92,255,.55)}
+body.theme-screen .c-cta__badge{background:linear-gradient(135deg,#7c5cff,#5b8cff);color:#fff}
