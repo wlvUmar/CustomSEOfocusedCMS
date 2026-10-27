@@ -461,6 +461,16 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
 .c-picker-loading{grid-column:1/-1;padding:20px;text-align:center;color:#6b7280}
 .c-picker-empty{grid-column:1/-1;padding:20px;text-align:center;color:#9ca3af}
 .c-picker-error{grid-column:1/-1;padding:12px;color:#b91c1c}
+/* RU / UZ field switch (pages-lang.js) */
+.lang-toggle{display:inline-flex;align-items:center;gap:4px;margin:0 0 14px;padding:4px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:10px}
+.lang-toggle__label{margin:0 8px 0 6px;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
+.lang-toggle__btn{border:0;background:transparent;border-radius:7px;padding:7px 18px;font-size:13px;font-weight:700;color:#4b5563;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}
+.lang-toggle__btn:hover{background:#e5e7eb;color:#111827}
+.lang-toggle__btn:focus-visible{outline:2px solid var(--teal,#0e9f8a);outline-offset:2px}
+.lang-toggle__btn.is-active{background:var(--teal,#0e9f8a);color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.lang-toggle__btn .lang-warn{margin-left:6px;padding:1px 6px;border-radius:999px;background:#fef3c7;color:#b45309;font-size:11px;font-weight:700}
+.admin-form[data-lang="ru"] .lang-field--uz,.admin-form[data-lang="uz"] .lang-field--ru{display:none}
+.admin-form[data-lang="ru"] .lang-row,.admin-form[data-lang="uz"] .lang-row{display:block}
 </style>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
