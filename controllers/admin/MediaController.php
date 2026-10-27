@@ -325,6 +325,20 @@ class MediaController extends Controller {
             $tmp = $dl['path'];
             $credit = preg_replace('/[^a-z0-9]+/', '-', strtolower(iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $dl['photographer']) ?: 'photographer'));
             $original = 'pexels-' . $photoId . '-' . trim(mb_substr($credit, 0, 40), '-') . '.jpg';
+
+            // Optional crop / resize / format from the picker (the browser only has a thumbnail, so it sends the crop
+            // area as fractions of the image and the server applies it to the full-size download).
+            $crop = null;
+            if (!empty($_POST['crop']) && preg_match('/^[0-9.]+(,[0-9.]+){3}$/', (string)$_POST['crop'])) {
+                $crop = array_map('floatval', explode(',', (string)$_POST['crop']));
+            }
+            $format = in_array((string)($_POST['format'] ?? ''), ['jpeg', 'webp'], true) ? (string)$_POST['format'] : '';
+            $maxW = max(0, min(4000, (int)($_POST['max_width'] ?? 0)));
+            $t = $this->mediaService->transformFile($tmp, ['crop' => $crop, 'max_width' => $maxW, 'format' => $format]);
+            if ($t) {
+                @unlink($tmp);
+                $tmp = $t[0];
+            }
             $stored = $this->mediaService->storeLocalFile($tmp, $original);
         } catch (Throwable $e) {
             if ($tmp && is_file($tmp)) @unlink($tmp); // json() exits, which would skip a finally block

@@ -235,6 +235,26 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     <button type="button" class="c-picker-tab active" data-picker-tab="library" role="tab">Моя медиатека</button>
                     <button type="button" class="c-picker-tab" data-picker-tab="stock" role="tab">Фото из интернета (Pexels)</button>
                 </div>
+                <div class="c-picker-opts">
+                    <label>Макс. ширина
+                        <select id="picker-maxw" title="Уменьшает слишком большие фото при загрузке / добавлении">
+                            <option value="0">Как есть</option>
+                            <option value="2000">2000 px</option>
+                            <option value="1600" selected>1600 px</option>
+                            <option value="1200">1200 px</option>
+                            <option value="800">800 px</option>
+                        </select>
+                    </label>
+                    <label>Формат
+                        <select id="picker-format">
+                            <option value="">Как есть</option>
+                            <option value="webp">WebP (легче)</option>
+                            <option value="jpeg">JPEG</option>
+                        </select>
+                    </label>
+                    <label class="c-picker-check"><input type="checkbox" id="picker-crop-first"> Обрезать перед загрузкой</label>
+                    <small>Действует на «Upload &amp; attach» и на фото из интернета (✂ на фото = обрезать).</small>
+                </div>
                 <div class="c-picker-bar" id="media-picker-library-bar">
                     <div class="c-picker-filters">
                         <button type="button" class="btn btn-sm media-picker-filter active" data-picker-filter="all">All</button>
@@ -478,7 +498,8 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
 </form>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.7.0/tinymce.min.js"></script>
-<script src="<?= BASE_URL ?>/js/admin/pages-edit.js"></script>
+<script src="<?= BASE_URL ?>/js/admin/image-tools.js?v=<?= @filemtime(BASE_PATH . '/public/js/admin/image-tools.js') ?: 1 ?>"></script>
+<script src="<?= BASE_URL ?>/js/admin/pages-edit.js?v=<?= @filemtime(BASE_PATH . '/public/js/admin/pages-edit.js') ?: 1 ?>"></script>
 
 <?php if ($page): ?>
 <script id="ai-boot" type="application/json"><?= json_encode([
@@ -524,6 +545,12 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
 .c-stock-foot a{color:var(--teal)}
 .c-stock-credit-tag{position:absolute;inset:auto 0 0 0;background:linear-gradient(transparent,rgba(0,0,0,.72));padding:22px 8px 7px;color:#fff;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1}
 .c-stock-card-busy{opacity:.55;pointer-events:none}
+.c-picker-opts{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:8px 14px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280}
+.c-picker-opts label{display:flex;align-items:center;gap:6px}
+.c-picker-opts select{padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:12px}
+.c-picker-opts small{flex-basis:100%;color:#9ca3af}
+.c-stock-crop{position:absolute;top:7px;left:7px;z-index:3;border:0;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;line-height:1;padding:4px 7px;cursor:pointer;opacity:0;transition:opacity .16s}
+.c-picker-card:hover .c-stock-crop,.c-stock-crop:focus-visible{opacity:1}
 .c-stock-alt{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px 0;font-size:12px}
 .c-stock-alt[hidden]{display:none}
 .c-stock-alt button{border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:3px 10px;font-size:12px;color:#374151;cursor:pointer}

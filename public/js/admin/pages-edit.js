@@ -319,11 +319,13 @@ document.addEventListener('change', (e) => {
                         const card=document.createElement('div');
                         card.className='c-picker-card';
                         card.innerHTML = `<img src="${escHtml(p.thumb)}" alt="${escHtml(p.alt||'')}" class="c-picker-img" loading="lazy" decoding="async">
+                            <button type="button" class="c-stock-crop" title="Обрезать перед добавлением">✂</button>
                             <div class="c-picker-hover picker-hover"><span>Выбрать</span></div>
                             <div class="c-stock-credit-tag">${escHtml(p.photographer)} · Pexels</div>`;
                         card.addEventListener('mouseenter', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='1'; h.firstElementChild.style.transform='translateY(0)'; }});
                         card.addEventListener('mouseleave', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='0'; h.firstElementChild.style.transform='translateY(2px)'; }});
                         card.addEventListener('click', ()=> stockImport(p, card));
+                        card.querySelector('.c-stock-crop').addEventListener('click', ev=>{ ev.stopPropagation(); stockCropThenImport(p, card); });
                         grid.appendChild(card);
                     });
                     status.textContent = '«'+j.query+'» — найдено '+j.total;
@@ -333,13 +335,56 @@ document.addEventListener('change', (e) => {
                     status.textContent = 'Ошибка: '+(e.message||e);
                 }
             }
-            async function stockImport(p, card){
+            // picker toolbar: max width / format for uploads and stock photos, "crop before upload" for uploads
+            function pickerOpts(){
+                return {
+                    maxWidth: parseInt((byId('picker-maxw')||{}).value, 10) || 0,
+                    format: (byId('picker-format')||{}).value || '',
+                    cropFirst: !!(byId('picker-crop-first')||{}).checked
+                };
+            }
+            // Upload & attach: optional crop dialog per file, then canvas resize/convert. Resolves to the files to send, or null if cancelled.
+            async function prepareUploads(files){
+                const IT = window.ImageTools;
+                const opts = pickerOpts();
+                const out = [];
+                for (const f of Array.from(files)) {
+                    let file = f;
+                    if (IT) {
+                        if (opts.cropFirst && /^image\/(jpeg|png|webp)$/.test(f.type)) {
+                            const url = URL.createObjectURL(f);
+                            let res;
+                            try { res = await IT.cropDialog({src:url, mime:f.type, title:f.name, allowRotate:true, allowSkip:true, wantBlob:true}); }
+                            catch(e){ alert(e.message || e); res = {skipped:true}; }
+                            URL.revokeObjectURL(url);
+                            if (res === null) return null;      // cancelled: upload nothing
+                            if (res.blob) file = new File([res.blob], f.name, {type:f.type, lastModified:Date.now()});
+                        }
+                        file = await IT.resize(file, {maxWidth: opts.maxWidth, format: opts.format});
+                    }
+                    out.push(file);
+                }
+                return out;
+            }
+            // ✂ on a stock photo: crop on the thumbnail, the server applies the same area to the full-size photo
+            async function stockCropThenImport(p, card){
+                if(!window.ImageTools || !pickerSlot) return;
+                const status=byId('stock-status');
+                try{
+                    const res = await window.ImageTools.cropDialog({src:p.thumb, title:'Обрезка по превью — та же область возьмётся из полного фото', allowRotate:false, allowSkip:false, wantBlob:false});
+                    if(res && res.fractions) await stockImport(p, card, res.fractions);
+                }catch(e){ status.textContent='Ошибка: '+(e.message||e); }
+            }
+            async function stockImport(p, card, crop){
                 if(!pickerSlot) return;
                 const status=byId('stock-status');
                 card.classList.add('c-stock-card-busy');
                 status.textContent='Загружаю фото на сайт…';
                 const fd=new FormData();
                 fd.append('csrf_token', getCsrf()); fd.append('page_id', pageId); fd.append('section', pickerSlot); fd.append('photo_id', p.id);
+                const po = pickerOpts();
+                fd.append('max_width', po.maxWidth); fd.append('format', po.format);
+                if(crop) fd.append('crop', [crop.x, crop.y, crop.w, crop.h].map(v=>v.toFixed(5)).join(','));
                 try{
                     const r = await fetch(baseUrl+'/admin/media/stock-import', {method:'POST', body:fd, headers:{'Accept':'application/json','X-CSRF-Token':getCsrf()}});
                     const j = await r.json().catch(()=>({}));
@@ -421,7 +466,9 @@ document.addEventListener('change', (e) => {
                 if(!files||!files.length) return;
                 if(!pickerSlot){ alert('Pick a slot first'); return; }
                 const fd=new FormData();
-                Array.from(files).forEach(f=>fd.append('files[]', f));
+                const prepared = await prepareUploads(files);   // optional crop dialog + resize/convert (picker toolbar)
+                if(!prepared){ input.value=''; return; }        // cancelled in the crop dialog
+                prepared.forEach(f=>fd.append('files[]', f, f.name));
                 fd.append('csrf_token', getCsrf());
                 fd.append('page_id', pageId);
                 fd.append('section', pickerSlot);

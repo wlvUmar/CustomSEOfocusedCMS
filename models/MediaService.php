@@ -108,6 +108,84 @@ class MediaService {
     }
 
     /**
+     * Crop / resize / convert an image file with GD (used for stock photos, where the browser only has a thumbnail).
+     * $opts: 'crop' => [x, y, w, h] as fractions (0..1) of the source image, or null;
+     *        'max_width' => int px (0 = keep size, never upscales); 'format' => '' (keep) | 'jpeg' | 'webp'.
+     * @return array{0:string,1:string}|null [path of a NEW temp file (caller deletes it), mime]; null = nothing to do or failed
+     */
+    public function transformFile($path, array $opts) {
+        $crop = $opts['crop'] ?? null;
+        $maxW = max(0, (int)($opts['max_width'] ?? 0));
+        $fmt = (string)($opts['format'] ?? '');
+        if (!$crop && !$maxW && $fmt === '') return null;
+        if (!function_exists('imagecreatefromstring')) return null;
+        $info = @getimagesize($path);
+        $raw = @file_get_contents($path);
+        $img = $raw !== false ? @imagecreatefromstring($raw) : false;
+        unset($raw);
+        if (!$info || !$img) return null;
+
+        $sw = imagesx($img);
+        $sh = imagesy($img);
+        if (is_array($crop) && count($crop) === 4) {
+            [$cx, $cy, $cw, $ch] = array_map('floatval', $crop);
+            if ($cx >= 0 && $cy >= 0 && $cw > 0.01 && $ch > 0.01 && $cx + $cw <= 1.001 && $cy + $ch <= 1.001) {
+                $x = (int)round($cx * $sw);
+                $y = (int)round($cy * $sh);
+                $w = max(1, min($sw - $x, (int)round($cw * $sw)));
+                $h = max(1, min($sh - $y, (int)round($ch * $sh)));
+                $cropped = @imagecrop($img, ['x' => $x, 'y' => $y, 'width' => $w, 'height' => $h]);
+                if ($cropped) {
+                    imagedestroy($img);
+                    $img = $cropped;
+                    $sw = $w;
+                    $sh = $h;
+                }
+            }
+        }
+        if ($maxW > 0 && $sw > $maxW) {
+            $scaled = @imagescale($img, $maxW, (int)max(1, round($sh * $maxW / $sw)), IMG_BICUBIC);
+            if ($scaled) {
+                imagedestroy($img);
+                $img = $scaled;
+                $sw = imagesx($img);
+                $sh = imagesy($img);
+            }
+        }
+
+        $type = $info[2];
+        $out = $fmt === 'webp' ? 'webp' : ($fmt === 'jpeg' ? 'jpeg'
+            : ($type === IMAGETYPE_PNG || $type === IMAGETYPE_GIF ? 'png' : ($type === IMAGETYPE_WEBP ? 'webp' : 'jpeg')));
+        if ($out === 'webp' && !function_exists('imagewebp')) $out = 'jpeg';
+
+        $tmp = tempnam(sys_get_temp_dir(), 'img');
+        $ok = false;
+        if ($out === 'jpeg') {
+            $flat = imagecreatetruecolor($sw, $sh);          // flatten any transparency onto white
+            imagefill($flat, 0, 0, imagecolorallocate($flat, 255, 255, 255));
+            imagecopy($flat, $img, 0, 0, 0, 0, $sw, $sh);
+            imagedestroy($img);
+            $img = $flat;
+            $ok = imagejpeg($img, $tmp, 88);
+            $mime = 'image/jpeg';
+        } elseif ($out === 'webp') {
+            if (function_exists('imagepalettetotruecolor') && !imageistruecolor($img)) imagepalettetotruecolor($img);
+            $ok = imagewebp($img, $tmp, 85);
+            $mime = 'image/webp';
+        } else {
+            imagesavealpha($img, true);
+            $ok = imagepng($img, $tmp, 6);
+            $mime = 'image/png';
+        }
+        imagedestroy($img);
+        if (!$ok || (int)@filesize($tmp) <= 0) {
+            @unlink($tmp);
+            return null;
+        }
+        return [$tmp, $mime];
+    }
+
+    /**
      * Store a file that already sits on the server (e.g. a downloaded stock photo) as a media item.
      * Not for $_FILES uploads (those use uploadSingle). Verifies the real image bytes and the size limit.
      */
