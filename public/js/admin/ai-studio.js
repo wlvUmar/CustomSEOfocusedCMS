@@ -459,7 +459,6 @@
         els.model.disabled = value;
         els.newSession.disabled = value;
         if (els.modeToggle) els.modeToggle.disabled = value;
-        if (els.historyToggle) els.historyToggle.disabled = value;
         els.stop.hidden = !value;
         if (els.suggestions) {
             els.suggestions.classList.toggle('ai-suggestions--disabled', value);

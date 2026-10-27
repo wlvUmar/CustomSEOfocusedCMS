@@ -70,19 +70,20 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <button id="ai-mode-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="PLAN is read-only — switch to BUILD to apply edits. Approval still required for large (&gt;800 char) changes even in BUILD." aria-pressed="false" aria-label="Toggle Plan/Build mode">
                         <i data-feather="layout"></i> <span id="ai-mode-label">Plan</span>
                     </button>
-                    <button id="ai-history-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="Chat history"><i data-feather="clock"></i> History</button>
-                <button id="ai-new-session" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="rotate-ccw"></i> New session</button>
             </div>
         </div>
     </header>
 
     <div class="ai-studio__layout ai-studio__layout--full">
-        <aside id="ai-history-panel" class="ai-studio__sidebar ai-history-panel" aria-label="Chat history">
-            <div class="ai-history-panel__head">
-                <span>Chats</span>
-                <button id="ai-history-close" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="Hide chats"><i data-feather="x"></i></button>
+        <aside id="ai-history-panel" class="ai-studio__sidebar ai-history-panel" aria-label="Chats">
+            <div class="ai-studio__sidebar-top">
+                <button id="ai-history-toggle" type="button" class="ai-side-btn" aria-pressed="true" aria-label="Collapse or expand chats" title="Collapse or expand chats"><i data-feather="sidebar"></i><span>Chats</span></button>
+                <span class="ai-studio__sidebar-title">Chats</span>
             </div>
-            <div id="ai-history-list" class="ai-history-list"></div>
+            <button id="ai-new-session" type="button" class="ai-side-btn ai-side-btn--new" title="New chat"><i data-feather="plus"></i><span>New chat</span></button>
+            <div class="ai-studio__sidebar-body">
+                <div id="ai-history-list" class="ai-history-list"></div>
+            </div>
         </aside>
 
         <section class="ai-studio__chat">
