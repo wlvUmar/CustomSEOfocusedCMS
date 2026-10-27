@@ -284,10 +284,9 @@ class MediaController extends Controller {
         $pageId = (int)($_GET['page_id'] ?? 0);
         $page = $pageId > 0 ? $pageModel->getById($pageId) : null;
         $q = trim((string)($_GET['q'] ?? ''));
-        if ($q === '') {
-            $parent = ($page && !empty($page['parent_id'])) ? $pageModel->getById((int)$page['parent_id']) : null;
-            $q = StockImages::suggestQuery($page ?: [], $parent ?: null);
-        }
+        $parent = ($page && !empty($page['parent_id'])) ? $pageModel->getById((int)$page['parent_id']) : null;
+        $suggested = StockImages::suggestQueries($page ?: [], $parent ?: null); // from config/stock_queries.php
+        if ($q === '') $q = $suggested[0];
         $pg = max(1, min(50, (int)($_GET['p'] ?? 1)));
         if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
         try {
@@ -297,7 +296,7 @@ class MediaController extends Controller {
             error_log('[StockImages] search ' . $code . ' ' . $e->getMessage());
             $this->json(['success' => false, 'message' => $e->getMessage()], $code >= 400 && $code < 600 ? $code : 502);
         }
-        $this->json(['success' => true, 'query' => $q] + $res + [
+        $this->json(['success' => true, 'query' => $q, 'alternatives' => array_slice($suggested, 0, 4)] + $res + [
             'attribution' => ['text' => 'Фото: Pexels', 'url' => 'https://www.pexels.com'],
         ]);
     }
@@ -341,11 +340,13 @@ class MediaController extends Controller {
         $n = count($this->pageMediaModel->getPageMedia($pageId, $section));
         $titleRu = trim((string)($page['title_ru'] ?? '')) ?: (string)$page['slug'];
         $titleUz = trim((string)($page['title_uz'] ?? '')) ?: $titleRu;
+        $altRu = mb_substr($titleRu . ' — фото' . ($n ? ' ' . ($n + 1) : ''), 0, 255);
+        $altUz = mb_substr($titleUz . ' — rasm' . ($n ? ' ' . ($n + 1) : ''), 0, 255);
         $this->mediaService->attach($pageId, $stored['media_id'], [
             'section' => $section,
             'position' => $n,
-            'alt_text_ru' => mb_substr($titleRu . ' — фото' . ($n ? ' ' . ($n + 1) : ''), 0, 255),
-            'alt_text_uz' => mb_substr($titleUz . ' — rasm' . ($n ? ' ' . ($n + 1) : ''), 0, 255),
+            'alt_text_ru' => $altRu,
+            'alt_text_uz' => $altUz,
             'caption_ru' => '',
             'caption_uz' => '',
             'width' => null,
@@ -359,6 +360,8 @@ class MediaController extends Controller {
             'filename' => $stored['filename'],
             'original_name' => $original,
             'photographer' => $dl['photographer'],
+            'alt_text_ru' => $altRu,
+            'alt_text_uz' => $altUz,
         ]);
     }
 
@@ -374,6 +377,7 @@ class MediaController extends Controller {
             'title_uz' => (string)($p['title_uz'] ?? ''),
         ], (new Page())->getAll(true));
         require_once BASE_PATH . '/models/ImageGenerator.php';
+        require_once BASE_PATH . '/models/StockImages.php';
         $genReady = true;
         $genUsed = 0;
         try {
@@ -385,6 +389,7 @@ class MediaController extends Controller {
             'pageName' => 'media-quick',
             'quickPages' => $pages,
             'maxUploadMb' => round(MAX_UPLOAD_SIZE / 1048576, 1),
+            'stockReady' => StockImages::isConfigured(),
             'gen' => [
                 'configured' => ImageGenerator::isConfigured(),
                 'ready' => $genReady,

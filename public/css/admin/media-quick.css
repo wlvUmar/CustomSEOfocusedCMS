@@ -1,5 +1,6 @@
 /* Admin Quick Add photos (/admin/media/quick). Loaded by views/admin/layout/header.php via pageName=media-quick. */
 .mq { max-width: 1100px; }
+.mq [hidden] { display: none !important; } /* class display rules (.mq-bulk, .btn) would otherwise override the hidden attribute */
 .mq-hint { margin: 0 0 14px; color: #64748b; font-size: 13px; line-height: 1.5; }
 
 .mq-gen { margin: 0 0 16px; padding: 16px 18px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
@@ -15,6 +16,19 @@
 .mq-note { margin: 10px 0 0; font-size: 12px; color: #64748b; line-height: 1.5; }
 .mq-warn { padding: 10px 12px; border-radius: 8px; background: #fffbeb; color: #92400e; font-size: 13px; }
 .mq-ai { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: #ede9fe; color: #6d28d9; }
+
+#mqStock .mq-gen-grid { grid-template-columns: 1fr 2fr 1fr; }
+.mq-stock-alt { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.mq-stock-alt button { border: 1px solid #cbd5e1; background: #fff; border-radius: 999px; padding: 3px 11px; font-size: 12px; color: #475569; cursor: pointer; }
+.mq-stock-alt button:hover, .mq-stock-alt button.is-active { border-color: #0e9f8a; color: #0e9f8a; }
+.mq-stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.mq-stock-card { position: relative; height: 130px; border: 2px solid transparent; border-radius: 10px; overflow: hidden; background: #f1f5f9; cursor: pointer; }
+.mq-stock-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mq-stock-card.is-selected { border-color: #0e9f8a; }
+.mq-stock-card.is-selected::after { content: '✓'; position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: #0e9f8a; color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; }
+.mq-stock-card.is-busy { opacity: .5; pointer-events: none; }
+.mq-stock-credit { position: absolute; inset: auto 0 0 0; padding: 18px 7px 5px; background: linear-gradient(transparent, rgba(0,0,0,.7)); color: #fff; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mq-pexels { padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: #dcfce7; color: #166534; }
 
 .mq-drop { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 34px 16px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #475569; text-align: center; cursor: pointer; }
 .mq-drop strong { font-size: 16px; color: #1e293b; }
@@ -44,8 +58,20 @@
 .mq-remove:hover { color: #dc2626; }
 .mq-summary { margin: 14px 0; font-size: 14px; color: #1e293b; }
 
+.mq-crop-btn { border: 0; background: none; color: #0e7490; font-size: 13px; cursor: pointer; }
+.mq-crop-btn:hover { text-decoration: underline; }
+.mq-modal { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, .65); }
+.mq-modal__card { width: min(920px, 100%); max-height: 94vh; display: flex; flex-direction: column; border-radius: 12px; background: #fff; overflow: hidden; }
+.mq-modal__stage { height: min(62vh, 560px); background: #0f172a; }
+.mq-modal__stage img { display: block; max-width: 100%; }
+.mq-modal__bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; }
+.mq-modal__info { font-size: 12px; color: #64748b; font-variant-numeric: tabular-nums; }
+.mq-ratios { display: flex; flex-wrap: wrap; gap: 4px; }
+.mq-ratios button { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; color: #475569; cursor: pointer; }
+.mq-ratios button.is-active { background: #0e9f8a; border-color: #0e9f8a; color: #fff; }
+
 @media (max-width: 640px) {
-    .mq-gen-grid { grid-template-columns: 1fr 1fr; }
+    .mq-gen-grid, #mqStock .mq-gen-grid { grid-template-columns: 1fr 1fr; }
     .mq-row { grid-template-columns: 1fr; }
     .mq-thumb { width: 100%; height: 160px; }
     .mq-fields { grid-template-columns: 1fr; }

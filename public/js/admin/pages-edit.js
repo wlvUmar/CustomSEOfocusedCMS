@@ -306,6 +306,13 @@ document.addEventListener('change', (e) => {
                     stockLoaded = true;
                     stockQuery = j.query;                 // keyword derived by the server when the box was empty
                     byId('stock-search').value = j.query;
+                    // alternative queries from config/stock_queries.php as one-click chips
+                    const alt = byId('stock-alt');
+                    if(alt){
+                        const list = (j.alternatives||[]);
+                        alt.hidden = list.length < 2;
+                        alt.innerHTML = list.map(q=>`<button type="button" data-stock-q="${escHtml(q)}"${q===j.query?' class="active"':''}>${escHtml(q)}</button>`).join('');
+                    }
                     if(reset) grid.innerHTML='';
                     if(reset && !j.results.length){ grid.innerHTML='<div class="c-picker-empty">Ничего не найдено. Попробуйте другой запрос (лучше по-английски).</div>'; }
                     j.results.forEach(p=>{
@@ -351,6 +358,10 @@ document.addEventListener('change', (e) => {
             if(byId('stock-search-btn')) byId('stock-search-btn').addEventListener('click', ()=>{ stockQuery=stockInput.value.trim(); stockLoad(true); });
             if(stockInput) stockInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); stockQuery=stockInput.value.trim(); stockLoad(true); }});
             if(byId('stock-more')) byId('stock-more').addEventListener('click', ()=>{ stockPage++; stockLoad(false); });
+            if(byId('stock-alt')) byId('stock-alt').addEventListener('click', e=>{
+                const b = e.target.closest('[data-stock-q]');
+                if(b){ stockQuery = b.getAttribute('data-stock-q'); stockInput.value = stockQuery; stockLoad(true); }
+            });
 
             window.pickerAttach = async function(mediaId, btn){
                 if (!pickerSlot) return;

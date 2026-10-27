@@ -124,7 +124,10 @@
             '<label>Alt UZ<input type="text" data-f="altUz" value="' + esc(row.altUz) + '" maxlength="255"' + locked + '></label>' +
             '<div class="mq-meta"><span class="mq-status ' + st[0] + '" data-status>' + esc(st[1]) + '</span>' +
             (row.generated ? '<span class="mq-ai" title="Создано ИИ">ИИ</span>' : '') +
-            '<span>' + esc(row.file.name) + ' · ' + sizeLabel(row.file.size) + '</span>' +
+            (row.stock ? '<span class="mq-pexels" title="Фото с Pexels">Pexels</span>' : '') +
+            '<span>' + esc(row.file.name) + (row.file.size ? ' · ' + sizeLabel(row.file.size) : '') + '</span>' +
+            (row.state === 'done' || row.state === 'uploading' || row.stock || typeof Cropper === 'undefined' ? '' : '<button type="button" class="mq-crop-btn" data-crop>Обрезать</button>') +
+            (row.cropped ? '<span class="mq-status" title="Обрезано вручную">обрезано</span>' : '') +
             (row.state === 'done' || row.state === 'uploading' ? '' : '<button type="button" class="mq-remove" data-remove>Убрать</button>') +
             '</div></div></div>';
     }
@@ -252,11 +255,134 @@
         return window.csrfToken || (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
     }
 
+    // ── resize / convert before upload (toolbar: max width + format). Crop is separate: "Обрезать" on a row. ──
+    function loadBitmap(file) {
+        if (window.createImageBitmap) return createImageBitmap(file);
+        return new Promise(function (resolve, reject) {
+            var img = new Image();
+            img.onload = function () { resolve(img); };
+            img.onerror = reject;
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
+    // Resolves to the File to send: the original when nothing needs changing (or on any failure).
+    function prepareFile(row) {
+        var maxW = parseInt($('#mqMaxWidth').value, 10) || 0;
+        var fmt = $('#mqFormat').value;                       // '' | 'webp' | 'jpeg'
+        var f = row.file;
+        if ((!maxW && !fmt) || f.type === 'image/gif') return Promise.resolve(f); // GIF may be animated: leave it
+        return loadBitmap(f).then(function (bmp) {
+            var w = bmp.naturalWidth || bmp.width;
+            var h = bmp.naturalHeight || bmp.height;
+            var scale = maxW && w > maxW ? maxW / w : 1;
+            var target = fmt === 'webp' ? 'image/webp' : (fmt === 'jpeg' ? 'image/jpeg' : f.type);
+            if (scale === 1 && target === f.type) return f;   // already small enough and in the right format
+            var cw = Math.max(1, Math.round(w * scale));
+            var ch = Math.max(1, Math.round(h * scale));
+            var canvas = document.createElement('canvas');
+            canvas.width = cw;
+            canvas.height = ch;
+            var ctx = canvas.getContext('2d');
+            if (target === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch); } // no black where PNG was transparent
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(bmp, 0, 0, cw, ch);
+            return new Promise(function (resolve) {
+                canvas.toBlob(function (blob) {
+                    if (!blob) return resolve(f);
+                    var type = blob.type || target;            // browsers without WebP encoding return PNG
+                    var ext = type === 'image/jpeg' ? 'jpg' : (type === 'image/webp' ? 'webp' : 'png');
+                    resolve(new File([blob], f.name.replace(/\.[^.]+$/, '') + '.' + ext, { type: type, lastModified: Date.now() }));
+                }, target, target === 'image/png' ? undefined : 0.85);
+            });
+        }).catch(function () { return f; });
+    }
+
+    // ── crop (Cropper.js) ────────────────────────────────────
+    var cropper = null;
+    var cropRow = null;
+
+    function closeCrop() {
+        if (cropper) { cropper.destroy(); cropper = null; }
+        cropRow = null;
+        $('#mqCropStage').innerHTML = '';
+        $('#mqCrop').hidden = true;
+    }
+
+    function setRatio(value) {
+        if (!cropper) return;
+        cropper.setAspectRatio(value === 'free' ? NaN : parseFloat(value));
+        Array.prototype.forEach.call($('#mqRatios').querySelectorAll('button'), function (b) {
+            b.classList.toggle('is-active', b.getAttribute('data-ratio') === value);
+        });
+    }
+
+    function openCrop(row) {
+        if (typeof Cropper === 'undefined') { window.alert('Cropper.js не загрузился (нет доступа к cdnjs.cloudflare.com).'); return; }
+        cropRow = row;
+        var stage = $('#mqCropStage');
+        stage.innerHTML = '<img id="mqCropImg" alt="">';
+        $('#mqCrop').hidden = false;
+        var img = $('#mqCropImg');
+        img.onload = function () {
+            cropper = new Cropper(img, {
+                viewMode: 1, autoCropArea: 1, background: false, responsive: true,
+                crop: function (e) { $('#mqCropInfo').textContent = Math.round(e.detail.width) + ' × ' + Math.round(e.detail.height) + ' px'; }
+            });
+            setRatio('free');
+        };
+        img.src = row.url;
+    }
+
+    function applyCrop() {
+        if (!cropper || !cropRow) return;
+        var row = cropRow;
+        var type = /^image\/(jpeg|png|webp)$/.test(row.file.type) ? row.file.type : 'image/png';
+        var canvas = cropper.getCroppedCanvas({
+            maxWidth: 4096, maxHeight: 4096, imageSmoothingQuality: 'high',
+            fillColor: type === 'image/jpeg' ? '#fff' : 'transparent'
+        });
+        if (!canvas) { window.alert('Не удалось обрезать это изображение.'); return; }
+        canvas.toBlob(function (blob) {
+            if (!blob) { window.alert('Не удалось обрезать это изображение.'); return; }
+            var ext = type === 'image/jpeg' ? 'jpg' : (type === 'image/webp' ? 'webp' : 'png');
+            var file = new File([blob], row.file.name.replace(/\.[^.]+$/, '') + '.' + ext, { type: type, lastModified: Date.now() });
+            URL.revokeObjectURL(row.url);
+            row.file = file;
+            row.url = URL.createObjectURL(file);
+            row.cropped = true;
+            closeCrop();
+            render();
+        }, type, 0.92);
+    }
+
+    $('#mqRatios').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-ratio]');
+        if (b) setRatio(b.getAttribute('data-ratio'));
+    });
+    $('#mqCrop').addEventListener('click', function (e) {
+        var r = e.target.closest('[data-rotate]');
+        if (r && cropper) cropper.rotate(parseInt(r.getAttribute('data-rotate'), 10));
+        if (e.target === this) closeCrop();                    // click on the dark backdrop
+    });
+    $('#mqCropCancel').addEventListener('click', closeCrop);
+    $('#mqCropApply').addEventListener('click', applyCrop);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#mqCrop').hidden) closeCrop(); });
+    $('#mqRows').addEventListener('click', function (e) {
+        if (!e.target.hasAttribute('data-crop')) return;
+        var row = rowById(e.target.closest('.mq-row').getAttribute('data-id'));
+        if (row) openCrop(row);
+    });
+
     function uploadRow(row) {
         row.state = 'uploading';
         refreshRow(row);
+        return prepareFile(row).then(function (file) { return uploadPrepared(row, file); });
+    }
+
+    function uploadPrepared(row, file) {
         var fd = new FormData();
-        fd.append('file', row.file, row.file.name);
+        fd.append('file', file, file.name);
         fd.append('page_id', row.page.id);
         fd.append('section', row.section);
         fd.append('alt_text_ru', row.altRu);
@@ -375,6 +501,143 @@
             }).then(function () {
                 generating = false;
                 genBtn.disabled = false;
+            });
+        });
+    }
+
+    // ── Stock photos (Pexels): tick several → imported + attached straight away (panel exists only with PEXELS_API_KEY) ──
+    var stockSearchBtn = $('#mqStockSearchBtn');
+    if (stockSearchBtn) {
+        var stockPageIn = $('#mqStockPage');
+        var stockQueryIn = $('#mqStockQuery');
+        var stockGrid = $('#mqStockGrid');
+        var stockStatus = $('#mqStockStatus');
+        var stockMore = $('#mqStockMore');
+        var stockAdd = $('#mqStockAdd');
+        var stockSel = {};       // photo id -> photo (kept across "show more")
+        var stockPageNo = 1;
+        var stockBusy = false;
+
+        function setStockStatus(text, isError) {
+            stockStatus.textContent = text;
+            stockStatus.className = 'mq-gen-status' + (isError ? ' is-error' : '');
+        }
+        function stockCount() { return Object.keys(stockSel).length; }
+        function updateStockAdd() {
+            stockAdd.textContent = 'Добавить выбранные (' + stockCount() + ')';
+            stockAdd.disabled = stockBusy || stockCount() === 0;
+        }
+        function stockJson(r) {
+            return r.json().catch(function () { return { success: false, message: 'Неверный ответ сервера (HTTP ' + r.status + ')' }; });
+        }
+
+        function addStockCard(p) {
+            var card = document.createElement('div');
+            card.className = 'mq-stock-card' + (stockSel[p.id] ? ' is-selected' : '');
+            card.setAttribute('data-id', p.id);
+            card.innerHTML = '<img src="' + esc(p.thumb) + '" alt="' + esc(p.alt || '') + '" loading="lazy" decoding="async">' +
+                '<div class="mq-stock-credit">' + esc(p.photographer) + ' · Pexels</div>';
+            card.addEventListener('click', function () {
+                if (stockBusy) return;
+                if (stockSel[p.id]) { delete stockSel[p.id]; card.classList.remove('is-selected'); }
+                else { stockSel[p.id] = p; card.classList.add('is-selected'); }
+                updateStockAdd();
+            });
+            stockGrid.appendChild(card);
+        }
+
+        function stockLoad(reset) {
+            var page = bySlug[stockPageIn.value.trim()];
+            if (!page) { setStockStatus('Выберите страницу из списка.', true); stockPageIn.focus(); return; }
+            if (reset) { stockPageNo = 1; stockGrid.innerHTML = ''; stockMore.hidden = true; }
+            setStockStatus('Ищу…', false);
+            var url = BASE + '/admin/media/stock-search?page_id=' + page.id + '&q=' + encodeURIComponent(stockQueryIn.value.trim()) + '&p=' + stockPageNo;
+            fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' }).then(stockJson).then(function (res) {
+                if (!res.success) throw new Error(res.message || 'не удалось загрузить');
+                stockQueryIn.value = res.query;           // keyword derived from the page when the box was empty
+                var altBox = $('#mqStockAlt');            // alternatives from config/stock_queries.php as chips
+                var alts = res.alternatives || [];
+                altBox.hidden = alts.length < 2;
+                altBox.innerHTML = alts.map(function (a) {
+                    return '<button type="button" data-q="' + esc(a) + '"' + (a === res.query ? ' class="is-active"' : '') + '>' + esc(a) + '</button>';
+                }).join('');
+                res.results.forEach(addStockCard);
+                setStockStatus(res.results.length || !reset ? '«' + res.query + '» — найдено ' + res.total : 'Ничего не найдено — измените запрос.', false);
+                stockMore.hidden = !res.has_more;
+            }).catch(function (err) {
+                setStockStatus('Ошибка: ' + err.message, true);
+            });
+        }
+
+        // choosing a page resets the query so the keyword is derived from that page, then searches
+        stockPageIn.addEventListener('input', function () {
+            if (!bySlug[stockPageIn.value.trim()]) return;
+            stockSel = {};
+            stockQueryIn.value = '';
+            updateStockAdd();
+            stockLoad(true);
+        });
+        stockSearchBtn.addEventListener('click', function () { stockLoad(true); });
+        stockQueryIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); stockLoad(true); } });
+        stockMore.addEventListener('click', function () { stockPageNo++; stockLoad(false); });
+        $('#mqStockAlt').addEventListener('click', function (e) {
+            var b = e.target.closest('[data-q]');
+            if (!b) return;
+            stockQueryIn.value = b.getAttribute('data-q');
+            stockLoad(true);
+        });
+
+        function importOne(photo, page, section) {
+            var card = stockGrid.querySelector('.mq-stock-card[data-id="' + photo.id + '"]');
+            if (card) card.classList.add('is-busy');
+            var fd = new FormData();
+            fd.append('csrf_token', csrf());
+            fd.append('page_id', page.id);
+            fd.append('section', section);
+            fd.append('photo_id', photo.id);
+            return fetch(BASE + '/admin/media/stock-import', {
+                method: 'POST', body: fd, credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-CSRF-Token': csrf(), 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(stockJson).catch(function () {
+                return { success: false, message: 'Сетевая ошибка' };
+            }).then(function (res) {
+                if (card) card.classList.remove('is-busy');
+                if (!res.success) throw new Error(res.message || 'не удалось добавить');
+                delete stockSel[photo.id];
+                if (card) card.classList.remove('is-selected');
+                rows.push({
+                    id: nextId++, file: { name: res.original_name, size: 0 }, url: photo.thumb,
+                    page: page, section: section, stock: true,
+                    altRu: res.alt_text_ru || '', altUz: res.alt_text_uz || '', altRuTouched: true, altUzTouched: true,
+                    state: 'done', message: ''
+                });
+                render();
+            });
+        }
+
+        stockAdd.addEventListener('click', function () {
+            var page = bySlug[stockPageIn.value.trim()];
+            if (!page) { setStockStatus('Выберите страницу из списка.', true); return; }
+            var section = $('#mqStockSection').value;
+            var photos = Object.keys(stockSel).map(function (k) { return stockSel[k]; });
+            if (!photos.length || stockBusy) return;
+            stockBusy = true;
+            updateStockAdd();
+            var done = 0;
+            var chain = Promise.resolve();
+            photos.forEach(function (p) {
+                chain = chain.then(function () {
+                    setStockStatus('Добавляю ' + (done + 1) + ' из ' + photos.length + '…', false);
+                    return importOne(p, page, section).then(function () { done++; });
+                });
+            });
+            chain.then(function () {
+                setStockStatus('Готово: добавлено ' + done + ' шт. Они в списке ниже.', false);
+            }).catch(function (err) {
+                setStockStatus((done ? 'Добавлено ' + done + ', затем ошибка: ' : 'Ошибка: ') + err.message, true);
+            }).then(function () {
+                stockBusy = false;
+                updateStockAdd();
             });
         });
     }

@@ -14,6 +14,39 @@
         это шаблон, а не описание картинки, поправьте при необходимости. Макс. размер файла: <?= e($maxUploadMb) ?> МБ.
     </p>
 
+    <section class="mq-gen" id="mqStock" aria-labelledby="mqStockTitle">
+        <h2 id="mqStockTitle">Найти фото в интернете (Pexels)</h2>
+        <?php if (empty($stockReady)): ?>
+            <div class="mq-warn">Не задан <code>PEXELS_API_KEY</code> в <code>.env</code>. Бесплатный ключ: <a href="https://www.pexels.com/api/" target="_blank" rel="noopener noreferrer">pexels.com/api</a>.</div>
+        <?php else: ?>
+        <div class="mq-gen-grid">
+            <label>Страница
+                <input type="text" id="mqStockPage" list="mqPages" placeholder="slug страницы" autocomplete="off">
+            </label>
+            <label class="mq-stock-q">Запрос (подставится из страницы, лучше по-английски)
+                <input type="text" id="mqStockQuery" placeholder="refrigerator kitchen" autocomplete="off" maxlength="100">
+            </label>
+            <label>Раздел
+                <select id="mqStockSection">
+                    <option value="gallery">Галерея</option><option value="content">Контент</option>
+                    <option value="hero">Hero</option><option value="banner">Баннер</option>
+                </select>
+            </label>
+        </div>
+        <div class="mq-gen-actions">
+            <button type="button" class="btn btn-secondary" id="mqStockSearchBtn">Искать</button>
+            <button type="button" class="btn btn-primary" id="mqStockAdd" disabled>Добавить выбранные (0)</button>
+            <span id="mqStockStatus" class="mq-gen-status" aria-live="polite"></span>
+        </div>
+        <div id="mqStockAlt" class="mq-stock-alt" hidden></div>
+        <div id="mqStockGrid" class="mq-stock-grid"></div>
+        <div class="mq-gen-actions">
+            <button type="button" class="btn btn-secondary" id="mqStockMore" hidden>Показать ещё</button>
+        </div>
+        <p class="mq-note">Отметьте фото кликом и нажмите «Добавить выбранные» — они сразу загрузятся на сайт и прикрепятся к странице. Фото общие (например, «холодильник»), а не конкретная модель. Источник: <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer">Pexels</a> — бесплатно, указывать автора не обязательно.</p>
+        <?php endif; ?>
+    </section>
+
     <section class="mq-gen" id="mqGen" aria-labelledby="mqGenTitle">
         <h2 id="mqGenTitle">Создать изображения с помощью ИИ</h2>
         <?php if (empty($gen['configured'])): ?>
@@ -79,6 +112,22 @@
                 <option value="banner">Баннер</option>
             </select>
         </label>
+        <label>Макс. ширина:
+            <select id="mqMaxWidth" title="Уменьшает слишком большие фото перед загрузкой (быстрее загрузка и страница)">
+                <option value="0">Как есть</option>
+                <option value="2000">2000 px</option>
+                <option value="1600" selected>1600 px</option>
+                <option value="1200">1200 px</option>
+                <option value="800">800 px</option>
+            </select>
+        </label>
+        <label>Формат:
+            <select id="mqFormat">
+                <option value="">Как есть</option>
+                <option value="webp">WebP (легче)</option>
+                <option value="jpeg">JPEG</option>
+            </select>
+        </label>
         <span class="mq-spacer"></span>
         <button type="button" class="btn btn-secondary" id="mqClear">Очистить список</button>
         <button type="button" class="btn btn-primary" id="mqUpload">Загрузить и прикрепить</button>
@@ -88,9 +137,33 @@
     <div id="mqSummary" class="mq-summary" aria-live="polite"></div>
 
     <datalist id="mqPages"></datalist>
+
+    <!-- Crop window (Cropper.js) -->
+    <div class="mq-modal" id="mqCrop" hidden role="dialog" aria-modal="true" aria-label="Обрезка фото">
+        <div class="mq-modal__card">
+            <div class="mq-modal__stage" id="mqCropStage"></div>
+            <div class="mq-modal__bar">
+                <div class="mq-ratios" id="mqRatios">
+                    <button type="button" data-ratio="free" class="is-active">Свободно</button>
+                    <button type="button" data-ratio="1.3333333">4:3</button>
+                    <button type="button" data-ratio="1.7777778">16:9</button>
+                    <button type="button" data-ratio="1">1:1</button>
+                    <button type="button" data-ratio="0.75">3:4</button>
+                </div>
+                <button type="button" class="btn btn-secondary" data-rotate="-90" aria-label="Повернуть влево">⟲</button>
+                <button type="button" class="btn btn-secondary" data-rotate="90" aria-label="Повернуть вправо">⟳</button>
+                <span class="mq-modal__info" id="mqCropInfo"></span>
+                <span class="mq-spacer"></span>
+                <button type="button" class="btn btn-secondary" id="mqCropCancel">Отмена</button>
+                <button type="button" class="btn btn-primary" id="mqCropApply">Применить</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>window.MQ_PAGES = <?= json_encode($quickPages, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js" defer></script>
 <script src="<?= BASE_URL ?>/js/admin/media-quick.js?v=<?= @filemtime(BASE_PATH . '/public/js/admin/media-quick.js') ?: 1 ?>" defer></script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>

@@ -252,6 +252,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                         <input type="text" id="stock-search" placeholder="Поиск фото (лучше по-английски), напр. refrigerator kitchen" class="c-picker-search" autocomplete="off">
                         <button type="button" class="btn btn-sm btn-primary" id="stock-search-btn">Искать</button>
                     </div>
+                    <div id="stock-alt" class="c-stock-alt" hidden></div>
                     <div id="stock-grid" class="c-picker-grid"></div>
                     <div id="stock-status" class="c-picker-status"></div>
                     <div class="c-stock-foot">
@@ -523,6 +524,10 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
 .c-stock-foot a{color:var(--teal)}
 .c-stock-credit-tag{position:absolute;inset:auto 0 0 0;background:linear-gradient(transparent,rgba(0,0,0,.72));padding:22px 8px 7px;color:#fff;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1}
 .c-stock-card-busy{opacity:.55;pointer-events:none}
+.c-stock-alt{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px 0;font-size:12px}
+.c-stock-alt[hidden]{display:none}
+.c-stock-alt button{border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:3px 10px;font-size:12px;color:#374151;cursor:pointer}
+.c-stock-alt button:hover,.c-stock-alt button.active{border-color:var(--teal);color:var(--teal)}
 .c-code{font-family:monospace;font-size:13px}
 .c-slot-row{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--teal);border-radius:10px;background:#f9fafb}
 .c-slot-thumbs{display:flex;gap:6px;flex-wrap:wrap;min-width:64px;align-items:center}

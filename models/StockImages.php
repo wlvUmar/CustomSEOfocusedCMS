@@ -12,22 +12,6 @@ class StockImages {
     private const CDN_HOST = 'images.pexels.com';
     private const CACHE_TTL = 1800;
 
-    /** [regex over slug + Russian title, English search query]. First match wins; Pexels works best in English. */
-    private const QUERY_MAP = [
-        ['/холодил|морозил|xolodil|morozil|fridge|refriger/iu', 'refrigerator kitchen'],
-        ['/стирал|stiral|washing|washer/iu', 'washing machine laundry'],
-        ['/телевиз|televiz|\btv\b/iu', 'television living room'],
-        ['/кондиц|konditsion|air-?cond|split/iu', 'air conditioner'],
-        ['/газов|плит|plita|stove|cooker/iu', 'gas stove kitchen'],
-        ['/ковер|ковр|kovr|kovri|carpet|rug/iu', 'carpet rug living room'],
-        ['/диван|divan|sofa/iu', 'sofa living room'],
-        ['/кроват|матрас|kravat|bed\b/iu', 'bed bedroom'],
-        ['/шкаф|shkaf|wardrobe/iu', 'wardrobe bedroom'],
-        ['/кухн|kuxn|kitchen/iu', 'kitchen furniture'],
-        ['/стол|стул|stol|stul/iu', 'dining table chairs'],
-        ['/мебел|mebel|furniture/iu', 'furniture home interior'],
-    ];
-
     public static function apiKey(): string {
         return trim((string)(getenv('PEXELS_API_KEY') ?: ''), " \t\n\r\0\x0B\"'");
     }
@@ -36,16 +20,48 @@ class StockImages {
         return self::apiKey() !== '';
     }
 
-    /** English query from the page's slug/title; falls back to its parent page (model pages sit under a category). */
-    public static function suggestQuery(array $page, ?array $parent = null): string {
+    /** config/stock_queries.php (editable slug → search-words map); empty array if the file is missing. */
+    private static function config(): array {
+        static $cfg = null;
+        if ($cfg === null) {
+            $file = BASE_PATH . '/config/stock_queries.php';
+            $cfg = is_file($file) ? (array)(include $file) : [];
+        }
+        return $cfg;
+    }
+
+    /** @return string[] one or more queries from a config value (string | list) */
+    private static function asList($v): array {
+        return array_values(array_filter(array_map('strval', (array)$v), static fn($s) => trim($s) !== ''));
+    }
+
+    /**
+     * Search queries for a page, best first: exact slug → slug patterns → slug+title patterns, then the same for the
+     * parent page (model pages sit under a category), then the default. First entry is the default search.
+     * @return string[]
+     */
+    public static function suggestQueries(array $page, ?array $parent = null): array {
+        $cfg = self::config();
         foreach ([$page, $parent ?? []] as $p) {
-            $hay = mb_strtolower(($p['slug'] ?? '') . ' ' . ($p['title_ru'] ?? ''));
-            if (trim($hay) === '') continue;
-            foreach (self::QUERY_MAP as [$re, $query]) {
-                if (preg_match($re, $hay)) return $query;
+            $slug = (string)($p['slug'] ?? '');
+            if ($slug === '') continue;
+            if (isset($cfg['exact'][$slug])) {
+                $list = self::asList($cfg['exact'][$slug]);
+                if ($list) return $list;
+            }
+            foreach (($cfg['slug_patterns'] ?? []) as [$re, $v]) {
+                if (@preg_match($re, $slug) === 1) return self::asList($v);
+            }
+            $hay = mb_strtolower($slug . ' ' . ($p['title_ru'] ?? ''));
+            foreach (($cfg['text_patterns'] ?? []) as [$re, $v]) {
+                if (@preg_match($re, $hay) === 1) return self::asList($v);
             }
         }
-        return 'home appliances';
+        return self::asList($cfg['default'] ?? ['home appliances']) ?: ['home appliances'];
+    }
+
+    public static function suggestQuery(array $page, ?array $parent = null): string {
+        return self::suggestQueries($page, $parent)[0];
     }
 
     /**
