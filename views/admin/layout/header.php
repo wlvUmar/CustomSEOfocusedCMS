@@ -35,15 +35,15 @@
         // Prefer the nested CSS file if it exists on disk; otherwise try a hyphenated sibling
         $cssFs = defined('PUBLIC_PATH') ? PUBLIC_PATH . $cssPath : __DIR__ . '/../../../public' . $cssPath;
         if (file_exists($cssFs)) {
-            echo '<link rel="stylesheet" href="' . BASE_URL . $cssPath . '?v=2' . "\">\n";
+            echo '<link rel="stylesheet" href="' . BASE_URL . $cssPath . '?v=' . assetVersion($cssPath) . "\">\n";
         } else {
             $altPath = '/css/admin/' . str_replace('/', '-', $pageName) . '.css';
             $altFs = defined('PUBLIC_PATH') ? PUBLIC_PATH . $altPath : __DIR__ . '/../../../public' . $altPath;
             if (file_exists($altFs)) {
-                echo '<link rel="stylesheet" href="' . BASE_URL . $altPath . '?v=2' . "\">\n";
+                echo '<link rel="stylesheet" href="' . BASE_URL . $altPath . '?v=' . assetVersion($altPath) . "\">\n";
             } else {
                 // Fallback to original path (no-op if missing) — keeps behavior predictable during deploys
-                echo '<link rel="stylesheet" href="' . BASE_URL . $cssPath . '?v=2' . "\">\n";
+                echo '<link rel="stylesheet" href="' . BASE_URL . $cssPath . '?v=' . assetVersion($cssPath) . "\">\n";
             }
         }
     }
