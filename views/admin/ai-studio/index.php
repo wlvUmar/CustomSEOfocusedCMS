@@ -58,7 +58,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                                 <i data-feather="layout"></i> <span id="ai-mode-label">Plan</span>
                             </button>
                             <label class="ai-studio__model-label" for="ai-model">Model</label>
-                            <select id="ai-model">
+                            <select id="ai-model" hidden>
                                 <?php
                                 // Prefer live list with pricing from OpenCode Go API (see Opencode::fetchModels); fallback to curated MODELS.
                                 $models = $models ?? [];
@@ -93,6 +93,12 @@ require BASE_PATH . '/views/admin/layout/header.php';
                                 }
                                 ?>
                             </select>
+                            <div id="ai-model-picker" class="ai-model">
+                                <button id="ai-model-btn" type="button" class="ai-model__btn" aria-haspopup="listbox" aria-expanded="false">
+                                    <span id="ai-model-label">Model</span><span class="ai-model__chev" aria-hidden="true">▾</span>
+                                </button>
+                                <div id="ai-model-menu" class="ai-model__menu" role="listbox" hidden></div>
+                            </div>
                         </div>
                         <div class="ai-composer__actions">
                             <button id="ai-stop" type="button" class="ai-btn ai-btn--danger" hidden><i data-feather="square"></i> Stop</button>
@@ -136,5 +142,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
     };
 </script>
 <script src="<?= BASE_URL ?>/js/admin/ai-studio.js?v=<?= (is_file(PUBLIC_PATH . '/js/admin/ai-studio.js') ? filemtime(PUBLIC_PATH . '/js/admin/ai-studio.js') : (is_file(BASE_PATH . '/public/js/admin/ai-studio.js') ? filemtime(BASE_PATH . '/public/js/admin/ai-studio.js') : time())) ?>"></script>
+<script src="<?= BASE_URL ?>/js/admin/ai-model-picker.js?v=<?= assetVersion('/js/admin/ai-model-picker.js') ?>"></script>
 
 <?php require BASE_PATH . '/views/admin/layout/footer.php'; ?>
