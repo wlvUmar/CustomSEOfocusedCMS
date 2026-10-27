@@ -159,3 +159,13 @@ body.theme-wave .bot-modal__cta:hover{background:linear-gradient(135deg,#34c1d9,
 body.theme-wave .bot-modal__dismiss{justify-self:center}
 @media (min-width:641px){body.theme-wave .bot-modal__card{border-radius:28px}}
 @media (max-width:640px){body.theme-wave .bot-modal__card{border-radius:28px 28px 0 0}}
+
+/* CTA blocks (.c-cta): white pill container, teal gradient pill buttons */
+body.theme-wave .c-cta{background:#fff;border:1px solid var(--border);border-radius:99px;padding-left:clamp(22px,4vw,40px);padding-right:clamp(22px,4vw,40px)}
+body.theme-wave .c-cta--bot{border:1px dashed var(--teal)}
+body.theme-wave .c-cta__btn{background:linear-gradient(135deg,#27b0c8,#087f95);border-color:transparent;color:#fff;border-radius:99px;box-shadow:0 10px 24px rgba(8,127,149,.35)}
+body.theme-wave .c-cta__btn:hover{background:linear-gradient(135deg,#34c1d9,#0a91a9);border-color:transparent}
+body.theme-wave .c-cta__btn--ghost{background:transparent;border:1.5px solid var(--teal);color:var(--teal);box-shadow:none}
+body.theme-wave .c-cta__btn--ghost:hover{background:var(--teal-light);border-color:var(--teal);color:var(--teal-dark)}
+body.theme-wave .c-cta__badge{background:linear-gradient(135deg,#27b0c8,#087f95)}
+@media (max-width:560px){body.theme-wave .c-cta{border-radius:32px}}

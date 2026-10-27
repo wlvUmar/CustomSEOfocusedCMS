@@ -133,3 +133,12 @@ body.theme-frost .bot-modal__cta{background:#0b2540;border-radius:6px}
 body.theme-frost .bot-modal__cta:hover{background:var(--teal)}
 @media (min-width:641px){body.theme-frost .bot-modal__card{border-radius:8px}}
 @media (max-width:640px){body.theme-frost .bot-modal__card{border-radius:8px 8px 0 0}}
+
+/* CTA blocks (.c-cta): crisp white panel, navy square uppercase buttons */
+body.theme-frost .c-cta{background:#fff;border:2px solid #b9d6e6;border-radius:4px}
+body.theme-frost .c-cta--bot{border:2px dashed var(--teal)}
+body.theme-frost .c-cta__btn{background:#0b2540;border-color:#0b2540;color:#fff;border-radius:4px;text-transform:uppercase;letter-spacing:.06em;font-size:.82rem}
+body.theme-frost .c-cta__btn:hover{background:var(--teal);border-color:var(--teal)}
+body.theme-frost .c-cta__btn--ghost{background:transparent;border:1.5px solid #0b2540;color:#0b2540}
+body.theme-frost .c-cta__btn--ghost:hover{background:var(--teal-light);border-color:#0b2540;color:#0b2540}
+body.theme-frost .c-cta__badge{background:#0b2540;border-radius:2px;letter-spacing:.08em}

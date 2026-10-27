@@ -163,3 +163,12 @@ body.theme-flame .bot-modal__dismiss{justify-self:start}
 body.theme-flame .bot-modal__note{text-align:left}
 @media (min-width:641px){body.theme-flame .bot-modal__card{border-radius:4px}}
 @media (max-width:640px){body.theme-flame .bot-modal__card{border-radius:4px 4px 0 0}}
+
+/* CTA blocks (.c-cta): dark panel, red-orange square uppercase buttons like the hero */
+body.theme-flame .c-cta{background:#1c1815;border-color:var(--border);border-radius:3px}
+body.theme-flame .c-cta--bot{border:1px dashed rgba(255,138,61,.6)}
+body.theme-flame .c-cta__btn{background:linear-gradient(135deg,#e8461b,#c2300c);border-color:transparent;color:#fff;border-radius:3px;text-transform:uppercase;letter-spacing:.07em;font-size:.84rem;box-shadow:0 0 0 1px rgba(255,255,255,.14) inset,0 10px 30px rgba(214,58,20,.5)}
+body.theme-flame .c-cta__btn:hover{background:linear-gradient(135deg,#f0502a,#c2300c);border-color:transparent;box-shadow:0 14px 40px rgba(214,58,20,.7)}
+body.theme-flame .c-cta__btn--ghost{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.3);color:var(--ink);box-shadow:none}
+body.theme-flame .c-cta__btn--ghost:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:var(--ink);box-shadow:none}
+body.theme-flame .c-cta__badge{background:#d63a14;border-radius:2px}

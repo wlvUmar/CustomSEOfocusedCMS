@@ -128,3 +128,12 @@ body.theme-fresh .bot-modal__cta{background:linear-gradient(135deg,#1f5fd8,#0f3a
 body.theme-fresh .bot-modal__dismiss{justify-self:center}
 @media (min-width:641px){body.theme-fresh .bot-modal__card{border-radius:24px}}
 @media (max-width:640px){body.theme-fresh .bot-modal__card{border-radius:24px 24px 0 0}}
+
+/* CTA blocks (.c-cta): white rounded card, blue gradient primary, green secondary like the hero */
+body.theme-fresh .c-cta{background:#fff;border:1px solid var(--border);border-radius:20px;box-shadow:0 10px 26px rgba(15,58,145,.06)}
+body.theme-fresh .c-cta--bot{border:1px dashed var(--teal)}
+body.theme-fresh .c-cta__btn{background:linear-gradient(135deg,#1f5fd8,#0f3a91);border-color:transparent;color:#fff;border-radius:16px;box-shadow:0 10px 24px rgba(15,58,145,.3)}
+body.theme-fresh .c-cta__btn:hover{background:linear-gradient(135deg,#2c6fe6,#1346a8);border-color:transparent}
+body.theme-fresh .c-cta__btn--ghost{background:#0b8a6a;border-color:transparent;color:#fff;box-shadow:0 10px 24px rgba(11,138,106,.3)}
+body.theme-fresh .c-cta__btn--ghost:hover{background:#086b52;border-color:transparent;color:#fff}
+body.theme-fresh .c-cta__badge{background:#0b8a6a}
