@@ -244,6 +244,18 @@ class SeoEnhancer {
             $content
         );
 
+        // An EMPTY slot that sits alone in a <p>/<div> (the editor wraps it like that) would leave an empty element
+        // behind (extra margin, a blank gap). Drop the wrapper too; filled slots are left for the replacement below.
+        $content = preg_replace_callback(
+            '/<(p|div)(?:\s[^>]*)?>(?:\s|&nbsp;)*\{\{media\.([a-zA-Z0-9_-]+)\}\}(?:\s|&nbsp;)*<\/\1>/i',
+            function($matches) use ($store, $pageId) {
+                $slot = $matches[2];
+                if ($slot === 'hero' || $slot === 'banner' || empty($store->fetchSection($pageId, $slot))) return '';
+                return $matches[0];
+            },
+            $content
+        );
+
         // Process slot placeholders: {{media.slot_key}} — flexible in-content visuals
         // Uses page_media.section as slot_key. Reserved hero/banner stay untouched (no placeholder needed).
         // Empty slot -> '' (zero DOM, invisible, no layout shift). 1 image -> single <img>, N images -> c-gallery-grid.
@@ -260,6 +272,10 @@ class SeoEnhancer {
             },
             $content
         );
+
+        // Safety net: never show a raw media token to visitors (spaces inside the braces, a non-numeric id,
+        // a typo…): anything that still looks like {{media…}} after the passes above is removed.
+        $content = preg_replace('/\{\{\s*media(?:[.:\-][^{}]*)?\s*\}\}/i', '', $content);
 
         return $content;
     }

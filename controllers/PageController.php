@@ -96,8 +96,10 @@ class PageController extends Controller {
             ]
         ];
         
-        $page["content_$currentLang"] = renderTemplate($page["content_$currentLang"], $templateData);
+        // Media placeholders FIRST: renderTemplate() reads {{media.slot}} as an unknown variable and replaces it with '',
+        // which erased every slot (even filled ones) before processMediaPlaceholders() could render the images.
         $page["content_$currentLang"] = processMediaPlaceholders($page["content_$currentLang"], $page['id']);
+        $page["content_$currentLang"] = renderTemplate($page["content_$currentLang"], $templateData);
         // Merge custom_css: rotation may override base page custom_css if rotation active
         if ($rotationUsed && !empty($rotationContent['custom_css'])) {
             $page['custom_css'] = $rotationContent['custom_css'];
