@@ -447,3 +447,11 @@ body:has(.ai-studio--app), .admin-main:has(.ai-studio--app), .admin-content:has(
 
 /* X / History toggle must really hide the sidebar. The flex rule above has the same specificity and came later, so the hide rule needs one more class. */
 .ai-studio__layout.ai-studio__layout--no-sidebar .ai-studio__sidebar.ai-history-panel{ display:none; }
+
+/* Chat tables and other rendered markdown. The admin's global tables.css paints every table white (table { background: white }, table th { color: #1f2937 }), so these rules need the higher specificity to win inside the chat. */
+.ai-studio .ai-msg__body.md table{ background:var(--ai-surface); box-shadow:none; border-radius:8px; color:var(--ai-ink); }
+.ai-studio .ai-msg__body.md th{ background:var(--ai-surface-2); color:var(--ai-ink); font-size:.8rem; }
+.ai-studio .ai-msg__body.md td{ background:transparent; color:var(--ai-ink); }
+.ai-studio .ai-msg__body.md th, .ai-studio .ai-msg__body.md td{ border:0; border-bottom:1px solid var(--ai-line); }
+.ai-studio .ai-msg__body.md tbody tr:hover td{ background:var(--ai-surface); }
+.ai-studio .ai-msg__body.md .ai-md-table-wrap{ background:var(--ai-bg); border-color:var(--ai-line); }

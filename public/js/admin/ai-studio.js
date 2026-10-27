@@ -372,7 +372,7 @@
         syncSessionsFromDb();
         // Chats sidebar (left): open/closed is remembered; closed by default on narrow screens
         const shellEl = document.querySelector('.ai-studio__layout');
-        const SIDEBAR_KEY = 'aiStudioSidebarOpen';
+        const SIDEBAR_KEY = 'aiStudioSidebar'; // new key: ignores the value saved by the earlier broken toggle
         function setSidebar(open) {
             if (!shellEl) return;
             shellEl.classList.toggle('ai-studio__layout--no-sidebar', !open);
