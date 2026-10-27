@@ -589,3 +589,8 @@ body:has(.ai-studio--app), .admin-main:has(.ai-studio--app), .admin-content:has(
 .ai-transcript{ -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 24px); mask-image:linear-gradient(to bottom, transparent 0, #000 24px); padding-bottom:230px; }
 .ai-scroll-fab{ bottom:168px; }
 .ai-activity, .ai-approval{ margin-top:0; margin-bottom:6px; }
+
+/* Chat tables: size each column to its content and scroll sideways inside the wrap, instead of squeezing every column into the chat width (global tables.css sets width:100%). */
+.ai-studio .ai-msg__body.md .ai-md-table-wrap{ overflow-x:auto; overflow-y:hidden; max-width:100%; scrollbar-width:thin; scrollbar-color:#4a4a52 transparent; }
+.ai-studio .ai-msg__body.md table{ width:auto; min-width:100%; }
+.ai-studio .ai-msg__body.md th, .ai-studio .ai-msg__body.md td{ white-space:normal; min-width:80px; max-width:420px; vertical-align:top; line-height:1.45; word-break:normal; }
