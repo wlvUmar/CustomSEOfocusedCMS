@@ -516,3 +516,37 @@ body:has(.ai-studio--app), .admin-main:has(.ai-studio--app), .admin-content:has(
   .ai-studio__layout--no-sidebar .ai-side-btn--new{ width:40px; padding:0; justify-content:center; border:1px solid var(--ai-line); }
   .ai-studio__rail{ border-left:0; border-top:1px solid var(--ai-line); }
 }
+
+/* ===== Shell v4: no top bar; mode + model live in the composer; chat gets the width ===== */
+.ai-studio__layout.ai-studio__layout--full{ grid-template-columns:260px minmax(0,1fr) minmax(360px,0.8fr) 52px; }
+.ai-studio__layout.ai-studio__layout--full.ai-studio__layout--no-sidebar{ grid-template-columns:56px minmax(0,1fr) minmax(360px,0.8fr) 52px; }
+.ai-studio__layout.ai-studio__layout--full.ai-studio__layout--single{ grid-template-columns:260px minmax(0,1fr) 52px; }
+.ai-studio__layout.ai-studio__layout--full.ai-studio__layout--no-sidebar.ai-studio__layout--single{ grid-template-columns:56px minmax(0,1fr) 52px; }
+.ai-studio__layout{ height:100%; }
+.ai-studio--app{ height:var(--ai-studio-h, calc(100dvh - 72px)); }
+.ai-studio__chat{ min-width:0; }
+.ai-transcript{ padding-top:24px; }
+.ai-transcript > *{ max-width:860px; }
+.ai-msg{ max-width:860px; }
+.ai-composer{ max-width:860px; }
+.ai-activity, .ai-approval{ max-width:836px; }
+
+/* composer toolbar: mode + model on the left, send on the right, inside the pill */
+.ai-composer__field{ display:flex; flex-direction:column; align-items:stretch; gap:0; padding:8px 8px 6px 14px; border-radius:26px; }
+.ai-composer__field #ai-input{ min-height:28px; padding:6px 0; }
+.ai-composer__toolbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:4px; }
+.ai-composer__tools{ display:flex; align-items:center; gap:8px; min-width:0; flex-wrap:wrap; }
+.ai-composer__toolbar .ai-composer__actions{ padding-bottom:0; }
+#ai-mode-toggle{ height:30px; border-radius:999px; }
+.ai-studio__model-label{ display:none; }
+#ai-model{ height:30px; max-width:240px; border:0; background-color:transparent; color:var(--ai-muted); font-size:.8rem; padding-left:6px; }
+#ai-model:focus{ box-shadow:none; }
+.ai-status, .ai-usage{ font-size:.72rem; }
+.ai-composer__meta{ justify-content:center; }
+
+@media (max-width:1024px){
+  .ai-studio__layout.ai-studio__layout--full, .ai-studio__layout.ai-studio__layout--full.ai-studio__layout--no-sidebar, .ai-studio__layout.ai-studio__layout--full.ai-studio__layout--single, .ai-studio__layout.ai-studio__layout--full.ai-studio__layout--no-sidebar.ai-studio__layout--single{ grid-template-columns:minmax(0,1fr); }
+  .ai-studio__layout{ height:auto; }
+  .ai-composer__tools{ gap:6px; }
+  #ai-model{ max-width:160px; }
+}

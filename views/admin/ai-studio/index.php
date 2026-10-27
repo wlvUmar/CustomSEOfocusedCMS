@@ -4,76 +4,6 @@ require BASE_PATH . '/views/admin/layout/header.php';
 ?>
 
 <div class="ai-studio ai-studio--app">
-    <header class="ai-studio__topbar">
-        <div class="ai-studio__heading">
-            <h1>AI Studio</h1>
-            <p class="ai-studio__subtitle">Investigate, edit pages, preview live — destructive changes require approval.</p>
-        </div>
-        <div class="ai-studio__topbar-right">
-            <div id="ai-gsc-bar" class="ai-gsc-inline" aria-label="GSC data">
-                <span class="ai-gsc-inline__dot" aria-hidden="true"></span>
-                <span class="ai-gsc-inline__label">GSC</span>
-                <?php
-                  $gscConfigured = !empty($gscStatus['configured']);
-                  $gscConnected = !empty($gscStatus['connected']);
-                ?>
-                <?php if (!$gscConfigured): ?>
-                    <span id="ai-gsc-status" class="ai-gsc-inline__status ai-gsc-inline__status--warn">Not configured</span>
-                <?php elseif ($gscConnected): ?>
-                    <span id="ai-gsc-status" class="ai-gsc-inline__status ai-gsc-inline__status--ok" title="<?= e($gscStatus['site_url'] ?? '') ?>">Connected</span>
-                <?php else: ?>
-                    <span id="ai-gsc-status" class="ai-gsc-inline__status">Not connected</span>
-                <?php endif; ?>
-                <?php if ($gscConfigured && !$gscConnected): ?>
-                    <a id="ai-gsc-connect" href="<?= BASE_URL ?>/admin/ai-studio/gsc-auth" class="ai-btn ai-btn--primary ai-btn--xs"><i data-feather="link"></i> Connect</a>
-                <?php elseif ($gscConnected): ?>
-                    <button id="ai-gsc-disconnect" type="button" class="ai-btn ai-btn--ghost ai-btn--xs" title="Disconnect Search Console"><i data-feather="log-out"></i> Disconnect</button>
-                <?php endif; ?>
-            </div>
-            <div class="ai-studio__controls">
-                <label class="ai-studio__model-label" for="ai-model">Model</label>
-                <select id="ai-model">
-                    <?php
-                    // Prefer live list with pricing from OpenCode Go API (see Opencode::fetchModels); fallback to curated MODELS.
-                    $models = $models ?? [];
-                    $modelsLive = $modelsLive ?? null;
-                    $renderList = null;
-                    if (!empty($modelsLive) && is_array($modelsLive)) {
-                        $renderList = $modelsLive;
-                    }
-                    if (is_array($renderList) && isset($renderList[0]['id'])) {
-                        // live shape: [{id, name, pricing, context_length}]
-                        foreach ($renderList as $m) {
-                            $id = $m['id'] ?? '';
-                            $name = $m['name'] ?? $id;
-                            $pricing = $m['pricing'] ?? null;
-                            $priceLabel = '';
-                            if (is_array($pricing)) {
-                                $p = (float)($pricing['prompt'] ?? 0);
-                                $c = (float)($pricing['completion'] ?? 0);
-                                if ($p == 0 && $c == 0) $priceLabel = 'FREE';
-                                else $priceLabel = '$' . number_format($p * 1e6, 2) . '/$' . number_format($c * 1e6, 2) . ' per 1M';
-                            }
-                            $ctxLabel = !empty($m['context_length']) ? (round($m['context_length']/1000) . 'k') : '';
-                            $suffix = trim(implode(' · ', array_filter([$priceLabel, $ctxLabel])));
-                            $display = e($name) . ($suffix !== '' ? ' — ' . e($suffix) : '');
-                            $sel = $id === 'opencode-go/muse-spark-1.2-contributor' ? ' selected' : '';
-                            echo '<option value="' . e($id) . '"' . $sel . ' title="' . e($id . ($suffix ? ' · ' . $suffix : '')) . '">' . $display . '</option>';
-                        }
-                    } else {
-                        foreach ($models as $key => $label) {
-                            echo '<option value="' . e($key) . '"' . ($key === 'opencode-go/muse-spark-1.2-contributor' ? ' selected' : '') . '>' . e($label) . '</option>';
-                        }
-                    }
-                    ?>
-                </select>
-                <button id="ai-mode-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="PLAN is read-only — switch to BUILD to apply edits. Approval still required for large (&gt;800 char) changes even in BUILD." aria-pressed="false" aria-label="Toggle Plan/Build mode">
-                        <i data-feather="layout"></i> <span id="ai-mode-label">Plan</span>
-                    </button>
-            </div>
-        </div>
-    </header>
-
     <div class="ai-studio__layout ai-studio__layout--full">
         <aside id="ai-history-panel" class="ai-studio__sidebar ai-history-panel" aria-label="Chats">
             <div class="ai-studio__sidebar-top">
@@ -122,9 +52,52 @@ require BASE_PATH . '/views/admin/layout/header.php';
             <form id="ai-form" class="ai-composer" autocomplete="off">
                 <div class="ai-composer__field">
                     <textarea id="ai-input" rows="1" placeholder="Message AI Studio…  (Shift+Enter for a new line)"></textarea>
-                    <div class="ai-composer__actions">
-                        <button id="ai-stop" type="button" class="ai-btn ai-btn--danger" hidden><i data-feather="square"></i> Stop</button>
-                        <button id="ai-send" type="submit" class="ai-btn ai-btn--primary ai-btn--send" aria-label="Send" title="Send"><i data-feather="arrow-up"></i></button>
+                    <div class="ai-composer__toolbar">
+                        <div class="ai-composer__tools">
+                            <button id="ai-mode-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="PLAN is read-only — switch to BUILD to apply edits. Approval still required for large (&gt;800 char) changes even in BUILD." aria-pressed="false" aria-label="Toggle Plan/Build mode">
+                                <i data-feather="layout"></i> <span id="ai-mode-label">Plan</span>
+                            </button>
+                            <label class="ai-studio__model-label" for="ai-model">Model</label>
+                            <select id="ai-model">
+                                <?php
+                                // Prefer live list with pricing from OpenCode Go API (see Opencode::fetchModels); fallback to curated MODELS.
+                                $models = $models ?? [];
+                                $modelsLive = $modelsLive ?? null;
+                                $renderList = null;
+                                if (!empty($modelsLive) && is_array($modelsLive)) {
+                                    $renderList = $modelsLive;
+                                }
+                                if (is_array($renderList) && isset($renderList[0]['id'])) {
+                                    // live shape: [{id, name, pricing, context_length}]
+                                    foreach ($renderList as $m) {
+                                        $id = $m['id'] ?? '';
+                                        $name = $m['name'] ?? $id;
+                                        $pricing = $m['pricing'] ?? null;
+                                        $priceLabel = '';
+                                        if (is_array($pricing)) {
+                                            $p = (float)($pricing['prompt'] ?? 0);
+                                            $c = (float)($pricing['completion'] ?? 0);
+                                            if ($p == 0 && $c == 0) $priceLabel = 'FREE';
+                                            else $priceLabel = '$' . number_format($p * 1e6, 2) . '/$' . number_format($c * 1e6, 2) . ' per 1M';
+                                        }
+                                        $ctxLabel = !empty($m['context_length']) ? (round($m['context_length']/1000) . 'k') : '';
+                                        $suffix = trim(implode(' · ', array_filter([$priceLabel, $ctxLabel])));
+                                        $display = e($name) . ($suffix !== '' ? ' — ' . e($suffix) : '');
+                                        $sel = $id === 'opencode-go/muse-spark-1.2-contributor' ? ' selected' : '';
+                                        echo '<option value="' . e($id) . '"' . $sel . ' title="' . e($id . ($suffix ? ' · ' . $suffix : '')) . '">' . $display . '</option>';
+                                    }
+                                } else {
+                                    foreach ($models as $key => $label) {
+                                        echo '<option value="' . e($key) . '"' . ($key === 'opencode-go/muse-spark-1.2-contributor' ? ' selected' : '') . '>' . e($label) . '</option>';
+                                    }
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <div class="ai-composer__actions">
+                            <button id="ai-stop" type="button" class="ai-btn ai-btn--danger" hidden><i data-feather="square"></i> Stop</button>
+                            <button id="ai-send" type="submit" class="ai-btn ai-btn--primary ai-btn--send" aria-label="Send" title="Send"><i data-feather="arrow-up"></i></button>
+                        </div>
                     </div>
                 </div>
                 <div class="ai-composer__meta">
