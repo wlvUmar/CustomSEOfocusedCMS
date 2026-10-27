@@ -72,21 +72,20 @@ require BASE_PATH . '/views/admin/layout/header.php';
                     </button>
                     <button id="ai-history-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="Chat history"><i data-feather="clock"></i> History</button>
                 <button id="ai-new-session" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="rotate-ccw"></i> New session</button>
-                <button id="ai-preview-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" aria-pressed="true"><i data-feather="sidebar"></i> <span id="ai-preview-toggle-label">Hide preview</span></button>
             </div>
         </div>
     </header>
 
     <div class="ai-studio__layout ai-studio__layout--full">
-        <section class="ai-studio__chat">
-
-            <div id="ai-history-panel" class="ai-history-panel" hidden>
-                <div class="ai-history-panel__head">
-                    <span>Sessions</span>
-                    <button id="ai-history-close" type="button" class="ai-btn ai-btn--ghost ai-btn--sm"><i data-feather="x"></i></button>
-                </div>
-                <div id="ai-history-list" class="ai-history-list"></div>
+        <aside id="ai-history-panel" class="ai-studio__sidebar ai-history-panel" aria-label="Chat history">
+            <div class="ai-history-panel__head">
+                <span>Chats</span>
+                <button id="ai-history-close" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" title="Hide chats"><i data-feather="x"></i></button>
             </div>
+            <div id="ai-history-list" class="ai-history-list"></div>
+        </aside>
+
+        <section class="ai-studio__chat">
 
             <div class="ai-transcript-wrap">
                 <div id="ai-transcript" class="ai-transcript" aria-live="polite">
@@ -148,6 +147,10 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 <iframe id="ai-preview-frame" title="Live preview" sandbox="allow-scripts allow-forms"></iframe>
             </div>
         </section>
+
+        <aside class="ai-studio__rail">
+            <button id="ai-preview-toggle" type="button" class="ai-btn ai-btn--ghost ai-btn--sm" aria-pressed="true" title="Show or hide the live preview"><i data-feather="sidebar"></i> <span id="ai-preview-toggle-label">Hide preview</span></button>
+        </aside>
     </div>
 </div>
 

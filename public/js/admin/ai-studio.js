@@ -268,7 +268,6 @@
         if (s.usageText && els.usage) els.usage.textContent = s.usageText;
         hideActivity(); hideTyping();
         renderHistoryList();
-        if (els.historyPanel) els.historyPanel.hidden = true;
         scrollTranscript();
         els.input.focus();
     }
@@ -352,7 +351,6 @@
                 }
                 if (els.approval) els.approval.hidden=true;
                 setStatus('Ready'); hideActivity(); hideTyping(); renderHistoryList();
-                if (els.historyPanel) els.historyPanel.hidden=true;
                 scrollTranscript(); els.input.focus();
                 return true;
             }
@@ -372,10 +370,26 @@
         }
         renderHistoryList();
         syncSessionsFromDb();
-        if (els.historyToggle && els.historyPanel) {
-            els.historyToggle.addEventListener('click', () => { els.historyPanel.hidden = !els.historyPanel.hidden; if (!els.historyPanel.hidden) { renderHistoryList(); syncSessionsFromDb(); } });
+        // Chats sidebar (left): open/closed is remembered; closed by default on narrow screens
+        const shellEl = document.querySelector('.ai-studio__layout');
+        const SIDEBAR_KEY = 'aiStudioSidebarOpen';
+        function setSidebar(open) {
+            if (!shellEl) return;
+            shellEl.classList.toggle('ai-studio__layout--no-sidebar', !open);
+            if (els.historyToggle) els.historyToggle.setAttribute('aria-pressed', open ? 'true' : 'false');
+            try { localStorage.setItem(SIDEBAR_KEY, open ? '1' : '0'); } catch (e) { /* storage unavailable */ }
         }
-        if (els.historyClose && els.historyPanel) els.historyClose.addEventListener('click', () => els.historyPanel.hidden = true);
+        let sidebarSaved = null;
+        try { sidebarSaved = localStorage.getItem(SIDEBAR_KEY); } catch (e) { /* storage unavailable */ }
+        setSidebar(sidebarSaved !== null ? sidebarSaved === '1' : window.matchMedia('(min-width: 1025px)').matches);
+        if (els.historyToggle) {
+            els.historyToggle.addEventListener('click', () => {
+                const open = shellEl.classList.contains('ai-studio__layout--no-sidebar');
+                setSidebar(open);
+                if (open) { renderHistoryList(); syncSessionsFromDb(); }
+            });
+        }
+        if (els.historyClose) els.historyClose.addEventListener('click', () => setSidebar(false));
         // Patch restoreSession to try DB if not in local
         const _origRestore = restoreSession;
         window._aiRestoreSession = async function(id){
