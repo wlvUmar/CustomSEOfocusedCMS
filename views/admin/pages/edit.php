@@ -380,25 +380,6 @@ body.page-<?= e($page['slug'] ?? 'slug') ?> footer { background: #0c0d10; }
 <script src="<?= BASE_URL ?>/js/admin/image-tools.js?v=<?= @filemtime(BASE_PATH . '/public/js/admin/image-tools.js') ?: 1 ?>"></script>
 <script src="<?= BASE_URL ?>/js/admin/pages-edit.js?v=<?= @filemtime(BASE_PATH . '/public/js/admin/pages-edit.js') ?: 1 ?>"></script>
 
-<?php if ($page): ?>
-<script id="ai-boot" type="application/json"><?= json_encode([
-    'pageId' => (int)$page['id'],
-    'csrf' => $_SESSION['csrf_token'] ?? '',
-    'endpoint' => BASE_URL . '/admin/pages/ai-edit',
-    'chatEndpoint' => BASE_URL . '/admin/pages/ai-chat',
-    'fields' => [
-        'content_ru' => ['type' => 'tinymce', 'label' => 'Content (RU)'],
-        'content_uz' => ['type' => 'tinymce', 'label' => 'Content (UZ)'],
-        'title_ru' => ['type' => 'input', 'selector' => '[name="title_ru"]', 'label' => 'Title (RU)'],
-        'title_uz' => ['type' => 'input', 'selector' => '[name="title_uz"]', 'label' => 'Title (UZ)'],
-        'meta_title_ru' => ['type' => 'input', 'selector' => '[name="meta_title_ru"]', 'label' => 'Meta title (RU)'],
-        'meta_title_uz' => ['type' => 'input', 'selector' => '[name="meta_title_uz"]', 'label' => 'Meta title (UZ)'],
-        'meta_description_ru' => ['type' => 'input', 'selector' => '[name="meta_description_ru"]', 'label' => 'Meta description (RU)'],
-        'meta_description_uz' => ['type' => 'input', 'selector' => '[name="meta_description_uz"]', 'label' => 'Meta description (UZ)'],
-    ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
-<?php endif; ?>
-
 <style>
 .c-slots-panel{margin-top:18px}
 .c-slots-label{display:flex;align-items:center;gap:8px}

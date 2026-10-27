@@ -7,8 +7,6 @@ class PromptLoader {
     private const FILES = [
         'ai-studio-plan' => 'prompts/ai-studio-plan.md',
         'ai-studio-build' => 'prompts/ai-studio-build.md',
-        'page-editor-generate' => 'prompts/page-editor-generate.md',
-        'page-editor-chat' => 'prompts/page-editor-chat.md',
         'summarizer-system' => 'prompts/summarizer-system.md',
         'summarizer-user' => 'prompts/summarizer-user.md',
     ];

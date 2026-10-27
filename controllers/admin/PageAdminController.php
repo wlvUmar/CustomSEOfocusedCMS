@@ -74,31 +74,6 @@ class PageAdminController extends Controller {
         $this->view('admin/pages/edit', ['page' => $page, 'allPages' => $allPages, 'availableRotations' => $availableRotations, 'months' => $months, 'pageName' => 'pages/edit']);
     }
 
-    /**
-      * AI-assisted page editing via Opencode (POST /admin/pages/ai-edit)
-      * Edits one whitelisted field with a user prompt, returns new content as JSON.
-      */
-    public function aiEdit() {
-        $this->requireAuth();
-        require_once BASE_PATH . '/models/ai/PageAiEditor.php';
-        $editor = new PageAiEditor($this->pageModel);
-        list($data, $code) = $editor->handleAiEdit($_POST);
-        $this->json($data, $code);
-    }
-
-    /**
-     * AI chat-style targeted editing (POST /admin/pages/ai-chat)
-     * Multi-turn: the browser keeps a working copy + chat history; each request
-     * applies the model's find/replace edits to that working copy only.
-     */
-    public function aiChat() {
-        $this->requireAuth();
-        require_once BASE_PATH . '/models/ai/PageAiEditor.php';
-        $editor = new PageAiEditor($this->pageModel);
-        list($data, $code) = $editor->handleAiChat($_POST);
-        $this->json($data, $code);
-    }
-
     public function save() {
         $this->requireAuth();
         

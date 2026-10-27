@@ -31,8 +31,6 @@ $router->group('/admin/pages', function($router) {
     $router->get('/edit/{id}', function($id) { ControllerFactory::pageAdmin('edit', $id); });
     $router->post('/save', function() { ControllerFactory::pageAdmin('save'); });
     $router->post('/delete', function() { ControllerFactory::pageAdmin('delete'); });
-    $router->post('/ai-edit', function() { ControllerFactory::pageAdmin('aiEdit'); });
-    $router->post('/ai-chat', function() { ControllerFactory::pageAdmin('aiChat'); });
     $router->get('/revisions/{id}', function($id) { ControllerFactory::pageAdmin('revisions', $id); });
     $router->post('/restore-revision', function() { ControllerFactory::pageAdmin('restoreRevision'); });
 });
