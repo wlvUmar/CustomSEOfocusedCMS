@@ -43,7 +43,7 @@ $analyticsBoot = [
 ];
 ?>
 <script>window.performanceChartData = <?= json_encode($analyticsBoot) ?>;</script>
-<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=9"></script>
+<script src="<?= BASE_URL ?>/js/admin/analytics.js?v=10"></script>
 
 <style>
     :root { --teal: #0e9f8a; }
@@ -362,6 +362,48 @@ $analyticsBoot = [
                         <?= number_format($pages) ?>
                     </span>
                 </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- CTA Performance (per placement) -->
+<?php
+$ctaStats = $stats['cta_stats'] ?? ['rows' => [], 'since' => null];
+$ctaSince = $ctaStats['since'] ?? null;
+?>
+<div class="chart-box" id="ctaStatsContainer">
+    <h2><i data-feather="target"></i> Эффективность CTA по местам размещения</h2>
+    <div class="c-sub c-sub-top c-sub-mb" id="ctaStatsNote">
+        <?php if ($ctaSince): ?>
+            Данные по местам собираются с <?= e(date('d.m.Y', strtotime($ctaSince))) ?>. Считаются уникальные посетители за день; показ засчитывается, когда видна половина кнопки.
+        <?php else: ?>
+            Данных пока нет — сбор начнётся после выкладки обновления.
+        <?php endif; ?>
+        Общие «Клики» и «Звонки» выше считаются как раньше.
+    </div>
+
+    <div class="table-scroll">
+    <table class="c-table c-table-wide">
+        <thead class="c-thead">
+            <tr>
+                <th class="c-th c-th-l">Кнопка</th>
+                <th class="c-th c-th-l">Место</th>
+                <th class="c-th c-th-c">Показы</th>
+                <th class="c-th c-th-c">Клики</th>
+                <th class="c-th c-th-c">CTR</th>
+            </tr>
+        </thead>
+        <tbody id="ctaStatsBody">
+            <?php foreach (($ctaStats['rows'] ?? []) as $row): ?>
+            <tr class="c-row">
+                <td class="c-td c-td-l c-td-name"><?= e($row['label']) ?></td>
+                <td class="c-td"><?= e($row['group']) ?></td>
+                <td class="c-td c-td-c"><span class="c-pill c-pill-r6 c-pur"><?= number_format($row['views']) ?></span></td>
+                <td class="c-td c-td-c"><span class="c-pill c-pill-r6 c-grn"><?= number_format($row['clicks']) ?></span></td>
+                <td class="c-td c-td-r c-td-c"><?= $row['ctr'] === null ? '—' : e($row['ctr']) . '%' ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>

@@ -752,6 +752,10 @@ function trackPhoneCall($slug, $language, $utmSource = '') {
     TrackingService::trackPhoneCall($slug, $language, $utmSource);
 }
 
+function trackCta($slug, $language, $ctaId, $event, $utmSource = '') {
+    TrackingService::trackCta($slug, $language, $ctaId, $event, $utmSource);
+}
+
 
 
 function trackInternalLink($fromSlug, $toSlug, $language) {

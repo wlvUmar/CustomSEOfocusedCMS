@@ -169,6 +169,10 @@ class TrackingService {
         (new Analytics())->trackPhoneCall($slug, $language, $utmSource);
     }
 
+    public static function trackCta($slug, $language, $ctaId, $event, $utmSource = '') {
+        (new Analytics())->trackCta($slug, $language, $ctaId, $event, $utmSource);
+    }
+
     public static function trackInternalLink($fromSlug, $toSlug, $language) {
         (new Analytics())->trackInternalLink($fromSlug, $toSlug, $language);
     }

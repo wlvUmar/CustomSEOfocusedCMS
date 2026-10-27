@@ -31,6 +31,9 @@ $router->post('/track-internal-link', function() {
 $router->post('/track-phone-call', function() {
     ControllerFactory::track('trackPhoneCall');
 });
+$router->post('/track-cta', function() {
+    ControllerFactory::track('trackCta');
+});
 
 // Redirect /main to /
 $router->get('/main', function() {

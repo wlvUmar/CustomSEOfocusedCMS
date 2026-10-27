@@ -11,6 +11,7 @@ require_once __DIR__ . '/analytics/RotationStats.php';
 require_once __DIR__ . '/analytics/NavigationStats.php';
 require_once __DIR__ . '/analytics/UtmStats.php';
 require_once __DIR__ . '/analytics/BotStats.php';
+require_once __DIR__ . '/analytics/CtaStats.php';
 require_once __DIR__ . '/analytics/TrackingStore.php';
 require_once __DIR__ . '/analytics/VisitTracker.php';
 
@@ -24,6 +25,7 @@ class Analytics {
     private $navigation;
     private $utm;
     private $bots;
+    private $cta;
     private $visits;
     private $store;
 
@@ -34,6 +36,7 @@ class Analytics {
         $this->navigation = new NavigationStats();
         $this->utm = new UtmStats();
         $this->bots = new BotStats();
+        $this->cta = new CtaStats();
         $this->store = new TrackingStore();
         $this->visits = new VisitTracker();
     }
@@ -284,6 +287,14 @@ class Analytics {
 
     public function trackPhoneCall($slug, $language, $utmSource = '') {
         $this->visits->trackPhoneCall($slug, $language, $utmSource);
+    }
+
+    public function trackCta($slug, $language, $ctaId, $event, $utmSource = '') {
+        $this->visits->trackCta($slug, $language, $ctaId, $event, $utmSource);
+    }
+
+    public function getCtaStats($startDate, $endDate, $slug = '', $utmSource = '') {
+        return $this->cta->getCtaStats($startDate, $endDate, $slug, $utmSource);
     }
 
     public function trackInternalLink($fromSlug, $toSlug, $language) {

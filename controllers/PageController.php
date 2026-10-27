@@ -191,4 +191,28 @@ class PageController extends Controller {
         trackPhoneCall($slug, $lang, $utmSource);
         $this->json(['success' => true]);
     }
+
+    /** Per-CTA view/click (additive; /track-click and /track-phone-call keep feeding the legacy totals). */
+    public function trackCta() {
+        if (!headers_sent()) header('Cache-Control: no-store, no-cache, must-revalidate');
+        $slug = trim((string)($_POST['slug'] ?? ''));
+        $lang = normalizeTrackingLanguage($_POST['lang'] ?? getCurrentLanguage());
+        $utmSource = trim((string)($_POST['utm_source'] ?? ''));
+        $cta = trim((string)($_POST['cta'] ?? ''));
+        $event = trim((string)($_POST['event'] ?? ''));
+
+        if (!trackingRateLimit('cta', 400, 300)) {
+            $this->json(['success' => false, 'message' => 'Rate limit'], 429);
+        }
+
+        if (!$slug || !isValidAnalyticsSlug($slug)) {
+            $this->json(['success' => false, 'message' => 'Invalid slug'], 400);
+        }
+        if (!CtaStats::isValid($cta, $event)) {
+            $this->json(['success' => false, 'message' => 'Invalid cta'], 400);
+        }
+
+        trackCta($slug, $lang, $cta, $event, $utmSource);
+        $this->json(['success' => true]);
+    }
 }

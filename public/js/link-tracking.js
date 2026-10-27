@@ -126,6 +126,7 @@
         modal.hidden = false;
         modal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('review-modal-open');
+        trackCta('review_modal', 'view');
     }
 
     function closeReviewModal() {
@@ -211,6 +212,44 @@
         postTracking('/track-phone-call', params);
     }
 
+    // Per-CTA tracking (additive): anchors carry data-cta="<id>"; the id whitelist lives in
+    // models/analytics/CtaStats.php. Legacy trackClick/trackPhoneCall calls are unchanged.
+    var sentCta = {};
+    function trackCta(cta, event) {
+        if (!cta) return;
+        var key = cta + '|' + event;
+        if (sentCta[key]) return;
+        sentCta[key] = true;
+
+        var params = {
+            slug: getCurrentSlug(),
+            lang: getCurrentLanguage(),
+            cta: cta,
+            event: event
+        };
+        try {
+            var utmSource = sessionStorage.getItem('persist_param_utm_source') || '';
+            if (utmSource) params.utm_source = utmSource;
+        } catch (e) {}
+        postTracking('/track-cta', params);
+    }
+    window.trackCtaEvent = trackCta;
+
+    // A CTA counts as "seen" once at least half of it is on screen.
+    // Modal CTAs carry data-cta-manual and report their own view when they open.
+    function setupCtaViews() {
+        var els = document.querySelectorAll('[data-cta]:not([data-cta-manual])');
+        if (!els.length || !('IntersectionObserver' in window)) return;
+        var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                trackCta(entry.target.getAttribute('data-cta'), 'view');
+                io.unobserve(entry.target);
+            });
+        }, { threshold: 0.5 });
+        els.forEach(function (el) { io.observe(el); });
+    }
+
     function extractSlugFromHref(href) {
         try {
             const url = new URL(href, window.location.origin);
@@ -235,6 +274,10 @@
 
             if (!link || !link.href) return;
 
+            if (link.hasAttribute('data-cta')) {
+                trackCta(link.getAttribute('data-cta'), 'click');
+            }
+
             if (link.matches('[data-review-call]')) {
                 return;
             }
@@ -258,9 +301,10 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupTracking);
+        document.addEventListener('DOMContentLoaded', function () { setupTracking(); setupCtaViews(); });
     } else {
         setupTracking();
+        setupCtaViews();
     }
 
     document.addEventListener('visibilitychange', maybeShowPendingReview);

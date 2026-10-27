@@ -106,7 +106,7 @@
                     x
                 </button>
                 <?php if (!empty($seo['google_review_url'])): ?>
-                <a href="<?= e($seo['google_review_url']) ?>" class="review-modal__btn review-modal__btn--review" target="_blank" rel="noopener noreferrer" data-review-open>
+                <a href="<?= e($seo['google_review_url']) ?>" class="review-modal__btn review-modal__btn--review" target="_blank" rel="noopener noreferrer" data-review-open data-cta="review_modal" data-cta-manual>
                     <?= $lang === 'ru' ? 'Оставить отзыв' : 'Sharh qoldirish' ?>
                 </a>
                 <?php endif; ?>
@@ -131,7 +131,7 @@
     </script>
     <?php endif; ?>
     <script src="<?= BASE_URL ?>/js/param-persistence.js" defer></script>
-    <script src="<?= BASE_URL ?>/js/link-tracking.js" defer></script>
+    <script src="<?= BASE_URL ?>/js/link-tracking.js?v=<?= @filemtime(BASE_PATH . '/public/js/link-tracking.js') ?: 1 ?>" defer></script>
     <script src="<?= BASE_URL ?>/js/hold-morph.js" defer></script>
     <style>
     .review-modal[hidden] { display: none !important; }

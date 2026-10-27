@@ -273,6 +273,45 @@ class VisitTracker {
         }
     }
 
+    /**
+     * Per-CTA view/click counter. Additive to trackClick/trackPhoneCall (those still run unchanged).
+     * Unique visitors per (page, cta, event, day) via INSERT IGNORE dedup.
+     */
+    public function trackCta($slug, $language, $ctaId, $event, $utmSource = '') {
+        if (shouldSkipTracking()) return;
+        if (isBot()) return;
+        if (!CtaStats::isValid((string)$ctaId, (string)$event)) return;
+
+        $language = normalizeTrackingLanguage($language);
+        if (!isValidAnalyticsSlug($slug)) return;
+
+        $visitorId = getOrCreateTrackingVisitorId();
+        $date = date('Y-m-d');
+        $utmSource = mb_substr(trim((string)$utmSource), 0, 100);
+
+        try {
+            $dedup = $this->db->query(
+                "INSERT IGNORE INTO analytics_dedup_cta (visitor_id, page_slug, cta_id, event, view_date) VALUES (?, ?, ?, ?, ?)",
+                [$visitorId, $slug, $ctaId, $event, $date]
+            );
+            if ($dedup->rowCount() === 0) return;
+
+            $this->db->query(
+                "INSERT INTO analytics_cta (date, page_slug, language, cta_id, event, utm_source, cnt)
+                 VALUES (?, ?, ?, ?, ?, ?, 1)
+                 ON DUPLICATE KEY UPDATE cnt = cnt + 1",
+                [$date, $slug, $language, $ctaId, $event, $utmSource]
+            );
+
+            // Dedup rows are only needed for the current day; trim old ones occasionally.
+            if (random_int(1, 200) === 1) {
+                $this->db->query("DELETE FROM analytics_dedup_cta WHERE view_date < DATE_SUB(CURDATE(), INTERVAL 2 DAY)");
+            }
+        } catch (Exception $e) {
+            error_log("CTA tracking error: " . $e->getMessage());
+        }
+    }
+
     public function trackInternalLink($fromSlug, $toSlug, $language) {
         if (shouldSkipTracking()) return;
         if (isBot()) return;

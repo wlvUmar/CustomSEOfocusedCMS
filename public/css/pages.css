@@ -2215,3 +2215,23 @@ body.admin-mode { padding-top: 50px; }
     .error-meta-row { grid-template-columns: 1fr; }
     .btn-primary, .btn-secondary { width: 100%; min-width: 0; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CTA BLOCKS (.c-cta) — inline call / chat / bot cards. Built only from theme
+   tokens (--teal, --ink, --border…) so every page theme restyles them.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.c-cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;margin:var(--section-gap) auto;max-width:var(--max-w);padding:20px var(--px);background:var(--surface-2,#fff);border:1px solid var(--border);border-radius:16px}
+.c-cta__text{flex:1 1 240px;min-width:0}
+.c-cta__title{margin:0 0 4px;font-weight:800;font-size:1.05rem;line-height:1.3;color:var(--ink)}
+.c-cta__sub{margin:0;font-size:.92rem;line-height:1.5;color:var(--ink-soft)}
+.c-cta__actions{display:flex;flex-wrap:wrap;gap:10px}
+.c-cta__btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:11px 20px;border-radius:10px;background:var(--teal);color:#fff;border:1.5px solid var(--teal);font-weight:700;font-size:.92rem;line-height:1.2;text-decoration:none;transition:background-color .2s,color .2s,transform .2s}
+.c-cta__btn:hover{background:var(--teal-dark);border-color:var(--teal-dark);transform:translateY(-1px)}
+.c-cta__btn:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.c-cta__btn svg{width:16px;height:16px;flex-shrink:0}
+.c-cta__btn--ghost{background:transparent;color:var(--teal)}
+.c-cta__btn--ghost:hover{background:var(--teal-light);color:var(--teal-dark)}
+.c-cta--bot{background:var(--teal-light);border-style:dashed;border-color:var(--teal)}
+.c-cta__badge{display:inline-block;margin-right:8px;padding:2px 9px;border-radius:99px;background:var(--teal);color:#fff;font-size:.7rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;vertical-align:middle}
+@media (max-width:560px){.c-cta{padding:18px var(--px);gap:14px}.c-cta__actions{width:100%}.c-cta__btn{flex:1 1 140px}}
+@media (prefers-reduced-motion:reduce){.c-cta__btn{transition:none}.c-cta__btn:hover{transform:none}}

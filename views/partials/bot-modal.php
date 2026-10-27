@@ -16,7 +16,6 @@
             <?php // <p>, not <h2>: a popup title must not become the first heading of every page's outline ?>
             <p class="bot-modal__title" id="bot-modal-title">
                 <?= $lang === 'ru' ? 'Продайте технику онлайн' : 'Texnikani onlayn soting'?>
-                <span class="c-badge">Beta</span>
             </p>
             <p class="bot-modal__desc">
                 <?= $lang === 'ru'
@@ -28,7 +27,7 @@
                 <li class="bot-modal__step"><span class="bot-modal__step-num">2</span> <?= $lang === 'ru' ? 'Отправьте фото боту' : 'Botga rasm yuboring' ?></li>
                 <li class="bot-modal__step"><span class="bot-modal__step-num">3</span> <?= $lang === 'ru' ?  'Получите ответ от нашей команды' : 'Jamoamizdan javob oling' ?></li>
             </ul>
-            <a href="<?= TELEGRAM_BOT_URL ?>?start=<?= urlencode($page["clientID"] ?? "") ?>" class="bot-modal__cta" target="_blank" rel="noopener" data-track-click="1" onclick="markBotModalSeen()">
+            <a href="<?= TELEGRAM_BOT_URL ?>?start=<?= urlencode($page["clientID"] ?? "") ?>" class="bot-modal__cta" target="_blank" rel="noopener" data-track-click="1" data-cta="bot_modal" data-cta-manual onclick="markBotModalSeen()">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M22.05 1.577c-.393-.016-.784.08-1.117.235-.484.186-4.92 1.902-9.41 3.64-2.26.873-4.518 1.746-6.256 2.415-1.737.67-3.045 1.168-3.114 1.192-.46.16-1.082.362-1.61.984-.133.155-.267.354-.335.628s-.038.622.095.895c.265.547.714.773 1.244.976 1.76.564 3.58 1.102 5.087 1.608.556 1.96 1.09 3.927 1.618 5.89.174.394.553.54.944.544l-.002.02s.307.03.606-.042c.3-.07.677-.244 1.02-.565.377-.354 1.4-1.36 1.98-1.928l4.37 3.226.035.02s.484.34 1.192.388c.354.024.82-.044 1.22-.337.403-.294.67-.767.795-1.307.374-1.63 2.853-13.427 3.276-15.38z"/>
                 </svg>
@@ -92,6 +91,7 @@
         modal.classList.add('is-open');
         lockBodyScroll(true);
         markBotModalSeen();
+        if (window.trackCtaEvent) window.trackCtaEvent('bot_modal', 'view');
         // trap focus to close button for a11y, no layout thrash
         try { modal.querySelector('.bot-modal__close')?.focus({preventScroll:true}); } catch(e) {}
     }
@@ -105,7 +105,8 @@
         if (e.key === 'Escape') closeBotModal(true);
     });
 
-    // Trigger: less annoying — 25s dwell + 60% scroll + exit-intent, max once per 7 days
+    // Trigger: gentle — deep scroll (60%) or desktop exit-intent only (no timer), max once per 7 days.
+    // Skipped while the inline #bot-card is on screen: the visitor is already looking at the same offer.
     // To test: localStorage.removeItem('botModalShownAt'); sessionStorage.removeItem('botModalShown')
     (function() {
         if (!window.BOT_MODAL_ENABLED) return;
@@ -115,16 +116,21 @@
         if (prefersReduced) return; // don't auto-open for motion-sensitive users
 
         var fired = false;
-        var dwellMs = 25000;
+        function botCardOnScreen() {
+            var card = document.getElementById('bot-card');
+            if (!card) return false;
+            var r = card.getBoundingClientRect();
+            return r.bottom > 0 && r.top < window.innerHeight;
+        }
         function maybeOpen() {
             if (fired || isBotModalCooledDown()) return;
             if (document.visibilityState === 'hidden') return;
+            if (botCardOnScreen()) return;
             fired = true;
             openBotModal();
             cleanup();
         }
         function cleanup() {
-            clearTimeout(dwellTimer);
             window.removeEventListener('scroll', onScroll, {passive: true});
             document.removeEventListener('mouseout', onExitIntent);
             document.removeEventListener('visibilitychange', onVis);
@@ -132,8 +138,6 @@
         function onVis() {
             if (document.visibilityState === 'visible' && fired) return;
         }
-        var dwellTimer = setTimeout(maybeOpen, dwellMs);
-
         // throttle scroll to rAF — avoids freeze
         var ticking = false;
         function onScroll() {
@@ -158,9 +162,5 @@
         window.addEventListener('scroll', onScroll, {passive: true});
         document.addEventListener('mouseout', onExitIntent, {passive: true});
         document.addEventListener('visibilitychange', onVis, {passive: true});
-        // also cleanup on page hide to not hold timer
-        document.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'hidden') clearTimeout(dwellTimer);
-        }, {once: true});
     })();
     </script>

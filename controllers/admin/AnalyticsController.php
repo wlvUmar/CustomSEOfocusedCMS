@@ -63,6 +63,7 @@ class AnalyticsController extends Controller {
                 'utm_sources' => $utmSources,
                 'all_page_slugs' => $allPageSlugs,
                 'all_utm_sources' => $allUtmSources,
+                'cta_stats' => $this->analyticsModel->getCtaStats($start, $end, $slug, $utmSource),
                 'months' => $months,
                 'slug' => $slug,
                 'utm_source' => $utmSource,
@@ -108,6 +109,7 @@ class AnalyticsController extends Controller {
                 'utm_sources' => $utmSources,
                 'all_page_slugs' => $allPageSlugs,
                 'all_utm_sources' => $allUtmSources,
+                'cta_stats' => $this->analyticsModel->getCtaStats(date('Y-m-d', strtotime("-{$months} months")), date('Y-m-d'), $slug, $utmSource),
                 'months' => $months,
                 'aggregation' => $chartAggregation,
                 'view' => $view,
@@ -222,6 +224,7 @@ class AnalyticsController extends Controller {
             $top_performers = $this->analyticsModel->getRangeTopPerformers($start, $end, $slug, $utmSource);
             $language_stats = $this->analyticsModel->getRangeLanguageStats($start, $end, $slug, $utmSource);
             $utm_stats = $this->analyticsModel->getUtmSourceStats($start, $end, $slug, $utmSource);
+            $cta_stats = $this->analyticsModel->getCtaStats($start, $end, $slug, $utmSource);
         } else {
             switch ($aggregation) {
                 case 'daily':
@@ -247,8 +250,9 @@ class AnalyticsController extends Controller {
             $top_performers = $this->analyticsModel->getTopPerformers($months, 500, $slug, $utmSource);
             $language_stats = $this->analyticsModel->getLanguageStats($months, $slug, $utmSource);
             $utm_stats = $this->analyticsModel->getTopUtmSources(null, $months * 30, $slug, $utmSource);
+            $cta_stats = $this->analyticsModel->getCtaStats(date('Y-m-d', strtotime("-{$months} months")), date('Y-m-d'), $slug, $utmSource);
         }
-        
+
         $allPages = $this->pageModel->getAll(true);
         $allPageSlugs = array_values(array_filter(array_column($allPages, 'slug')));
 
@@ -267,6 +271,7 @@ class AnalyticsController extends Controller {
             'top_performers' => $top_performers,
             'language_stats' => $language_stats,
             'utm_stats' => $utm_stats,
+            'cta_stats' => $cta_stats,
             'all_page_slugs' => $allPageSlugs,
             'all_utm_sources' => $allUtmSources
         ]);

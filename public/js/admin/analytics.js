@@ -396,6 +396,20 @@ function updateUtmStatsTable(data) {
     }).join('');
 }
 
+function updateCtaStatsTable(data) {
+    const tbody = document.getElementById('ctaStatsBody');
+    if (!tbody || !data.cta_stats) return;
+    const rows = data.cta_stats.rows || [];
+
+    tbody.innerHTML = rows.map(r => `<tr class="c-row">
+        <td class="c-td c-td-l c-td-name">${escapeHtml(r.label)}</td>
+        <td class="c-td">${escapeHtml(r.group)}</td>
+        <td class="c-td c-td-c"><span class="c-pill c-pill-r6 c-pur">${formatNumber(Number(r.views || 0))}</span></td>
+        <td class="c-td c-td-c"><span class="c-pill c-pill-r6 c-grn">${formatNumber(Number(r.clicks || 0))}</span></td>
+        <td class="c-td c-td-r c-td-c">${r.ctr === null || r.ctr === undefined ? '—' : escapeHtml(String(r.ctr)) + '%'}</td>
+    </tr>`).join('');
+}
+
 function updateSlugDropdown(allSlugs) {
     const select = document.getElementById('pageSlugFilter');
     if (!select) return;
@@ -470,6 +484,7 @@ window.updateDashboard = async function (aggregation) {
         updateChartFromResponse(data);
         updatePerformingPagesTable(data);
         updateUtmStatsTable(data);
+        updateCtaStatsTable(data);
         updateSlugDropdown(data.all_page_slugs);
         updateUtmDropdown(data.all_utm_sources);
     } catch (error) {
