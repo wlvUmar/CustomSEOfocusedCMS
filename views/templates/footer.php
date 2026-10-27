@@ -1,3 +1,4 @@
+<?php require BASE_PATH . '/views/partials/fresh-block.php'; ?>
 <footer>
         <div class="container">
             <div class="footer-content">
