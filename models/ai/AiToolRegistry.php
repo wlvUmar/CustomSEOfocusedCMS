@@ -14,6 +14,7 @@ require_once BASE_PATH . '/models/ai/tools/SiteTools.php';
 require_once BASE_PATH . '/models/ai/tools/FaqTools.php';
 require_once BASE_PATH . '/models/ai/tools/GscTools.php';
 require_once BASE_PATH . '/models/ai/tools/SerpTools.php';
+require_once BASE_PATH . '/models/ai/tools/SeoAuditTools.php';
 require_once BASE_PATH . '/models/ai/tools/MemoryTools.php';
 require_once BASE_PATH . '/models/ai/tools/SkillTools.php';
 require_once BASE_PATH . '/models/ai/ToolEnvelope.php';
@@ -30,6 +31,7 @@ class AiToolRegistry {
         FaqTools::class,
         GscTools::class,
         SerpTools::class,
+        SeoAuditTools::class,
         MemoryTools::class,
         SkillTools::class,
     ];
@@ -64,6 +66,8 @@ class AiToolRegistry {
         'get_gsc_overview', 'get_page_gsc', 'get_gsc_queries', 'get_gsc_pages', 'search_gsc_queries', 'query_gsc',
         // SerpApi live SERP read (paid, cached 1h — call once per query and reuse)
         'serp_search', 'serp_niche_overview',
+        // SEO findings read (on-page audit from the pages table + GSC opportunity lists)
+        'get_seo_audit', 'get_seo_opportunities',
         // Memory + debug read-only (get_tool_logs is BUILD-only due to secret leakage risk — 01-security #9)
         'list_context', 'get_context',
         // Skills (read-only playbooks)
