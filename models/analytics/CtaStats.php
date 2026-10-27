@@ -35,7 +35,7 @@ class CtaStats {
      * One row per known CTA (zeros included): views, clicks, CTR % (unique visitors per day).
      * Also returns the first date with CTA data so the admin can say "collected since".
      *
-     * @return array{rows:array<int,array>,since:?string,ready:bool} ready=false when the tables are missing (migration 018 not applied)
+     * @return array{rows:array<int,array>,since:?string}
      */
     public function getCtaStats($startDate, $endDate, $slug = '', $utmSource = '') {
         $params = [$startDate, $endDate];
@@ -47,7 +47,6 @@ class CtaStats {
         $sql .= " GROUP BY cta_id, event";
 
         $totals = [];
-        $ready = true;
         try {
             foreach ($this->db->fetchAll($sql, $params) as $r) {
                 $totals[$r['cta_id']][$r['event']] = (int)$r['total'];
@@ -57,7 +56,6 @@ class CtaStats {
             // Table missing (migration not applied yet): behave as "no data" instead of breaking the page.
             error_log('CtaStats: ' . $e->getMessage());
             $first = null;
-            $ready = false;
         }
 
         $rows = [];
@@ -73,6 +71,6 @@ class CtaStats {
                 'ctr'    => $views > 0 ? round(($clicks / $views) * 100, 2) : null,
             ];
         }
-        return ['rows' => $rows, 'since' => $first['d'] ?? null, 'ready' => $ready];
+        return ['rows' => $rows, 'since' => $first['d'] ?? null];
     }
 }
