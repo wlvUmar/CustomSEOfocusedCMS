@@ -2235,3 +2235,7 @@ body.admin-mode { padding-top: 50px; }
 .cta-inline__badge{display:inline-block;margin-right:8px;padding:2px 9px;border-radius:99px;background:var(--orange);color:#fff;font-size:.7rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;vertical-align:middle}
 @media (max-width:560px){.cta-inline{padding:18px var(--px);gap:14px}.cta-inline__actions{width:100%}.cta-inline__btn{flex:1 1 140px}}
 @media (prefers-reduced-motion:reduce){.cta-inline__btn{transition:none}.cta-inline__btn:hover{transform:none}}
+
+/* Adjacent .c-btn buttons in page content had no gap (stacked on mobile, touching side by side).
+   Space only a button that is directly followed by another one, so lone buttons and flex groups with their own gap are unchanged. */
+.content-body .c-btn:has(+ .c-btn){margin:0 12px 12px 0}
