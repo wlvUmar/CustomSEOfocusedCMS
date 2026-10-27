@@ -1009,9 +1009,8 @@
                 appendInline(em, part.slice(1, -1));
                 parent.appendChild(em);
             } else if (part.length > 2 && part.startsWith('`') && part.endsWith('`')) {
-                const code = document.createElement('code');
-                code.textContent = part.slice(1, -1);
-                parent.appendChild(code);
+                // Inline backticks are plain text in chat (no chip); fenced blocks still render as code.
+                parent.appendChild(document.createTextNode(part.slice(1, -1)));
             } else if (part.charAt(0) === '[') {
                 const m = part.match(/^\[([^\]]*)\]\(([^)]+)\)$/);
                 if (m && SAFE_URL.test(m[2])) {
