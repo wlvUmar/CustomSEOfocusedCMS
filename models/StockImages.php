@@ -104,10 +104,16 @@ class StockImages {
         // Cache the compact, already-normalised result (a few KB), not the raw API response (tens of KB): small hosting plan.
         $cachedOut = self::cached($url, $provider);
         if (is_array($cachedOut) && isset($cachedOut['results'])) return $cachedOut;
-        [$code, $body] = self::get($url, $provider);
-        if ($code < 200 || $code >= 300) self::fail($code, $provider);
+        [$code, $body, $hdrs] = self::get($url, $provider);
+        if ($code < 200 || $code >= 300) self::fail($code, $provider, $hdrs, $body);
         $data = json_decode($body, true);
         if (!is_array($data)) throw new RuntimeException('Bad response from ' . self::attribution()['name'], 502);
+        // Remember each hit's download sources server-side so importing a picked photo needs no second API call.
+        if ($provider === 'pixabay') {
+            foreach (($data['hits'] ?? []) as $hit) {
+                if (is_array($hit) && !empty($hit['id'])) self::metaSet((int)$hit['id'], $hit);
+            }
+        }
         $out = self::normalizeSearch($provider, $data, $page, $perPage);
         self::cacheSet($url, $out);
         return $out;
@@ -167,11 +173,17 @@ class StockImages {
         $provider = self::provider();
 
         if ($provider === 'pixabay') {
-            [$code, $body] = self::get(self::PIXABAY_API . '?' . http_build_query(['key' => self::apiKey(), 'id' => $photoId]), $provider);
-            if ($code < 200 || $code >= 300) self::fail($code, $provider);
-            $meta = json_decode($body, true);
-            $hit = is_array($meta) ? ($meta['hits'][0] ?? null) : null;
-            if (!is_array($hit)) throw new RuntimeException('Фото не найдено', 404);
+            // Normal case: the photo came from a search we ran in the last 24 h, so its sources are already cached
+            // (server-side, from Pixabay's own response — never from the client) and no API request is spent.
+            $hit = self::metaGet($photoId);
+            if ($hit === null) {
+                [$code, $body, $hdrs] = self::get(self::PIXABAY_API . '?' . http_build_query(['key' => self::apiKey(), 'id' => $photoId]), $provider);
+                if ($code < 200 || $code >= 300) self::fail($code, $provider, $hdrs, $body);
+                $meta = json_decode($body, true);
+                $hit = is_array($meta) ? ($meta['hits'][0] ?? null) : null;
+                if (!is_array($hit)) throw new RuntimeException('Фото не найдено', 404);
+                self::metaSet($photoId, $hit);
+            }
             // largeImageURL (<= 1280 px) is the biggest size without special API approval; webformatURL (640 px) as a fallback
             $sources = [(string)($hit['largeImageURL'] ?? ''), (string)($hit['webformatURL'] ?? '')];
             $hostRe = '/^(cdn\.)?pixabay\.com$/';
@@ -181,8 +193,8 @@ class StockImages {
                 'url' => (string)($hit['pageURL'] ?? ''),
             ];
         } else {
-            [$code, $body] = self::get(self::PEXELS_API . '/photos/' . $photoId, $provider);
-            if ($code < 200 || $code >= 300) self::fail($code, $provider);
+            [$code, $body, $hdrs] = self::get(self::PEXELS_API . '/photos/' . $photoId, $provider);
+            if ($code < 200 || $code >= 300) self::fail($code, $provider, $hdrs, $body);
             $meta = json_decode($body, true);
             if (!is_array($meta) || empty($meta['src'])) throw new RuntimeException('Bad response from Pexels', 502);
             $sources = [(string)($meta['src']['large2x'] ?? ''), (string)($meta['src']['large'] ?? '')];
@@ -262,13 +274,18 @@ class StockImages {
 
     // ── internals ────────────────────────────────────────────
 
-    /** @return array{0:int,1:string} [http code, body] */
+    /** @return array{0:int,1:string,2:array<string,string>} [http code, body, rate-limit headers (x-ratelimit-*, retry-after)] */
     private static function get(string $url, string $provider): array {
         $ch = curl_init($url);
+        $hdrs = [];
         $opts = [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT => 25,
+            CURLOPT_HEADERFUNCTION => static function ($c, $line) use (&$hdrs) {
+                if (preg_match('/^(x-ratelimit-[a-z-]+|retry-after):\s*(.+)$/i', trim($line), $m)) $hdrs[strtolower($m[1])] = trim($m[2]);
+                return strlen($line);
+            },
         ];
         // Pexels takes the key in a header; Pixabay takes it as the "key" query parameter (already in $url)
         if ($provider === 'pexels') $opts[CURLOPT_HTTPHEADER] = ['Authorization: ' . self::apiKey()];
@@ -278,17 +295,56 @@ class StockImages {
         $err = curl_error($ch);
         curl_close($ch);
         if ($body === false) throw new RuntimeException('Нет ответа от ' . self::attribution()['name'] . ': ' . $err, 502);
-        return [$code, (string)$body];
+        return [$code, (string)$body, $hdrs];
     }
 
-    private static function fail(int $code, string $provider): void {
+    private static function fail(int $code, string $provider, array $hdrs = [], string $body = ''): void {
         $name = $provider === 'pixabay' ? 'Pixabay' : 'Pexels';
         $env = $provider === 'pixabay' ? 'PIXABAY_API_KEY' : 'PEXELS_API_KEY';
         if ($code === 400 && $provider === 'pixabay') throw new RuntimeException('Pixabay отклонил запрос (проверьте ' . $env . ')', 400);
         if ($code === 401 || $code === 403) throw new RuntimeException('Неверный ' . $env, 401);
         if ($code === 404) throw new RuntimeException('Фото не найдено', 404);
-        if ($code === 429) throw new RuntimeException('Лимит запросов ' . $name . ' — подождите минуту', 429);
+        if ($code === 429) {
+            // Log what the provider really said so a "limit" that isn't one can be told apart from a real one.
+            error_log('[StockImages] 429 from ' . $name . ' headers=' . json_encode($hdrs) . ' body=' . mb_substr(trim($body), 0, 200));
+            $lim = $hdrs['x-ratelimit-limit'] ?? '';
+            $rem = $hdrs['x-ratelimit-remaining'] ?? '';
+            $reset = $hdrs['x-ratelimit-reset'] ?? ($hdrs['retry-after'] ?? '');
+            $msg = 'Лимит запросов ' . $name . ' — подождите ' . ($reset !== '' && (int)$reset > 0 ? (int)$reset . ' с' : 'минуту');
+            if ($lim !== '') $msg .= ' (лимит ' . $lim . '/мин, осталось ' . ($rem !== '' ? $rem : '?') . ')';
+            throw new RuntimeException($msg, 429);
+        }
         throw new RuntimeException('Ошибка ' . $name . ' (HTTP ' . $code . ')', 502);
+    }
+
+    // Per-photo source cache (Pixabay): written from search responses, read by download(). Small files, own bounded dir.
+    private static function metaFile(int $id): string {
+        return BASE_PATH . '/storage/stock_cache/meta/pixabay-' . $id . '.json';
+    }
+
+    private static function metaGet(int $id): ?array {
+        $f = self::metaFile($id);
+        if (!is_file($f) || (time() - (int)@filemtime($f)) > self::CACHE_TTL['pixabay']) return null;
+        $d = json_decode((string)@file_get_contents($f), true);
+        return is_array($d) && !empty($d['id']) ? $d : null;
+    }
+
+    private static function metaSet(int $id, array $hit): void {
+        $dir = dirname(self::metaFile($id));
+        if (!is_dir($dir)) @mkdir($dir, 0750, true);
+        // keep only what download() needs
+        $keep = array_intersect_key($hit, array_flip(['id', 'largeImageURL', 'webformatURL', 'user', 'user_id', 'pageURL']));
+        @file_put_contents(self::metaFile($id), json_encode($keep, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+        // bounded: past 500 files, drop expired ones, then the oldest down to 400 (checked ~1 in 20 writes)
+        if (random_int(1, 20) !== 1) return;
+        $files = glob($dir . '/*.json') ?: [];
+        foreach ($files as $i => $f) {
+            if (time() - (int)@filemtime($f) > self::CACHE_TTL['pixabay']) { @unlink($f); unset($files[$i]); }
+        }
+        if (count($files) > 500) {
+            usort($files, static fn($a, $b) => filemtime($a) <=> filemtime($b));
+            foreach (array_slice($files, 0, count($files) - 400) as $old) @unlink($old);
+        }
     }
 
     private static function cacheFile(string $url): string {
