@@ -18,6 +18,9 @@
         transcript: document.getElementById('ai-transcript'),
         status: document.getElementById('ai-status'),
         usage: document.getElementById('ai-usage'),
+        ctx: document.getElementById('ai-ctx'),
+        ctxFill: document.getElementById('ai-ctx-fill'),
+        ctxText: document.getElementById('ai-ctx-text'),
         activity: document.getElementById('ai-activity'),
         activityText: document.getElementById('ai-activity-text'),
         activityTimer: document.getElementById('ai-activity-timer'),
@@ -43,6 +46,7 @@
     };
 
     let busy = false;
+    let lastCtx = null;         // latest context-window reading {used, window, budget, exact} for the meter
     let history = [];           // [{role:'user'|'assistant', content}] sent for model context
     let pendingApproval = null; // {call_id, plan, reason}
     let pendingContext = null;  // interrupted tool_call + result, resent on the follow-up run
@@ -215,7 +219,8 @@
             history: history.slice(),
             // transcriptHTML intentionally not persisted — rebuilt from history via safe markdown to prevent stored XSS (01-security #8)
             lastPreviewHtml: lastPreviewHtml || '',
-            usageText: els.usage ? els.usage.textContent : ''
+            usageText: els.usage ? els.usage.textContent : '',
+            ctxState: lastCtx
         };
         if (idx >= 0) sessions[idx] = payload; else sessions.unshift(payload);
         // keep sorted by updatedAt desc
@@ -266,6 +271,7 @@
         if (els.approval) els.approval.hidden = true;
         setStatus('Ready'); updateUsage(null);
         if (s.usageText && els.usage) els.usage.textContent = s.usageText;
+        if (s.ctxState) updateContext(s.ctxState);
         hideActivity(); hideTyping();
         renderHistoryList();
         scrollTranscript();
@@ -475,12 +481,37 @@
         els.status.className = 'ai-status' + (kind ? ' ai-status--' + kind : '');
     }
 
+    // Context window meter: `used` = prompt tokens of the latest model call (exact from usage, else an estimate).
+    function fmtTok(n) {
+        if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
+        if (n >= 1e3) return Math.round(n / 1e3) + 'k';
+        return String(n);
+    }
+    function updateContext(c) {
+        if (!els.ctx) return;
+        if (!c || !c.window) { lastCtx = null; els.ctx.hidden = true; return; }
+        lastCtx = { used: c.used || 0, window: c.window, budget: c.budget || 0, exact: !!c.exact, cached: c.cached || 0 };
+        const pct = Math.min(100, (lastCtx.used / lastCtx.window) * 100);
+        els.ctx.hidden = false;
+        els.ctxFill.style.width = pct.toFixed(1) + '%';
+        els.ctxText.textContent = (lastCtx.exact ? '' : '~') + fmtTok(lastCtx.used) + ' / ' + fmtTok(lastCtx.window)
+            + ' (' + (pct < 1 && lastCtx.used > 0 ? '<1' : Math.round(pct)) + '%)';
+        const ofBudget = lastCtx.budget ? lastCtx.used / lastCtx.budget : pct / 100;
+        els.ctx.dataset.level = ofBudget >= 0.9 ? 'danger' : (ofBudget >= 0.7 ? 'warn' : 'ok');
+        els.ctx.title = 'Context in use: ' + lastCtx.used.toLocaleString() + ' of ' + lastCtx.window.toLocaleString() + ' tokens'
+            + (lastCtx.exact ? ' (from provider)' : ' (estimate until the model replies)')
+            + (lastCtx.cached ? '. Served from prompt cache: ' + lastCtx.cached.toLocaleString() + ' tokens (' + Math.round(lastCtx.cached / lastCtx.used * 100) + '%)' : '')
+            + (lastCtx.budget ? '. Older messages are trimmed above ' + lastCtx.budget.toLocaleString() + ' tokens.' : '');
+    }
+
     function updateUsage(u) {
         if (!u) {
             els.usage.textContent = '0 tok';
             els.usage.title = '';
+            updateContext(null);
             return;
         }
+        if (u.window && u.context > 0) updateContext({ used: u.context, window: u.window, budget: u.budget, exact: true, cached: u.cached });
         const total = u.total || 0;
         const hasCost = typeof u.cost === 'number' && u.cost > 0;
         els.usage.textContent = total.toLocaleString() + ' tok' + (hasCost ? ' · $' + u.cost.toFixed(4) : '');
@@ -1217,6 +1248,9 @@
                         break;
                     case 'usage':
                         updateUsage(data);
+                        break;
+                    case 'context':
+                        updateContext(data);
                         break;
                     case 'narrate':
                         assistantText = data.text;

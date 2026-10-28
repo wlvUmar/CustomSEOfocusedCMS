@@ -183,10 +183,27 @@ class Opencode extends BaseLlmClient {
             'opencode-go/qwen3.8-flash' => 131072, 'opencode-go/qwen3.8-max' => 200000,
             'opencode-go/minimax-m2.7' => 131072, 'opencode-go/minimax-m3' => 131072,
             'opencode-go/mimo-v2.5' => 131072, 'opencode-go/mimo-v2.5-pro' => 131072,
-            'opencode-go/muse-spark-1.2-contributor' => 131072, 'opencode-go/muse-spark-1.3-contributor' => 131072,
+            // Muse Spark: 1M window (per owner). The live catalogue value still wins in contextWindow(); this is the fallback.
+            'opencode-go/muse-spark-1.2-contributor' => 1000000, 'opencode-go/muse-spark-1.3-contributor' => 1000000,
             'opencode-go/longcat-2.0' => 131072, 'opencode-go/hy3' => 131072, 'opencode-go/hy4-preview' => 131072,
         ];
     }
+    /**
+     * Context window (tokens) of a model: live catalogue first (cached by fetchModels),
+     * then the hardcoded map, then a conservative 128k.
+     */
+    public static function contextWindow(string $model): int {
+        try {
+            foreach (self::fetchModels() as $row) {
+                if (is_array($row) && ($row['id'] ?? '') === $model && (int)($row['context_length'] ?? 0) > 0) {
+                    return (int)$row['context_length'];
+                }
+            }
+        } catch (Throwable $e) {}
+        $map = self::modelContextMap();
+        return (int)($map[$model] ?? 128000);
+    }
+
     protected static function modelsAuthHeaders(string $apiKey): array {
         $headers = [];
         if ($apiKey !== '') $headers[] = 'Authorization: Bearer ' . $apiKey;
@@ -314,23 +331,23 @@ class Opencode extends BaseLlmClient {
             $role = $m['role'] ?? '';
             if ($role === 'system') {
                 $c = trim((string)($m['content'] ?? ''));
-                if ($c !== '') $system[] = ['type' => 'text', 'text' => $c, 'cache_control' => ['type' => 'ephemeral']];
+                if ($c !== '') $system[] = ['type' => 'text', 'text' => $c];
             } elseif ($role === 'user') {
                 $c = $m['content'];
                 if (is_string($c)) {
-                    $anthMsgs[] = ['role' => 'user', 'content' => [['type' => 'text', 'text' => $c, 'cache_control' => ['type' => 'ephemeral']]]];
+                    $anthMsgs[] = ['role' => 'user', 'content' => [['type' => 'text', 'text' => $c]]];
                 } elseif (is_array($c)) {
                     $parts = [];
                     foreach ($c as $p) {
-                        if (($p['type'] ?? '') === 'text' && isset($p['text'])) $parts[] = ['type' => 'text', 'text' => $p['text'], 'cache_control' => ['type' => 'ephemeral']];
-                        if (($p['type'] ?? '') === 'image_url') $parts[] = ['type' => 'image', 'source' => ['type'=>'url','url'=> $p['image_url']['url'] ?? ''], 'cache_control' => ['type'=>'ephemeral']];
+                        if (($p['type'] ?? '') === 'text' && isset($p['text'])) $parts[] = ['type' => 'text', 'text' => $p['text']];
+                        if (($p['type'] ?? '') === 'image_url') $parts[] = ['type' => 'image', 'source' => ['type'=>'url','url'=> $p['image_url']['url'] ?? '']];
                     }
                     if ($parts) $anthMsgs[] = ['role' => 'user', 'content' => $parts];
                 }
             } elseif ($role === 'assistant') {
                 $content = [];
                 $c = (string)($m['content'] ?? '');
-                if ($c !== '') $content[] = ['type' => 'text', 'text' => $c, 'cache_control' => ['type'=>'ephemeral']];
+                if ($c !== '') $content[] = ['type' => 'text', 'text' => $c];
                 if (!empty($m['tool_calls']) && is_array($m['tool_calls'])) {
                     foreach ($m['tool_calls'] as $tc) {
                         $name = $tc['function']['name'] ?? '';
@@ -338,22 +355,32 @@ class Opencode extends BaseLlmClient {
                         $id = $tc['id'] ?? ('toolu_' . substr(sha1($name.$args),0,12));
                         $decoded = json_decode((string)$args, true);
                         if (!is_array($decoded)) $decoded = ['_raw' => $args];
-                        $content[] = ['type' => 'tool_use', 'id' => $id, 'name' => $name, 'input' => $decoded, 'cache_control'=>['type'=>'ephemeral']];
+                        $content[] = ['type' => 'tool_use', 'id' => $id, 'name' => $name, 'input' => $decoded];
                     }
                 }
                 if ($content) $anthMsgs[] = ['role' => 'assistant', 'content' => $content];
             } elseif ($role === 'tool') {
                 $content = (string)($m['content'] ?? '');
                 $callId = (string)($m['tool_call_id'] ?? '');
-                $anthMsgs[] = ['role' => 'user', 'content' => [['type' => 'tool_result', 'tool_use_id' => $callId, 'content' => $content, 'cache_control'=>['type'=>'ephemeral']]]];
+                $anthMsgs[] = ['role' => 'user', 'content' => [['type' => 'tool_result', 'tool_use_id' => $callId, 'content' => $content]]];
             }
         }
         $anthTools = null;
         if (!empty($tools)) {
             $anthTools = array_map(function($t) {
                 $fn = $t['function'] ?? $t;
-                return ['name' => $fn['name'] ?? '', 'description' => $fn['description'] ?? '', 'input_schema' => $fn['parameters'] ?? ['type'=>'object','properties'=>[]], 'cache_control'=>['type'=>'ephemeral']];
+                return ['name' => $fn['name'] ?? '', 'description' => $fn['description'] ?? '', 'input_schema' => $fn['parameters'] ?? ['type'=>'object','properties'=>[]]];
             }, $tools);
+        }
+        // Anthropic allows at most 4 cache breakpoints per request (this code used to stamp every block, which
+        // exceeds that). A breakpoint caches everything before it: system, tools, and the conversation so far.
+        if ($system) $system[count($system) - 1]['cache_control'] = ['type' => 'ephemeral'];
+        if ($anthTools) $anthTools[count($anthTools) - 1]['cache_control'] = ['type' => 'ephemeral'];
+        for ($mi = count($anthMsgs) - 1, $marked = 0; $mi >= 0 && $marked < 2; $mi--) {
+            $bi = count($anthMsgs[$mi]['content']) - 1;
+            if ($bi < 0) continue;
+            $anthMsgs[$mi]['content'][$bi]['cache_control'] = ['type' => 'ephemeral'];
+            $marked++;
         }
         $payload = ['model' => $apiModel, 'max_tokens' => $maxTokens, 'temperature' => $temperature, 'messages' => $anthMsgs];
         if ($system) $payload['system'] = $system;
@@ -394,7 +421,8 @@ class Opencode extends BaseLlmClient {
                 if (is_array($usage)) {
                     $pt = $usage['input_tokens'] ?? $usage['prompt_tokens'] ?? 0;
                     $ct = $usage['output_tokens'] ?? $usage['completion_tokens'] ?? 0;
-                    $normUsage = ['prompt_tokens'=>$pt,'completion_tokens'=>$ct,'total_tokens'=>($pt+$ct),'cost'=> $data['cost'] ?? null];
+                    $cached = (int)($usage['input_tokens_details']['cached_tokens'] ?? $usage['prompt_tokens_details']['cached_tokens'] ?? 0);
+                    $normUsage = ['prompt_tokens'=>$pt,'completion_tokens'=>$ct,'total_tokens'=>($pt+$ct),'cached_tokens'=>$cached,'cost'=> $data['cost'] ?? null];
                 } else {
                     $normUsage = $data['usage'] ?? null;
                 }
@@ -421,9 +449,11 @@ class Opencode extends BaseLlmClient {
                 $u = $data['usage'] ?? null;
                 $normUsage = null;
                 if (is_array($u)) {
-                    $pt = $u['input_tokens'] ?? 0;
+                    // Anthropic's input_tokens EXCLUDES cached tokens; the real prompt size is the sum of all three.
+                    $cached = (int)($u['cache_read_input_tokens'] ?? 0);
+                    $pt = (int)($u['input_tokens'] ?? 0) + $cached + (int)($u['cache_creation_input_tokens'] ?? 0);
                     $ct = $u['output_tokens'] ?? 0;
-                    $normUsage = ['prompt_tokens'=>$pt,'completion_tokens'=>$ct,'total_tokens'=>($pt+$ct),'cost'=> $data['cost'] ?? null];
+                    $normUsage = ['prompt_tokens'=>$pt,'completion_tokens'=>$ct,'total_tokens'=>($pt+$ct),'cached_tokens'=>$cached,'cost'=> $data['cost'] ?? null];
                 }
                 return ['content'=>$content,'tool_calls'=>$toolCalls ?: null,'finish_reason'=>$finishReason,'usage'=>$normUsage,'raw'=>$data];
             }

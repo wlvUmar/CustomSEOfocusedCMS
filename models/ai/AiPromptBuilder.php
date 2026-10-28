@@ -7,8 +7,27 @@ require_once BASE_PATH . '/models/ai/SkillLoader.php';
 
 class AiPromptBuilder {
 
+    /**
+     * Prompt-cache layout: providers cache the longest identical PREFIX of a request (system -> tools -> messages).
+     * So the system message holds only what is constant between calls (mode prompt + AGENTS.md), and everything
+     * that changes per run (summary, cached tokens, memory, session state) goes into buildContextBlock(), which the
+     * controller injects as a run-internal message right before the user's current message.
+     */
+    public static function buildStaticPrompt(string $mode = 'plan'): string {
+        $base = $mode === 'build' ? self::buildBuildPrompt() : self::buildPlanPrompt();
+        return $base . SkillLoader::agentsBlock();
+    }
+
+    /** Static + dynamic in one string (legacy callers / debugging). */
     public static function buildSystemPrompt(string $mode = 'plan', ?array $ctx = null): string {
-        $mode = $mode === 'build' ? 'build' : 'plan';
+        return self::buildStaticPrompt($mode) . self::buildContextBlock($ctx);
+    }
+
+    public static function buildContextBlock(?array $ctx, ?string $summary = null): string {
+        $summaryAddon = '';
+        if ($summary !== null && trim($summary) !== '') {
+            $summaryAddon = "\n\n═══ CONVERSATION SUMMARY (older turns, compacted — may be stale; prefer fresh tool reads for HTML) ═══\n" . mb_substr($summary, 0, 2000);
+        }
         $cachedAddon = '';
         if (is_array($ctx) && isset($ctx['_cached_tokens']) && is_array($ctx['_cached_tokens'])) {
             $age = isset($ctx['_cached_tokens_at']) ? (time() - (int)$ctx['_cached_tokens_at']) : 999999;
@@ -39,10 +58,7 @@ class AiPromptBuilder {
                 $memoryAddon = "\n\n═══ SAVED MEMORY (auto-injected — current, do NOT call list_context/get_context to re-read; only call store_context when the user says remember/pin) ═══\n" . implode("\n", $lines);
             }
         }
-        if ($mode === 'plan') {
-            return self::buildPlanPrompt() . $cachedAddon . $memoryAddon . SkillLoader::agentsBlock() . self::renderSessionState($ctx);
-        }
-        return self::buildBuildPrompt() . $cachedAddon . $memoryAddon . SkillLoader::agentsBlock() . self::renderSessionState($ctx);
+        return trim($summaryAddon . $cachedAddon . $memoryAddon . self::renderSessionState($ctx));
     }
 
     /**
@@ -155,10 +171,18 @@ class AiPromptBuilder {
             }
             if (!empty($parts)) $lines[] = 'Section hash: ' . implode(', ', $parts);
         }
-        if (empty($lines)) return '';
-        $block = "\n\n═══ SESSION STATE (this session — already fetched, do NOT re-call the same read with the same args; re-read a page only for verbatim HTML you don't have) ═══\n" . implode("\n", $lines);
-        if (mb_strlen($block) > 1500) $block = mb_substr($block, 0, 1500) . '…';
-        return $block;
+        $goal = !empty($ctx['_goal']) && is_string($ctx['_goal']) ? 'First request this session: ' . $ctx['_goal'] : '';
+        if (empty($lines) && $goal === '') return '';
+        // Whole lines only (a mid-line cut produced garbage like "Writes: home:hero @a1"); the goal line is always kept.
+        $kept = [];
+        $chars = 0;
+        foreach ($lines as $line) {
+            if ($chars + mb_strlen($line) > 1800) continue;
+            $kept[] = $line;
+            $chars += mb_strlen($line) + 1;
+        }
+        if ($goal !== '') array_unshift($kept, $goal);
+        return "\n\n═══ SESSION STATE (numbers/ids already fetched this session — reuse them instead of repeating the same read; HTML is NOT stored here, so read a section once when you need verbatim markup) ═══\n" . implode("\n", $kept);
     }
 
     private static function buildPlanPrompt(): string {

@@ -111,6 +111,7 @@ require BASE_PATH . '/views/admin/layout/header.php';
                 </div>
                 <div class="ai-composer__meta">
                     <span id="ai-status" class="ai-status">Ready</span>
+                    <span id="ai-ctx" class="ai-ctx" title="Context window usage" hidden><span class="ai-ctx__bar"><i id="ai-ctx-fill"></i></span><span id="ai-ctx-text" class="ai-ctx__text"></span></span>
                     <span id="ai-usage" class="ai-usage" title="">0 tok</span>
                 </div>
             </form>

@@ -4,7 +4,9 @@
 
 class AiHistorySanitizer {
 
-    private const MAX_HISTORY_TURNS = 12;
+    // Fallback only (used when the DB has no history for the session); the turn-based window is applied by AiSessionStore.
+    private const MAX_HISTORY_MESSAGES = 90;
+    private const MAX_INPUT_MESSAGES = 400;
 
     public static function sanitizeHistory($history): array {
         $decoded = json_decode((string)$history, true);
@@ -16,11 +18,13 @@ class AiHistorySanitizer {
                 if ($role === 'tool' && empty($turn['tool_call_id'])) continue;
                 $content = (string)($turn['content'] ?? '');
                 $content = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $content);
-                if (preg_match('/^\s*(system|assistant\s*\(system\)|ignore\s+previous\s+instructions)/i', $content)) {
-                    $content = '[filtered system-like prefix] ' . ltrim(preg_replace('/^\s*(system|assistant\s*\(system\)|ignore\s+previous\s+instructions)[:\-]*/i', '', $content));
+                // Only real injection shapes ("system:", "assistant (system)", "ignore previous instructions") — plain prompts that merely start with the word "system" pass through.
+                if ($role === 'user' && preg_match('/^\s*(system\s*:|assistant\s*\(system\)|ignore\s+previous\s+instructions)/i', $content)) {
+                    $content = '[filtered system-like prefix] ' . ltrim(preg_replace('/^\s*(system\s*:|assistant\s*\(system\)|ignore\s+previous\s+instructions)[:\-]*/i', '', $content));
                 }
                 if (mb_strlen($content) > 4000) $content = mb_substr($content, 0, 4000) . "\n…[truncated]";
-                if ($role && $content !== '') {
+                $hasCalls = $role === 'assistant' && !empty($turn['tool_calls']) && is_array($turn['tool_calls']);
+                if ($role && ($content !== '' || $hasCalls)) {
                     $entry = ['role' => $role, 'content' => $content];
                     if ($role === 'tool' && !empty($turn['tool_call_id'])) {
                         $tcid = substr((string)$turn['tool_call_id'], 0, 64);
@@ -48,12 +52,15 @@ class AiHistorySanitizer {
                         if (isset($last['tool_calls'])) $lastHash .= ':' . sha1(json_encode($last['tool_calls']));
                     }
                     if ($hashParts === $lastHash) continue;
+                    // assistant message whose tool_calls all failed validation and has no text: nothing to keep
+                    if ($content === '' && !isset($entry['tool_calls'])) continue;
                     $messages[] = $entry;
                 }
-                if (count($messages) >= 48) break;
+                if (count($messages) >= self::MAX_INPUT_MESSAGES) break;
             }
-            if (count($messages) > self::MAX_HISTORY_TURNS * 2) {
-                $messages = array_slice($messages, -self::MAX_HISTORY_TURNS * 2);
+            // Keep the NEWEST messages (the old `break` at 48 kept the oldest).
+            if (count($messages) > self::MAX_HISTORY_MESSAGES) {
+                $messages = array_slice($messages, -self::MAX_HISTORY_MESSAGES);
             }
         }
         return $messages;

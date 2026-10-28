@@ -18,6 +18,8 @@ class SkillLoader {
             $text = @file_get_contents($real);
             if (!is_string($text) || trim($text) === '') continue;
             $text = str_replace(["\r\n", "\r"], "\n", trim($text));
+            // Developer-workflow bullets (external Hermes token setup) are noise for the in-CMS agent.
+            $text = implode("\n", array_filter(explode("\n", $text), fn($l) => stripos($l, 'Token workflow') === false));
             if (mb_strlen($text) > self::MAX_CHARS) $text = mb_substr($text, 0, self::MAX_CHARS) . "\n…[truncated]";
             return "\n\n═══ AGENTS.md (repo rules — follow unless user overrides) ═══\n" . $text;
         }

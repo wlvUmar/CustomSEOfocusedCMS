@@ -6,9 +6,50 @@
 
 class AiSessionStore {
 
-    public const HISTORY_LIMIT = 24;
+    // History is windowed by real user prompts (each one drags along its tool pairs),
+    // not by raw message count — 24 messages was only 2-4 prompts of a build session.
+    // Generous on purpose: the token budget (staged compaction in the controller) is what actually bounds context.
+    public const WINDOW_USER_TURNS = 12;
+    public const WINDOW_MAX_MESSAGES = 200;
     public const LIST_LIMIT = 50;
     public const TITLE_LEN = 120;
+
+    /** user/assistant/tool messages only, minus run-internal ones tagged `_syn` (loop nudges/redirects). */
+    public static function historyFromMessages(array $messages): array {
+        $out = [];
+        foreach ($messages as $m) {
+            if (!is_array($m) || !in_array($m['role'] ?? '', ['user', 'assistant', 'tool'], true)) continue;
+            if (!empty($m['_syn'])) continue;
+            $out[] = $m;
+        }
+        return $out;
+    }
+
+    /**
+     * Split history into [evicted, kept]. Kept starts at a user prompt (never mid tool pair)
+     * and holds the last $userTurns prompts, capped at $maxMessages.
+     */
+    public static function splitWindow(array $history, int $userTurns = self::WINDOW_USER_TURNS, int $maxMessages = self::WINDOW_MAX_MESSAGES): array {
+        $history = array_values($history);
+        $n = count($history);
+        $starts = [];
+        foreach ($history as $i => $m) {
+            if (($m['role'] ?? '') === 'user') $starts[] = $i;
+        }
+        $cut = count($starts) > $userTurns ? $starts[count($starts) - $userTurns] : 0;
+        if ($n - $cut > $maxMessages) {
+            $cut = $n - $maxMessages;
+            foreach ($starts as $s) {
+                if ($s >= $cut) { $cut = $s; break; }
+            }
+        }
+        while ($cut < $n && ($history[$cut]['role'] ?? '') === 'tool') $cut++;
+        return [array_slice($history, 0, $cut), array_slice($history, $cut)];
+    }
+
+    public static function windowByTurns(array $history): array {
+        return self::splitWindow($history)[1];
+    }
 
     private static bool $sessionsTableEnsured = false;
     private static bool $pendingTableEnsured = false;
@@ -86,7 +127,7 @@ class AiSessionStore {
     public static function saveSession(string $sessionId, int $uid, array $history, array $context, string $model, string $mode): void {
         try {
             self::ensureSessionsTable();
-            if (count($history) > self::HISTORY_LIMIT) $history = array_slice($history, -self::HISTORY_LIMIT);
+            $history = self::windowByTurns($history);
             $title = '';
             foreach ($history as $m) { if (($m['role'] ?? '') === 'user' && !empty($m['content'])) { $raw = trim((string)$m['content']); $raw = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $raw); $raw = strip_tags($raw); $raw = preg_replace('/\s+/u', ' ', $raw); $title = mb_substr($raw, 0, self::TITLE_LEN); break; } }
             $histJson = json_encode($history, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -94,9 +135,10 @@ class AiSessionStore {
             $exists = Database::getInstance()->fetchOne("SELECT id, version FROM ai_sessions WHERE id = ? AND user_id = ?", [$sessionId, $uid]);
             if ($exists) {
                 try {
-                    Database::getInstance()->query("UPDATE ai_sessions SET history=?, context=?, model=?, mode=?, title=?, version=version+1, updated_at=NOW() WHERE id=? AND user_id=?", [$histJson, $ctxJson, $model, $mode, $title, $sessionId, $uid]);
+                    // Title is kept once set: the window drops the opening prompt, so re-deriving it would rename the session.
+                    Database::getInstance()->query("UPDATE ai_sessions SET history=?, context=?, model=?, mode=?, title=IF(title IS NULL OR title='', ?, title), version=version+1, updated_at=NOW() WHERE id=? AND user_id=?", [$histJson, $ctxJson, $model, $mode, $title, $sessionId, $uid]);
                 } catch (Throwable $e) {
-                    Database::getInstance()->query("UPDATE ai_sessions SET history=?, context=?, model=?, mode=?, title=?, updated_at=NOW() WHERE id=? AND user_id=?", [$histJson, $ctxJson, $model, $mode, $title, $sessionId, $uid]);
+                    Database::getInstance()->query("UPDATE ai_sessions SET history=?, context=?, model=?, mode=?, title=IF(title IS NULL OR title='', ?, title), updated_at=NOW() WHERE id=? AND user_id=?", [$histJson, $ctxJson, $model, $mode, $title, $sessionId, $uid]);
                 }
             } else {
                 try {

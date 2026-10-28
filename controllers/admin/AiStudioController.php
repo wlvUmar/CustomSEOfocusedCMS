@@ -99,23 +99,10 @@ class AiStudioController extends Controller {
         if ($sessionId !== '') {
             $dbHistory = $this->loadSessionHistory($sessionId);
             if (!empty($dbHistory)) {
-                $merged = $dbHistory;
-                $existingHashes = [];
-                foreach ($merged as $m) {
-                    $k = ($m['role'] ?? '') . ':' . ($m['tool_call_id'] ?? '') . ':' . sha1((string)($m['content'] ?? ''));
-                    if (isset($m['tool_calls'])) $k .= ':' . sha1(json_encode($m['tool_calls']));
-                    $existingHashes[$k] = true;
-                }
-                foreach ($history as $m) {
-                    $h = ($m['role'] ?? '') . ':' . ($m['tool_call_id'] ?? '') . ':' . sha1((string)($m['content'] ?? ''));
-                    if (isset($m['tool_calls'])) $h .= ':' . sha1(json_encode($m['tool_calls']));
-                    if (!isset($existingHashes[$h])) {
-                        $merged[] = $m;
-                        $existingHashes[$h] = true;
-                    }
-                }
-                if (count($merged) > 24) $merged = array_slice($merged, -24);
-                $history = $merged;
+                // DB is the single source of truth (it holds tool pairs). The browser only sends user/assistant
+                // text, whose assistant bubbles never hash-match the per-turn DB messages — merging them
+                // produced duplicate assistant replies. The client history is only a fallback for a new/empty session.
+                $history = AiSessionStore::windowByTurns($dbHistory);
             }
             $dbCtx = $this->loadSessionContext($sessionId);
             if (!empty($dbCtx)) {
@@ -149,9 +136,8 @@ class AiStudioController extends Controller {
 
         // Fail loudly before claiming the run slot — a missing prompt must never burn a claim or touch history.
         try {
-            $earlyCtx = $_SESSION['ai_context'] ?? $this->loadSessionContext($sessionId) ?? [];
-            if (!is_array($earlyCtx)) $earlyCtx = [];
-            $promptForLog = AiPromptBuilder::buildSystemPrompt($mode, $earlyCtx);
+            // Static part only (constant between calls => cacheable); per-run context is injected by buildMessages().
+            $promptForLog = AiPromptBuilder::buildStaticPrompt($mode);
         } catch (Throwable $e) {
             AiLogger::logAi('prompt_missing', ['mode' => $mode, 'error' => mb_substr($e->getMessage(), 0, 200)]);
             $this->json(['success' => false, 'message' => 'AI prompt file missing: ' . $e->getMessage()], 500);
@@ -176,6 +162,18 @@ class AiStudioController extends Controller {
         $ctxSnapshot = $_SESSION['ai_context'] ?? $this->loadSessionContext($sessionId) ?? [];
         if (!is_array($ctxSnapshot)) $ctxSnapshot = [];
         $summary = ContextBuilder::loadSummary($sessionId, $uid);
+
+        $ctxBlock = AiPromptBuilder::buildContextBlock($ctxSnapshot, $summary);
+
+        // Context budget follows the model's real window: compact at 70% of it, but never send more than the soft cap
+        // per call (cost + long-context quality).
+        $ctxWindow = Opencode::contextWindow($model);
+        $softCapTokens = 250000;
+        $budgetTokens = (int)min($ctxWindow * 0.7, $softCapTokens);
+        // chars-per-token is learned from the provider's exact prompt_tokens (stored per session as _cpt);
+        // 3.0 is a conservative start for RU/UZ + JSON. Tool definitions count toward the prompt too.
+        $cpt = max(1.5, min(6.0, (float)($ctxSnapshot['_cpt'] ?? 3.0)));
+        $toolsChars = mb_strlen(json_encode(AiToolRegistry::definitionsForMode($mode), JSON_UNESCAPED_UNICODE) ?: '');
 
         // Register shutdown handler to persist even if PHP-FPM kills the worker (request_terminate_timeout / host buffer)
         $finalText = '';
@@ -281,12 +279,13 @@ class AiStudioController extends Controller {
                 }
             }
         }
-        $messages = ContextBuilder::buildMessages($promptForLog, $summary, $history, $pending, $message, $alreadyInHistory);
+        $messages = ContextBuilder::buildMessages($promptForLog, $ctxBlock, $history, $pending, $message, $alreadyInHistory);
 
         // Anti-loop guards: track repeats & read-only streaks to stop wasteful token burns
         $callCounts = [];
         $consecutiveReadOnlyTurns = 0;
         $writeTurns = 0;
+        $nudged = false;
         try {
             for ($turn = 1; ; $turn++) {
                 if (AiRunGuard::isCancelled($sessionId, $uid, $runToken)) {
@@ -308,26 +307,44 @@ class AiStudioController extends Controller {
                 if ($mode === 'build' && $consecutiveReadOnlyTurns === 5) {
                     AiLogger::logAi('waste_guard', ['turn'=>$turn,'consecutive_readonly'=>$consecutiveReadOnlyTurns,'msg'=>'5+ read-only turns — redirecting to write']);
                     $this->sse('activity', ['text' => 'Redirecting to useful write…']);
-                    $hint = $consecutiveReadOnlyTurns >= 7
-                        ? 'You have done ' . $consecutiveReadOnlyTurns . ' read-only turns. Redirect: pick ONE concrete improvement for the appliance & furniture buyback funnel (e.g. refine next thinnest section, add internal links via batch_update, or polish hero copy) and WRITE it now — do not re-fetch the same get_page/get_section. If you are truly done, summarize what changed.'
-                        : 'You have done ' . $consecutiveReadOnlyTurns . ' read-only turns without a write. Redirect: use the data you already have — propose a single batch_update (≤5 edits) that improves conversion for Ташкент выкуп техники/мебели and execute it. Do not re-fetch.';
-                    $messages[] = ['role' => 'assistant', 'content' => $finalText ?: '...'];
-                    $messages[] = ['role' => 'user', 'content' => 'SYSTEM REDIRECT (BUILD): ' . $hint];
+                    $hint = $consecutiveReadOnlyTurns . ' read-only turns in a row. Use the data you already have and do only what the user asked: if it needs a write, make that write now; if it was a question or the target is unclear, answer it or ask ONE question; if it is done, summarize and stop. Do not invent extra improvements and do not re-fetch.';
+                    // _syn = run-internal: sent this run, never persisted into history (would read as something the user said).
+                    $messages[] = ['role' => 'assistant', 'content' => $finalText ?: '...', '_syn' => true];
+                    $messages[] = ['role' => 'user', 'content' => 'SYSTEM REDIRECT (BUILD): ' . $hint, '_syn' => true];
                 }
 
                 $modelStart = microtime(true);
-                // Budget guard: estimate chars → tokens (~4 chars/token), drop oldest history if over 60k tokens
-                // Keep tool pairs atomic — never slice between assistant(tool_calls) and its tool results.
+                // Budget guard, staged from cheapest to most lossy. Budget is in tokens; chars convert via the learned $cpt.
+                //   1) replace old bulky tool results with one-line stubs (originals live in page_revisions)
+                //   2) only if still over: drop the oldest messages (tool pairs stay atomic via repairMessageSequence)
                 $estChars = array_sum(array_map(fn($m) => mb_strlen(json_encode($m, JSON_UNESCAPED_UNICODE) ?: ''), $messages));
-                if ($estChars > 200000) {
-                    $keep = count($messages) - (int)(($estChars - 180000)/4000);
+                $trimAtChars = max(60000, (int)($budgetTokens * $cpt) - $toolsChars);
+                $trimTargetChars = (int)($trimAtChars * 0.9);
+                if ($estChars > $trimAtChars) {
+                    $messages = $this->stubOldToolResults($messages);
+                    $estChars = array_sum(array_map(fn($m) => mb_strlen(json_encode($m, JSON_UNESCAPED_UNICODE) ?: ''), $messages));
+                    if ($estChars <= $trimAtChars) {
+                        $this->sse('activity', ['text' => 'Old tool results compacted to fit token budget']);
+                    }
+                }
+                if ($estChars > $trimAtChars) {
+                    $keep = count($messages) - (int)(($estChars - $trimTargetChars)/4000);
                     $minKeep = !empty($pending) ? 8 : 6;
                     if ($keep < $minKeep) $keep = $minKeep;
                     $system = $messages[0];
                     $rest = array_slice($messages, 1);
                     $firstUser = null;
-                    foreach ($rest as $m) { if (($m['role']??'')==='user') { $firstUser = $m; break; } }
+                    $ctxMsg = null;
+                    foreach ($rest as $m) {
+                        if (!empty($m['_ctx'])) { if ($ctxMsg === null) $ctxMsg = $m; continue; }
+                        if ($firstUser === null && ($m['role']??'')==='user') $firstUser = $m;
+                    }
                     $rest = array_slice($rest, -$keep);
+                    if ($ctxMsg !== null) {
+                        $hasCtx = false;
+                        foreach ($rest as $m) { if (!empty($m['_ctx'])) { $hasCtx = true; break; } }
+                        if (!$hasCtx) array_unshift($rest, $ctxMsg);
+                    }
                     if ($firstUser !== null) {
                         $hasFirst = false;
                         foreach ($rest as $m) { if (($m['role']??'')==='user' && ($m['content']??'')===($firstUser['content']??'')) { $hasFirst=true; break; } }
@@ -344,7 +361,10 @@ class AiStudioController extends Controller {
                     $candidate = $this->repairMessageSequence($candidate, true);
                     $messages = $candidate;
                     $this->sse('activity', ['text' => 'Context trimmed to fit token budget']);
+                    $estChars = array_sum(array_map(fn($m) => mb_strlen(json_encode($m, JSON_UNESCAPED_UNICODE) ?: ''), $messages));
                 }
+                // Estimate for the call about to be made; replaced by the provider's exact prompt_tokens in 'usage'.
+                $this->sse('context', ['used' => (int)ceil(($estChars + $toolsChars) / $cpt), 'window' => $ctxWindow, 'budget' => $budgetTokens, 'exact' => false]);
                 if ($this->shouldDebug()) {
                     AiLogger::logDebug('turn_request', [
                         'turn' => $turn,
@@ -362,7 +382,7 @@ class AiStudioController extends Controller {
                 while (true) {
                     try {
                         $messages = $this->repairMessageSequence($messages);
-                        $response = Opencode::chatWithTools($messages, $model, AiToolRegistry::definitionsForMode($mode), 0.5, 8192, 2, $toolChoice, $sessionId);
+                        $response = Opencode::chatWithTools($this->stripInternal($messages), $model, AiToolRegistry::definitionsForMode($mode), 0.2, 8192, 2, $toolChoice, $sessionId);
                         break;
                     } catch (Throwable $e) {
                         $emsg = $e->getMessage();
@@ -399,12 +419,24 @@ class AiStudioController extends Controller {
                     $usageTotal['completion'] += $uCompletion;
                     $usageTotal['total'] += $uTotal;
                     $usageTotal['cost'] += $uCost;
+                    $uCached = (int)($usage['cached_tokens'] ?? ($usage['prompt_tokens_details']['cached_tokens'] ?? 0));
+                    // Learn chars/token from the exact count (messages + tool definitions were what we sent).
+                    if ($uPrompt > 200) {
+                        $ratio = max(1.5, min(6.0, ($estChars + $toolsChars) / $uPrompt));
+                        $cpt = 0.5 * $cpt + 0.5 * $ratio;
+                        $ctxSnapshot['_cpt'] = round($cpt, 2);
+                    }
                     $this->sse('usage', [
                         'turn' => $turn,
                         'prompt' => $usageTotal['prompt'],
                         'completion' => $usageTotal['completion'],
                         'total' => $usageTotal['total'],
                         'cost' => $usageTotal['cost'],
+                        // This call's prompt size = how full the context really is (the totals above are billing sums).
+                        'context' => $uPrompt,
+                        'cached' => $uCached,
+                        'window' => $ctxWindow,
+                        'budget' => $budgetTokens,
                     ]);
 
                 }
@@ -428,19 +460,22 @@ class AiStudioController extends Controller {
 
                 $toolCalls = $response['tool_calls'];
                 if (empty($toolCalls)) {
-                    if ($mode === 'build' && $writeTurns === 0 && !$didWriteHtml && !$didPreview) {
+                    if ($mode === 'build' && !$nudged && $writeTurns === 0 && !$didWriteHtml && !$didPreview) {
                         $isContinue = preg_match('/^(continue|продолжай|дальше|далее)\s*$/iu', trim($message));
                         $isAcknowledgeLoop = preg_match('/(no more confirmations|got it|понял|без подтверждений)/iu', (string)$response['content']);
                         if ($isAcknowledgeLoop || $isContinue || mb_strlen(trim((string)$response['content'])) < 400) {
                             AiLogger::logAi('build_nudge', ['turn'=>$turn,'reason'=> $isAcknowledgeLoop ? 'ack_loop' : ($isContinue ? 'continue_no_tool' : 'no_tool_in_build'), 'content_preview'=> mb_substr((string)$response['content'],0,200)]);
                             $this->sse('activity', ['text' => 'Build nudge: forcing tool call…']);
+                            $nudged = true; // once per run — repeating it looped on questions/greetings
                             $messages[] = [
                                 'role' => 'assistant',
                                 'content' => $response['content'],
+                                '_syn' => true,
                             ];
                             $messages[] = [
                                 'role' => 'user',
-                                'content' => 'SYSTEM ENFORCEMENT (BUILD MODE): You have not shipped any write yet. Call a tool now (e.g. list_sections/get_section then batch_update/update_section/patch_section). Do not ask for confirmation. If the task is genuinely done, output your summary instead and end without a tool call.',
+                                'content' => 'SYSTEM ENFORCEMENT (BUILD MODE): No write has been made yet. If the user asked for a change, call the needed tool now (list_sections/get_section, then batch_update/update_section/patch_section) without asking confirmation. If they asked a question, sent a greeting, or the target is unclear, answer or ask one question in plain text with no tool call. If the task is done, summarize and stop.',
+                                '_syn' => true,
                             ];
                             continue;
                         }
@@ -668,7 +703,7 @@ class AiStudioController extends Controller {
                     if ($callCounts[$key] === 3 && AiToolRegistry::isPlanAllowed($nm)) {
                         AiLogger::logAi('repeat_guard', ['turn'=>$turn,'tool'=>$nm,'args'=>mb_substr($ag,0,200),'count'=>3]);
                         $this->sse('activity', ['text' => 'Redirect: repeated ' . $nm . ' ×3 — using cached result.']);
-                        $messages[] = ['role' => 'user', 'content' => 'SYSTEM REDIRECT: Repeated ' . $nm . ' with identical args 3× — you already have this data. Reuse it; if the requested work is done, summarize and stop without further tool calls.'];
+                        $messages[] = ['role' => 'user', 'content' => 'SYSTEM REDIRECT: Repeated ' . $nm . ' with identical args 3× — you already have this data. Reuse it; if the requested work is done, summarize and stop without further tool calls.', '_syn' => true];
                     }
                 }
 
@@ -914,19 +949,16 @@ class AiStudioController extends Controller {
     }
     private function persistAfterRun(string $sessionId, array $messages, string $model, string $mode, ?array $ctxSnapshot = null): void {
         // $messages includes system + history + new turns — extract user/assistant/tool for storage
-        $history = [];
-        foreach ($messages as $m) {
-            if (($m['role']??'')==='system') continue;
-            // Keep user, assistant, tool
-            if (in_array($m['role']??'', ['user','assistant','tool'], true)) $history[] = $m;
-        }
-        // Compact verbatim tool HTML before persisting to avoid blowing 4k cap + 24-msg window (reliable fix).
+        // user/assistant/tool only, minus run-internal nudges (_syn)
+        $history = AiSessionStore::historyFromMessages($messages);
+        // Compact verbatim tool HTML before persisting; verbatim is kept in page_revisions.
         $history = $this->compactHistoryForPersist($history);
         // Cap total chars per msg to 4000 like sanitizeHistory
         foreach ($history as &$h) {
             if (isset($h['content']) && mb_strlen($h['content'])>4000) $h['content']=mb_substr($h['content'],0,4000)."\n…[truncated]";
         }
-        if (count($history) > 24) $history = array_slice($history,-24);
+        unset($h);
+        $history = AiSessionStore::windowByTurns($history);
         // Prefer snapshot captured before startStream() — after headers_sent $_SESSION is inaccessible.
         $ctx = $ctxSnapshot;
         if ($ctx === null) {
@@ -1027,7 +1059,7 @@ class AiStudioController extends Controller {
         // Cap context size to prevent unbounded growth
         if (count($ctx) > 20) {
             // Keep cached tokens/settings + working set + last 15 keys
-            $keep = ['_cached_tokens','_cached_tokens_at','_cached_global_settings','_cached_global_settings_at',
+            $keep = ['_goal','_cpt','_cached_tokens','_cached_tokens_at','_cached_global_settings','_cached_global_settings_at',
                 '_pages','_pages_total','_page_slugs','_sections','_sec_hash','_gsc','_gsc_pages','_queries','_stats','_underperforming','_links','_sql','_serp','_search','_writes'];
             $newCtx = [];
             foreach ($keep as $k) if (isset($ctx[$k])) $newCtx[$k] = $ctx[$k];
@@ -1044,7 +1076,56 @@ class AiStudioController extends Controller {
      * Rendered as SESSION STATE in the next run's prompt so the model reuses
      * data instead of re-fetching it. Never stores HTML.
      */
+    private function stripInternal(array $messages): array {
+        foreach ($messages as &$m) {
+            if (is_array($m)) unset($m['_syn'], $m['_ctx']);
+        }
+        unset($m);
+        return $messages;
+    }
+
+    /**
+     * Stage 1 of context compaction: swap bulky OLD tool results for a one-line stub (tool, size, ok/hash).
+     * The last $keepRecent messages are left intact so the model still has fresh data to act on;
+     * verbatim HTML is recoverable from page_revisions or one re-read.
+     */
+    private function stubOldToolResults(array $messages, int $keepRecent = 8): array {
+        $names = [];
+        foreach ($messages as $m) {
+            foreach (($m['tool_calls'] ?? []) as $tc) {
+                $names[(string)($tc['id'] ?? '')] = (string)($tc['function']['name'] ?? '?');
+            }
+        }
+        $n = count($messages);
+        foreach ($messages as $i => &$m) {
+            if ($i >= $n - $keepRecent) break;
+            if (($m['role'] ?? '') !== 'tool') continue;
+            $c = (string)($m['content'] ?? '');
+            if (mb_strlen($c) <= 400 || str_contains($c, '"_stub":true')) continue;
+            $stub = ['_stub' => true, 'tool' => $names[(string)($m['tool_call_id'] ?? '')] ?? '?', 'chars' => mb_strlen($c)];
+            $d = json_decode($c, true);
+            if (is_array($d)) {
+                foreach (['ok', 'verified', 'fresh_hash', 'hash', 'error', 'code', 'count', 'slug'] as $k) {
+                    if (isset($d[$k]) && is_scalar($d[$k])) $stub[$k] = is_string($d[$k]) ? mb_substr($d[$k], 0, 80) : $d[$k];
+                }
+            }
+            $stub['note'] = 'Old result removed to save context; re-read once if you need the content.';
+            $m['content'] = json_encode($stub, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+        unset($m);
+        return $messages;
+    }
+
     private function mergeWorkingSetIntoContext(array $ctx, array $messages): array {
+        // Opening request of the session — survives the history window, rendered in SESSION STATE.
+        if (empty($ctx['_goal'])) {
+            foreach (AiSessionStore::historyFromMessages($messages) as $m) {
+                if (($m['role'] ?? '') === 'user' && trim((string)($m['content'] ?? '')) !== '') {
+                    $ctx['_goal'] = mb_substr(preg_replace('/\s+/u', ' ', trim((string)$m['content'])), 0, 300);
+                    break;
+                }
+            }
+        }
         $ctx = $this->mergeTokensIntoContext($ctx, $messages);
         $calls = [];
         foreach ($messages as $m) {
@@ -1211,15 +1292,12 @@ class AiStudioController extends Controller {
     public static function staticPersistAfterRun(string $sessionId, array $messages, string $model, string $mode, ?array $ctxSnapshot, int $uid): void {
         if ($sessionId === '' || $uid <= 0) return;
         try {
-            $history = [];
-            foreach ($messages as $m) {
-                if (($m['role']??'')==='system') continue;
-                if (in_array($m['role']??'', ['user','assistant','tool'], true)) $history[] = $m;
-            }
+            $history = AiSessionStore::historyFromMessages($messages);
             $tmp = new self();
             $history = $tmp->compactHistoryForPersist($history);
             foreach ($history as &$h) { if (isset($h['content']) && mb_strlen($h['content'])>4000) $h['content']=mb_substr($h['content'],0,4000)."\n…[truncated]"; }
-            if (count($history) > 24) $history = array_slice($history,-24);
+            unset($h);
+            $history = AiSessionStore::windowByTurns($history);
             $ctx = is_array($ctxSnapshot) ? $ctxSnapshot : [];
             $ctx = $tmp->mergeWorkingSetIntoContext($ctx, $messages);
             AiSessionStore::saveAfterRun($sessionId, $uid, $history, $ctx, $model, $mode);
