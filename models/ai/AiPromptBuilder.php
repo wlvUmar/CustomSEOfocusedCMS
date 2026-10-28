@@ -73,7 +73,9 @@ class AiPromptBuilder {
             $parts = [];
             foreach ($ctx['_pages'] as $slug => $p) {
                 if (!is_array($p)) continue;
-                $parts[] = $slug . '(#' . (int)($p['id'] ?? 0) . ', ' . round((int)($p['c'] ?? 0) / 1000, 1) . 'k)';
+                $th = (string)($p['th'] ?? '');
+                $parts[] = $slug . '(#' . (int)($p['id'] ?? 0) . ', ' . round((int)($p['c'] ?? 0) / 1000, 1) . 'k'
+                    . ($th !== '' ? ', theme ' . $th . (!empty($p['pal']) ? '+palette' : '') : '') . ')';
             }
             if (!empty($parts)) $lines[] = 'Pages seen: ' . implode(', ', array_slice($parts, 0, 15));
         }

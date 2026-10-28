@@ -88,6 +88,25 @@ document.addEventListener('change', (e) => {
             let pickerSlot = null;
             let pickerFilter = 'all';
             let pickerQuery = '';
+            let pickerAdded = 0;   // images added during this picker session (multi mode)
+            // Gallery slots take many images: same suffix rule as MediaRenderer::renderMediaSlot (_scroll/_carousel/_slider/_hscroll).
+            const isMultiSlot = (s)=> /_(scroll|carousel|slider|hscroll)$/i.test(String(s||''));
+            function updateDoneLabel(){
+                const b = document.getElementById('media-picker-close-btn');
+                if(b) b.textContent = isMultiSlot(pickerSlot) ? (pickerAdded ? 'Done ('+pickerAdded+' added)' : 'Done') : 'Close';
+            }
+            // multi mode: mark a picker card as "in this gallery" without reloading the grid (keeps scroll position)
+            function markPicked(card){
+                pickerAdded++;
+                updateDoneLabel();
+                const status=document.getElementById('media-picker-status');
+                if(status) status.textContent = 'Added '+pickerAdded+' — pick more, or press Done';
+                if(!card || !card.classList) return;
+                card._inSlot = true;
+                card.classList.add('c-picker-card-attached');
+                if(!card.querySelector('.c-picker-check')){ const s=document.createElement('span'); s.className='c-picker-check'; s.textContent='✓'; card.appendChild(s); }
+                const h=card.querySelector('.picker-hover span'); if(h) h.textContent='In this gallery';
+            }
             function getEditorContent(id){
                 try{ const ed = tinymce.get(id); if(ed) return ed.getContent(); }catch(e){}
                 const el=document.getElementById(id); return el?el.value:'';
@@ -126,7 +145,8 @@ document.addEventListener('change', (e) => {
                             </div>`;
                         }).join('');
                     }
-                    const meta = items.length ? `${items.length} image${items.length>1?'s':''} — ${items.length===1?'single':'gallery'}` : 'invisible on site until attached';
+                    const multi = isMultiSlot(slot);
+                    const meta = items.length ? `${items.length} image${items.length>1?'s':''} — ${multi ? 'side-scroll gallery' : (items.length===1?'single':'gallery')}` : (multi ? 'gallery slot — attach as many images as you like; invisible until attached' : 'invisible on site until attached');
                     row.innerHTML=`
                         <div class="c-slot-thumbs">${thumbsHtml}</div>
                         <div class="c-slot-main">
@@ -134,7 +154,7 @@ document.addEventListener('change', (e) => {
                             <div class="c-slot-meta">${escHtml(meta)}</div>
                         </div>
                         <div class="c-slot-actions">
-                            <button type="button" class="btn btn-primary btn-sm" data-open-picker="${escHtml(slot)}">Choose image</button>
+                            <button type="button" class="btn btn-primary btn-sm" data-open-picker="${escHtml(slot)}">${multi ? 'Choose images' : 'Choose image'}</button>
                             <a href="${baseUrl}/admin/media?attach_slot=${encodeURIComponent(slot)}&page_id=${pageId}" class="btn btn-secondary btn-sm" title="Open full library in new tab" target="_blank">Library ↗</a>
                             ${items.length ? `<button type="button" class="btn btn-sm c-slot-detach" data-detach-slot="${escHtml(slot)}">Detach all</button>` : ''}
                         </div>`;
@@ -204,7 +224,9 @@ document.addEventListener('change', (e) => {
             // Picker functions
             window.openMediaPicker = async function(slot){
                 pickerSlot = slot;
-                document.getElementById('media-picker-title').textContent = 'Choose image for {{media.'+slot+'}}';
+                pickerAdded = 0;
+                updateDoneLabel();
+                document.getElementById('media-picker-title').textContent = (isMultiSlot(slot) ? 'Choose images (select several) for {{media.' : 'Choose image for {{media.')+slot+'}}';
                 document.getElementById('media-picker-open-library').href = baseUrl + '/admin/media?attach_slot='+encodeURIComponent(slot)+'&page_id='+pageId;
                 document.getElementById('media-picker-modal').classList.add('active');
                 pickerFilter = 'all';
@@ -217,6 +239,8 @@ document.addEventListener('change', (e) => {
             window.closeMediaPicker = function(){
                 document.getElementById('media-picker-modal').classList.remove('active');
                 pickerSlot=null;
+                pickerAdded=0;
+                updateDoneLabel();
             };
             window.pickerSetFilter = function(f){
                 pickerFilter=f;
@@ -247,8 +271,11 @@ document.addEventListener('change', (e) => {
                     if (!items.length) { grid.innerHTML='<div class="c-picker-empty">No images match filter/search. Try “All” or upload.</div>'; return; }
                     grid.innerHTML='';
                     items.forEach(it=>{
-                        const attached = it.is_attached_to_page;
+                        const multi = isMultiSlot(pickerSlot);
+                        // multi mode: "attached" means in THIS gallery; single mode keeps the old page-wide meaning
+                        const attached = multi ? (slotsData[pickerSlot]||[]).some(x=> String(x.media_id||x.id)===String(it.id)) : it.is_attached_to_page;
                         const card=document.createElement('div');
+                        card._inSlot = multi && attached;
                         card.className='c-picker-card'+(attached?' c-picker-card-attached':'');
                         let imgUrl = it.thumb_url || (thumbBase + it.filename);
                         // thumb_url from server may be absolute (BASE_URL + /uploads/...) or root /uploads/... — ensure it resolves
@@ -265,11 +292,14 @@ document.addEventListener('change', (e) => {
                                 <div class="c-picker-sub">${it.usage_count||0} page(s)${it.attached_section ? ' · '+escHtml(it.attached_section) : ''}</div>
                             </div>
                             <div class="c-picker-hover picker-hover">
-                                <span>${attached ? 'Re-attach' : 'Attach to '+escHtml(pickerSlot)}</span>
+                                <span>${multi ? (attached ? 'In this gallery' : 'Add to '+escHtml(pickerSlot)) : (attached ? 'Re-attach' : 'Attach to '+escHtml(pickerSlot))}</span>
                             </div>`;
                         card.addEventListener('mouseenter', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='1'; h.firstElementChild.style.transform='translateY(0)'; }});
                         card.addEventListener('mouseleave', ()=>{ const h=card.querySelector('.picker-hover'); if(h){h.style.opacity='0'; h.firstElementChild.style.transform='translateY(2px)'; }});
-                        card.addEventListener('click', ()=> pickerAttach(it.id, card));
+                        card.addEventListener('click', ()=>{
+                            if(card._inSlot){ status.textContent = 'Already in this gallery — remove it with × on its thumbnail in the slots list.'; return; }
+                            pickerAttach(it.id, card);
+                        });
                         // also handle touch: first tap shows hover, second attaches? For now single tap attaches directly (as before)
                         const _btn = card; // for pickerAttach btn param compatibility
                         // store for fallback
@@ -387,6 +417,9 @@ document.addEventListener('change', (e) => {
             }
             async function stockImport(p, card, crop){
                 if(!pickerSlot) return;
+                if(card._done || card._importing) return;   // multi mode keeps the modal open: no double imports
+                card._importing = true;
+                const slotName = pickerSlot;
                 const status=byId('stock-status');
                 card.classList.add('c-stock-card-busy');
                 status.classList.remove('c-picker-status-error');
@@ -403,11 +436,22 @@ document.addEventListener('change', (e) => {
                     if(!slotsData[pickerSlot]) slotsData[pickerSlot]=[];
                     slotsData[pickerSlot].push({media_id:j.media_id, id:j.media_id, filename:j.filename, original_name:j.original_name, section:pickerSlot});
                     render();
-                    closeMediaPicker();
+                    if (isMultiSlot(slotName)) {
+                        // gallery slot: stay open, mark the photo as added
+                        card._done = true;
+                        card.classList.remove('c-stock-card-busy');
+                        markPicked(card);
+                        const h=card.querySelector('.picker-hover span'); if(h) h.textContent='Добавлено ✓';
+                        status.textContent = 'Добавлено: '+pickerAdded+' — выберите ещё или нажмите «Done»';
+                    } else {
+                        closeMediaPicker();
+                    }
                 } catch(e){
                     status.textContent='Не удалось добавить фото: '+(e.message||e);
                     status.classList.add('c-picker-status-error');
                     card.classList.remove('c-stock-card-busy');
+                } finally {
+                    card._importing = false;
                 }
             }
             document.querySelectorAll('[data-picker-tab]').forEach(b=>b.addEventListener('click', ()=>window.pickerSetTab(b.dataset.pickerTab)));
@@ -422,6 +466,9 @@ document.addEventListener('change', (e) => {
 
             window.pickerAttach = async function(mediaId, btn){
                 if (!pickerSlot) return;
+                if (btn && btn._busy) return;   // in multi mode the modal stays open: ignore double clicks while attaching
+                if (btn) btn._busy = true;
+                const slotName = pickerSlot;
                 const isBtn = btn && btn.tagName === 'BUTTON';
                 if(isBtn){ btn.disabled=true; const old=btn.textContent; btn.textContent='…'; btn._old=old; }
                 else if(btn && btn.classList && btn.classList.contains('picker-hover')){ /* card overlay, ignore */ }
@@ -460,16 +507,21 @@ document.addEventListener('change', (e) => {
                         }
                     }catch(_){ /* ignore, still render with id only */ }
                     render();
-                    pickerLoad(); // refresh picker attached badges
-                    closeMediaPicker();
+                    if (isMultiSlot(slotName)) {
+                        markPicked(btn);   // gallery slot: stay open so more images can be picked
+                    } else {
+                        pickerLoad(); // refresh picker attached badges
+                        closeMediaPicker();
+                    }
                     const t=document.createElement('div');
-                    t.textContent='✅ Attached to {{media.'+pickerSlot+'}}';
+                    t.textContent='✅ Attached to {{media.'+slotName+'}}';
                     t.className='c-toast c-toast-ok';
                     document.body.appendChild(t); requestAnimationFrame(()=>t.style.opacity='1'); setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),240);}, 1700);
                 }catch(e){
                     alert('Attach failed: '+(e.message||e));
                     if(isBtn && btn){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
                 } finally {
+                    if(btn) btn._busy = false;
                     if(isBtn && btn && btn.disabled && btn.textContent==='…'){ btn.disabled=false; btn.textContent=btn._old||'Attach'; }
                 }
             };

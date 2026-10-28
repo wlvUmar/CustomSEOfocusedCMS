@@ -22,6 +22,23 @@ class PageTheme {
         'fresh'   => ['Прочая бытовая техника — fresh', ['Rubik:wght@500;600;700', 'Golos+Text:wght@400;500;600;700']],
     ];
 
+    /** One-line English description of what the theme is for and how it looks — shown to the AI agent with page reads. */
+    private const AI_HINTS = [
+        'default' => 'standard teal look (home, about, generic pages)',
+        'screen'  => 'TVs/monitors: dark cinema look, letterbox hero, poster cards, film-strip steps',
+        'frost'   => 'refrigerators/freezers: fridge hero, shelf cards, thermometer steps',
+        'wave'    => 'washing machines: washer hero, bubble cards, wash-cycle steps, chat-style FAQ',
+        'flame'   => 'gas stoves/ovens/hobs: dark, stove hero, menu-board cards, heat-level steps',
+        'breeze'  => 'air conditioners: A/C unit hero, cloud cards, temperature-scale steps',
+        'rug'     => 'carpets/rugs: framed-rug hero, woven ribbon cards, diamond steps',
+        'wood'    => 'furniture: magazine hero, catalogue cards',
+        'fresh'   => 'other home appliances: bento cards',
+    ];
+
+    public static function aiHint(string $key): string {
+        return self::AI_HINTS[$key] ?? self::AI_HINTS[self::BASE];
+    }
+
     public static function all(): array {
         $out = [];
         foreach (self::THEMES as $key => $def) $out[$key] = $def[0];

@@ -1170,7 +1170,7 @@ class AiStudioController extends Controller {
                 $slug = (string)($r['slug'] ?? $args['slug'] ?? '');
                 if ($slug === '') break;
                 $chars = mb_strlen((string)($r['content_ru'] ?? '')) + mb_strlen((string)($r['content_uz'] ?? ''));
-                $ctx['_pages'][$slug] = ['id' => (int)($r['id'] ?? 0), 't' => mb_substr((string)($r['title_ru'] ?? ''), 0, 60), 'c' => $chars];
+                $ctx['_pages'][$slug] = ['id' => (int)($r['id'] ?? 0), 't' => mb_substr((string)($r['title_ru'] ?? ''), 0, 60), 'c' => $chars, 'th' => (string)($r['design']['theme'] ?? $r['theme'] ?? 'default'), 'pal' => !empty($r['design']['palette']) ? 1 : 0];
                 break;
             case 'search_content':
                 $ctx['_search'][(string)($r['query'] ?? '')] = (int)($r['count'] ?? 0);

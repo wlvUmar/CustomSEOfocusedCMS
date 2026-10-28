@@ -4,14 +4,14 @@
             <div class="footer-content">
                 <div class="footer-section">
                     <h3><?= e($seo["site_name_$lang"]) ?></h3>
-                    <p><?= $lang === 'ru' ? 'ÐŸÐ¾ÐºÑƒÐ¿Ð°ÐµÐ¼ Ð±Ñ‹Ñ‚Ð¾Ð²ÑƒÑŽ Ñ‚ÐµÑ…Ð½Ð¸ÐºÑƒ, Ð½Ð¾Ð²ÑƒÑŽ Ð¸ Ð±/Ñƒ. Ð‘Ñ‹ÑÑ‚Ñ€Ð°Ñ Ð¾Ñ†ÐµÐ½ÐºÐ°, Ñ‡ÐµÑÑ‚Ð½Ð°Ñ Ñ†ÐµÐ½Ð°, Ð¼Ð¾Ð¼ÐµÐ½Ñ‚Ð°Ð»ÑŒÐ½Ð°Ñ Ð¾Ð¿Ð»Ð°Ñ‚Ð°.' : 'Maishiy texnikani, yangi va ishlatilganni sotib olamiz. Tez baholash, adolatli narx, oniy to\'lov.' ?></p>
+                    <p><?= $lang === 'ru' ? 'Покупаем бытовую технику, новую и б/у. Быстрая оценка, честная цена, моментальная оплата.' : 'Maishiy texnikani, yangi va ishlatilganni sotib olamiz. Tez baholash, adolatli narx, oniy to\'lov.' ?></p>
                     <?php
                     require_once BASE_PATH . '/models/Page.php';
                     $footerNavPages = array_slice((new Page())->getNavPages(), 0, 10);
                     if ($footerNavPages):
                     ?>
-                    <nav aria-label="<?= $lang === 'ru' ? 'Ð Ð°Ð·Ð´ÐµÐ»Ñ‹ ÑÐ°Ð¹Ñ‚Ð°' : 'Sayt bo\'limlari' ?>">
-                        <p class="footer-links__title"><?= $lang === 'ru' ? 'Ð Ð°Ð·Ð´ÐµÐ»Ñ‹' : 'Bo\'limlar' ?></p>
+                    <nav aria-label="<?= $lang === 'ru' ? 'Разделы сайта' : 'Sayt bo\'limlari' ?>">
+                        <p class="footer-links__title"><?= $lang === 'ru' ? 'Разделы' : 'Bo\'limlar' ?></p>
                         <ul class="footer-links">
                             <?php foreach ($footerNavPages as $fp): ?>
                             <li><a href="<?= BASE_URL ?>/<?= e($fp['slug']) ?><?= $lang !== DEFAULT_LANGUAGE ? '/' . $lang : '' ?>"><?= e($fp["title_$lang"] ?: ($fp['title_ru'] ?? $fp['slug'])) ?></a></li>
@@ -22,7 +22,7 @@
                 </div>
                 
                 <div class="footer-section">
-                    <h3><?= $lang === 'ru' ? 'ÐšÐ¾Ð½Ñ‚Ð°ÐºÑ‚Ñ‹' : 'Aloqa' ?></h3>
+                    <h3><?= $lang === 'ru' ? 'Контакты' : 'Aloqa' ?></h3>
                     <?php
                     $effectivePhone = $contactUi['phone'] ?? ($seo['phone'] ?? '');
                     
@@ -50,7 +50,7 @@
                 </div>
                 
                 <div class="footer-section">
-                    <h3><?= $lang === 'ru' ? 'Ð˜Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ð¸Ñ' : 'Ma\'lumot' ?></h3>
+                    <h3><?= $lang === 'ru' ? 'Информация' : 'Ma\'lumot' ?></h3>
                     <?php if ($seo["address_$lang"]): ?>
                     <div class="contact-item">
                         <svg fill="currentColor" viewBox="0 0 20 20">
@@ -76,10 +76,10 @@
                     <div class="footer-map">
                         <iframe
                             src="<?= e($mapEmbedUrl) ?>"
-                            title="<?= $lang === 'ru' ? 'ÐšÐ°Ñ€Ñ‚Ð° Ð¼ÐµÑÑ‚Ð¾Ð¿Ð¾Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ ÐºÐ¾Ð¼Ð¿Ð°Ð½Ð¸Ð¸' : 'Kompaniya joylashuvi xaritasi' ?>"
+                            title="<?= $lang === 'ru' ? 'Карта местоположения компании' : 'Kompaniya joylashuvi xaritasi' ?>"
                             loading="lazy"
                             referrerpolicy="no-referrer-when-downgrade"
-                            aria-label="<?= $lang === 'ru' ? 'ÐšÐ°Ñ€Ñ‚Ð° Ð¼ÐµÑÑ‚Ð¾Ð¿Ð¾Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ ÐºÐ¾Ð¼Ð¿Ð°Ð½Ð¸Ð¸' : 'Kompaniya joylashuvi xaritasi' ?>"></iframe>
+                            aria-label="<?= $lang === 'ru' ? 'Карта местоположения компании' : 'Kompaniya joylashuvi xaritasi' ?>"></iframe>
                     </div>
                     <?php endif; ?>
                     <?php endif; ?>
@@ -93,10 +93,10 @@
                 </div>
             </div>
 
-            <?php /* FAQ moved to a dedicated accordion section in page.php â€” see .faq-section */ ?>
+            <?php /* FAQ moved to a dedicated accordion section in page.php — see .faq-section */ ?>
             
             <div class="copyright">
-                <p>Â© <?= date('Y') ?> <?= e($seo["site_name_$lang"]) ?>. <?= $lang === 'ru' ? 'Ð’ÑÐµ Ð¿Ñ€Ð°Ð²Ð° Ð·Ð°Ñ‰Ð¸Ñ‰ÐµÐ½Ñ‹.' : 'Barcha huquqlar himoyalangan.' ?></p>
+                <p>© <?= date('Y') ?> <?= e($seo["site_name_$lang"]) ?>. <?= $lang === 'ru' ? 'Все права защищены.' : 'Barcha huquqlar himoyalangan.' ?></p>
             </div>
         </div>
     </footer>
@@ -105,15 +105,15 @@
         window.baseUrl = "<?= rtrim(BASE_URL, '/') ?>";
         <?php if (!empty($seo['google_review_url'])): ?>
         window.googleReviewUrl = '<?= e($seo['google_review_url']) ?>';
-        window.googleReviewPrompt = <?= json_encode($lang === 'ru' ? 'Ð¡Ð¿Ð°ÑÐ¸Ð±Ð¾! ÐÐµ Ð¼Ð¾Ð³Ð»Ð¸ Ð±Ñ‹ Ð²Ñ‹ Ð¾ÑÑ‚Ð°Ð²Ð¸Ñ‚ÑŒ Ð¾Ñ‚Ð·Ñ‹Ð² Ð¾ Ð½Ð°ÑˆÐµÐ¼ ÑÐµÑ€Ð²Ð¸ÑÐµ?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?') ?>;
+        window.googleReviewPrompt = <?= json_encode($lang === 'ru' ? 'Спасибо! Не могли бы вы оставить отзыв о нашем сервисе?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?') ?>;
         <?php endif; ?>
     </script>
     <div id="review-modal" class="review-modal" hidden aria-hidden="true">
         <div class="review-modal__backdrop" data-review-modal-close></div>
         <div class="review-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="review-modal-title">
-            <h3 id="review-modal-title"><?= $lang === 'ru' ? 'ÐžÑÑ‚Ð°Ð²Ð¸Ñ‚ÑŒ Ð¾Ñ‚Ð·Ñ‹Ð²?' : 'Sharh qoldirasizmi?' ?></h3>
+            <h3 id="review-modal-title"><?= $lang === 'ru' ? 'Оставить отзыв?' : 'Sharh qoldirasizmi?' ?></h3>
             <p id="review-modal-message" data-review-message>
-                <?= $lang === 'ru' ? 'Ð¡Ð¿Ð°ÑÐ¸Ð±Ð¾! ÐÐµ Ð¼Ð¾Ð³Ð»Ð¸ Ð±Ñ‹ Ð²Ñ‹ Ð¾ÑÑ‚Ð°Ð²Ð¸Ñ‚ÑŒ Ð¾Ñ‚Ð·Ñ‹Ð² Ð¾ Ð½Ð°ÑˆÐµÐ¼ ÑÐµÑ€Ð²Ð¸ÑÐµ?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?' ?>
+                <?= $lang === 'ru' ? 'Спасибо! Не могли бы вы оставить отзыв о нашем сервисе?' : 'Rahmat! Bizning xizmatimiz haqida sharh qoldirasizmi?' ?>
             </p>
             <div class="review-modal__actions">
                 <button type="button" class="review-modal__btn review-modal__btn--secondary" data-review-modal-close>
@@ -121,7 +121,7 @@
                 </button>
                 <?php if (!empty($seo['google_review_url'])): ?>
                 <a href="<?= e($seo['google_review_url']) ?>" class="review-modal__btn review-modal__btn--review" target="_blank" rel="noopener noreferrer" data-review-open data-cta="review_modal" data-cta-manual>
-                    <?= $lang === 'ru' ? 'ÐžÑÑ‚Ð°Ð²Ð¸Ñ‚ÑŒ Ð¾Ñ‚Ð·Ñ‹Ð²' : 'Sharh qoldirish' ?>
+                    <?= $lang === 'ru' ? 'Оставить отзыв' : 'Sharh qoldirish' ?>
                 </a>
                 <?php endif; ?>
             </div>

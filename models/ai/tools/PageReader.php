@@ -34,7 +34,7 @@ class PageReader {
                 'type' => 'function',
                 'function' => [
                     'name' => 'get_page',
-                    'description' => 'Fetch one page by slug (preferred) or id, with its RU/UZ titles, content, and meta fields. content_* is the body only — hero, FAQ accordion, link widgets, header/footer auto-render outside it. Long HTML fields are truncated to ~12000 chars with a "truncated" flag and a sections_hint (see list_sections/get_section/get_content_chunk for exact find). For targeted edits copy find exactly from truncated preview or fetch the section untruncated.',
+                    'description' => 'Fetch one page by slug (preferred) or id, with its RU/UZ titles, content, and meta fields. content_* is the body only — hero, FAQ accordion, link widgets, header/footer auto-render outside it. `design` (first key) says how the page is styled: layout theme + what it is for, colour palette, any other custom CSS — respect it when writing. Long HTML fields are truncated to ~12000 chars with a "truncated" flag and a sections_hint (see list_sections/get_section/get_content_chunk for exact find). For targeted edits copy find exactly from truncated preview or fetch the section untruncated.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -136,6 +136,37 @@ class PageReader {
         throw new InvalidArgumentException("Unknown tool: {$name}");
     }
 
+    /** Palette = the `--var: value` pairs of the page's `body.page-{slug} { ... }` block (what set_page_theme writes). */
+    private static function paletteFromCss(string $css, string $slug): ?array {
+        if (trim($css) === '' || $slug === '') return null;
+        $cls = 'page-' . preg_replace('/[^a-z0-9]+/', '-', strtolower($slug));
+        if (!preg_match('/body\.' . preg_quote($cls, '/') . '\s*\{([^}]*)\}/', $css, $m)) return null;
+        if (!preg_match_all('/(--[\w-]+)\s*:\s*([^;}]+)/', $m[1], $pairs, PREG_SET_ORDER)) return null;
+        $out = [];
+        foreach ($pairs as $p) $out[$p[1]] = trim($p[2]);
+        return $out ?: null;
+    }
+
+    /**
+     * How this page is styled, so the agent knows before it writes: layout theme (pages.theme),
+     * colour palette and any other custom CSS. Compact on purpose (~60 tokens); $withRules adds the guidance once (get_page).
+     */
+    public static function designInfo(array $page, bool $withRules = false): array {
+        $theme = PageTheme::normalize($page['theme'] ?? PageTheme::BASE);
+        $css = (string)($page['custom_css'] ?? '');
+        $rest = trim((string)preg_replace('/(?:\/\*\s*theme:[^*]*\*\/\s*)?body\.page-[a-z0-9-]+\s*\{[^}]*--[^}]*\}/', '', $css));
+        $d = [
+            'theme' => $theme,
+            'theme_is' => PageTheme::aiHint($theme),
+            'palette' => self::paletteFromCss($css, (string)($page['slug'] ?? '')),
+            'other_custom_css' => $rest === '' ? null : ['chars' => mb_strlen($rest), 'preview' => mb_substr($rest, 0, 300)],
+        ];
+        if ($withRules) {
+            $d['rules'] = 'Theme + palette restyle hero/cards/steps/FAQ/links/fonts automatically — write plain .c-*/content-section/info-card/process-step markup, never inline style or custom CSS to imitate them. Keep card/step text short (title <~35 chars, text <~110), ideally 4 cards/4 steps. Change theme/palette only when asked; other_custom_css can fight the theme.';
+        }
+        return $d;
+    }
+
     private static function listPages(array $args): array {
         $limit = isset($args['limit']) ? max(1, min(500, (int)$args['limit'])) : 100;
         $model = new Page();
@@ -191,6 +222,7 @@ class PageReader {
                 $result[$k] = $page[$k];
             }
         }
+        $design = self::designInfo($page, true);
         // Issue #6 mitigation: include lightweight sections_hint so model can jump to get_section without extra list_sections turn
         try {
             $hintLang = isset($page['content_ru']) ? 'ru' : 'uz';
@@ -209,7 +241,8 @@ class PageReader {
                 }
             }
         } catch (Throwable $e) {}
-        return $result;
+        // design goes FIRST: tool results over 6000 chars are cut from the end, and content_* can be 12k.
+        return ['design' => $design] + $result;
     }
 
     private static function searchContent(array $args): array {
@@ -286,7 +319,7 @@ class PageReader {
                 'preview' => mb_substr(trim(strip_tags($s['text'])), 0, 160),
             ];
         }
-        return ['page_id' => $pageId, 'lang' => $lang, 'sections' => $out, 'count' => count($out), 'total_chars' => $totalChars, 'total_sections' => count($out)];
+        return ['page_id' => $pageId, 'lang' => $lang, 'design' => self::designInfo($page), 'sections' => $out, 'count' => count($out), 'total_chars' => $totalChars, 'total_sections' => count($out)];
     }
 
     private static function getSection(array $args): array {
@@ -319,6 +352,8 @@ class PageReader {
         $sec = $sections[$idx];
         return [
             'page_id' => $pageId, 'lang' => $lang, 'index' => $idx, 'name' => $sec['name'],
+            'theme' => PageTheme::normalize($page['theme'] ?? PageTheme::BASE),
+            'palette' => self::paletteFromCss((string)($page['custom_css'] ?? ''), (string)($page['slug'] ?? '')),
             'chars' => mb_strlen($sec['text']), 'hash' => substr(md5($sec['text']), 0, 8),
             'html' => $sec['text'],
             'preview' => mb_substr(trim(strip_tags($sec['text'])), 0, 300),
