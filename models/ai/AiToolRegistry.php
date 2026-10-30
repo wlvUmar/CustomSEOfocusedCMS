@@ -19,6 +19,7 @@ require_once BASE_PATH . '/models/ai/tools/MediaSlotTools.php';
 require_once BASE_PATH . '/models/ai/tools/MemoryTools.php';
 require_once BASE_PATH . '/models/ai/tools/SkillTools.php';
 require_once BASE_PATH . '/models/ai/tools/LinkWidgetTools.php';
+require_once BASE_PATH . '/models/ai/tools/PageCreateTools.php';
 require_once BASE_PATH . '/models/ai/ToolEnvelope.php';
 
 class AiToolRegistry {
@@ -38,6 +39,7 @@ class AiToolRegistry {
         MemoryTools::class,
         SkillTools::class,
         LinkWidgetTools::class,
+        PageCreateTools::class,
     ];
 
     /**
@@ -52,6 +54,7 @@ class AiToolRegistry {
         'set_rotation'          => 'Pins a manual rotation variant as the live content for a page.',
         'restore_page_revision' => 'Restores a page to a previous snapshot — current state is saved as a new revision first, so this is undoable, but still guarded.',
         'link_auto_connect'     => 'Bulk-creates internal links across pages — requires approval even in BUILD.',
+        'create_page'             => 'Creates a new public page/slug — requires approval even in BUILD.',
     ];
 
     /** Tools that are read-only and safe in PLAN mode. Everything else requires BUILD mode. */
