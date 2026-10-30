@@ -30,7 +30,7 @@ class LinkWidgetTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'link_add',
-                    'description' => 'Connect one internal link: source page -> target page (page_link_widgets). BUILD-only. Creates the row and enables the widget on the source so links are visible. RU/UZ titles untouched.',
+                    'description' => 'Connect ONE internal link: source page -> target page. BUILD-only. Enables widget on source. For 2+ links use link_auto_connect once — never chain link_add call-by-call (each call costs a full turn).',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -78,7 +78,7 @@ class LinkWidgetTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'link_auto_connect',
-                    'description' => 'Auto-connect one page (or orphans) to parent/children/siblings + keyword-similar pages, up to max_links. Guarded: requires approval. Set dry_run=true to preview without writing.',
+                    'description' => 'Bulk-link in ONE call (preferred over any link_add chain): auto-connect one page (scope=page) or all orphans (scope=orphans) to parent/children/siblings + keyword-similar pages, up to max_links. Guarded: requires approval. Always dry_run=true first, then one real run.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [

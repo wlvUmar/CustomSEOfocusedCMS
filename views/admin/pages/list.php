@@ -27,6 +27,7 @@ usort($sortedPages, function($a, $b) use ($sort, $order) {
             break;
         case 'status':
             $comparison = ($a['is_published'] <=> $b['is_published']);
+            if ($comparison === 0) $comparison = ($a['id'] <=> $b['id']);
             break;
         default:
             $comparison = $a['id'] <=> $b['id'];
@@ -46,7 +47,7 @@ function rebuildHierarchy($sortedPages, $parentId = null) {
     }, $sortedPages));
 }
 
-$sortedHierarchy = rebuildHierarchy($sortedPages);
+$sortedHierarchy = ($sort === 'status') ? array_map(function ($p) { $p['children'] = []; return $p; }, array_values($sortedPages)) : rebuildHierarchy($sortedPages);
 
 function getSortLink($field, $currentSort, $currentOrder) {
     $newOrder = ($currentSort === $field && $currentOrder === 'asc') ? 'desc' : 'asc';

@@ -18,7 +18,7 @@ class PageCreateTools {
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
-                            'slug' => ['type' => 'string', 'description' => 'New URL slug, lowercase a-z0-9-hyphens (e.g. "kupim-holodilnik"). Must be unique; reserved: home,main,admin,api,articles.'],
+                            'slug' => ['type' => 'string', 'description' => 'New URL slug, lowercase a-z0-9-hyphens (e.g. "samsung-xolodilnik"). Must be unique; reserved: home,main,admin,api,articles.'],
                             'title_ru' => ['type' => 'string', 'description' => 'Page title RU (required).'],
                             'title_uz' => ['type' => 'string', 'description' => 'Page title UZ (required, same meaning as RU).'],
                             'content_ru' => ['type' => 'string', 'description' => 'Body HTML RU (required, body only — no <html>/<head>/<body>, no hero/header/footer shell). Use .c-* classes, no inline style="".'],
@@ -49,7 +49,7 @@ class PageCreateTools {
         $slug = preg_replace('/[^a-z0-9-]/', '-', $slug);
         $slug = preg_replace('/-+/', '-', $slug);
         $slug = trim($slug, '-');
-        if ($slug === '') throw new InvalidArgumentException('Invalid slug: cannot be empty (use a-z0-9-hyphens, e.g. "kupim-holodilnik").');
+        if ($slug === '') throw new InvalidArgumentException('Invalid slug: cannot be empty (use a-z0-9-hyphens, e.g. "samsung-xolodilnik").');
         if (in_array($slug, ['home', 'main', 'admin', 'api', 'articles'], true)) {
             throw new InvalidArgumentException("Slug '{$slug}' is reserved.");
         }
