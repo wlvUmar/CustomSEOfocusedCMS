@@ -97,6 +97,17 @@ class AiRunGuard {
         try { Database::getInstance()->query("UPDATE ai_run_queue SET status=? WHERE id=?", [$status, $queueId]); } catch (Throwable $e) {}
     }
 
+    /** Retire queued rows whose message is now executing (prevents double execution on retry). */
+    public static function markDoneForMessage(string $sessionId, int $uid, string $message): void {
+        if ($sessionId === '' || $uid <= 0 || trim($message) === '') return;
+        try {
+            Database::getInstance()->query(
+                "UPDATE ai_run_queue SET status='done' WHERE session_id=? AND user_id=? AND status='queued' AND message=?",
+                [$sessionId, $uid, $message]
+            );
+        } catch (Throwable $e) {}
+    }
+
     public static function queuedCount(string $sessionId, int $uid): int {
         try {
             $row = Database::getInstance()->fetchOne("SELECT COUNT(*) as c FROM ai_run_queue WHERE session_id=? AND user_id=? AND status='queued'", [$sessionId,$uid]);

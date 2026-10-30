@@ -97,12 +97,46 @@ class AiStudioController extends Controller {
         if ($sessionId !== '' && !preg_match('/^[a-z0-9\-]{22,64}$/i', $sessionId)) $sessionId = '';
         // Cross-session DB: load history+context if session_id provided
         if ($sessionId !== '') {
+            // Snapshot the client transcript BEFORE the DB replaces it: when a
+            // previous run was cancelled, timed out, or died mid-stream, its
+            // persist never happened and the DB is behind what the user sees.
+            // Answering from that stale DB is what looks like "replying to the
+            // previous prompt". Only user turns are backfilled (assistant
+            // bubbles stay server-side to avoid the duplicate-reply merge bug).
+            $clientUserTurns = [];
+            foreach ($history as $m) {
+                if (($m['role'] ?? '') !== 'user') continue;
+                $t = trim((string)($m['content'] ?? ''));
+                if ($t === '') continue;
+                $clientUserTurns[] = $t;
+            }
+            $clientUserTurns = array_slice($clientUserTurns, -8);
             $dbHistory = $this->loadSessionHistory($sessionId);
             if (!empty($dbHistory)) {
                 // DB is the single source of truth (it holds tool pairs). The browser only sends user/assistant
                 // text, whose assistant bubbles never hash-match the per-turn DB messages — merging them
                 // produced duplicate assistant replies. The client history is only a fallback for a new/empty session.
                 $history = AiSessionStore::windowByTurns($dbHistory);
+                $dbUserNorms = [];
+                foreach ($history as $m) {
+                    if (($m['role'] ?? '') !== 'user') continue;
+                    $dbUserNorms[] = self::normUserText((string)($m['content'] ?? ''));
+                }
+                $currentNorm = self::normUserText($message);
+                $missing = [];
+                foreach ($clientUserTurns as $t) {
+                    $n = self::normUserText($t);
+                    if ($n === '' || $n === $currentNorm) continue; // current msg handled by the dedup below
+                    if (in_array($n, $dbUserNorms, true) || in_array($n, $missing, true)) continue;
+                    $missing[] = $t;
+                }
+                $missing = array_slice($missing, -3);
+                foreach ($missing as $t) {
+                    $history[] = ['role' => 'user', 'content' => $t, '_backfilled' => true];
+                }
+                if (!empty($missing)) {
+                    AiLogger::logAi('history_reconcile', ['session_id' => substr($sessionId, 0, 12), 'backfilled' => count($missing)]);
+                }
             }
             $dbCtx = $this->loadSessionContext($sessionId);
             if (!empty($dbCtx)) {
@@ -152,8 +186,11 @@ class AiStudioController extends Controller {
             $qid = AiRunGuard::enqueue($sessionId, $uid, $message, $history, $model, $mode);
             $pos = AiRunGuard::queuedCount($sessionId, $uid);
             AiLogger::logAi('run_queued', ['session_id'=>$sessionId,'queue_id'=>$qid,'position'=>$pos]);
-            $this->json(['success'=>true,'queued'=>true,'queue_id'=>$qid,'position'=>$pos,'message'=>'Run queued — previous turn still active. It will auto-start after current run completes.'], 409);
+            $this->json(['success'=>true,'queued'=>true,'queue_id'=>$qid,'position'=>$pos,'message'=>'Run queued — previous turn still active. Your message is saved and will auto-send when the active turn finishes.'], 409);
         }
+        // This message is now executing: retire any queued rows with identical
+        // text so a later retry/dequeuer can never execute it a second time.
+        AiRunGuard::markDoneForMessage($sessionId, $uid, $message);
 
         $startedAt = microtime(true);
         $turnsUsed = 0;
@@ -244,6 +281,7 @@ class AiStudioController extends Controller {
                 };
                 if ($norm((string)($last['content'] ?? '')) === $norm($message)) {
                     $alreadyInHistory = true;
+                    AiLogger::logAi('dedup_hit', ['session_id' => substr($sessionId, 0, 12), 'len' => mb_strlen($message)]);
                 }
             }
         }
@@ -935,8 +973,14 @@ class AiStudioController extends Controller {
     private function isDeniedMessage(string $msg): bool {
         return str_contains($msg, '[Denied]') || stripos($msg, 'denied') !== false;
     }
-    private function loadSessionHistory(string $sessionId): array {
-        $uid = (int)($_SESSION['user_id'] ?? 0);
+    /** Whitespace-normalized user text for transcript comparison (dedup + reconcile). */
+    private static function normUserText(string $s): string {
+        $s = str_replace("\r\n", "\n", $s);
+        $s = preg_replace('/\s+/u', ' ', trim($s));
+        return $s ?? '';
+    }
+
+    private function loadSessionHistory(string $sessionId): array {        $uid = (int)($_SESSION['user_id'] ?? 0);
         return AiSessionStore::loadHistory($sessionId, $uid);
     }
     private function loadSessionContext(string $sessionId): array {

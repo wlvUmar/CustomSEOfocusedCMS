@@ -24,6 +24,23 @@ class ContextBuilder {
     public static function buildMessages(string $systemPrompt, string $contextBlock, array $historyWindow, array $pending, string $userMessage, bool $alreadyInHistory): array {
         $body = array_values($historyWindow);
         foreach ($pending as $p) $body[] = $p;
+        // Fail-safe delivery: if the caller claims the message is already in
+        // history but the last user turn doesn't actually match it, append —
+        // dropping the user's words is worse than a duplicate.
+        if ($alreadyInHistory) {
+            $lastUser = null;
+            for ($i = count($body) - 1; $i >= 0; $i--) {
+                if (($body[$i]['role'] ?? '') === 'user' && empty($body[$i]['_syn'])) { $lastUser = $body[$i]; break; }
+            }
+            $norm = function (string $s): string {
+                $s = str_replace("\r\n", "\n", $s);
+                $s = preg_replace('/\s+/u', ' ', trim($s));
+                return $s ?? '';
+            };
+            if ($lastUser === null || $norm((string)($lastUser['content'] ?? '')) !== $norm($userMessage)) {
+                $alreadyInHistory = false;
+            }
+        }
         if (!$alreadyInHistory) $body[] = ['role' => 'user', 'content' => $userMessage];
         $contextBlock = trim($contextBlock);
         if ($contextBlock !== '') {

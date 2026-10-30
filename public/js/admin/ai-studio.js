@@ -46,6 +46,8 @@
     };
 
     let busy = false;
+    let queuedRetryText = null; // 409-queued message text, auto-sent when the active turn ends
+    let queuedRetries = 0;      // auto-retry attempts for the current queued text (max 1, then manual)
     let lastCtx = null;         // latest context-window reading {used, window, budget, exact} for the meter
     let history = [];           // [{role:'user'|'assistant', content}] sent for model context
     let pendingApproval = null; // {call_id, plan, reason}
@@ -1176,8 +1178,13 @@
         if (abortCtrl) abortCtrl.abort();
     });
 
-    async function runTurn(userText, approved) {
+    async function runTurn(userText, approved, isAutoRetry) {
         const runMode = currentMode;
+        // A manual resend of a queued message supersedes the stored auto-retry.
+        if (!isAutoRetry && queuedRetryText !== null && queuedRetryText === userText) {
+            queuedRetryText = null;
+            queuedRetries = 0;
+        }
         setBusy(true);
         hideApproval();
         resetPreviewAccumulation();
@@ -1336,12 +1343,20 @@
                 hideActivity();
                 const pos = err.queueInfo && err.queueInfo.position ? ' #' + err.queueInfo.position : '';
                 setStatus('Queued' + pos, 'wait');
-                addAgentBubble('⏳ ' + err.message + ' — your message is queued and will run after the active turn finishes. You can wait or send again after Done.');
-                // Keep history entry so queued message isn't lost — it will be re-sent automatically when current run ends via manual retry
-                try {
-                    const queuedMsg = history.pop();
-                    if (queuedMsg) history.push(queuedMsg);
-                } catch(e) {}
+                if (isAutoRetry) {
+                    // Auto-retry also hit an active run — stop looping, leave it to the user.
+                    queuedRetryText = null;
+                    queuedRetries = 0;
+                    addAgentBubble('⏳ ' + err.message + ' — still busy after auto-retry. Please send again after Done.');
+                } else if (queuedRetries < 1) {
+                    queuedRetryText = userText;
+                    queuedRetries++;
+                    addAgentBubble('⏳ ' + err.message + ' — your message is saved and will auto-send when the active turn finishes.');
+                } else {
+                    queuedRetryText = null;
+                    queuedRetries = 0;
+                    addAgentBubble('⏳ ' + err.message + ' — please send again after Done.');
+                }
             } else if (err && err.name === 'AbortError') {
                 hideTyping();
                 hideActivity();
@@ -1382,6 +1397,15 @@
             setTimeout(() => {
                 if (!busy && (els.status.textContent === 'Done' || els.status.textContent === 'Stopped')) setStatus('Ready', '');
             }, 4000);
+        }
+        // Auto-send a 409-queued follow-up now that the turn ended — this is the
+        // retry the server queue never performs (no dequeuer exists server-side).
+        // Skipped while awaiting approval so the queued text doesn't jump the approval.
+        if (queuedRetryText && !busy && els.status.textContent !== 'Awaiting approval') {
+            const t = queuedRetryText;
+            queuedRetryText = null;
+            try { void runTurn(t, [], true); } catch(e) { queuedRetryText = t; }
+            return;
         }
         els.input.focus();
     }
