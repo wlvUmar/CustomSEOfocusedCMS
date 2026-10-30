@@ -181,7 +181,17 @@
         try { const raw = localStorage.getItem(SESSIONS_KEY); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; } catch (e) { return []; }
     }
     function saveSessions(arr) {
-        try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(arr.slice(0, 50))); } catch (e) { /* quota */ }
+        // Quota-eviction: localStorage (~5MB) silently drops ALL turns when full
+        // (long brand runs). Drop oldest sessions first, retry until it fits.
+        let list = arr.slice(0, 50);
+        try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(list)); return; }
+        catch (e) { /* fall through to eviction */ }
+        while (list.length > 1) {
+            list = list.slice(0, Math.max(1, Math.floor(list.length * 0.7)));
+            try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(list)); return; }
+            catch (e2) { /* keep evicting */ }
+        }
+        try { localStorage.setItem(SESSIONS_KEY, JSON.stringify(list.slice(0, 1))); } catch (e3) { /* storage unavailable */ }
     }
     function genSessionId() {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -1379,9 +1389,9 @@
         if (assistantText) {
             history.push({ role: 'assistant', content: assistantText });
         }
-        // Trim long sessions so the context stays manageable.
-        if (history.length > 24) {
-            history = history.slice(-24);
+        // Trim long sessions so the context stays manageable (20 turns × user+assistant to match server window).
+        if (history.length > 40) {
+            history = history.slice(-40);
         }
         // Persist session for continue/refresh (history + transcript snapshot)
         try { saveCurrentSession(); } catch(e){}

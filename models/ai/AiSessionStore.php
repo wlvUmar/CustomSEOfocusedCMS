@@ -6,11 +6,11 @@
 
 class AiSessionStore {
 
-    // History is windowed by real user prompts (each one drags along its tool pairs),
-    // not by raw message count — 24 messages was only 2-4 prompts of a build session.
-    // Generous on purpose: the token budget (staged compaction in the controller) is what actually bounds context.
-    public const WINDOW_USER_TURNS = 12;
-    public const WINDOW_MAX_MESSAGES = 200;
+    // History is windowed by real user prompts (each one drags along its tool pairs).
+    // 20 turns so long brand-page runs survive reload; the token budget
+    // (staged compaction in the controller) is what actually bounds context.
+    public const WINDOW_USER_TURNS = 20;
+    public const WINDOW_MAX_MESSAGES = 300;
     public const LIST_LIMIT = 50;
     public const TITLE_LEN = 120;
 
