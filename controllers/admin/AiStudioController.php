@@ -491,12 +491,17 @@ class AiStudioController extends Controller {
                     'duration_ms' => $modelMs,
                 ]);
 
+                $toolCalls = $response['tool_calls'];
+                $hasTools = !empty($toolCalls);
                 if ($response['content'] !== '') {
                     $finalText = $response['content'];
-                    $this->sse('narrate', ['text' => $response['content']]);
+                    // Talk only on pure-talk turns: when tools follow, work silently
+                    // in the Thinking group (tool rows) instead of a bubble per turn.
+                    // The model decides — empty content + tools = silent work.
+                    if (!$hasTools) {
+                        $this->sse('narrate', ['text' => $response['content']]);
+                    }
                 }
-
-                $toolCalls = $response['tool_calls'];
                 if (empty($toolCalls)) {
                     if ($mode === 'build' && !$nudged && $writeTurns === 0 && !$didWriteHtml && !$didPreview) {
                         $isContinue = preg_match('/^(continue|продолжай|дальше|далее)\s*$/iu', trim($message));

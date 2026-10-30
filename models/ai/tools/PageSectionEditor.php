@@ -80,7 +80,7 @@ class PageSectionEditor {
                 'type' => 'function',
                 'function' => [
                     'name' => 'update_section',
-                    'description' => 'Replace an ENTIRE section\'s HTML (marker preserved). REQUIRES expected_hash from a fresh get_section read (fails closed without it). Prefer classes + var(--teal) over inline style="" — avoid style="" unless explicitly asked. HTML >800 chars requires approval — keep small or use patch_section. Use GSC terms naturally once; no keyword stuffing. Always follow with render_preview; then render_full_page once.',
+                    'description' => 'Replace an ENTIRE section\'s HTML (marker preserved). REQUIRES expected_hash from a fresh list_sections/get_section read (fails closed without it). batch_update is available if you want several sections in one turn (hashes come from list_sections). Prefer classes + var(--teal) over inline style="". HTML >800 chars requires approval — keep small or use patch_section. Use GSC terms naturally once; no keyword stuffing. Always follow with render_preview; then render_full_page once.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
