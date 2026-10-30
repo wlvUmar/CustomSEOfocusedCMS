@@ -41,7 +41,7 @@ class PageSectionEditor {
                 'type' => 'function',
                 'function' => [
                     'name' => 'set_field',
-                    'description' => 'Replace the ENTIRE value of one field of one page. Always guarded — requires user approval before execution. Prefer str_replace_field or patch_section for incremental changes (<800 chars auto-executes).',
+                    'description' => 'Replace the ENTIRE value of one field of one page. Always guarded — requires user approval before execution. REQUIRES expected_hash from a fresh get_page read (fails closed without it). Prefer str_replace_field or patch_section for incremental changes (<800 chars auto-executes).',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -80,7 +80,7 @@ class PageSectionEditor {
                 'type' => 'function',
                 'function' => [
                     'name' => 'update_section',
-                    'description' => 'Replace an ENTIRE section\'s HTML (marker preserved). Prefer classes + var(--teal) over inline style="" — avoid style="" unless explicitly asked. HTML >800 chars requires approval — keep small or use patch_section. Use GSC terms naturally once; no keyword stuffing. Always follow with render_preview; then render_full_page once.',
+                    'description' => 'Replace an ENTIRE section\'s HTML (marker preserved). REQUIRES expected_hash from a fresh get_section read (fails closed without it). Prefer classes + var(--teal) over inline style="" — avoid style="" unless explicitly asked. HTML >800 chars requires approval — keep small or use patch_section. Use GSC terms naturally once; no keyword stuffing. Always follow with render_preview; then render_full_page once.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -257,7 +257,7 @@ class PageSectionEditor {
                 'type' => 'function',
                 'function' => [
                     'name' => 'batch_update',
-                    'description' => 'Apply up to 10 targeted edits to one page atomically in one turn (saves turns). Each op is patch_section/str_replace_field/set_field/update_section/set_section_style/wrap_section/add_section_marker. Each op with replace/html/value >800 chars individually requires approval before batch executes — keep ops small. Use set_field when target field is empty (str_replace_field requires non-empty find). Use GSC terms naturally once; no keyword stuffing. Prefer over sequential calls.',
+                    'description' => 'Apply up to 10 targeted edits to one page atomically in one turn (saves turns). Each op is patch_section/str_replace_field/set_field/update_section/set_section_style/wrap_section/add_section_marker. Full-overwrite ops inside batch (set_field, update_section) REQUIRE expected_hash from a fresh read — fails closed without it. Each op with replace/html/value >800 chars individually requires approval before batch executes — keep ops small. Use set_field when target field is empty (str_replace_field requires non-empty find). Use GSC terms naturally once; no keyword stuffing. Prefer over sequential calls.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
@@ -390,6 +390,11 @@ class PageSectionEditor {
         $field = (string)($args['field'] ?? '');
         $value = (string)($args['value'] ?? '');
         if (!in_array($field, self::FIELDS, true)) throw new InvalidArgumentException("Field not writable: {$field}");
+        // Full-field overwrite: require a freshness hash so a stale read can never
+        // silently clobber another writer (or the model's own hallucinated state).
+        if (!isset($args['expected_hash']) || trim((string)$args['expected_hash']) === '') {
+            throw new InvalidArgumentException('expected_hash is required for set_field (full overwrite) — re-read the field via get_page first and pass its hash. For small edits use str_replace_field or patch_section instead.');
+        }
 
         $model = new Page();
         $page = $model->getById($pageId);
@@ -480,6 +485,11 @@ class PageSectionEditor {
         $html = (string)($args['html'] ?? '');
         if ($sectionRef === '') throw new InvalidArgumentException('section is required');
         if (trim($html) === '') throw new InvalidArgumentException('html is required — may contain any tags/divs and inline style=""');
+        // Full-section replacement: require a freshness hash so a stale or imagined
+        // section state can never silently overwrite real content.
+        if (!isset($args['expected_hash']) || trim((string)$args['expected_hash']) === '') {
+            throw new InvalidArgumentException('expected_hash is required for update_section (full rewrite) — fetch it via get_section first and pass it back. For small edits use patch_section instead.');
+        }
         // 06-09: sanitize html before persisting (strip dangerous vectors)
         $html = self::sanitizeSectionHtml($html);
         $model = new Page();
@@ -1019,6 +1029,7 @@ class PageSectionEditor {
                             // In batch, set_field uses 'value' (preferred) or 'replace' for compat
                             $value = array_key_exists('value', $op) ? (string)$op['value'] : (string)($op['replace'] ?? '');
                             if (!in_array($fld, self::FIELDS, true)) throw new InvalidArgumentException("Operation #$idx: field not writable: {$fld}");
+                            if (!isset($op['expected_hash']) || trim((string)$op['expected_hash']) === '') throw new InvalidArgumentException("Operation #$idx: expected_hash is required for set_field (full overwrite) — re-read via get_page first.");
                             // Empty value is allowed (clear field) but warn if really empty — keep intentional
                             $before = $buffers[$fld] ?? '';
                             if (isset($op['expected_hash']) && trim((string)$op['expected_hash']) !== '') {
@@ -1062,6 +1073,7 @@ class PageSectionEditor {
                             $html = (string)($op['html'] ?? '');
                             if ($secRef === '') throw new InvalidArgumentException("Operation #$idx: section is required");
                             if (trim($html) === '') throw new InvalidArgumentException("Operation #$idx: html is required for update_section");
+                            if (!isset($op['expected_hash']) || trim((string)$op['expected_hash']) === '') throw new InvalidArgumentException("Operation #$idx: expected_hash is required for update_section (full rewrite) — fetch it via get_section first.");
                             if ($sectionCache[$lang] === null) {
                                 $sectionCache[$lang] = self::splitIntoSections($buffers[$field] ?? '');
                             }

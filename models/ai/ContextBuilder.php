@@ -13,6 +13,13 @@ class ContextBuilder {
      * The system message never changes between calls, so the provider's prompt cache can reuse it and the history
      * after it. The per-run context block (summary / memory / session state) is a run-internal message
      * (`_syn` = never persisted, `_ctx` = kept through trimming) placed just before the user's current message.
+     *
+     * Truth tiers (highest first — a lower tier never overrides a higher one):
+     *   Tier 1: fresh tool results in the visible window (status/call_id/fresh_hash).
+     *   Tier 2: summary ledger lines for writes with verified:true + fresh_hash.
+     *   Tier 3: model text and unverified claims — background only, never cited as fact.
+     * A user challenge ("you're hallucinating", "that's wrong") or a hash/status mismatch
+     * always triggers a fresh read; an apology without re-reading is never acceptable.
      */
     public static function buildMessages(string $systemPrompt, string $contextBlock, array $historyWindow, array $pending, string $userMessage, bool $alreadyInHistory): array {
         $body = array_values($historyWindow);
@@ -26,7 +33,13 @@ class ContextBuilder {
             }
             array_splice($body, $at, 0, [[
                 'role' => 'user',
-                'content' => "[SESSION CONTEXT — injected by the system, not written by the user. Use it as background; the user's actual request follows.]\n" . $contextBlock,
+                'content' => "[SESSION CONTEXT — injected by the system, not written by the user. Use it as background; the user's actual request follows.]\n"
+                    . "TRUTH TIERS (highest first; lower never overrides higher):\n"
+                    . "1) fresh tool results in the visible window (check status/call_id/fresh_hash);\n"
+                    . "2) summary DONE lines only when they show verified:true + fresh_hash;\n"
+                    . "3) model text and anything tagged UNVERIFIED = background only, never cite as fact.\n"
+                    . "If the user contests a claim, or status/hash disagrees with what you said: stop, re-read the fresh state, then correct. Never apologize-and-restate without a new read.\n"
+                    . $contextBlock,
                 '_syn' => true,
                 '_ctx' => true,
             ]]);
@@ -35,8 +48,11 @@ class ContextBuilder {
     }
 
     /**
-     * One compact line per event so the summarizer sees WHAT was done (tool, target, outcome),
-     * not "[tool_calls:2]" and a 500-char slice of JSON.
+     * One compact line per event so the summarizer sees WHAT was done (tool, target, outcome).
+     * Provenance-preserving: every line carries the tool-call id + status + key identifiers
+     * (page/section/query/window) + outcome hash. The summary may only promote a write to
+     * DONE when the result line shows verified:true with a fresh_hash; anything else stays
+     * UNVERIFIED and must be re-read before it is cited or built upon.
      */
     private static function renderEvicted(array $evicted): string {
         $lines = [];
@@ -48,26 +64,73 @@ class ContextBuilder {
             } elseif ($role === 'assistant') {
                 if ($content !== '') $lines[] = 'ASSISTANT: ' . mb_substr($content, 0, 300);
                 foreach (($m['tool_calls'] ?? []) as $tc) {
-                    $args = preg_replace('/\s+/u', ' ', (string)($tc['function']['arguments'] ?? ''));
-                    $lines[] = 'CALL ' . (string)($tc['function']['name'] ?? '?') . ' ' . mb_substr((string)$args, 0, 160);
+                    $fn = (string)($tc['function']['name'] ?? '?');
+                    $cid = (string)($tc['id'] ?? '');
+                    $args = json_decode((string)($tc['function']['arguments'] ?? ''), true);
+                    $ident = self::callIdentifiers($fn, is_array($args) ? $args : []);
+                    $lines[] = 'CALL ' . $fn . ($cid !== '' ? ' id=' . substr($cid, 0, 12) : '') . ($ident !== '' ? ' ' . $ident : '');
                 }
             } elseif ($role === 'tool') {
                 $d = json_decode($content, true);
                 $res = '';
                 if (is_array($d)) {
                     $bits = [];
-                    foreach (['ok', 'verified', 'fresh_hash', 'hash', 'error', 'code', 'skipped'] as $k) {
+                    // Status + provenance first: the summarizer must not promote
+                    // applied_unverified / verification_failed to DONE.
+                    foreach (['_status', 'status', 'ok', 'verified', 'code', 'fresh_hash', 'hash'] as $k) {
                         if (!isset($d[$k]) || !is_scalar($d[$k])) continue;
                         $v = is_bool($d[$k]) ? ($d[$k] ? 'true' : 'false') : mb_substr((string)$d[$k], 0, 60);
                         $bits[] = $k . '=' . $v;
                     }
+                    foreach (['page_id', 'slug', 'page_slug', 'section', 'field', 'lang', 'faq_id', 'days', 'query', 'count', 'chars', 'after_chars', 'error', 'skipped'] as $k) {
+                        if (!isset($d[$k]) || !is_scalar($d[$k])) continue;
+                        $v = is_bool($d[$k]) ? ($d[$k] ? 'true' : 'false') : mb_substr((string)$d[$k], 0, 80);
+                        if ($v === '' || $v === '0') continue;
+                        $bits[] = $k . '=' . $v;
+                    }
                     $res = implode(' ', $bits);
                 }
-                $lines[] = '  => ' . ($res !== '' ? $res : mb_substr($content, 0, 100));
+                $lines[] = '  => ' . ($res !== '' ? $res : mb_substr($content, 0, 200));
             }
         }
         $text = implode("\n", $lines);
-        return mb_strlen($text) > 6000 ? mb_substr($text, -6000) : $text;
+        return mb_strlen($text) > 8000 ? mb_substr($text, -8000) : $text;
+    }
+
+    /**
+     * Stable identifiers per tool so a summary line stays re-readable without
+     * re-fetching: page/section for content, query+window for GSC, slug for FAQs.
+     */
+    private static function callIdentifiers(string $fn, array $args): string {
+        $pick = function (array $keys) use ($args) {
+            $out = [];
+            foreach ($keys as $k) {
+                if (!isset($args[$k]) || !is_scalar($args[$k])) continue;
+                $v = trim((string)$args[$k]);
+                if ($v === '') continue;
+                $out[] = $k . '=' . mb_substr(preg_replace('/\s+/u', ' ', $v), 0, 80);
+            }
+            return implode(' ', $out);
+        };
+        if (in_array($fn, ['get_section', 'patch_section', 'update_section', 'list_sections', 'get_content_chunk', 'insert_section'], true)) {
+            return $pick(['page_id', 'slug', 'section', 'lang']);
+        }
+        if (in_array($fn, ['get_page', 'str_replace_field', 'set_field'], true)) {
+            return $pick(['page_id', 'slug', 'field']);
+        }
+        if (in_array($fn, ['list_faqs', 'get_faq'], true)) {
+            return $pick(['page_slug', 'faq_id']);
+        }
+        if (in_array($fn, ['update_faq', 'delete_faq', 'create_faq'], true)) {
+            return $pick(['faq_id', 'page_slug']);
+        }
+        if (str_starts_with($fn, 'get_gsc') || str_starts_with($fn, 'query_gsc') || $fn === 'search_gsc_queries') {
+            return $pick(['query', 'page', 'days', 'limit']);
+        }
+        if (in_array($fn, ['get_monthly_summary', 'get_site_overview', 'get_top_pages'], true)) {
+            return $pick(['days']);
+        }
+        return $pick(['slug', 'page_id']);
     }
 
     /**

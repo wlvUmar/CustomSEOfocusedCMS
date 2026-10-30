@@ -1,6 +1,6 @@
 # AGENTS.md — AI Studio + SEO Operator
 
-- Bilingual RU/UZ. RU natural first, RU↔UZ parity on every write. RU drafts go live — UZ must match before publish.
+- Site content is bilingual RU/UZ: RU natural first, RU↔UZ parity on every write (content_*, title_*, meta_* always shipped as matched pairs). RU drafts go live — UZ must match before publish. Chat replies to the developer follow the developer's language instead: an explicit language choice (e.g. "in English") always wins over this default; site-content parity is unaffected.
 - Prefer `.c-*` classes (c-hero-split, c-stats, c-feature-grid, etc.) + var(--teal) etc. No inline style="". Owner maintains CSS.
 - Stats answers: one tool call (get_monthly_summary or get_site_overview), paste markdown verbatim, max 3 bullets. Never re-call same read with same args in one session — reuse history.
 - Destructive tools (set_field full overwrite, delete_faq, set_rotation, restore_page_revision) need approval. Others auto-execute even >800 chars. Every write is snapshotted to page_revisions.
