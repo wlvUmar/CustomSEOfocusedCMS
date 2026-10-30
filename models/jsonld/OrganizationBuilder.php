@@ -61,13 +61,69 @@ class OrganizationBuilder {
         if (!empty($seoSettings['opening_hours'])) {
             $hoursLines = self::openingHoursLines($seoSettings['opening_hours']);
             if ($hoursLines) $schema['openingHours'] = $hoursLines;
+            $spec = self::openingHoursSpecification($hoursLines);
+            if ($spec) $schema['openingHoursSpecification'] = $spec;
         }
         $schema['areaServed'] = self::areaServedNode($seoSettings);
         if (!empty($seoSettings['phone'])) {
             $schema['contactPoint'] = self::buildContactPoint($seoSettings);
         }
+        if (!empty($seoSettings['price_range'])) {
+            $schema['priceRange'] = trim((string)$seoSettings['price_range']);
+        }
+        if (!empty($seoSettings['org_latitude']) && !empty($seoSettings['org_longitude'])) {
+            $schema['geo'] = array(
+                '@type' => 'GeoCoordinates',
+                'latitude' => (float)$seoSettings['org_latitude'],
+                'longitude' => (float)$seoSettings['org_longitude']
+            );
+        }
+        // AggregateRating is emitted ONLY when real review data exists.
+        // Optional columns org_rating_value + org_review_count (admin-managed).
+        // Never fabricate — omit entirely when absent.
+        if (!empty($seoSettings['org_rating_value']) && !empty($seoSettings['org_review_count'])) {
+            $rating = (float)$seoSettings['org_rating_value'];
+            $count = (int)$seoSettings['org_review_count'];
+            if ($rating >= 1 && $rating <= 5 && $count > 0) {
+                $schema['aggregateRating'] = array(
+                    '@type' => 'AggregateRating',
+                    'ratingValue' => $rating,
+                    'reviewCount' => $count
+                );
+            }
+        }
         $schema['brand'] = array('@type' => 'Brand', 'name' => $schema['name']);
         return $schema;
+    }
+
+    /**
+     * Convert "Mo-Su 09:00-20:00" style lines to openingHoursSpecification.
+     * Returns null when nothing parses — never fabricates.
+     */
+    private static function openingHoursSpecification($hoursLines) {
+        if (empty($hoursLines) || !is_array($hoursLines)) return null;
+        $dayMap = array('Mo'=>'Monday','Tu'=>'Tuesday','We'=>'Wednesday','Th'=>'Thursday','Fr'=>'Friday','Sa'=>'Saturday','Su'=>'Sunday');
+        $out = array();
+        foreach ($hoursLines as $line) {
+            // Mo-Su 09:00-20:00 | Mo-Fr 09:00-18:00 | Sa 10:00-15:00
+            if (!preg_match('/^\s*(Mo|Tu|We|Th|Fr|Sa|Su)(?:\s*-\s*(Mo|Tu|We|Th|Fr|Sa|Su))?\s+(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})\s*$/', trim((string)$line), $m)) continue;
+            $start = $m[1]; $end = isset($m[2]) && $m[2] !== '' ? $m[2] : $start;
+            $order = array('Mo','Tu','We','Th','Fr','Sa','Su');
+            $si = array_search($start, $order, true); $ei = array_search($end, $order, true);
+            if ($si === false || $ei === false) continue;
+            $days = array();
+            for ($i = $si; ; $i = ($i + 1) % 7) {
+                $days[] = $dayMap[$order[$i]];
+                if ($i === $ei) break;
+            }
+            $out[] = array(
+                '@type' => 'OpeningHoursSpecification',
+                'dayOfWeek' => $days,
+                'opens' => $m[3],
+                'closes' => $m[4]
+            );
+        }
+        return !empty($out) ? $out : null;
     }
 
     public static function build($seoSettings, $lang, $baseUrl, $pageImage = null) {
@@ -96,10 +152,15 @@ class OrganizationBuilder {
                 if (!empty($seoSettings['opening_hours'])) {
                     $hoursLines = self::openingHoursLines($seoSettings['opening_hours']);
                     if ($hoursLines) $orgSchema['openingHours'] = $hoursLines;
+                    $spec = self::openingHoursSpecification(isset($hoursLines) ? $hoursLines : null);
+                    if ($spec && empty($orgSchema['openingHoursSpecification'])) $orgSchema['openingHoursSpecification'] = $spec;
                 }
                 $orgSchema['areaServed'] = self::areaServedNode($seoSettings);
                 if (!empty($seoSettings['phone'])) {
                     $orgSchema['contactPoint'] = self::buildContactPoint($seoSettings);
+                }
+                if (!empty($seoSettings['price_range']) && empty($orgSchema['priceRange'])) {
+                    $orgSchema['priceRange'] = trim((string)$seoSettings['price_range']);
                 }
                 $orgSchema['brand'] = array(
                     '@type' => 'Brand',

@@ -33,7 +33,8 @@ if ($ctaPlace === 'mid') {
         <?php endif; ?>
         <?php if ($ctaChat): ?>
         <a href="<?= e($ctaChat['url']) ?>" class="cta-inline__btn cta-inline__btn--ghost" target="_blank" rel="noopener noreferrer"
-           data-track-click="1" data-cta="<?= $ctaPlace ?>_chat">
+           data-track-click="1" data-cta="<?= $ctaPlace ?>_chat"
+           aria-label="<?= e($ctaChat['label'] ?? ($lang === 'ru' ? 'Написать' : 'Yozish')) ?>">
             <?= e($ctaChat['label'] ?? ($lang === 'ru' ? 'Написать' : 'Yozish')) ?>
         </a>
         <?php endif; ?>

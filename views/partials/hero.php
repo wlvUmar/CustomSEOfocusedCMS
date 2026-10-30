@@ -55,7 +55,8 @@
                    class="<?= $class ?>"
                    data-cta="hero_chat"
                    target="_blank"
-                   rel="noopener noreferrer">
+                   rel="noopener noreferrer"
+                   aria-label="<?= e($floatingCta['label'] ?? ($lang === 'ru' ? 'Написать в Telegram' : 'Telegramda yozish')) ?>">
 
                     <?php if (($floatingCta['type'] ?? 'telegram') === 'instagram'): ?>
                         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
