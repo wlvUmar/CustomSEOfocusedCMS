@@ -98,16 +98,44 @@ class OrganizationBuilder {
 
     /**
      * Convert "Mo-Su 09:00-20:00" style lines to openingHoursSpecification.
+     * Also accepts RU ("Пн-Вс 09:00-20:00") and UZ ("Du-Ya 09:00-20:00") day tokens.
      * Returns null when nothing parses — never fabricates.
      */
+    private static function normalizeDayToken($tok) {
+        $t = function_exists('mb_strtolower') ? mb_strtolower(trim((string)$tok), 'UTF-8') : strtolower(trim((string)$tok));
+        static $map = array(
+            // EN
+            'mo' => 'Mo', 'tu' => 'Tu', 'we' => 'We', 'th' => 'Th', 'fr' => 'Fr', 'sa' => 'Sa', 'su' => 'Su',
+            // RU abbreviations + full names
+            'пн' => 'Mo', 'пон' => 'Mo', 'понедельник' => 'Mo',
+            'вт' => 'Tu', 'вто' => 'Tu', 'вторник' => 'Tu',
+            'ср' => 'We', 'сре' => 'We', 'среда' => 'We',
+            'чт' => 'Th', 'чет' => 'Th', 'четверг' => 'Th',
+            'пт' => 'Fr', 'пят' => 'Fr', 'пятница' => 'Fr',
+            'сб' => 'Sa', 'суб' => 'Sa', 'суббота' => 'Sa',
+            'вс' => 'Su', 'вос' => 'Su', 'воскресенье' => 'Su',
+            // UZ abbreviations + full names
+            'du' => 'Mo', 'dush' => 'Mo', 'dushanba' => 'Mo',
+            'se' => 'Tu', 'sesh' => 'Tu', 'seshanba' => 'Tu',
+            'ch' => 'We', 'chor' => 'We', 'chorshanba' => 'We',
+            'pa' => 'Th', 'pay' => 'Th', 'payshanba' => 'Th',
+            'ju' => 'Fr', 'jum' => 'Fr', 'juma' => 'Fr',
+            'sh' => 'Sa', 'shan' => 'Sa', 'shanba' => 'Sa',
+            'ya' => 'Su', 'yak' => 'Su', 'yakshanba' => 'Su',
+        );
+        return isset($map[$t]) ? $map[$t] : null;
+    }
+
     private static function openingHoursSpecification($hoursLines) {
         if (empty($hoursLines) || !is_array($hoursLines)) return null;
         $dayMap = array('Mo'=>'Monday','Tu'=>'Tuesday','We'=>'Wednesday','Th'=>'Thursday','Fr'=>'Friday','Sa'=>'Saturday','Su'=>'Sunday');
         $out = array();
         foreach ($hoursLines as $line) {
             // Mo-Su 09:00-20:00 | Mo-Fr 09:00-18:00 | Sa 10:00-15:00
-            if (!preg_match('/^\s*(Mo|Tu|We|Th|Fr|Sa|Su)(?:\s*-\s*(Mo|Tu|We|Th|Fr|Sa|Su))?\s+(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})\s*$/', trim((string)$line), $m)) continue;
-            $start = $m[1]; $end = isset($m[2]) && $m[2] !== '' ? $m[2] : $start;
+            // RU: Пн-Вс 09:00-20:00 | UZ: Du-Ya 09:00-20:00
+            if (!preg_match('/^\s*([A-Za-z\x{0400}-\x{04FF}]{2,})(?:\s*-\s*([A-Za-z\x{0400}-\x{04FF}]{2,}))?\s+(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})\s*$/u', trim((string)$line), $m)) continue;
+            $start = self::normalizeDayToken($m[1]); $end = isset($m[2]) && $m[2] !== '' ? self::normalizeDayToken($m[2]) : $start;
+            if ($start === null || $end === null) continue;
             $order = array('Mo','Tu','We','Th','Fr','Sa','Su');
             $si = array_search($start, $order, true); $ei = array_search($end, $order, true);
             if ($si === false || $ei === false) continue;
