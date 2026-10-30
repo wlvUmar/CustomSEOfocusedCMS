@@ -343,6 +343,23 @@ main{
     display: block;
 }
 
+/* Full-bleed hero photo: undo the global `main img` card chrome
+   (12px radius + pale border + shadow reads as a white frame
+   around the hero). .hero prefix outranks `main img` / `main img:hover`. */
+.hero .hero__bg img,
+.hero .hero__bg .hero-image,
+.hero .hero-media img {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+.hero .hero__bg img:hover,
+.hero .hero-media img:hover {
+    transform: none;
+    border-color: transparent;
+    box-shadow: none;
+}
+
 /* gradient fallback when no image */
 .hero__bg--gradient {
     background: linear-gradient(135deg, #094956 0%, #0f5f6f 45%, #0e7490 100%);

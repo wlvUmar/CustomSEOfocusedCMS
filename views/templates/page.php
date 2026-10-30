@@ -37,20 +37,6 @@ $applianceNameForSEO = $applianceName ?? '';
     // Wrap the content in our layout shell so JS/CSS can target sections
     $contentHtml = injectMediaByStructure($content, $mediaBySection, $lang);
 
-    // Inline CTA after the first content block ("past the hero", not sticky).
-    // Falls back to the top of the body when the content has no <section>.
-    ob_start();
-    $ctaPlace = 'mid';
-    require BASE_PATH . '/views/partials/cta-block.php';
-    $midCta = ob_get_clean();
-    $splitAt = stripos($contentHtml, '</section>');
-    if ($splitAt !== false) {
-        $splitAt += strlen('</section>');
-        $contentHtml = substr($contentHtml, 0, $splitAt) . $midCta . substr($contentHtml, $splitAt);
-    } else {
-        $contentHtml = $midCta . $contentHtml;
-    }
-
     echo '<div class="content-body" id="content-body">';
     echo $contentHtml;
     echo '</div>';
