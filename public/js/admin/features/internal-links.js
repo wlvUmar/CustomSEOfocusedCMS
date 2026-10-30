@@ -25,14 +25,20 @@ document.addEventListener('DOMContentLoaded', function() {
     updateSelectedCount();
 });
 
-// Auto-connect modal
+// Auto-connect modal (index.php hides via .c-hidden{display:none!important} — toggle the class, inline style alone loses to !important)
 function showAutoConnectModal() {
-    document.getElementById('auto-connect-modal').style.display = 'flex';
-    feather.replace();
+    var m = document.getElementById('auto-connect-modal');
+    if (!m) return;
+    m.classList.remove('c-hidden');
+    m.style.display = 'flex';
+    if (window.feather) feather.replace();
 }
 
 function closeAutoConnectModal() {
-    document.getElementById('auto-connect-modal').style.display = 'none';
+    var m = document.getElementById('auto-connect-modal');
+    if (!m) return;
+    m.classList.add('c-hidden');
+    m.style.display = 'none';
 }
 
 // Bulk actions modal
@@ -43,16 +49,22 @@ function showBulkModal() {
         return;
     }
     
-    // Collect selected IDs
+    // Collect selected IDs into staging input (no name= so it never submits as a string)
     const ids = Array.from(selected).map(cb => cb.value);
     document.getElementById('bulk-page-ids').value = JSON.stringify(ids);
     
-    document.getElementById('bulk-modal').style.display = 'flex';
-    feather.replace();
+    var m = document.getElementById('bulk-modal');
+    if (!m) return;
+    m.classList.remove('c-hidden');
+    m.style.display = 'flex';
+    if (window.feather) feather.replace();
 }
 
 function closeBulkModal() {
-    document.getElementById('bulk-modal').style.display = 'none';
+    var m = document.getElementById('bulk-modal');
+    if (!m) return;
+    m.classList.add('c-hidden');
+    m.style.display = 'none';
 }
 
 // Toggle target page field based on action
@@ -89,8 +101,9 @@ function validateBulkForm() {
     const idsJson = document.getElementById('bulk-page-ids').value;
     const ids = JSON.parse(idsJson);
     
-    // Create hidden inputs for each ID
+    // Create hidden inputs for each ID (clear stale ones from a previous submit attempt)
     const form = document.querySelector('#bulk-modal form');
+    form.querySelectorAll('input[name="page_ids[]"]').forEach(el => el.remove());
     ids.forEach(id => {
         const input = document.createElement('input');
         input.type = 'hidden';

@@ -288,7 +288,7 @@
                 <small>Выбранные страницы будут ссылаться на неё / отвязаны от неё</small>
             </div>
 
-            <input type="hidden" name="page_ids" id="bulk-page-ids">
+            <input type="hidden" id="bulk-page-ids">
 
             <div class="modal-actions">
                 <button type="submit" class="btn btn-primary">

@@ -71,6 +71,42 @@ class InternalLinkRepository {
         return array_column($result, 'id');
     }
 
+    /**
+     * Keyword-OR related search: each keyword is an independent LIKE, joined by OR.
+     * Replaces the old single '%kw1%kw2%kw3%' LIKE which required keywords in order and almost never matched.
+     */
+    public function findRelatedByKeywords($excludeId, array $keywords, $limit = 5, array $excludeIds = []) {
+        $keywords = array_values(array_unique(array_filter(array_map(function ($k) {
+            $k = trim((string)$k);
+            return mb_strlen($k) >= 3 ? $k : '';
+        }, $keywords))));
+        $keywords = array_slice($keywords, 0, 6);
+        $limit = max(1, min(50, (int)$limit));
+        if (empty($keywords)) return [];
+
+        $excludeIds = array_values(array_unique(array_map('intval', $excludeIds)));
+        $conds = [];
+        $params = [];
+        foreach ($keywords as $kw) {
+            $like = '%' . $kw . '%';
+            $conds[] = "(title_ru LIKE ? OR content_ru LIKE ? OR meta_keywords_ru LIKE ?)";
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+        }
+        $sql = "SELECT id FROM pages WHERE is_published = 1 AND id != ?";
+        $params = array_merge([$excludeId], $params);
+        if (!empty($excludeIds)) {
+            $placeholders = implode(',', array_fill(0, count($excludeIds), '?'));
+            $sql .= " AND id NOT IN ($placeholders)";
+            $params = array_merge($params, $excludeIds);
+        }
+        $sql .= " AND (" . implode(' OR ', $conds) . ") LIMIT " . $limit;
+
+        $result = $this->db->fetchAll($sql, $params);
+        return array_column($result, 'id');
+    }
+
     public function getPopularPages($limit = 5) {
         $limit = max(1, min(100, (int)$limit));
         $sql = "SELECT p.id, p.slug, p.title_ru, COALESCE(SUM(a.visits), 0) as view_count

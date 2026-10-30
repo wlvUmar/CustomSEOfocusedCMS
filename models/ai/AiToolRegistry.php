@@ -18,6 +18,7 @@ require_once BASE_PATH . '/models/ai/tools/SeoAuditTools.php';
 require_once BASE_PATH . '/models/ai/tools/MediaSlotTools.php';
 require_once BASE_PATH . '/models/ai/tools/MemoryTools.php';
 require_once BASE_PATH . '/models/ai/tools/SkillTools.php';
+require_once BASE_PATH . '/models/ai/tools/LinkWidgetTools.php';
 require_once BASE_PATH . '/models/ai/ToolEnvelope.php';
 
 class AiToolRegistry {
@@ -36,6 +37,7 @@ class AiToolRegistry {
         MediaSlotTools::class,
         MemoryTools::class,
         SkillTools::class,
+        LinkWidgetTools::class,
     ];
 
     /**
@@ -49,6 +51,7 @@ class AiToolRegistry {
         'delete_faq'            => 'Permanently deletes an FAQ from the site.',
         'set_rotation'          => 'Pins a manual rotation variant as the live content for a page.',
         'restore_page_revision' => 'Restores a page to a previous snapshot — current state is saved as a new revision first, so this is undoable, but still guarded.',
+        'link_auto_connect'     => 'Bulk-creates internal links across pages — requires approval even in BUILD.',
     ];
 
     /** Tools that are read-only and safe in PLAN mode. Everything else requires BUILD mode. */
@@ -72,6 +75,8 @@ class AiToolRegistry {
         'get_seo_audit', 'get_seo_opportunities',
         // Image slots read ({{media.*}} placeholders and whether photos are attached)
         'list_media_slots',
+        // Internal link widgets read
+        'link_list',
         // Memory + debug read-only (get_tool_logs is BUILD-only due to secret leakage risk — 01-security #9)
         'list_context', 'get_context',
         // Skills (read-only playbooks)

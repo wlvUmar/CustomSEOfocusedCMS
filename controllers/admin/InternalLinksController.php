@@ -107,6 +107,14 @@ class InternalLinksController extends Controller {
 
         $pages = $this->pageModel->getAll();
         $created = 0;
+        $enabledWidgets = 0;
+
+        // Existing outgoing targets per page, to skip duplicates and count accurately.
+        $existingMap = [];
+        foreach ($pages as $p) {
+            $rows = $this->widgetModel->getLinksForPage($p['id']);
+            $existingMap[$p['id']] = array_map(function ($r) { return (int)($r['link_to_page_id'] ?? 0); }, $rows);
+        }
 
         switch ($strategy) {
             case 'hierarchy-aware':
@@ -131,43 +139,62 @@ class InternalLinksController extends Controller {
                         $links[] = $sibling['id'];
                     }
 
-                    // 4. Fill remaining slots with related pages
+                    // 4. Fill remaining slots with related pages (keyword-OR, excludes already-linked)
                     if (count($links) < $maxLinks) {
                         $srcPage = $this->pageModel->getById($page['id']);
                         $keywords = InternalLinkScorer::extractKeywords($srcPage['title_ru'] . ' ' . $srcPage['content_ru']);
                         if (!empty($keywords)) {
-                            $searchTerm = '%' . implode('%', array_slice($keywords, 0, 3)) . '%';
-                            $related = $this->linkRepo->findRelatedPages($page['id'], $searchTerm, $maxLinks - count($links));
+                            $exclude = $links;
+                            $exclude[] = $page['id'];
+                            $related = $this->linkRepo->findRelatedByKeywords($page['id'], $keywords, $maxLinks - count($links), $exclude);
                             $links = array_merge($links, $related);
                         }
                     }
 
-                    // Create links
-                    $links = array_unique($links);
+                    // Create links (skip self + already-linked, enable widget so links are visible)
+                    $links = array_unique(array_map('intval', $links));
+                    $added = 0;
                     foreach (array_slice($links, 0, $maxLinks) as $targetId) {
-                        if ($targetId != $page['id']) {
-                            try {
-                                $this->widgetModel->addLink($page['id'], $targetId);
-                                $created++;
-                            } catch (Exception $e) {
-                                // Link might already exist
-                            }
+                        if ($targetId == $page['id']) continue;
+                        if (in_array($targetId, $existingMap[$page['id']] ?? [], true)) continue;
+                        try {
+                            $this->widgetModel->addLink($page['id'], $targetId);
+                            $created++;
+                            $added++;
+                        } catch (Exception $e) {
+                            // Link might already exist
+                        }
+                    }
+                    if ($added > 0) {
+                        $cur = $this->pageModel->getById($page['id']);
+                        if (empty($cur['show_link_widget'])) {
+                            $this->widgetModel->toggleWidget($page['id'], true);
+                            $enabledWidgets++;
                         }
                     }
                 }
                 break;
 
             case 'all-to-all':
-                // Connect every page to every other page
+                // Connect every page to every other page (skip existing, enable widget)
                 foreach ($pages as $page) {
+                    $added = 0;
                     foreach ($pages as $targetPage) {
-                        if ($page['id'] != $targetPage['id']) {
-                            try {
-                                $this->widgetModel->addLink($page['id'], $targetPage['id']);
-                                $created++;
-                            } catch (Exception $e) {
-                                // Link might already exist
-                            }
+                        if ($page['id'] == $targetPage['id']) continue;
+                        if (in_array((int)$targetPage['id'], $existingMap[$page['id']] ?? [], true)) continue;
+                        try {
+                            $this->widgetModel->addLink($page['id'], $targetPage['id']);
+                            $created++;
+                            $added++;
+                        } catch (Exception $e) {
+                            // Link might already exist
+                        }
+                    }
+                    if ($added > 0) {
+                        $cur = $this->pageModel->getById($page['id']);
+                        if (empty($cur['show_link_widget'])) {
+                            $this->widgetModel->toggleWidget($page['id'], true);
+                            $enabledWidgets++;
                         }
                     }
                 }
@@ -178,12 +205,22 @@ class InternalLinksController extends Controller {
                 $allPages = $this->pageModel->getAll(false);
                 foreach ($pages as $page) {
                     $related = InternalLinkScorer::findRelatedPagesSmart($page, $allPages, $maxLinks);
+                    $added = 0;
                     foreach ($related as $targetId) {
+                        if (in_array((int)$targetId, $existingMap[$page['id']] ?? [], true)) continue;
                         try {
                             $this->widgetModel->addLink($page['id'], $targetId);
                             $created++;
+                            $added++;
                         } catch (Exception $e) {
                             // Link might already exist
+                        }
+                    }
+                    if ($added > 0) {
+                        $cur = $this->pageModel->getById($page['id']);
+                        if (empty($cur['show_link_widget'])) {
+                            $this->widgetModel->toggleWidget($page['id'], true);
+                            $enabledWidgets++;
                         }
                     }
                 }
@@ -193,21 +230,30 @@ class InternalLinksController extends Controller {
                 // Connect all pages to most viewed pages
                 $popularPages = $this->linkRepo->getPopularPages(3);
                 foreach ($pages as $page) {
+                    $added = 0;
                     foreach ($popularPages as $popular) {
-                        if ($page['id'] != $popular['id']) {
-                            try {
-                                $this->widgetModel->addLink($page['id'], $popular['id']);
-                                $created++;
-                            } catch (Exception $e) {
-                                // Link might already exist
-                            }
+                        if ($page['id'] == $popular['id']) continue;
+                        if (in_array((int)$popular['id'], $existingMap[$page['id']] ?? [], true)) continue;
+                        try {
+                            $this->widgetModel->addLink($page['id'], $popular['id']);
+                            $created++;
+                            $added++;
+                        } catch (Exception $e) {
+                            // Link might already exist
+                        }
+                    }
+                    if ($added > 0) {
+                        $cur = $this->pageModel->getById($page['id']);
+                        if (empty($cur['show_link_widget'])) {
+                            $this->widgetModel->toggleWidget($page['id'], true);
+                            $enabledWidgets++;
                         }
                     }
                 }
                 break;
         }
 
-        $_SESSION['success'] = "Auto-connected pages! Created $created new links.";
+        $_SESSION['success'] = "Auto-connected pages! Created $created new links." . ($enabledWidgets > 0 ? " Enabled widget on $enabledWidgets page(s)." : "");
         $this->redirect('/admin/internal-links');
     }
 
