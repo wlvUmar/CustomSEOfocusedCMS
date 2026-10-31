@@ -1203,17 +1203,16 @@
         hideApproval();
         resetPreviewAccumulation();
         resetThinking();
+        setStatus('Working… [' + runMode.toUpperCase() + ']', 'busy');
+        showTyping();
         if (!isChain) {
             addUserBubble(userText, runMode);
             els.input.value = '';
             els.input.style.height = 'auto';
             history.push({ role: 'user', content: userText });
-        setStatus('Working… [' + runMode.toUpperCase() + ']', 'busy');
-        showTyping();
-        if (isChain) {
-            setActivity('Continuing… (part ' + (chainDepth + 1) + ') [' + runMode.toUpperCase() + ']');
-        } else {
             setActivity('Starting… [' + runMode.toUpperCase() + ']');
+        } else {
+            setActivity('Continuing… (part ' + (chainDepth + 1) + ') [' + runMode.toUpperCase() + ']');
         }
 
         let assistantText = '';
