@@ -259,17 +259,14 @@
         sessions.forEach(s => {
             const item = document.createElement('div');
             item.className = 'ai-history-item' + (s.id === currentSessionId ? ' ai-history-item--active' : '');
+            item.title = 'Open chat · right-click to delete';
             const title = document.createElement('div'); title.className = 'ai-history-item__title'; title.textContent = s.title || 'Untitled';
             const meta = document.createElement('div'); meta.className = 'ai-history-item__meta';
             const d = new Date(s.updatedAt); meta.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ' · ' + (s.history ? s.history.length : 0) + ' msgs';
-            const actions = document.createElement('div'); actions.className = 'ai-history-item__actions';
-            const loadBtn = document.createElement('button'); loadBtn.type = 'button'; loadBtn.className = 'ai-btn ai-btn--ghost ai-btn--sm'; loadBtn.textContent = 'Open';
-            loadBtn.addEventListener('click', (e) => { e.stopPropagation(); restoreSession(s.id); });
-            const delBtn = document.createElement('button'); delBtn.type = 'button'; delBtn.className = 'ai-history-item__del'; delBtn.textContent = 'Delete';
-            delBtn.addEventListener('click', (e) => { e.stopPropagation(); if (!confirm('Delete this session?')) return; deleteSession(s.id); });
-            actions.appendChild(loadBtn); actions.appendChild(delBtn);
-            item.appendChild(title); item.appendChild(meta); item.appendChild(actions);
+            item.appendChild(title); item.appendChild(meta);
             item.addEventListener('click', () => restoreSession(s.id));
+            // Delete via right-click only — no hover buttons.
+            item.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); if (!confirm('Delete this session?')) return; deleteSession(s.id); });
             els.historyList.appendChild(item);
         });
         if (window.feather) try { feather.replace({class:'feather-icon'}); } catch(e){}
