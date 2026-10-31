@@ -48,6 +48,9 @@
     let busy = false;
     let queuedRetryText = null; // 409-queued message text, auto-sent when the active turn ends
     let queuedRetries = 0;      // auto-retry attempts for the current queued text (max 1, then manual)
+    let chainDepth = 0;         // silent auto-chain count for the current job (server checkpoint / dropped stream)
+    let pendingChainText = null; // original user text to resume with when chaining
+    const MAX_CHAIN = 10;       // ~15+ min of work; beyond that the model is looping — stop and say so
     let lastCtx = null;         // latest context-window reading {used, window, budget, exact} for the meter
     let history = [];           // [{role:'user'|'assistant', content}] sent for model context
     let pendingApproval = null; // {call_id, plan, reason}
@@ -1188,8 +1191,9 @@
         if (abortCtrl) abortCtrl.abort();
     });
 
-    async function runTurn(userText, approved, isAutoRetry) {
+    async function runTurn(userText, approved, isAutoRetry, isChain) {
         const runMode = currentMode;
+        if (!isChain) chainDepth = 0;
         // A manual resend of a queued message supersedes the stored auto-retry.
         if (!isAutoRetry && queuedRetryText !== null && queuedRetryText === userText) {
             queuedRetryText = null;
@@ -1199,13 +1203,18 @@
         hideApproval();
         resetPreviewAccumulation();
         resetThinking();
-        addUserBubble(userText, runMode);
-        els.input.value = '';
-        els.input.style.height = 'auto';
-        history.push({ role: 'user', content: userText });
+        if (!isChain) {
+            addUserBubble(userText, runMode);
+            els.input.value = '';
+            els.input.style.height = 'auto';
+            history.push({ role: 'user', content: userText });
         setStatus('Working… [' + runMode.toUpperCase() + ']', 'busy');
-        setActivity('Starting… [' + runMode.toUpperCase() + ']');
         showTyping();
+        if (isChain) {
+            setActivity('Continuing… (part ' + (chainDepth + 1) + ') [' + runMode.toUpperCase() + ']');
+        } else {
+            setActivity('Starting… [' + runMode.toUpperCase() + ']');
+        }
 
         let assistantText = '';
         let receivedDone = false;
@@ -1322,6 +1331,18 @@
                             if (!assistantText && data.text) { assistantText = data.text; addAgentBubble(data.text); }
                             addAgentBubble('⚠ Run stopped — say "continue" to resume or use batch_update to combine edits.');
                             setStatus('Stopped — continue?', 'error');
+                        } else if (data.status === 'continuing') {
+                            // Server checkpointed before the host kill limit — chain silently.
+                            // Don't bubble or store the checkpoint text; the final run reports.
+                            if (chainDepth < MAX_CHAIN) {
+                                pendingChainText = userText;
+                                setActivity('Checkpoint reached — continuing…');
+                            } else {
+                                if (data.text) { assistantText = data.text; addAgentBubble(assistantText); }
+                                addAgentBubble('⚠ Job ran very long (' + MAX_CHAIN + ' chained runs) — stopping to avoid an infinite loop. Say "continue" to keep going.');
+                                setStatus('Stopped — continue?', 'error');
+                                pendingChainText = null;
+                            }
                         } else if (data.status === 'cancelled') {
                             if (data.text) addAgentBubble(data.text);
                             addAgentBubble('⏹ Run cancelled — partial history saved. Send a follow-up to continue.');
@@ -1340,8 +1361,14 @@
                 const cur = els.status.textContent || '';
                 const isStillBusy = cur.includes('Working') || cur.includes('Thinking') || cur === 'Starting…';
                 if (isStillBusy) {
-                    setStatus('Stopped', 'error');
-                    addAgentBubble('⚠ Stream ended without a final status — the agent loop may have been killed (PHP timeout / host buffer). Check logs/ai-studio.log and try again.');
+                    if (chainDepth < MAX_CHAIN) {
+                        // Dirty kill — the shutdown handler may have persisted. Chain and let the server reconcile.
+                        pendingChainText = userText;
+                        setActivity('Connection dropped — reconnecting…');
+                    } else {
+                        setStatus('Stopped', 'error');
+                        addAgentBubble('⚠ Stream ended without a final status — the agent loop may have been killed (PHP timeout / host buffer). Check logs/ai-studio.log and try again.');
+                    }
                 } else if (!els.status.className.includes('ai-status--')) {
                     setStatus('Ready', '');
                 }
@@ -1411,10 +1438,21 @@
         // Auto-send a 409-queued follow-up now that the turn ended — this is the
         // retry the server queue never performs (no dequeuer exists server-side).
         // Skipped while awaiting approval so the queued text doesn't jump the approval.
+        // Explicit user follow-up wins over silent continuation — it steers from the persisted state.
         if (queuedRetryText && !busy && els.status.textContent !== 'Awaiting approval') {
             const t = queuedRetryText;
             queuedRetryText = null;
+            pendingChainText = null;
             try { void runTurn(t, [], true); } catch(e) { queuedRetryText = t; }
+            return;
+        }
+        // Silent chain: server checkpointed (`continuing`) or the stream dropped mid-work.
+        // Same user text — the server dedups it against persisted history and just takes the next turn.
+        if (pendingChainText && !busy && els.status.textContent !== 'Awaiting approval') {
+            const t = pendingChainText;
+            pendingChainText = null;
+            chainDepth++;
+            try { void runTurn(t, [], false, true); } catch(e) { pendingChainText = t; chainDepth--; }
             return;
         }
         els.input.focus();

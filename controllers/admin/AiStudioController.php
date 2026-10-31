@@ -18,6 +18,13 @@ require_once BASE_PATH . '/services/AiLogger.php';
 
 class AiStudioController extends Controller {
 
+    // Checkpoint budget per HTTP request: a 60+ turn job outlives the host's
+    // PHP-FPM/proxy kill limit in a single request. Instead of dying mid-loop
+    // (shutdown persist may or may not make it), the loop persists cleanly and
+    // returns `continuing` so the client silently chains a fresh request.
+    // No turn cap — long jobs just span requests. ~5s/turn observed.
+    private const TIME_BUDGET_SEC = 90;
+
 
     public function index() {
         $this->requireAuth();
@@ -241,6 +248,7 @@ class AiStudioController extends Controller {
         if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
         @ignore_user_abort(true);
         @set_time_limit(0);
+        @ini_set('max_execution_time', '300'); // belt-and-braces where set_time_limit is disabled
 
         $this->startStream();
         AiLogger::logAi('run_start', [
@@ -338,6 +346,19 @@ class AiStudioController extends Controller {
                     return;
                 }
                 $turnsUsed++;
+                // Checkpoint: never start a turn we likely can't finish before the
+                // host kills the worker. Persist + hand back `continuing`; the
+                // client chains a fresh request silently. Fires only mid-loop
+                // (a finished turn breaks out below before reaching here again).
+                if (($this->elapsedMs($startedAt) / 1000) > self::TIME_BUDGET_SEC) {
+                    AiLogger::logAi('run_checkpoint', ['turns'=>$turnsUsed,'duration_ms'=>$this->elapsedMs($startedAt)]);
+                    $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
+                    try { $maybe = ContextBuilder::summarizeIfNeeded($sessionId, $uid, $messages); if ($maybe) ContextBuilder::persistSummary($sessionId,$uid,$maybe); } catch(Throwable $e) {}
+                    try { AiRunGuard::release($sessionId,$uid,$runToken); } catch(Throwable $e) {}
+                    $shutdownDone = true;
+                    $this->sse('done', ['status'=>'continuing','text'=>$finalText,'mode'=>$mode]);
+                    return;
+                }
                 $this->sse('turn', ['number' => $turn, 'max' => 0, 'mode' => $mode]);
                 $this->sse('activity', ['text' => 'Thinking… turn ' . $turn]);
 

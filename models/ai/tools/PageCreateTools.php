@@ -14,7 +14,7 @@ class PageCreateTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'create_page',
-                    'description' => 'Create a NEW CMS page (new slug). Requires slug + RU/UZ titles + RU/UZ body content (body only — hero/FAQ/widgets auto-render outside content_*). Meta titles/descriptions optional but must be paired RU+UZ. Parent via parent_slug or parent_id (omit for root). Theme auto-normalized; defaults to default. Draft by default (is_published=false) — set true only when user asked to publish. Guarded: requires approval.',
+                    'description' => 'Create a NEW CMS page (new slug). Requires slug + RU/UZ titles + RU/UZ body content (body only — hero/FAQ/widgets auto-render outside content_*). Meta titles/descriptions optional but must be paired RU+UZ. Parent via parent_slug or parent_id (omit for root). Theme auto-normalized; defaults to default. Draft by default (is_published=false) — set true only when user asked to publish. BUILD-only, auto-executes.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [

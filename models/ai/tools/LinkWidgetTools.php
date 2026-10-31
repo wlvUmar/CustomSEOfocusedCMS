@@ -78,7 +78,7 @@ class LinkWidgetTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'link_auto_connect',
-                    'description' => 'Bulk-link in ONE call (preferred over any link_add chain): auto-connect one page (scope=page) or all orphans (scope=orphans) to parent/children/siblings + keyword-similar pages, up to max_links. Guarded: requires approval. Always dry_run=true first, then one real run.',
+                    'description' => 'Bulk-link in ONE call (preferred over any link_add chain): auto-connect one page (scope=page) or all orphans (scope=orphans) to parent/children/siblings + keyword-similar pages, up to max_links. BUILD-only, auto-executes. Always dry_run=true first, then one real run.',
                     'parameters' => [
                         'type' => 'object',
                         'properties' => [
