@@ -238,7 +238,7 @@ class AiStudioController extends Controller {
                     @error_log(json_encode(['ts'=>date('Y-m-d H:i:s'), 'event'=>'run_killed_shutdown', 'session_id'=>substr($shutdownState['sessionId'],0,16), 'message'=>$msg, 'messages'=>array_slice($shutdownState['messages'] ?? [], -4)], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE) . "\n", 3, BASE_PATH . '/logs/ai-studio-debug.log');
                 }
                 try {
-                    AiStudioController::staticPersistAfterRun($shutdownState['sessionId'], $shutdownState['messages'] ?? [], $shutdownState['model'], $shutdownState['mode'], $shutdownState['ctxSnapshot'] ?? [], (int)($shutdownState['userId'] ?? 0));
+                    AiStudioController::staticPersistAfterRun($shutdownState['sessionId'], $shutdownState['messages'] ?? [], $shutdownState['model'], $shutdownState['mode'], $shutdownState['ctxSnapshot'] ?? [], (int)($shutdownState['userId'] ?? 0), (string)($shutdownState['finalText'] ?? ''));
                 } catch (Throwable $ignored) {}
                 try { AiRunGuard::release($shutdownState['sessionId'], (int)($shutdownState['userId'] ?? 0), (string)($shutdownState['runToken'] ?? '')); } catch(Throwable $ignored) {}
             }
@@ -337,7 +337,7 @@ class AiStudioController extends Controller {
                 if (AiRunGuard::isCancelled($sessionId, $uid, $runToken)) {
                     AiLogger::logAi('run_cancelled', ['turn'=>$turn,'duration_ms'=>$this->elapsedMs($startedAt)]);
                     $this->sse('activity', ['text'=>'Cancelled — stopping…']);
-                    $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
+                    $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot, $finalText);
                     // attempt summary on cancel as well
                     try { $maybe = ContextBuilder::summarizeIfNeeded($sessionId, $uid, $messages); if ($maybe) ContextBuilder::persistSummary($sessionId,$uid,$maybe); } catch(Throwable $e) {}
                     try { AiRunGuard::release($sessionId,$uid,$runToken); } catch(Throwable $e) {}
@@ -352,7 +352,7 @@ class AiStudioController extends Controller {
                 // (a finished turn breaks out below before reaching here again).
                 if (($this->elapsedMs($startedAt) / 1000) > self::TIME_BUDGET_SEC) {
                     AiLogger::logAi('run_checkpoint', ['turns'=>$turnsUsed,'duration_ms'=>$this->elapsedMs($startedAt)]);
-                    $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
+                    $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot, $finalText);
                     try { $maybe = ContextBuilder::summarizeIfNeeded($sessionId, $uid, $messages); if ($maybe) ContextBuilder::persistSummary($sessionId,$uid,$maybe); } catch(Throwable $e) {}
                     try { AiRunGuard::release($sessionId,$uid,$runToken); } catch(Throwable $e) {}
                     $shutdownDone = true;
@@ -543,6 +543,12 @@ class AiStudioController extends Controller {
                             ];
                             continue;
                         }
+                    }
+                    // Persist the final pure-talk answer into $messages — without
+                    // this the DB history only holds user+tool rows and the
+                    // visible reply is lost on reload (only SSE had it).
+                    if (trim((string)$response['content']) !== '') {
+                        $messages[] = ['role' => 'assistant', 'content' => $response['content']];
                     }
                     break;
                 }
@@ -777,7 +783,7 @@ class AiStudioController extends Controller {
                         'turns' => $turnsUsed,
                         'duration_ms' => $this->elapsedMs($startedAt),
                     ]);
-                    $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
+                    $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot, $finalText);
                     try { $maybe = ContextBuilder::summarizeIfNeeded($sessionId, $uid, $messages); if ($maybe) ContextBuilder::persistSummary($sessionId,$uid,$maybe); } catch(Throwable $e) {}
                     try { AiRunGuard::release($sessionId,$uid,$runToken); } catch(Throwable $e) {}
                     $shutdownDone = true;
@@ -810,7 +816,7 @@ class AiStudioController extends Controller {
                 'duration_ms' => $this->elapsedMs($startedAt),
                 'preview_missing' => ($didWriteHtml && !$didPreview) ? 1 : 0,
             ]);
-            $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot);
+            $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot, $finalText);
             try { $maybe = ContextBuilder::summarizeIfNeeded($sessionId, $uid, $messages); if ($maybe) ContextBuilder::persistSummary($sessionId,$uid,$maybe); } catch(Throwable $e) {}
             try { AiRunGuard::release($sessionId,$uid,$runToken); } catch(Throwable $e) {}
             $shutdownDone = true;
@@ -842,7 +848,7 @@ class AiStudioController extends Controller {
                     'messages_snapshot' => array_slice($messages ?? [], -6),
                 ]);
             }
-            try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot ?? []); $shutdownDone = true; } catch (Throwable $ignored) { error_log('persist on error failed: ' . $ignored->getMessage()); }
+            try { $this->persistAfterRun($sessionId, $messages, $model, $mode, $ctxSnapshot ?? [], $finalText); $shutdownDone = true; } catch (Throwable $ignored) { error_log('persist on error failed: ' . $ignored->getMessage()); }
             try { AiRunGuard::release($sessionId, (int)($uid ?? 0), $runToken ?? ''); } catch (Throwable $ignored) {}
             $userMsg = $msg;
             if ($isAuth) {
@@ -1017,7 +1023,33 @@ class AiStudioController extends Controller {
         $uid = (int)($_SESSION['user_id'] ?? 0);
         AiSessionStore::saveSession($sessionId, $uid, $history, $context, $model, $mode);
     }
-    private function persistAfterRun(string $sessionId, array $messages, string $model, string $mode, ?array $ctxSnapshot = null): void {
+
+    /**
+     * Append the visible final answer if it isn't already the last stored
+     * assistant message. Tool-call turns already carry their content inside
+     * the assistant-with-tool_calls row, so only pure-talk finals need this.
+     */
+    private static function withFinalAssistant(array $messages, ?string $finalText): array {
+        $t = trim((string)($finalText ?? ''));
+        if ($t === '') return $messages;
+        for ($i = count($messages) - 1; $i >= 0; $i--) {
+            $m = $messages[$i];
+            if (!is_array($m)) continue;
+            if (!empty($m['_syn'])) continue;
+            $role = $m['role'] ?? '';
+            if ($role === 'tool') continue; // final text belongs after pending tool rows — keep scanning
+            if ($role === 'assistant' && trim((string)($m['content'] ?? '')) === $t) return $messages;
+            // Last real message is user or different assistant text → append.
+            break;
+        }
+        $messages[] = ['role' => 'assistant', 'content' => $t];
+        return $messages;
+    }
+    private function persistAfterRun(string $sessionId, array $messages, string $model, string $mode, ?array $ctxSnapshot = null, ?string $finalText = null): void {
+        // Safety net: the final pure-talk answer lives in $finalText until the
+        // loop breaks — if the break path didn't append it (or a kill happened
+        // mid-stream), add it here so the DB never loses the visible reply.
+        $messages = self::withFinalAssistant($messages, $finalText);
         // $messages includes system + history + new turns — extract user/assistant/tool for storage
         // user/assistant/tool only, minus run-internal nudges (_syn)
         $history = AiSessionStore::historyFromMessages($messages);
@@ -1359,9 +1391,10 @@ class AiStudioController extends Controller {
         }
     }
 
-    public static function staticPersistAfterRun(string $sessionId, array $messages, string $model, string $mode, ?array $ctxSnapshot, int $uid): void {
+    public static function staticPersistAfterRun(string $sessionId, array $messages, string $model, string $mode, ?array $ctxSnapshot, int $uid, ?string $finalText = null): void {
         if ($sessionId === '' || $uid <= 0) return;
         try {
+            $messages = self::withFinalAssistant($messages, $finalText);
             $history = AiSessionStore::historyFromMessages($messages);
             $tmp = new self();
             $history = $tmp->compactHistoryForPersist($history);

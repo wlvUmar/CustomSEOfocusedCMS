@@ -1210,6 +1210,9 @@
             els.input.value = '';
             els.input.style.height = 'auto';
             history.push({ role: 'user', content: userText });
+            // Persist immediately — if the stream dies or the user reloads
+            // mid-run, the prompt (and later the narrated reply) survives.
+            try { saveCurrentSession(); } catch(e){}
             setActivity('Starting… [' + runMode.toUpperCase() + ']');
         } else {
             setActivity('Continuing… (part ' + (chainDepth + 1) + ') [' + runMode.toUpperCase() + ']');
@@ -1280,6 +1283,14 @@
                     case 'narrate':
                         assistantText = data.text;
                         addAgentBubble(data.text);
+                        // Incremental local save: even if the stream drops or
+                        // the user reloads before `done`, the reply survives.
+                        try {
+                            const lastH = history[history.length - 1];
+                            if (lastH && lastH.role === 'assistant') lastH.content = assistantText;
+                            else history.push({ role: 'assistant', content: assistantText });
+                            saveCurrentSession();
+                        } catch(e){}
                         break;
                     case 'tool_result':
                         addToolRow(data.tool, data.summary, data.ok);
@@ -1413,7 +1424,11 @@
         }
 
         if (assistantText) {
-            history.push({ role: 'assistant', content: assistantText });
+            // narrate handler already upserted incrementally — don't duplicate.
+            const lastH = history[history.length - 1];
+            if (lastH && lastH.role === 'assistant' && lastH.content === assistantText) { /* already saved */ }
+            else if (lastH && lastH.role === 'assistant') lastH.content = assistantText;
+            else history.push({ role: 'assistant', content: assistantText });
         }
         // Trim long sessions so the context stays manageable (20 turns × user+assistant to match server window).
         if (history.length > 40) {
