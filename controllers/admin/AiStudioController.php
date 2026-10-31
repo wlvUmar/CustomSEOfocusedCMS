@@ -944,9 +944,47 @@ class AiStudioController extends Controller {
         $row = AiSessionStore::getSession($id, $uid);
         if (!$row) $this->json(['success'=>false,'message'=>'Session not found'],404);
         $history = json_decode($row['history'] ?? '[]', true);
+        if (!is_array($history)) $history = [];
         $context = json_decode($row['context'] ?? '{}', true);
         $summary = $row['summary'] ?? null;
-        $this->json(['success'=>true,'session'=>['id'=>$row['id'],'title'=>$row['title'],'model'=>$row['model'],'mode'=>$row['mode'],'history'=>is_array($history)?array_slice($history,-24):[],'context'=>is_array($context)?$context:[],'summary'=>is_string($summary)? $summary : null,'updated_at'=>$row['updated_at']]]);
+        // Full resume window (tool pairs intact) + display-ready transcript
+        // (user + assistant-with-content + approval placeholders). The old
+        // -24 raw slice could end on tool-only rows, rendering as user-only
+        // or empty in the UI — transcript fixes that without touching resume.
+        $resume = array_slice($history, -100);
+        $transcript = self::buildTranscript(array_slice($history, -60));
+        $this->json(['success'=>true,'session'=>['id'=>$row['id'],'title'=>$row['title'],'model'=>$row['model'],'mode'=>$row['mode'],'history'=>$resume,'transcript'=>$transcript,'history_total'=>count($history),'context'=>is_array($context)?$context:[],'summary'=>is_string($summary)? $summary : null,'updated_at'=>$row['updated_at']]]);
+    }
+
+    /**
+     * Display-ready transcript from stored history: user bubbles,
+     * assistant bubbles with visible text, and a placeholder line for
+     * approval-required tool rows (which otherwise render as nothing).
+     * Pure data shaping — never executed, never alters resume history.
+     */
+    private static function buildTranscript(array $history): array {
+        $out = [];
+        foreach ($history as $m) {
+            if (!is_array($m)) continue;
+            $role = $m['role'] ?? '';
+            if ($role === 'user' && !empty($m['_syn'])) continue;
+            if ($role === 'user') {
+                $t = trim((string)($m['content'] ?? ''));
+                if ($t === '' || str_starts_with($t, 'SYSTEM REDIRECT') || str_starts_with($t, 'SYSTEM ENFORCEMENT')) continue;
+                $out[] = ['role' => 'user', 'content' => $m['content']];
+            } elseif ($role === 'assistant') {
+                $t = trim((string)($m['content'] ?? ''));
+                if ($t !== '') $out[] = ['role' => 'assistant', 'content' => $m['content']];
+            } elseif ($role === 'tool') {
+                $decoded = json_decode((string)($m['content'] ?? ''), true);
+                if (is_array($decoded) && ($decoded['status'] ?? '') === 'approval_required' && !empty($decoded['plan'])) {
+                    $out[] = ['role' => 'assistant', 'content' => '[Approval requested] ' . mb_substr((string)$decoded['plan'], 0, 500)];
+                }
+            }
+        }
+        // Cap to last 40 display rows so huge tool runs stay light.
+        if (count($out) > 40) $out = array_slice($out, -40);
+        return array_values($out);
     }
     public function deleteSession(string $id) {
         $this->requireAuth();
@@ -1031,18 +1069,34 @@ class AiStudioController extends Controller {
      */
     private static function withFinalAssistant(array $messages, ?string $finalText): array {
         $t = trim((string)($finalText ?? ''));
-        if ($t === '') return $messages;
+        if ($t !== '') {
+            for ($i = count($messages) - 1; $i >= 0; $i--) {
+                $m = $messages[$i];
+                if (!is_array($m)) continue;
+                if (!empty($m['_syn'])) continue;
+                $role = $m['role'] ?? '';
+                if ($role === 'tool') continue; // final text belongs after pending tool rows — keep scanning
+                if ($role === 'assistant' && trim((string)($m['content'] ?? '')) === $t) return $messages;
+                // Last real message is user or different assistant text → append.
+                break;
+            }
+            $messages[] = ['role' => 'assistant', 'content' => $t];
+            return $messages;
+        }
+        // No visible final text (approval/checkpoint/cancel path): if the run
+        // ends on an approval_required tool row, persist a synthetic assistant
+        // placeholder so reloads show *something* instead of user-only.
         for ($i = count($messages) - 1; $i >= 0; $i--) {
             $m = $messages[$i];
-            if (!is_array($m)) continue;
-            if (!empty($m['_syn'])) continue;
-            $role = $m['role'] ?? '';
-            if ($role === 'tool') continue; // final text belongs after pending tool rows — keep scanning
-            if ($role === 'assistant' && trim((string)($m['content'] ?? '')) === $t) return $messages;
-            // Last real message is user or different assistant text → append.
+            if (!is_array($m) || !empty($m['_syn'])) continue;
+            if (($m['role'] ?? '') !== 'tool') break;
+            $decoded = json_decode((string)($m['content'] ?? ''), true);
+            if (is_array($decoded) && ($decoded['status'] ?? '') === 'approval_required' && !empty($decoded['plan'])) {
+                $messages[] = ['role' => 'assistant', 'content' => '[Approval requested] ' . mb_substr((string)$decoded['plan'], 0, 500)];
+                break;
+            }
             break;
         }
-        $messages[] = ['role' => 'assistant', 'content' => $t];
         return $messages;
     }
     private function persistAfterRun(string $sessionId, array $messages, string $model, string $mode, ?array $ctxSnapshot = null, ?string $finalText = null): void {

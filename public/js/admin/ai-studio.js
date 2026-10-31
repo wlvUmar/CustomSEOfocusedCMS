@@ -218,8 +218,13 @@
             return;
         }
         hist.forEach(m => {
-            if (m.role === 'user' && typeof m.content === 'string') addUserBubble(m.content);
-            else if (m.role === 'assistant' && typeof m.content === 'string' && m.content) addAgentBubble(m.content);
+            if (!m || typeof m.content !== 'string' || !m.content) return;
+            if (m.role === 'user' && !m._syn) {
+                const t = m.content.trim();
+                if (!t || t.indexOf('SYSTEM REDIRECT') === 0 || t.indexOf('SYSTEM ENFORCEMENT') === 0) return;
+                addUserBubble(m.content);
+            }
+            else if (m.role === 'assistant' && m.content) addAgentBubble(m.content);
         });
     }
     function saveCurrentSession() {
@@ -272,7 +277,14 @@
     function restoreSession(id) {
         const sessions = loadSessions();
         const s = sessions.find(x => x.id === id);
-        if (!s) return;
+        if (!s) { loadSessionFromDb(id); return; }
+        // Local copy has no usable transcript (DB-only entry or cleared
+        // storage) — hydrate from server instead of showing an empty chat.
+        // A user-only local copy is also treated as stale: the DB holds the
+        // assistant reply (or approval placeholder) this client never stored.
+        const hasUser = Array.isArray(s.history) && s.history.some(m => m && m.role === 'user' && typeof m.content === 'string' && m.content.trim() !== '');
+        const hasAssistant = Array.isArray(s.history) && s.history.some(m => m && m.role === 'assistant' && typeof m.content === 'string' && m.content.trim() !== '');
+        if (!hasUser || !hasAssistant || s.needsFetch) { loadSessionFromDb(id); return; }
         currentSessionId = s.id;
         try { localStorage.setItem(CURRENT_KEY, currentSessionId); } catch(e){}
         history = Array.isArray(s.history) ? s.history.slice() : [];
@@ -334,17 +346,22 @@
     async function syncSessionsFromDb() {
         const db = await fetchDbSessions();
         if (!db) return;
-        // Merge DB list into localStorage for display; prefer DB titles
+        // Merge DB list into localStorage for display; prefer DB titles.
+        // DB-only rows carry needsFetch so open() hydrates transcript from server.
         const local = loadSessions();
         const map = new Map(local.map(s=>[s.id,s]));
         db.forEach(row => {
             const id=row.id;
+            const updated = new Date(row.updated_at).getTime();
+            const created = new Date(row.created_at).getTime();
             if (!map.has(id)) {
-                map.set(id,{id:id,title:row.title||'Session',updatedAt: new Date(row.updated_at).getTime(),createdAt:new Date(row.created_at).getTime(),history:[],lastPreviewHtml:'',usageText:''});
+                map.set(id,{id:id,title:row.title||'Session',updatedAt: Number.isFinite(updated)?updated:Date.now(),createdAt:Number.isFinite(created)?created:Date.now(),history:[],needsFetch:true,lastPreviewHtml:'',usageText:''});
             } else {
                 const ex=map.get(id);
                 ex.title = row.title||ex.title;
-                ex.updatedAt = new Date(row.updated_at).getTime();
+                const t = new Date(row.updated_at).getTime();
+                if (Number.isFinite(t)) ex.updatedAt = t;
+                if ((!ex.history || !ex.history.length) && !ex.needsFetch) ex.needsFetch = true;
             }
         });
         const merged=[...map.values()].sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,50);
@@ -353,29 +370,55 @@
     }
     async function loadSessionFromDb(id) {
         try {
+            if (els.transcript) els.transcript.innerHTML = '<div style="padding:16px;color:var(--ai-muted);font-size:.85rem">Loading session…</div>';
             const r = await fetch(cfg.baseUrl + '/admin/ai-studio/session/'+encodeURIComponent(id), { headers:{'Accept':'application/json'}});
             const j = await r.json();
             if (j.success && j.session) {
                 const s=j.session;
                 currentSessionId=s.id;
                 try{localStorage.setItem(CURRENT_KEY,currentSessionId);}catch(e){}
+                // Prefer server-built transcript for display; keep full history for resume.
+                const display = Array.isArray(s.transcript) && s.transcript.length ? s.transcript : (Array.isArray(s.history) ? s.history : []);
                 history=Array.isArray(s.history)?s.history.slice():[];
                 pendingApproval=null; pendingContext=null;
                 if (els.transcript) {
-                    if (s.history && s.history.length) {
+                    if (display && display.length) {
                         els.transcript.innerHTML='';
-                        s.history.forEach(m=>{
+                        display.forEach(m=>{
+                            if(!m || typeof m.content !== 'string' || !m.content) return;
                             if(m.role==='user') addUserBubble(m.content);
                             else if(m.role==='assistant' && m.content) addAgentBubble(m.content);
                         });
                     } else els.transcript.innerHTML='';
                 }
+                // Cache fetched transcript locally so next open is instant.
+                try {
+                    const sessions = loadSessions();
+                    const idx = sessions.findIndex(x => x.id === s.id);
+                    const entry = { id: s.id, title: s.title || sessionTitleFromHistory(display), updatedAt: Date.now(), createdAt: (idx >= 0 && sessions[idx].createdAt) || Date.now(), history: display.slice(-40), lastPreviewHtml: '', usageText: '' };
+                    delete entry.needsFetch;
+                    if (idx >= 0) sessions[idx] = entry; else sessions.unshift(entry);
+                    saveSessions(sessions);
+                } catch(e){}
                 if (els.approval) els.approval.hidden=true;
                 setStatus('Ready'); hideActivity(); hideTyping(); renderHistoryList();
                 scrollTranscript(); els.input.focus();
                 return true;
             }
-        } catch(e){}
+            // Server has nothing usable — fall back to whatever is cached locally.
+            try {
+                const sessions = loadSessions();
+                const fb = sessions.find(x => x.id === id);
+                if (fb && Array.isArray(fb.history) && fb.history.length && els.transcript) rebuildTranscriptFromHistory(fb.history);
+                else if (els.transcript) els.transcript.innerHTML = '';
+            } catch(e2){}
+        } catch(e){
+            try {
+                const sessions = loadSessions();
+                const fb = sessions.find(x => x.id === id);
+                if (fb && Array.isArray(fb.history) && fb.history.length && els.transcript) rebuildTranscriptFromHistory(fb.history);
+            } catch(e2){}
+        }
         return false;
     }
     // init current session
@@ -1315,6 +1358,11 @@
                         addApprovalEvent(data.plan);
                         showApproval({ call_id: data.call_id, call_ids: data.call_ids, plan: data.plan, reason: data.reason });
                         pendingContext = Array.isArray(data.pending) ? data.pending : null;
+                        // Local placeholder so a reload before approve/deny still shows what stalled.
+                        try {
+                            history.push({ role: 'assistant', content: '[Approval requested] ' + (data.plan || data.tool || 'change') });
+                            saveCurrentSession();
+                        } catch(e){}
                         setActivity('Awaiting your approval…');
                         break;
                     case 'error':
