@@ -42,6 +42,13 @@ $metaDescription = renderTemplate($metaDescription, $templateData);
 $ogTitle = renderTemplate($ogTitle, $templateData);
 $ogDescription = renderTemplate($ogDescription, $templateData);
 
+// One brand suffix on every title; og:title mirrors <title> unless the page sets its own og_title.
+$brandName = trim((string)($seo["site_name_$lang"] ?? ''));
+$metaTitle = withBrandSuffix($metaTitle, $brandName);
+if (trim((string)($page["og_title_$lang"] ?? '')) === '') {
+    $ogTitle = $metaTitle;
+}
+
 $faqSchema = '';
 if (!empty($faqs)) {
     $faqSchema = generateFAQSchema($faqs, $lang, $canonicalUrl);

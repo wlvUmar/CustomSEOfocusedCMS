@@ -26,7 +26,7 @@ $seo = $seoSettings;
 foreach(['ru', 'uz'] as $l) {
     $seo["address_$l"] = $seo["address_$l"] ?? '';
     $seo["working_hours_$l"] = $seo["working_hours_$l"] ?? '';
-    $seo["site_name_$l"] = $seo["site_name_$l"] ?? 'Kuplyu Tashkent';
+    $seo["site_name_$l"] = $seo["site_name_$l"] ?? 'KuplyTashkent';
 }
 $seo['phone'] = $seo['phone'] ?? '';
 $seo['email'] = $seo['email'] ?? '';
@@ -36,7 +36,7 @@ $global = [
     'email' => $seoSettings['email'] ?? '',
     'address' => $seoSettings["address_$lang"] ?? '',
     'working_hours' => $seoSettings["working_hours_$lang"] ?? '',
-    'site_name' => $seoSettings["site_name_$lang"] ?? 'Kuplyu Tashkent',
+    'site_name' => $seoSettings["site_name_$lang"] ?? 'KuplyTashkent',
     'google_review_url' => $seoSettings['google_review_url'] ?? '',
 ];
 

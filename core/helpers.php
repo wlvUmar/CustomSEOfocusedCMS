@@ -321,6 +321,21 @@ function showError(int $code = 500) {
     }
 }
 /**
+ * Append the brand to a <title> ("Page | Brand") unless it is already there
+ * or the result would exceed ~70 characters (then the title is kept as-is).
+ */
+function withBrandSuffix($title, $brand) {
+    $title = trim((string)$title);
+    $brand = trim((string)$brand);
+    if ($title === '' || $brand === '') return $title;
+    if (stripos($title, $brand) !== false) return $title;
+    $candidate = $title . ' | ' . $brand;
+    // Count UTF-8 characters without mbstring: drop continuation bytes (10xxxxxx).
+    $chars = strlen(preg_replace('/[\x80-\xBF]/', '', $candidate));
+    return $chars <= 70 ? $candidate : $title;
+}
+
+/**
  * Enhanced template engine with Jinja-like syntax
  * Supports: {{variable}}, {{object.property}}, {{array.0}}, loops, conditionals
  */
