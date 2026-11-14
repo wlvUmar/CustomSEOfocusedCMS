@@ -34,7 +34,8 @@ class SEO {
                 org_sameas_extra = ?,
                 service_type = ?, area_served = ?,
                 org_latitude = ?, org_longitude = ?,
-                organization_schema = ?, website_schema = ?
+                organization_schema = ?, website_schema = ?,
+                org_schema_custom = ?, organization_schema_raw = ?
                 WHERE id = 1";
         
         $result = $this->db->query($sql, [
@@ -74,7 +75,9 @@ class SEO {
             $data['org_latitude'] ?? '',
             $data['org_longitude'] ?? '',
             $data['organization_schema'] ?? '',
-            $data['website_schema'] ?? ''
+            $data['website_schema'] ?? '',
+            (int)($data['org_schema_custom'] ?? 0),
+            $data['organization_schema_raw'] ?? ''
         ]);
         AuditLog::logUpdate('seo_settings', 1, 'site settings', $before, $this->getSettings());
         return $result;

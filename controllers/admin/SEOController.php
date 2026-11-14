@@ -22,7 +22,11 @@ class SEOController extends Controller {
     public function save() {
         $this->requireAuth();
         
+        $isAjax = (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest');
         if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+            if ($isAjax) {
+                $this->sendSeoJson(403, false, 'Session expired or security check failed. Reload the page and try again.');
+            }
             $_SESSION['error'] = 'CSRF token validation failed';
             $this->redirect('/admin/seo');
             return;
@@ -85,10 +89,31 @@ class SEOController extends Controller {
         
         // No longer generating static service_schema - it's now dynamic per page
         
-        $this->seoModel->updateSettings($data);
+        try {
+            $this->seoModel->updateSettings($data);
+        } catch (Throwable $e) {
+            error_log('[SEOController::save] ' . $e->getMessage());
+            if ($isAjax) {
+                $this->sendSeoJson(500, false, 'Database error while saving: ' . $e->getMessage());
+            }
+            $_SESSION['error'] = 'Could not save SEO settings. See the server log.';
+            $this->redirect('/admin/seo');
+            return;
+        }
         $_SESSION['success'] = 'SEO settings updated successfully';
-        
+
+        if ($isAjax) {
+            // The page reloads after this so the saved values and the flash message show.
+            $this->sendSeoJson(200, true, 'SEO settings updated successfully');
+        }
         $this->redirect('/admin/seo');
+    }
+
+    private function sendSeoJson($status, $ok, $message) {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['ok' => $ok, 'message' => $message], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
     private function cleanDescription($text) {

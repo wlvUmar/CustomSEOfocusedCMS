@@ -269,9 +269,9 @@ Sa 10:00-15:00"><?= e($settings['opening_hours'] ?? '') ?></textarea>
             <div class="form-group">
                 <label>Custom Organization JSON-LD</label>
                 <div style="margin-bottom:8px;">
-                    <label style="font-weight:normal;"><input type="checkbox" name="org_schema_custom" value="1" <?= !empty($settings['organization_schema']) ? 'checked' : '' ?>> Use custom JSON-LD (overrides auto-generated schema)</label>
+                    <label style="font-weight:normal;"><input type="checkbox" name="org_schema_custom" value="1" <?= !empty($settings['org_schema_custom']) ? 'checked' : '' ?>> Use custom JSON-LD (overrides auto-generated schema)</label>
                 </div>
-                <textarea name="organization_schema_raw" rows="6" placeholder='Paste custom JSON-LD here'><?= e($settings['organization_schema'] ?? '') ?></textarea>
+                <textarea name="organization_schema_raw" rows="6" placeholder='Paste custom JSON-LD here'><?= e($settings['organization_schema_raw'] ?? '') ?></textarea>
                 <small class="help-text">If enabled, the JSON you provide will be validated and used as the Organization schema. Otherwise it will be generated from the fields above.</small>
             </div>
             

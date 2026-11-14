@@ -163,8 +163,10 @@ class OrganizationBuilder {
     }
 
     public static function build($seoSettings, $lang, $baseUrl, $pageImage = null) {
-        if (!empty($seoSettings['organization_schema'])) {
-            $orgSchema = json_decode($seoSettings['organization_schema'], true);
+        // Only a custom JSON-LD the admin explicitly enabled is used as the base. Otherwise the
+        // schema is generated from the live SEO settings, so a stored copy can't freeze old values.
+        if (!empty($seoSettings['org_schema_custom']) && !empty($seoSettings['organization_schema_raw'])) {
+            $orgSchema = json_decode($seoSettings['organization_schema_raw'], true);
             if (is_array($orgSchema)) {
                 $orgSchema = JsonLdBase::sanitizeUrlValues($orgSchema, $baseUrl);
                 $orgSchema['description'] = JsonLdBase::cleanText(JsonLdBase::unifiedOrganizationDescriptionRu());

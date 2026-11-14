@@ -97,11 +97,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const fd = new FormData(form);
         try {
-            const res = await fetch(form.action, { method: 'POST', body: fd, credentials: 'same-origin' });
-            if (res.ok) {
-                showAlert('SEO settings saved successfully', 'success');
+            const res = await fetch(form.action, {
+                method: 'POST',
+                body: fd,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            });
+            let payload = null;
+            try { payload = await res.json(); } catch (parseErr) { payload = null; }
+            if (res.ok && payload && payload.ok) {
+                showAlert(payload.message || 'SEO settings saved', 'success');
+                // Reload so the form shows the stored values, not what was typed.
+                setTimeout(() => window.location.reload(), 800);
             } else {
-                showAlert('Failed to save SEO settings', 'error');
+                showAlert((payload && payload.message) || ('Save failed (HTTP ' + res.status + ')'), 'error');
             }
         } catch (err) {
             showAlert('Network error saving settings', 'error');
