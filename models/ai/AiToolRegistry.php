@@ -21,6 +21,7 @@ require_once BASE_PATH . '/models/ai/tools/MemoryTools.php';
 require_once BASE_PATH . '/models/ai/tools/SkillTools.php';
 require_once BASE_PATH . '/models/ai/tools/LinkWidgetTools.php';
 require_once BASE_PATH . '/models/ai/tools/PageCreateTools.php';
+require_once BASE_PATH . '/models/ai/tools/PageBodyTools.php';
 require_once BASE_PATH . '/models/ai/ToolEnvelope.php';
 
 class AiToolRegistry {
@@ -42,6 +43,7 @@ class AiToolRegistry {
         LinkWidgetTools::class,
         PageCreateTools::class,
         SettingsTools::class,
+        PageBodyTools::class,
     ];
 
     /**
@@ -52,6 +54,7 @@ class AiToolRegistry {
      */
     private const GUARDED_TOOLS = [
         'set_field'             => 'Replaces the entire existing field. This is the tool you should reserve for genuinely new content or full-page rewrites.',
+        'rewrite_page_bodies'   => 'Replaces the full RU and UZ body of up to 10 pages in one call. Each page is snapshotted first, so it is undoable, but it still rewrites whole pages.',
         'delete_faq'            => 'Permanently deletes an FAQ from the site.',
         'set_rotation'          => 'Pins a manual rotation variant as the live content for a page.',
         'restore_page_revision' => 'Restores a page to a previous snapshot — current state is saved as a new revision first, so this is undoable, but still guarded.',
