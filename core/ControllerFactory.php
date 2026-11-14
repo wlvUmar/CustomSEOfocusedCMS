@@ -105,4 +105,9 @@ class ControllerFactory {
         $c = self::make('controllers/Api/SeoApiController.php', 'SeoApiController');
         $arg !== null ? $c->$method($arg) : $c->$method();
     }
+
+    public static function mcpApi(string $method): void {
+        $c = self::make('controllers/Api/McpApiController.php', 'McpApiController');
+        $c->$method();
+    }
 }

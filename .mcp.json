@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "kuplyu-cms": {
+      "command": "node",
+      "args": ["tools/mcp-kuplyu/index.mjs"],
+      "env": {
+        "KUPLYU_API_BASE": "https://kuplyu-tashkent.uz",
+        "KUPLYU_API_TOKEN": "${KUPLYU_API_TOKEN}"
+      }
+    }
+  }
+}

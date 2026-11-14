@@ -62,3 +62,6 @@ storage/gsc_cache/
 test-dedup-insert.php
 !AGENTS.md
 !docs/seo-operator-setup.md
+node_modules/
+!tools/mcp-kuplyu/package.json
+!tools/mcp-kuplyu/package-lock.json

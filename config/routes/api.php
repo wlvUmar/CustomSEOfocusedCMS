@@ -59,6 +59,14 @@ $router->get('/api/health', function() {
     echo "OK";
 });
 
+// AI Studio tools for the MCP server (Bearer token with scope ai_tools). See tools/mcp-kuplyu/.
+$router->get('/api/mcp/v1/tools', function() {
+    ControllerFactory::mcpApi('tools');
+});
+$router->post('/api/mcp/v1/call', function() {
+    ControllerFactory::mcpApi('call');
+});
+
 // Read-only SEO operator API (Bearer tokens, seo_api_tokens). Spec: docs/seo-operator-setup.md §1.
 $router->get('/api/seo/v1/pages', function() {
     ControllerFactory::seoApi('pages');

@@ -1,0 +1,17 @@
+{
+  "name": "kuplyu-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MCP server exposing the kuplyu-tashkent.uz CMS (AI Studio tools) to Claude Code",
+  "type": "module",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2"
+  }
+}
