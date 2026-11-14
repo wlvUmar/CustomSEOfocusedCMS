@@ -31,7 +31,7 @@ class PageBodyTools {
                 'type' => 'function',
                 'function' => [
                     'name' => 'rewrite_page_bodies',
-                    'description' => 'Replace the full RU and UZ body (content_ru + content_uz) of up to 10 pages in one call. '
+                    'description' => 'Replace the full RU and UZ body (content_ru + content_uz) of up to 10 pages in one call, and optionally the RU+UZ meta title / meta description pairs. '
                         . 'Use for de-templating and full rewrites. Always send both languages for every page; they must have the same number of <!-- Section --> markers and the same {{placeholders}}. '
                         . 'Body only: no html/head/body/header/footer/script tags and no inline style="" attributes (use .c-* classes). '
                         . 'Everything is validated first; if any page fails, nothing is written. Each written page is snapshotted to page_revisions first, so it can be restored. '
@@ -51,6 +51,10 @@ class PageBodyTools {
                                         'page_id' => ['type' => 'integer', 'description' => 'Page id (alternative to slug).'],
                                         'content_ru' => ['type' => 'string', 'description' => 'Full RU body HTML (sections marked with <!-- Name --> comments).'],
                                         'content_uz' => ['type' => 'string', 'description' => 'Full UZ body HTML, same section structure as content_ru.'],
+                                        'meta_title_ru' => ['type' => 'string', 'description' => 'Optional. RU meta title (send with meta_title_uz).'],
+                                        'meta_title_uz' => ['type' => 'string', 'description' => 'Optional. UZ meta title (send with meta_title_ru).'],
+                                        'meta_description_ru' => ['type' => 'string', 'description' => 'Optional. RU meta description (send with meta_description_uz).'],
+                                        'meta_description_uz' => ['type' => 'string', 'description' => 'Optional. UZ meta description (send with meta_description_ru).'],
                                         'allow_flagged' => ['type' => 'boolean', 'description' => 'Only true after the owner confirmed a flagged claim for this page.'],
                                     ],
                                     'required' => ['content_ru', 'content_uz'],
@@ -108,6 +112,31 @@ class PageBodyTools {
             $ru = trim((string)($p['content_ru'] ?? ''));
             $uz = trim((string)($p['content_uz'] ?? ''));
             $problems = self::validate($ru, $uz, !empty($p['allow_flagged']));
+
+            // Optional meta pairs: a language may be sent only together with its counterpart.
+            $meta = [];
+            foreach (['meta_title', 'meta_description'] as $base) {
+                $hasRu = array_key_exists($base . '_ru', $p);
+                $hasUz = array_key_exists($base . '_uz', $p);
+                if (!$hasRu && !$hasUz) continue;
+                if ($hasRu !== $hasUz) {
+                    $problems[] = "{$base}: send both {$base}_ru and {$base}_uz";
+                    continue;
+                }
+                $mRu = trim((string)$p[$base . '_ru']);
+                $mUz = trim((string)$p[$base . '_uz']);
+                if ($mRu === '' || $mUz === '') {
+                    $problems[] = "{$base}: RU and UZ values must not be empty";
+                    continue;
+                }
+                if (preg_match('/<|\sstyle\s*=/i', $mRu . $mUz)) {
+                    $problems[] = "{$base}: plain text only, no HTML";
+                    continue;
+                }
+                $meta[$base . '_ru'] = $mRu;
+                $meta[$base . '_uz'] = $mUz;
+            }
+
             if ($problems) {
                 $errors[] = "pages[{$i}] ({$page['slug']}): " . implode('; ', $problems);
                 continue;
@@ -117,6 +146,7 @@ class PageBodyTools {
                 'slug' => (string)$page['slug'],
                 'ru' => $ru,
                 'uz' => $uz,
+                'meta' => $meta,
                 'before_ru_chars' => mb_strlen((string)$page['content_ru']),
                 'before_uz_chars' => mb_strlen((string)$page['content_uz']),
             ];
@@ -129,7 +159,7 @@ class PageBodyTools {
         $results = [];
         foreach ($plan as $w) {
             try {
-                $model->update($w['id'], ['content_ru' => $w['ru'], 'content_uz' => $w['uz']]);
+                $model->update($w['id'], ['content_ru' => $w['ru'], 'content_uz' => $w['uz']] + $w['meta']);
             } catch (Throwable $e) {
                 return [
                     'ok' => false,
@@ -141,10 +171,14 @@ class PageBodyTools {
                 ];
             }
             $fresh = $model->getById($w['id']);
+            $metaOk = true;
+            foreach ($w['meta'] as $k => $v) {
+                if ((string)($fresh[$k] ?? '') !== $v) $metaOk = false;
+            }
             $results[] = [
                 'page_id' => $w['id'],
                 'slug' => $w['slug'],
-                'verified' => (string)$fresh['content_ru'] === $w['ru'] && (string)$fresh['content_uz'] === $w['uz'],
+                'verified' => (string)$fresh['content_ru'] === $w['ru'] && (string)$fresh['content_uz'] === $w['uz'] && $metaOk,
                 'before_ru_chars' => $w['before_ru_chars'],
                 'after_ru_chars' => mb_strlen($w['ru']),
                 'before_uz_chars' => $w['before_uz_chars'],
