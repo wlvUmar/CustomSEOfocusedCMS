@@ -7,6 +7,7 @@
 
 // Autoloader (core/Autoloader.php) handles these when available; explicit requires kept as fallback for BC (02-architecture #6)
 require_once BASE_PATH . '/models/ai/tools/PageTools.php';
+require_once BASE_PATH . '/models/ai/tools/SettingsTools.php';
 require_once BASE_PATH . '/models/ai/tools/RotationTools.php';
 require_once BASE_PATH . '/models/ai/tools/AnalyticsTools.php';
 require_once BASE_PATH . '/models/ai/tools/AnalyticsQueryTools.php';
@@ -40,6 +41,7 @@ class AiToolRegistry {
         SkillTools::class,
         LinkWidgetTools::class,
         PageCreateTools::class,
+        SettingsTools::class,
     ];
 
     /**
