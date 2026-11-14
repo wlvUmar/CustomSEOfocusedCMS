@@ -54,7 +54,8 @@ class OrganizationBuilder {
             if (!empty($seoSettings[$social])) $sameAs[] = trim($seoSettings[$social]);
         }
         if (!empty($seoSettings['org_sameas_extra'])) {
-            $sameAs = array_merge($sameAs, array_map('trim', explode(',', $seoSettings['org_sameas_extra'])));
+            // Admin field is one URL per line; commas and whitespace also accepted.
+            $sameAs = array_merge($sameAs, array_map('trim', preg_split('/[\s,]+/', $seoSettings['org_sameas_extra'], -1, PREG_SPLIT_NO_EMPTY)));
         }
         $sameAs = array_filter($sameAs, function ($u) { return preg_match('~^https?://~i', $u); });
         return array_values(array_unique($sameAs));
