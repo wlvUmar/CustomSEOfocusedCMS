@@ -20,7 +20,7 @@ class OrganizationBuilder {
         }
 
         if (!empty($seoSettings['opening_hours'])) {
-            $hoursLines = array_values(array_filter(array_map('trim', explode("\n", $seoSettings['opening_hours']))));
+            $hoursLines = self::openingHoursLines($seoSettings['opening_hours']);
             if (!empty($hoursLines)) {
                 $contactPoint['hoursAvailable'] = $hoursLines;
             }
@@ -36,7 +36,15 @@ class OrganizationBuilder {
             return !empty($lines) ? $lines : null;
         }
         $lines = array_values(array_filter(array_map('trim', explode("\n", (string)$raw))));
+        $lines = array_map(array(__CLASS__, 'normalizeHoursLine'), $lines);
         return !empty($lines) ? $lines : null;
+    }
+
+    /** "24/7" is not valid openingHours syntax; expand it to every day, 00:00-23:59. */
+    private static function normalizeHoursLine($line) {
+        $l = trim((string)$line);
+        if (preg_match('/^(24\s*\/\s*7|24\s*hours?|круглосуточно|kun-tun)$/iu', $l)) return 'Mo-Su 00:00-23:59';
+        return $l;
     }
 
     /** sameAs profile URLs from the SEO settings (social fields + comma-separated org_sameas_extra), http(s) only, de-duplicated. */
