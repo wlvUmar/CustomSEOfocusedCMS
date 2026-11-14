@@ -2264,3 +2264,7 @@ body.admin-mode { padding-top: 50px; }
 }
 .footer-links__title { margin: 18px 0 8px; color: #f9fafb; font-weight: 700; font-size: .9rem; }
 .footer-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .9rem; line-height: 1.5; }
+/* Footer nav: label above the list (the parent is flex-row, which put the label in a narrow left column). */
+.footer-section nav { display: block; width: 100%; }
+.footer-links li { border-bottom: 1px solid rgba(255,255,255,.08); padding-bottom: 6px; }
+.footer-links li:last-child { border-bottom: 0; }
