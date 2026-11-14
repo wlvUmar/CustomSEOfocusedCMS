@@ -249,6 +249,12 @@ class OrganizationBuilder {
             if (!empty($seoSettings['city'])) {
                 $schema['address']['addressLocality'] = $seoSettings['city'];
             }
+            if (!empty($seoSettings['region'])) {
+                $schema['address']['addressRegion'] = $seoSettings['region'];
+            }
+            if (!empty($seoSettings['postal_code'])) {
+                $schema['address']['postalCode'] = $seoSettings['postal_code'];
+            }
         }
 
         $sameAs = self::sameAsFromSettings($seoSettings);
