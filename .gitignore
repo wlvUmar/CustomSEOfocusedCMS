@@ -43,6 +43,7 @@ SEARCH_ENGINE_QUICK_REFERENCE.md
 INDEXNOW_IMPLEMENTATION.md
 *.md
 *.txt
+!public/llms.txt
 # AI model prompts must deploy with the code (see .cpanel.yml prompts/ step)
 !prompts/*.md
 reports/seo-schema-report.md
